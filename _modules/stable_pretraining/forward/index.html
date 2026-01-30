@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.forward &#8212; stable-pretraining 0.1.dev1+g9b0b2e131 documentation</title>
+    <title>stable_pretraining.forward &#8212; stable-pretraining 0.1.dev1+g4b8852139 documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../../_static/documentation_options.js?v=027cdc71"></script>
+    <script src="../../../_static/documentation_options.js?v=6f9fd923"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9b0b2e131 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g4b8852139 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -370,16 +370,15 @@ document.write(`
 <span class="kn">from</span><span class="w"> </span><span class="nn">.callbacks.queue</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_or_create_queue_callback</span><span class="p">,</span> <span class="n">OnlineQueue</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_get_views_list</span><span class="p">(</span><span class="n">batch</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert multi-view batch to list of views, whether it&#39;s a list or dict.&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;image&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_views_list</span><span class="p">(</span><span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert multi-view batch to list of views.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;views&quot;</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;views&quot;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="s2">&quot;image&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
         <span class="c1"># Dict of named views - convert to list</span>
         <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-        <span class="c1"># Already a list</span>
-        <span class="k">return</span> <span class="n">batch</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># Single view</span>
+        <span class="c1"># Single view, return None as sentinel</span>
         <span class="k">return</span> <span class="kc">None</span>
 
 

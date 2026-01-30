@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.data package &#8212; stable-pretraining 0.1.dev1+g9b0b2e131 documentation</title>
+    <title>stable_pretraining.data package &#8212; stable-pretraining 0.1.dev1+g4b8852139 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../_static/documentation_options.js?v=027cdc71"></script>
+    <script src="../_static/documentation_options.js?v=6f9fd923"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -134,7 +134,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9b0b2e131 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g4b8852139 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -1490,18 +1490,18 @@ each other. Always use non-in-place operations in custom transforms.</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><ul class="simple">
-<li><p>If transforms is a list: Returns a list of transformed sample dicts</p></li>
-<li><p>If transforms is a dict: Returns a dict of transformed sample dicts with same keys</p></li>
+<li><p>If transforms is a list: Returns a dict mapping the key “views” to a list of transformed sample dicts</p></li>
+<li><p>If transforms is a dict: Returns a dict of transformed sample dicts with the corresponding keys mapping to the samples.</p></li>
 </ul>
 <p>Each dict contains NEW tensors, not references to the original.</p>
 </p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Union[List[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>], Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>]]</p>
+<dd class="field-odd"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, Union[Dict, List[Dict]]</p>
 </dd>
 </dl>
 <p class="rubric">Example</p>
-<p># List input - returns list of views
+<p># List input - returns dict with key “views” mapping to a list of views
 transform = MultiViewTransform([</p>
 <blockquote>
 <div><p>strong_augmentation,  # Creates first view with strong aug
@@ -1509,7 +1509,7 @@ weak_augmentation,    # Creates second view with weak aug</p>
 </div></blockquote>
 <p>])
 # Input: {“image”: img, “label”: 0}
-# Output: [{“image”: img_strong, “label”: 0}, {“image”: img_weak, “label”: 0}]</p>
+# Output: {“views”: [{“image”: img_strong, “label”: 0}, {“image”: img_weak, “label”: 0}]}</p>
 <p># Dict input - returns dict of named views
 transform = MultiViewTransform({</p>
 <blockquote>

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.data.transforms &#8212; stable-pretraining 0.1.dev1+g9b0b2e131 documentation</title>
+    <title>stable_pretraining.data.transforms &#8212; stable-pretraining 0.1.dev1+g4b8852139 documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../../../_static/documentation_options.js?v=027cdc71"></script>
+    <script src="../../../../_static/documentation_options.js?v=6f9fd923"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9b0b2e131 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g4b8852139 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -1289,19 +1289,19 @@ document.write(`
 <span class="sd">                   - Dict: Returns a dict of views with the same keys</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Union[List[dict], Dict[str, dict]]:</span>
-<span class="sd">            - If transforms is a list: Returns a list of transformed sample dicts</span>
-<span class="sd">            - If transforms is a dict: Returns a dict of transformed sample dicts with same keys</span>
+<span class="sd">        Dict[str, Union[Dict, List[Dict]]:</span>
+<span class="sd">            - If transforms is a list: Returns a dict mapping the key &quot;views&quot; to a list of transformed sample dicts</span>
+<span class="sd">            - If transforms is a dict: Returns a dict of transformed sample dicts with the corresponding keys mapping to the samples.</span>
 <span class="sd">            Each dict contains NEW tensors, not references to the original.</span>
 
 <span class="sd">    Example:</span>
-<span class="sd">        # List input - returns list of views</span>
+<span class="sd">        # List input - returns dict with key &quot;views&quot; mapping to a list of views</span>
 <span class="sd">        transform = MultiViewTransform([</span>
 <span class="sd">            strong_augmentation,  # Creates first view with strong aug</span>
 <span class="sd">            weak_augmentation,    # Creates second view with weak aug</span>
 <span class="sd">        ])</span>
 <span class="sd">        # Input: {&quot;image&quot;: img, &quot;label&quot;: 0}</span>
-<span class="sd">        # Output: [{&quot;image&quot;: img_strong, &quot;label&quot;: 0}, {&quot;image&quot;: img_weak, &quot;label&quot;: 0}]</span>
+<span class="sd">        # Output: {&quot;views&quot;: [{&quot;image&quot;: img_strong, &quot;label&quot;: 0}, {&quot;image&quot;: img_weak, &quot;label&quot;: 0}]}</span>
 
 <span class="sd">        # Dict input - returns dict of named views</span>
 <span class="sd">        transform = MultiViewTransform({</span>
@@ -1316,11 +1316,11 @@ document.write(`
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transforms</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span> <span class="o">=</span> <span class="n">transforms</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">return_dict</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">transforms</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_keys_specified</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">transforms</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create multiple views by applying different transforms to the sample.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_dict</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_keys_specified</span><span class="p">:</span>
             <span class="c1"># Dict input - return dict of views</span>
             <span class="n">views</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">transform</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -1331,13 +1331,15 @@ document.write(`
                 <span class="n">views</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">transformed</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># List input - return list of views</span>
-            <span class="n">views</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">views_list</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">transform</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">:</span>
                 <span class="c1"># Copy to avoid transforms modifying the original</span>
                 <span class="n">sample_copy</span> <span class="o">=</span> <span class="n">sample</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
                 <span class="c1"># Apply transform to entire dict</span>
                 <span class="n">transformed</span> <span class="o">=</span> <span class="n">transform</span><span class="p">(</span><span class="n">sample_copy</span><span class="p">)</span>
-                <span class="n">views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transformed</span><span class="p">)</span>
+                <span class="n">views_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transformed</span><span class="p">)</span>
+
+            <span class="n">views</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;views&quot;</span><span class="p">:</span> <span class="n">views_list</span><span class="p">}</span>
 
         <span class="k">return</span> <span class="n">views</span></div>
 
@@ -1381,7 +1383,7 @@ document.write(`
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_scales</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_aspect_ratios</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s2">&quot;Each scale must have its associated aspect ratio and vice versa.&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;Received {len(target_scales)=} {len(target_aspect_ratios)=}&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Received </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">target_scales</span><span class="p">)</span><span class="si">=}</span><span class="s2"> </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">target_aspect_ratios</span><span class="p">)</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">min_keep</span> <span class="o">=</span> <span class="n">min_keep</span>
