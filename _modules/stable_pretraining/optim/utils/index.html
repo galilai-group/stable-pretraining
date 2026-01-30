@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.optim.utils &#8212; stable-pretraining 0.1.dev1+g4b8852139 documentation</title>
+    <title>stable_pretraining.optim.utils &#8212; stable-pretraining 0.1.dev1+g47ebef423 documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../../../_static/documentation_options.js?v=6f9fd923"></script>
+    <script src="../../../../_static/documentation_options.js?v=2fab948f"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g4b8852139 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g47ebef423 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -346,13 +346,107 @@ document.write(`
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">hydra.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">instantiate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">omegaconf</span><span class="w"> </span><span class="kn">import</span> <span class="n">DictConfig</span><span class="p">,</span> <span class="n">OmegaConf</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">optim</span> <span class="k">as</span> <span class="n">ssl_optim</span>
+
+
+<div class="viewcode-block" id="is_bias_or_norm_param">
+<a class="viewcode-back" href="../../../../stable_pretraining.optim/#stable_pretraining.optim.utils.is_bias_or_norm_param">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_bias_or_norm_param</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">param</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if a parameter is a bias or belongs to a normalization layer.</span>
+
+<span class="sd">    Parameters are considered bias/norm if:</span>
+<span class="sd">    - The parameter name ends with &quot;.bias&quot;</span>
+<span class="sd">    - The parameter name contains &quot;norm&quot; (e.g., LayerNorm, BatchNorm, GroupNorm)</span>
+<span class="sd">    - The parameter is 1D (biases are typically 1D tensors)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name: Full parameter name (e.g., &quot;encoder.layer1.bn.weight&quot;)</span>
+<span class="sd">        param: The parameter tensor</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if the parameter should be excluded from weight decay</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Check for bias parameters</span>
+    <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.bias&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;bias&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="c1"># Check for normalization layer parameters</span>
+    <span class="c1"># Matches: LayerNorm, BatchNorm, GroupNorm, InstanceNorm, RMSNorm, etc.</span>
+    <span class="n">name_lower</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="s2">&quot;norm&quot;</span> <span class="ow">in</span> <span class="n">name_lower</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="c1"># 1D parameters are typically biases (though this is a heuristic)</span>
+    <span class="c1"># Skip this check if the name doesn&#39;t suggest it&#39;s a bias</span>
+    <span class="c1"># This catches cases like &quot;bn1.weight&quot; which are norm layer scales</span>
+    <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="split_params_for_weight_decay">
+<a class="viewcode-back" href="../../../../stable_pretraining.optim/#stable_pretraining.optim.utils.split_params_for_weight_decay">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">split_params_for_weight_decay</span><span class="p">(</span>
+    <span class="n">named_params</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">]],</span>
+    <span class="n">weight_decay</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Split parameters into groups with and without weight decay.</span>
+
+<span class="sd">    Creates two parameter groups:</span>
+<span class="sd">    - Regular parameters: use the specified weight_decay</span>
+<span class="sd">    - Bias/norm parameters: use weight_decay=0</span>
+
+<span class="sd">    This is a common practice in deep learning that:</span>
+<span class="sd">    - Prevents biases from being regularized (they have different roles than weights)</span>
+<span class="sd">    - Prevents normalization parameters from being regularized (they control scale/shift)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        named_params: Iterable of (name, parameter) tuples from model.named_parameters()</span>
+<span class="sd">        weight_decay: Weight decay value for regular parameters</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of parameter group dicts suitable for optimizer initialization:</span>
+<span class="sd">        [{&quot;params&quot;: regular_params, &quot;weight_decay&quot;: weight_decay},</span>
+<span class="sd">         {&quot;params&quot;: bias_norm_params, &quot;weight_decay&quot;: 0.0}]</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; named_params = model.named_parameters()</span>
+<span class="sd">        &gt;&gt;&gt; param_groups = split_params_for_weight_decay(</span>
+<span class="sd">        ...     named_params, weight_decay=0.01</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; optimizer = torch.optim.AdamW(param_groups, lr=1e-3)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">regular_params</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">bias_norm_params</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">named_params</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="n">is_bias_or_norm_param</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">param</span><span class="p">):</span>
+            <span class="n">bias_norm_params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">regular_params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+
+    <span class="n">param_groups</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">regular_params</span><span class="p">:</span>
+        <span class="n">param_groups</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="n">regular_params</span><span class="p">,</span> <span class="s2">&quot;weight_decay&quot;</span><span class="p">:</span> <span class="n">weight_decay</span><span class="p">})</span>
+    <span class="k">if</span> <span class="n">bias_norm_params</span><span class="p">:</span>
+        <span class="n">param_groups</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="n">bias_norm_params</span><span class="p">,</span> <span class="s2">&quot;weight_decay&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">})</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Parameter split: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">regular_params</span><span class="p">)</span><span class="si">}</span><span class="s2"> regular params (wd=</span><span class="si">{</span><span class="n">weight_decay</span><span class="si">}</span><span class="s2">), &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">bias_norm_params</span><span class="p">)</span><span class="si">}</span><span class="s2"> bias/norm params (wd=0)&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">param_groups</span></div>
+
 
 
 <div class="viewcode-block" id="create_optimizer">
@@ -360,6 +454,7 @@ document.write(`
 <span class="k">def</span><span class="w"> </span><span class="nf">create_optimizer</span><span class="p">(</span>
     <span class="n">params</span><span class="p">,</span>
     <span class="n">optimizer_config</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">partial</span><span class="p">,</span> <span class="nb">type</span><span class="p">],</span>
+    <span class="n">named_params</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create an optimizer from flexible configuration.</span>
 
@@ -367,12 +462,15 @@ document.write(`
 <span class="sd">    used by both Module and OnlineProbe for consistency.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        params: Parameters to optimize (e.g., model.parameters())</span>
+<span class="sd">        params: Parameters to optimize (e.g., model.parameters()). Used unless</span>
+<span class="sd">            exclude_bias_norm is True and named_params is provided.</span>
 <span class="sd">        optimizer_config: Can be:</span>
 <span class="sd">            - str: optimizer name from torch.optim or stable_pretraining.optim (e.g., &quot;AdamW&quot;, &quot;LARS&quot;)</span>
-<span class="sd">            - dict: {&quot;type&quot;: &quot;AdamW&quot;, &quot;lr&quot;: 1e-3, ...}</span>
+<span class="sd">            - dict: {&quot;type&quot;: &quot;AdamW&quot;, &quot;lr&quot;: 1e-3, &quot;exclude_bias_norm&quot;: True, ...}</span>
 <span class="sd">            - partial: pre-configured optimizer factory</span>
 <span class="sd">            - class: optimizer class (e.g., torch.optim.AdamW)</span>
+<span class="sd">        named_params: Optional iterable of (name, parameter) tuples. Required when</span>
+<span class="sd">            exclude_bias_norm=True to identify bias and normalization parameters.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Configured optimizer instance</span>
@@ -384,6 +482,18 @@ document.write(`
 <span class="sd">        &gt;&gt;&gt; # Dict with parameters</span>
 <span class="sd">        &gt;&gt;&gt; opt = create_optimizer(</span>
 <span class="sd">        ...     model.parameters(), {&quot;type&quot;: &quot;SGD&quot;, &quot;lr&quot;: 0.1, &quot;momentum&quot;: 0.9}</span>
+<span class="sd">        ... )</span>
+
+<span class="sd">        &gt;&gt;&gt; # With exclude_bias_norm - excludes bias/norm params from weight decay</span>
+<span class="sd">        &gt;&gt;&gt; opt = create_optimizer(</span>
+<span class="sd">        ...     model.parameters(),</span>
+<span class="sd">        ...     {</span>
+<span class="sd">        ...         &quot;type&quot;: &quot;AdamW&quot;,</span>
+<span class="sd">        ...         &quot;lr&quot;: 1e-3,</span>
+<span class="sd">        ...         &quot;weight_decay&quot;: 0.01,</span>
+<span class="sd">        ...         &quot;exclude_bias_norm&quot;: True,</span>
+<span class="sd">        ...     },</span>
+<span class="sd">        ...     named_params=model.named_parameters(),</span>
 <span class="sd">        ... )</span>
 
 <span class="sd">        &gt;&gt;&gt; # Using partial</span>
@@ -415,9 +525,11 @@ document.write(`
         <span class="k">else</span><span class="p">:</span>
             <span class="n">config_copy</span> <span class="o">=</span> <span class="n">optimizer_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">opt_type</span> <span class="o">=</span> <span class="n">config_copy</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="s2">&quot;AdamW&quot;</span><span class="p">)</span>
+        <span class="n">exclude_bias_norm</span> <span class="o">=</span> <span class="n">config_copy</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;exclude_bias_norm&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
         <span class="n">kwargs</span> <span class="o">=</span> <span class="n">config_copy</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">opt_type</span> <span class="o">=</span> <span class="n">optimizer_config</span>
+        <span class="n">exclude_bias_norm</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="c1"># resolve class</span>
@@ -437,6 +549,29 @@ document.write(`
             <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">opt_class</span> <span class="o">=</span> <span class="n">opt_type</span>
+
+    <span class="c1"># Handle exclude_bias_norm: split params into groups with/without weight decay</span>
+    <span class="k">if</span> <span class="n">exclude_bias_norm</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">named_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;exclude_bias_norm=True requires named_params to be provided. &quot;</span>
+                <span class="s2">&quot;Pass named_params=model.named_parameters() to create_optimizer.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">weight_decay</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;weight_decay&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="c1"># Convert named_params to list to avoid consuming the iterator</span>
+        <span class="n">named_params_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">named_params</span><span class="p">)</span>
+        <span class="n">param_groups</span> <span class="o">=</span> <span class="n">split_params_for_weight_decay</span><span class="p">(</span><span class="n">named_params_list</span><span class="p">,</span> <span class="n">weight_decay</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">param_groups</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;No parameters to optimize after splitting for weight decay&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Creating </span><span class="si">{</span><span class="n">opt_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> with exclude_bias_norm=True: &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">])</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">g</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">param_groups</span><span class="p">)</span><span class="si">}</span><span class="s2"> params in </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">param_groups</span><span class="p">)</span><span class="si">}</span><span class="s2"> groups&quot;</span>
+        <span class="p">)</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">param_groups</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">opt_class</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
