@@ -11,7 +11,7 @@ import torch
 import torch.nn.functional as F
 
 from ..utils import all_gather, all_reduce
-from .utils import off_diagonal
+from .utils import off_diagonal, VCRegLoss
 
 
 class BYOLLoss(torch.nn.Module):
@@ -62,9 +62,7 @@ class VICRegLoss(torch.nn.Module):
     ):
         super().__init__()
         self.sim_coeff = sim_coeff
-        self.std_coeff = std_coeff
-        self.cov_coeff = cov_coeff
-        self.epsilon = epsilon
+        self.vcreg_loss = VCRegLoss(std_coeff, cov_coeff, epsilon)
 
     def forward(self, z_i, z_j):
         """Compute the loss of the VICReg model.
@@ -78,27 +76,7 @@ class VICRegLoss(torch.nn.Module):
         """
         repr_loss = F.mse_loss(z_i, z_j)
 
-        z_i = torch.cat(all_gather(z_i), 0)
-        z_j = torch.cat(all_gather(z_j), 0)
-
-        z_i = z_i - z_i.mean(dim=0)
-        z_j = z_j - z_j.mean(dim=0)
-
-        std_i = torch.sqrt(z_i.var(dim=0) + self.epsilon)
-        std_j = torch.sqrt(z_j.var(dim=0) + self.epsilon)
-        std_loss = torch.mean(F.relu(1 - std_i)) / 2 + torch.mean(F.relu(1 - std_j)) / 2
-
-        cov_i = (z_i.T @ z_i) / (z_i.size(0) - 1)
-        cov_j = (z_j.T @ z_j) / (z_i.size(0) - 1)
-        cov_loss = off_diagonal(cov_i).pow_(2).sum().div(z_i.size(1)) + off_diagonal(
-            cov_j
-        ).pow_(2).sum().div(z_i.size(1))
-
-        loss = (
-            self.sim_coeff * repr_loss
-            + self.std_coeff * std_loss
-            + self.cov_coeff * cov_loss
-        )
+        loss = self.sim_coeff * repr_loss + self.vcreg_loss(z_i) + self.vcreg_loss(z_j)
         return loss
 
 
