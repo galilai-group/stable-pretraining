@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.vit &#8212; stable-pretraining 0.1.dev1+g47ebef423 documentation</title>
+    <title>stable_pretraining.backbone.vit &#8212; stable-pretraining 0.1.dev1+g715dc086a documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../../../_static/documentation_options.js?v=2fab948f"></script>
+    <script src="../../../../_static/documentation_options.js?v=c72634b2"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g47ebef423 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g715dc086a documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -352,8 +352,6 @@ document.write(`
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.pos_embed</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">get_sincos_pos_embed</span><span class="p">,</span>
-    <span class="n">get_1d_sincos_pos_embed</span><span class="p">,</span>
-    <span class="n">get_2d_sincos_pos_embed</span><span class="p">,</span>
     <span class="n">get_timestep_embed</span><span class="p">,</span>
     <span class="n">interpolate_pos_embed</span><span class="p">,</span>
 <span class="p">)</span>
@@ -610,11 +608,32 @@ document.write(`
 <span class="sd">    - Flash Attention (when available, fastest)</span>
 <span class="sd">    - Memory-efficient attention (xformers-style)</span>
 <span class="sd">    - Math fallback</span>
+
+<span class="sd">    Supports attention masking for patterns like:</span>
+<span class="sd">    - Causal (autoregressive) attention</span>
+<span class="sd">    - Leave-one-out prediction (diagonal blocked)</span>
+<span class="sd">    - Arbitrary sparse patterns</span>
+
 <span class="sd">    :param dim: Input dimension</span>
 <span class="sd">    :param num_heads: Number of attention heads</span>
 <span class="sd">    :param qkv_bias: Add bias to QKV projection</span>
 <span class="sd">    :param attn_drop: Attention dropout rate</span>
 <span class="sd">    :param proj_drop: Output projection dropout rate</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        attn = Attention(dim=768, num_heads=12)</span>
+
+<span class="sd">        # Standard self-attention</span>
+<span class="sd">        out = attn(x)  # [B, N, 768]</span>
+
+<span class="sd">        # Leave-one-out: each token cannot attend to itself</span>
+<span class="sd">        mask = torch.eye(N, dtype=torch.bool, device=x.device)</span>
+<span class="sd">        out = attn(x, attn_mask=mask)  # out[:, i] based on x[:, ≠i]</span>
+
+<span class="sd">        # Causal attention</span>
+<span class="sd">        causal_mask = torch.triu(torch.ones(N, N, dtype=torch.bool), diagonal=1)</span>
+<span class="sd">        out = attn(x, attn_mask=causal_mask)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -630,6 +649,7 @@ document.write(`
         <span class="bp">self</span><span class="o">.</span><span class="n">num_heads</span> <span class="o">=</span> <span class="n">num_heads</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span> <span class="o">=</span> <span class="n">dim</span> <span class="o">//</span> <span class="n">num_heads</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span><span class="o">**-</span><span class="mf">0.5</span>
+
         <span class="c1"># Fused QKV projection for efficiency</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">qkv</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="n">qkv_bias</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">attn_drop</span> <span class="o">=</span> <span class="n">attn_drop</span>
@@ -638,13 +658,24 @@ document.write(`
 
 <div class="viewcode-block" id="Attention.forward">
 <a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.vit.Attention.forward">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass.</span>
 
 <span class="sd">        :param x: Input tensor [B, N, D]</span>
+<span class="sd">        :param attn_mask: Attention mask. Can be one of:</span>
+<span class="sd">            - [N, N]: Same mask for all batches and heads</span>
+<span class="sd">            - [B, N, N]: Per-batch mask, broadcast over heads</span>
+<span class="sd">            - [B, H, N, N]: Full per-batch, per-head mask</span>
+<span class="sd">            Mask values: True = blocked (cannot attend), False = allowed.</span>
+<span class="sd">            For leave-one-out prediction, use `torch.eye(N, dtype=torch.bool)`.</span>
 <span class="sd">        :return: Output tensor [B, N, D]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
         <span class="c1"># Fused QKV: [B, N, 3*D] -&gt; [B, N, 3, H, head_dim] -&gt; [3, B, H, N, head_dim]</span>
         <span class="n">qkv</span> <span class="o">=</span> <span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">qkv</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
@@ -652,19 +683,60 @@ document.write(`
             <span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">qkv</span><span class="o">.</span><span class="n">unbind</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Convert mask to SDPA format if provided</span>
+        <span class="n">attn_mask_sdpa</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_attn_mask</span><span class="p">(</span><span class="n">attn_mask</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
         <span class="c1"># Efficient attention (Flash/Memory-efficient when available)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">scaled_dot_product_attention</span><span class="p">(</span>
             <span class="n">q</span><span class="p">,</span>
             <span class="n">k</span><span class="p">,</span>
             <span class="n">v</span><span class="p">,</span>
+            <span class="n">attn_mask</span><span class="o">=</span><span class="n">attn_mask_sdpa</span><span class="p">,</span>
             <span class="n">dropout_p</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">attn_drop</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="p">)</span>
+
         <span class="c1"># Reshape back: [B, H, N, head_dim] -&gt; [B, N, D]</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">C</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj_drop</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">x</span></div>
-</div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_attn_mask</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert boolean attention mask to SDPA-compatible float mask.</span>
+
+<span class="sd">        SDPA expects additive mask where -inf blocks attention.</span>
+<span class="sd">        Our convention: True = blocked, False = allowed.</span>
+
+<span class="sd">        :param attn_mask: Boolean mask [N, N], [B, N, N], or [B, H, N, N]</span>
+<span class="sd">        :param dtype: Target dtype for the mask</span>
+<span class="sd">        :param device: Target device for the mask</span>
+<span class="sd">        :return: Float mask suitable for SDPA, or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">attn_mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Convert bool mask to float: True -&gt; -inf, False -&gt; 0</span>
+        <span class="k">if</span> <span class="n">attn_mask</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">attn_mask</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">masked_fill</span><span class="p">(</span><span class="n">attn_mask</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">attn_mask</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="c1"># Expand dimensions for broadcasting: need [B, H, N, N] for SDPA</span>
+        <span class="c1"># [N, N] -&gt; [1, 1, N, N]</span>
+        <span class="c1"># [B, N, N] -&gt; [B, 1, N, N]</span>
+        <span class="c1"># [B, H, N, N] -&gt; unchanged</span>
+        <span class="k">while</span> <span class="n">mask</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">mask</span></div>
 
 
 
@@ -674,12 +746,27 @@ document.write(`
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Multi-head cross-attention with efficient SDPA backend.</span>
 
 <span class="sd">    Queries attend to key-value pairs from a separate context sequence.</span>
+<span class="sd">    Supports attention masking to block specific query-key interactions.</span>
+
 <span class="sd">    :param dim: Query dimension</span>
 <span class="sd">    :param context_dim: Context dimension (defaults to dim)</span>
 <span class="sd">    :param num_heads: Number of attention heads</span>
 <span class="sd">    :param qkv_bias: Add bias to projections</span>
 <span class="sd">    :param attn_drop: Attention dropout rate</span>
 <span class="sd">    :param proj_drop: Output projection dropout rate</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        cross_attn = CrossAttention(dim=768, context_dim=1024, num_heads=12)</span>
+
+<span class="sd">        # Standard cross-attention</span>
+<span class="sd">        out = cross_attn(queries, context)  # [B, N, 768]</span>
+
+<span class="sd">        # Masked cross-attention: block certain query-context pairs</span>
+<span class="sd">        # mask[i, j] = True means query i cannot attend to context j</span>
+<span class="sd">        mask = torch.zeros(N, M, dtype=torch.bool)</span>
+<span class="sd">        mask[:, :10] = True  # block attention to first 10 context tokens</span>
+<span class="sd">        out = cross_attn(queries, context, attn_mask=mask)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -696,6 +783,7 @@ document.write(`
         <span class="k">assert</span> <span class="n">dim</span> <span class="o">%</span> <span class="n">num_heads</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;dim must be divisible by num_heads&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_heads</span> <span class="o">=</span> <span class="n">num_heads</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span> <span class="o">=</span> <span class="n">dim</span> <span class="o">//</span> <span class="n">num_heads</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="n">qkv_bias</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">kv</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">context_dim</span><span class="p">,</span> <span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="n">qkv_bias</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">attn_drop</span> <span class="o">=</span> <span class="n">attn_drop</span>
@@ -704,17 +792,29 @@ document.write(`
 
 <div class="viewcode-block" id="CrossAttention.forward">
 <a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.vit.CrossAttention.forward">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">context</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass.</span>
 
 <span class="sd">        :param x: Query tensor [B, N, D]</span>
 <span class="sd">        :param context: Key-value tensor [B, M, context_dim]</span>
+<span class="sd">        :param attn_mask: Cross-attention mask. Can be one of:</span>
+<span class="sd">            - [N, M]: Same mask for all batches and heads</span>
+<span class="sd">            - [B, N, M]: Per-batch mask, broadcast over heads</span>
+<span class="sd">            - [B, H, N, M]: Full per-batch, per-head mask</span>
+<span class="sd">            Mask values: True = blocked (cannot attend), False = allowed.</span>
 <span class="sd">        :return: Output tensor [B, N, D]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
         <span class="n">M</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
         <span class="c1"># Query projection: [B, N, D] -&gt; [B, H, N, head_dim]</span>
         <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_heads</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span><span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
         <span class="c1"># KV projection: [B, M, D] -&gt; [B, H, M, head_dim] x2</span>
         <span class="n">kv</span> <span class="o">=</span> <span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">kv</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
@@ -722,19 +822,60 @@ document.write(`
             <span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="n">kv</span><span class="o">.</span><span class="n">unbind</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Convert mask to SDPA format if provided</span>
+        <span class="n">attn_mask_sdpa</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_attn_mask</span><span class="p">(</span><span class="n">attn_mask</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
         <span class="c1"># Efficient attention</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">scaled_dot_product_attention</span><span class="p">(</span>
             <span class="n">q</span><span class="p">,</span>
             <span class="n">k</span><span class="p">,</span>
             <span class="n">v</span><span class="p">,</span>
+            <span class="n">attn_mask</span><span class="o">=</span><span class="n">attn_mask_sdpa</span><span class="p">,</span>
             <span class="n">dropout_p</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">attn_drop</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="p">)</span>
+
         <span class="c1"># Reshape back</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">C</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj_drop</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">x</span></div>
-</div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_attn_mask</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert boolean attention mask to SDPA-compatible float mask.</span>
+
+<span class="sd">        SDPA expects additive mask where -inf blocks attention.</span>
+<span class="sd">        Our convention: True = blocked, False = allowed.</span>
+
+<span class="sd">        :param attn_mask: Boolean mask [N, M], [B, N, M], or [B, H, N, M]</span>
+<span class="sd">        :param dtype: Target dtype for the mask</span>
+<span class="sd">        :param device: Target device for the mask</span>
+<span class="sd">        :return: Float mask suitable for SDPA, or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">attn_mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Convert bool mask to float: True -&gt; -inf, False -&gt; 0</span>
+        <span class="k">if</span> <span class="n">attn_mask</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">attn_mask</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">masked_fill</span><span class="p">(</span><span class="n">attn_mask</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">attn_mask</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="c1"># Expand dimensions for broadcasting: need [B, H, N, M] for SDPA</span>
+        <span class="c1"># [N, M] -&gt; [1, 1, N, M]</span>
+        <span class="c1"># [B, N, M] -&gt; [B, 1, N, M]</span>
+        <span class="c1"># [B, H, N, M] -&gt; unchanged</span>
+        <span class="k">while</span> <span class="n">mask</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">mask</span></div>
 
 
 
@@ -755,18 +896,27 @@ document.write(`
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Unified transformer block with optional AdaLN-Zero conditioning.</span>
 
 <span class="sd">    Supports three attention configurations:</span>
+
 <span class="sd">    **Mode 1: Pure Cross-Attention** (`self_attn=False, cross_attn=True`)</span>
 <span class="sd">        - Queries attend to context but not to each other</span>
 <span class="sd">        - Use case: Lightweight decoder</span>
+
 <span class="sd">    **Mode 2: Decoder-Style** (`self_attn=True, cross_attn=True`)</span>
 <span class="sd">        - Self-attention on queries, then cross-attention to context</span>
 <span class="sd">        - Use case: Standard decoder (IJEPA predictor, etc.)</span>
+
 <span class="sd">    **Mode 3: Joint Attention** (`self_attn=True, cross_attn=False`)</span>
 <span class="sd">        - All tokens attend to all tokens (caller concatenates context + queries)</span>
 <span class="sd">        - Use case: Full bidirectional flow (DiT, high masking ratio)</span>
+
 <span class="sd">    **Conditioning:**</span>
 <span class="sd">        - `use_adaln=True`: AdaLN-Zero modulation (scale, shift, gate per operation)</span>
 <span class="sd">        - `use_adaln=False`: Standard pre-norm transformer</span>
+
+<span class="sd">    **Attention Masking:**</span>
+<span class="sd">        - Pass `attn_mask` to block attention patterns (e.g., leave-one-out)</span>
+<span class="sd">        - Mask format: `True` = blocked, `False` = allowed</span>
+
 <span class="sd">    :param dim: Hidden dimension</span>
 <span class="sd">    :param num_heads: Number of attention heads</span>
 <span class="sd">    :param mlp_ratio: MLP hidden dim = dim * mlp_ratio</span>
@@ -796,8 +946,10 @@ document.write(`
         <span class="bp">self</span><span class="o">.</span><span class="n">use_self_attn</span> <span class="o">=</span> <span class="n">self_attn</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">use_cross_attn</span> <span class="o">=</span> <span class="n">cross_attn</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">use_adaln</span> <span class="o">=</span> <span class="n">use_adaln</span>
+
         <span class="k">if</span> <span class="ow">not</span> <span class="n">self_attn</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">cross_attn</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;At least one of self_attn or cross_attn must be True&quot;</span><span class="p">)</span>
+
         <span class="c1"># Self-attention</span>
         <span class="k">if</span> <span class="n">self_attn</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">norm1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">elementwise_affine</span><span class="o">=</span><span class="ow">not</span> <span class="n">use_adaln</span><span class="p">)</span>
@@ -805,6 +957,7 @@ document.write(`
                 <span class="n">dim</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="n">num_heads</span><span class="p">,</span> <span class="n">attn_drop</span><span class="o">=</span><span class="n">attn_drop</span><span class="p">,</span> <span class="n">proj_drop</span><span class="o">=</span><span class="n">proj_drop</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">drop_path1</span> <span class="o">=</span> <span class="n">DropPath</span><span class="p">(</span><span class="n">drop_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">drop_path</span> <span class="o">&gt;</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">()</span>
+
         <span class="c1"># Cross-attention</span>
         <span class="k">if</span> <span class="n">cross_attn</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">norm2_q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">elementwise_affine</span><span class="o">=</span><span class="ow">not</span> <span class="n">use_adaln</span><span class="p">)</span>
@@ -813,6 +966,7 @@ document.write(`
                 <span class="n">dim</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="n">num_heads</span><span class="p">,</span> <span class="n">attn_drop</span><span class="o">=</span><span class="n">attn_drop</span><span class="p">,</span> <span class="n">proj_drop</span><span class="o">=</span><span class="n">proj_drop</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">drop_path2</span> <span class="o">=</span> <span class="n">DropPath</span><span class="p">(</span><span class="n">drop_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">drop_path</span> <span class="o">&gt;</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">()</span>
+
         <span class="c1"># MLP</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">norm3</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">elementwise_affine</span><span class="o">=</span><span class="ow">not</span> <span class="n">use_adaln</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mlp</span> <span class="o">=</span> <span class="n">Mlp</span><span class="p">(</span>
@@ -822,6 +976,7 @@ document.write(`
             <span class="n">drop</span><span class="o">=</span><span class="n">proj_drop</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">drop_path3</span> <span class="o">=</span> <span class="n">DropPath</span><span class="p">(</span><span class="n">drop_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">drop_path</span> <span class="o">&gt;</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">()</span>
+
         <span class="c1"># AdaLN modulation MLP</span>
         <span class="k">if</span> <span class="n">use_adaln</span><span class="p">:</span>
             <span class="c1"># 3 params (shift, scale, gate) per operation</span>
@@ -835,6 +990,82 @@ document.write(`
             <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">zeros_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adaLN_mlp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">zeros_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adaLN_mlp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">bias</span><span class="p">)</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_self_attn</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">shift</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scale</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">gate</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply self-attention with optional AdaLN modulation and attention mask.</span>
+
+<span class="sd">        :param x: Input tensor [B, N, D]</span>
+<span class="sd">        :param attn_mask: Attention mask [N, N] or [B, N, N]. True = blocked.</span>
+<span class="sd">        :param shift: AdaLN shift [B, 1, D]</span>
+<span class="sd">        :param scale: AdaLN scale [B, 1, D]</span>
+<span class="sd">        :param gate: AdaLN gate [B, 1, D]</span>
+<span class="sd">        :return: Output tensor [B, N, D]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_adaln</span><span class="p">:</span>
+            <span class="n">normed</span> <span class="o">=</span> <span class="n">modulate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm1</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
+            <span class="n">attn_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attn</span><span class="p">(</span><span class="n">normed</span><span class="p">,</span> <span class="n">attn_mask</span><span class="o">=</span><span class="n">attn_mask</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">gate</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path1</span><span class="p">(</span><span class="n">attn_out</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">attn_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm1</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">attn_mask</span><span class="o">=</span><span class="n">attn_mask</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path1</span><span class="p">(</span><span class="n">attn_out</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_cross_attn</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">context</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">cross_attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">shift</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scale</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">gate</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply cross-attention with optional AdaLN modulation and attention mask.</span>
+
+<span class="sd">        :param x: Query tensor [B, N, D]</span>
+<span class="sd">        :param context: Key-value tensor [B, M, D]</span>
+<span class="sd">        :param cross_attn_mask: Cross-attention mask [N, M] or [B, N, M]. True = blocked.</span>
+<span class="sd">        :param shift: AdaLN shift [B, 1, D]</span>
+<span class="sd">        :param scale: AdaLN scale [B, 1, D]</span>
+<span class="sd">        :param gate: AdaLN gate [B, 1, D]</span>
+<span class="sd">        :return: Output tensor [B, N, D]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_adaln</span><span class="p">:</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="n">modulate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm2_q</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
+            <span class="n">kv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm2_kv</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+            <span class="n">cross_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cross_attn</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">kv</span><span class="p">,</span> <span class="n">attn_mask</span><span class="o">=</span><span class="n">cross_attn_mask</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">gate</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path2</span><span class="p">(</span><span class="n">cross_out</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm2_q</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">kv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm2_kv</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+            <span class="n">cross_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cross_attn</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">kv</span><span class="p">,</span> <span class="n">attn_mask</span><span class="o">=</span><span class="n">cross_attn_mask</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path2</span><span class="p">(</span><span class="n">cross_out</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_mlp</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">shift</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scale</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">gate</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply MLP with optional AdaLN modulation.</span>
+
+<span class="sd">        :param x: Input tensor [B, N, D]</span>
+<span class="sd">        :param shift: AdaLN shift [B, 1, D]</span>
+<span class="sd">        :param scale: AdaLN scale [B, 1, D]</span>
+<span class="sd">        :param gate: AdaLN gate [B, 1, D]</span>
+<span class="sd">        :return: Output tensor [B, N, D]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_adaln</span><span class="p">:</span>
+            <span class="n">normed</span> <span class="o">=</span> <span class="n">modulate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm3</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">gate</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path3</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mlp</span><span class="p">(</span><span class="n">normed</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path3</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mlp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm3</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
+
 <div class="viewcode-block" id="TransformerBlock.forward">
 <a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.vit.TransformerBlock.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
@@ -842,51 +1073,59 @@ document.write(`
         <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
         <span class="n">context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">cond</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">cross_attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass.</span>
 
 <span class="sd">        :param x: Input tensor [B, N, D]</span>
 <span class="sd">        :param context: Context for cross-attention [B, M, D] (required if cross_attn=True)</span>
 <span class="sd">        :param cond: Conditioning tensor [B, D] (required if use_adaln=True)</span>
+<span class="sd">        :param attn_mask: Self-attention mask [N, N] or [B, N, N].</span>
+<span class="sd">            True = blocked (cannot attend), False = allowed.</span>
+<span class="sd">            Use `torch.eye(N, dtype=torch.bool)` for leave-one-out prediction.</span>
+<span class="sd">        :param cross_attn_mask: Cross-attention mask [N, M] or [B, N, M].</span>
+<span class="sd">            True = blocked, False = allowed.</span>
 <span class="sd">        :return: Output tensor [B, N, D]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_cross_attn</span> <span class="ow">and</span> <span class="n">context</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;context required when cross_attn=True&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_adaln</span> <span class="ow">and</span> <span class="n">cond</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cond required when use_adaln=True&quot;</span><span class="p">)</span>
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_adaln</span><span class="p">:</span>
             <span class="c1"># Get modulation parameters: [B, num_mods * D] -&gt; list of [B, 1, D]</span>
             <span class="n">mods</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaLN_mlp</span><span class="p">(</span><span class="n">cond</span><span class="p">)</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_mods</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
             <span class="n">mods</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">mods</span><span class="p">]</span>
             <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+
             <span class="c1"># Self-attention with AdaLN</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_self_attn</span><span class="p">:</span>
                 <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">gate</span> <span class="o">=</span> <span class="n">mods</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">mods</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">mods</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span>
                 <span class="n">i</span> <span class="o">+=</span> <span class="mi">3</span>
-                <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">gate</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path1</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">attn</span><span class="p">(</span><span class="n">modulate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm1</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">))</span>
-                <span class="p">)</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_self_attn</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">attn_mask</span><span class="p">,</span> <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">gate</span><span class="p">)</span>
+
             <span class="c1"># Cross-attention with AdaLN</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_cross_attn</span><span class="p">:</span>
                 <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">gate</span> <span class="o">=</span> <span class="n">mods</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">mods</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">mods</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span>
                 <span class="n">i</span> <span class="o">+=</span> <span class="mi">3</span>
-                <span class="n">q</span> <span class="o">=</span> <span class="n">modulate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm2_q</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
-                <span class="n">kv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm2_kv</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
-                <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">gate</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cross_attn</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">kv</span><span class="p">))</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_cross_attn</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">cross_attn_mask</span><span class="p">,</span> <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">gate</span>
+                <span class="p">)</span>
+
             <span class="c1"># MLP with AdaLN</span>
             <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">gate</span> <span class="o">=</span> <span class="n">mods</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">mods</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">mods</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span>
-            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">gate</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path3</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">mlp</span><span class="p">(</span><span class="n">modulate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm3</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">))</span>
-            <span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_mlp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">shift</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">gate</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Standard pre-norm transformer (no conditioning)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_self_attn</span><span class="p">:</span>
-                <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path1</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm1</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_self_attn</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">attn_mask</span><span class="p">)</span>
+
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_cross_attn</span><span class="p">:</span>
-                <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path2</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">cross_attn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm2_q</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm2_kv</span><span class="p">(</span><span class="n">context</span><span class="p">))</span>
-                <span class="p">)</span>
-            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_path3</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mlp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm3</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_cross_attn</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">cross_attn_mask</span><span class="p">)</span>
+
+            <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_mlp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
         <span class="k">return</span> <span class="n">x</span></div>
 </div>
 
@@ -902,6 +1141,9 @@ document.write(`
 <span class="sd">    - **IJEPA predictor**: `self_attn=True, cross_attn=True, use_adaln=False`</span>
 <span class="sd">    - **DiT / Flow**: `self_attn=True, cross_attn=True/False, use_adaln=True`</span>
 <span class="sd">    - **MaskGIT**: `self_attn=True, cross_attn=False, use_adaln=True, add_mask_token=True`</span>
+<span class="sd">    - **Lightweight predictor**: `self_attn=True, cross_attn=False, use_adaln=False, num_registers&gt;0`</span>
+<span class="sd">    - **Leave-one-out prediction**: `self_attn=True, cross_attn=False` with diagonal `attn_mask`</span>
+
 <span class="sd">    :param input_dim: Input embedding dimension (from encoder)</span>
 <span class="sd">    :param hidden_dim: Internal transformer dimension</span>
 <span class="sd">    :param output_dim: Output dimension</span>
@@ -918,11 +1160,18 @@ document.write(`
 <span class="sd">    :param attn_drop: Attention dropout rate</span>
 <span class="sd">    :param proj_drop: Projection dropout rate</span>
 <span class="sd">    :param zero_init_output: Zero-initialize output projection</span>
-<span class="sd">    :param num_prefix_tokens: Number of prefix tokens (e.g., CLS token)</span>
+<span class="sd">    :param num_prefix_tokens: Number of prefix tokens (e.g., CLS token) expected in input.</span>
+<span class="sd">        These are tokens whose content comes from the encoder but need special</span>
+<span class="sd">        positional embeddings.</span>
+<span class="sd">    :param num_registers: Number of learnable register tokens to prepend internally.</span>
+<span class="sd">        Unlike prefix tokens, registers are fully learnable (both content and position)</span>
+<span class="sd">        and are prepended automatically—callers don&#39;t include them in input.</span>
 <span class="sd">    :param add_mask_token: Enable learnable [MASK] token for masked prediction.</span>
 <span class="sd">        When enabled, use `context_mask` and/or `query_mask` in forward() to</span>
 <span class="sd">        replace tokens at specified positions with the [MASK] token.</span>
+
 <span class="sd">    Example::</span>
+
 <span class="sd">        # MAE decoder</span>
 <span class="sd">        decoder = FlexibleTransformer(</span>
 <span class="sd">            768,</span>
@@ -935,6 +1184,7 @@ document.write(`
 <span class="sd">            use_adaln=False,</span>
 <span class="sd">        )</span>
 <span class="sd">        out = decoder(context, queries, context_idx, query_idx)</span>
+
 <span class="sd">        # IJEPA predictor</span>
 <span class="sd">        predictor = FlexibleTransformer(</span>
 <span class="sd">            768,</span>
@@ -947,6 +1197,7 @@ document.write(`
 <span class="sd">            use_adaln=False,</span>
 <span class="sd">        )</span>
 <span class="sd">        out = predictor(context, queries, context_idx, query_idx)</span>
+
 <span class="sd">        # DiT-style flow matching</span>
 <span class="sd">        flow = FlexibleTransformer(</span>
 <span class="sd">            768,</span>
@@ -959,6 +1210,7 @@ document.write(`
 <span class="sd">            use_adaln=True,</span>
 <span class="sd">        )</span>
 <span class="sd">        out = flow(context, queries, context_idx, query_idx, t=timesteps)</span>
+
 <span class="sd">        # MaskGIT-style: variable number of masks per sample</span>
 <span class="sd">        maskgit = FlexibleTransformer(</span>
 <span class="sd">            768,</span>
@@ -971,39 +1223,61 @@ document.write(`
 <span class="sd">            use_adaln=True,</span>
 <span class="sd">            add_mask_token=True,</span>
 <span class="sd">        )</span>
-<span class="sd">        # Each sample can have different number of masked positions</span>
-<span class="sd">        # context_mask[b, i] = True means replace context[b, i] with [MASK]</span>
-<span class="sd">        context_mask = torch.rand(B, num_patches) &lt; mask_ratio  # Variable per sample!</span>
+<span class="sd">        context_mask = torch.rand(B, num_patches) &lt; mask_ratio</span>
 <span class="sd">        out = maskgit(</span>
-<span class="sd">            context=all_patches,  # [B, 196, D]</span>
-<span class="sd">            queries=all_patches[:, :0],  # [B, 0, D] empty</span>
-<span class="sd">            context_idx=torch.arange(196).expand(B, -1),  # [B, 196]</span>
+<span class="sd">            context=all_patches,</span>
+<span class="sd">            queries=all_patches[:, :0],</span>
+<span class="sd">            context_idx=torch.arange(196).expand(B, -1),</span>
 <span class="sd">            query_idx=torch.empty(B, 0, dtype=torch.long),</span>
-<span class="sd">            context_mask=context_mask,  # [B, 196] bool, variable True count</span>
+<span class="sd">            context_mask=context_mask,</span>
 <span class="sd">            t=timesteps,</span>
 <span class="sd">            return_all=True,</span>
-<span class="sd">        )  # Returns [B, 196, output_dim]</span>
-<span class="sd">        # BERT-style MLM: mask random tokens in sequence</span>
-<span class="sd">        bert = FlexibleTransformer(</span>
+<span class="sd">        )</span>
+
+<span class="sd">        # Leave-one-out prediction: each token predicted from all others</span>
+<span class="sd">        predictor = FlexibleTransformer(</span>
 <span class="sd">            768,</span>
+<span class="sd">            384,</span>
 <span class="sd">            768,</span>
-<span class="sd">            768,</span>
-<span class="sd">            512,</span>
-<span class="sd">            depth=12,</span>
+<span class="sd">            196,</span>
+<span class="sd">            depth=4,</span>
 <span class="sd">            self_attn=True,</span>
 <span class="sd">            cross_attn=False,</span>
 <span class="sd">            use_adaln=False,</span>
-<span class="sd">            add_mask_token=True,</span>
 <span class="sd">        )</span>
-<span class="sd">        # Random 15% masking, different positions per sample</span>
-<span class="sd">        context_mask = torch.rand(B, seq_len) &lt; 0.15</span>
-<span class="sd">        out = bert(</span>
-<span class="sd">            context=token_embeddings,</span>
-<span class="sd">            queries=token_embeddings[:, :0],</span>
-<span class="sd">            context_idx=position_ids,</span>
+<span class="sd">        # Diagonal mask: each token cannot attend to itself</span>
+<span class="sd">        T = x.shape[1]</span>
+<span class="sd">        attn_mask = torch.eye(T, dtype=torch.bool, device=x.device)</span>
+<span class="sd">        out = predictor(</span>
+<span class="sd">            context=x,</span>
+<span class="sd">            queries=x[:, :0],  # empty queries</span>
+<span class="sd">            context_idx=torch.arange(T).expand(B, -1),</span>
 <span class="sd">            query_idx=torch.empty(B, 0, dtype=torch.long),</span>
-<span class="sd">            context_mask=context_mask,</span>
+<span class="sd">            attn_mask=attn_mask,  # [T, T] bool, True = blocked</span>
 <span class="sd">            return_all=True,</span>
+<span class="sd">        )  # out[:, t] is predicted from x[:, ≠t]</span>
+
+<span class="sd">        # Lightweight predictor with register tokens</span>
+<span class="sd">        predictor = FlexibleTransformer(</span>
+<span class="sd">            768,</span>
+<span class="sd">            384,</span>
+<span class="sd">            768,</span>
+<span class="sd">            196,</span>
+<span class="sd">            depth=4,</span>
+<span class="sd">            num_heads=6,</span>
+<span class="sd">            self_attn=True,</span>
+<span class="sd">            cross_attn=False,</span>
+<span class="sd">            use_adaln=False,</span>
+<span class="sd">            num_registers=4,</span>
+<span class="sd">            num_prefix_tokens=0,</span>
+<span class="sd">        )</span>
+<span class="sd">        out, registers = predictor(</span>
+<span class="sd">            context=encoder_output,</span>
+<span class="sd">            queries=encoder_output[:, :0],</span>
+<span class="sd">            context_idx=ids_keep,</span>
+<span class="sd">            query_idx=torch.empty(B, 0, dtype=torch.long),</span>
+<span class="sd">            return_all=True,</span>
+<span class="sd">            return_registers=True,</span>
 <span class="sd">        )</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -1026,6 +1300,7 @@ document.write(`
         <span class="n">proj_drop</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="n">zero_init_output</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">num_prefix_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">num_registers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
         <span class="n">add_mask_token</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
@@ -1033,18 +1308,23 @@ document.write(`
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;hidden_dim (</span><span class="si">{</span><span class="n">hidden_dim</span><span class="si">}</span><span class="s2">) must be divisible by num_heads (</span><span class="si">{</span><span class="n">num_heads</span><span class="si">}</span><span class="s2">)&quot;</span>
             <span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span> <span class="o">=</span> <span class="n">hidden_dim</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_prefix_tokens</span> <span class="o">=</span> <span class="n">num_prefix_tokens</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_registers</span> <span class="o">=</span> <span class="n">num_registers</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">use_cross_attn</span> <span class="o">=</span> <span class="n">cross_attn</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">use_adaln</span> <span class="o">=</span> <span class="n">use_adaln</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">add_mask_token</span> <span class="o">=</span> <span class="n">add_mask_token</span>
+
         <span class="c1"># Input/output projections</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">context_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">query_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">output_dim</span><span class="p">)</span>
+
         <span class="k">if</span> <span class="n">zero_init_output</span><span class="p">:</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">zeros_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">zeros_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="o">.</span><span class="n">bias</span><span class="p">)</span>
+
         <span class="c1"># Positional embeddings</span>
         <span class="k">if</span> <span class="n">pos_embed_type</span> <span class="o">==</span> <span class="s2">&quot;sincos_2d&quot;</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">grid_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -1063,16 +1343,30 @@ document.write(`
         <span class="k">else</span><span class="p">:</span>  <span class="c1"># learned</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">pos_embed</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_patches</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">))</span>
             <span class="n">trunc_normal_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_embed</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
-        <span class="c1"># Prefix token positional embeddings</span>
+
+        <span class="c1"># Prefix token positional embeddings (content comes from input)</span>
         <span class="k">if</span> <span class="n">num_prefix_tokens</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">prefix_pos_embed</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
                 <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_prefix_tokens</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">normal_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix_pos_embed</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
+
+        <span class="c1"># Learnable register tokens (both content and position are learned)</span>
+        <span class="k">if</span> <span class="n">num_registers</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">register_tokens</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_registers</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">register_pos_embed</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_registers</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">normal_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">register_tokens</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">normal_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">register_pos_embed</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
+
         <span class="c1"># Learnable mask token (shared for context and query masking)</span>
         <span class="k">if</span> <span class="n">add_mask_token</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">mask_token</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">))</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">normal_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask_token</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
+
         <span class="c1"># Time embedding MLP (only needed for AdaLN)</span>
         <span class="k">if</span> <span class="n">use_adaln</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">time_mlp</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
@@ -1080,6 +1374,7 @@ document.write(`
                 <span class="n">nn</span><span class="o">.</span><span class="n">GELU</span><span class="p">(),</span>
                 <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">),</span>
             <span class="p">)</span>
+
         <span class="c1"># Transformer blocks with linearly increasing drop path</span>
         <span class="n">dpr</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">drop_path_rate</span><span class="p">,</span> <span class="n">depth</span><span class="p">)]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">blocks</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
@@ -1101,8 +1396,14 @@ document.write(`
         <span class="bp">self</span><span class="o">.</span><span class="n">final_norm</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_gather_pos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">num_prefix</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gather positional embeddings for given indices.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gather positional embeddings for given indices.</span>
+
+<span class="sd">        :param idx: Token indices [B, N] where values index into pos_embed</span>
+<span class="sd">        :param num_prefix: Number of prefix tokens at the start of idx</span>
+<span class="sd">        :return: Positional embeddings [B, N, hidden_dim]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">B</span> <span class="o">=</span> <span class="n">idx</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
         <span class="k">if</span> <span class="n">num_prefix</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">prefix_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix_pos_embed</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
             <span class="n">patch_idx</span> <span class="o">=</span> <span class="n">idx</span><span class="p">[:,</span> <span class="n">num_prefix</span><span class="p">:]</span>
@@ -1116,20 +1417,76 @@ document.write(`
             <span class="n">idx</span> <span class="o">=</span> <span class="n">idx</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_embed</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_registers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get register tokens with positional embeddings.</span>
+
+<span class="sd">        :param batch_size: Batch size B</span>
+<span class="sd">        :return: Register tokens [B, num_registers, hidden_dim]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">register_tokens</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_pos_embed</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span>
+            <span class="n">batch_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_expand_attn_mask</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">attn_mask</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">n_registers</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">n_context</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">n_queries</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Expand attention mask to account for registers and queries.</span>
+
+<span class="sd">        The input attn_mask is for the original context tokens. This function</span>
+<span class="sd">        expands it to cover [registers, context, queries] for joint attention.</span>
+
+<span class="sd">        :param attn_mask: Original mask [T, T] or [B, T, T] for context tokens.</span>
+<span class="sd">            True = blocked, False = allowed.</span>
+<span class="sd">        :param n_registers: Number of register tokens</span>
+<span class="sd">        :param n_context: Number of context tokens (after projection, before registers)</span>
+<span class="sd">        :param n_queries: Number of query tokens</span>
+<span class="sd">        :param device: Target device</span>
+<span class="sd">        :return: Expanded mask [T_total, T_total] or [B, T_total, T_total]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">has_batch</span> <span class="o">=</span> <span class="n">attn_mask</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">==</span> <span class="mi">3</span>
+        <span class="n">T_total</span> <span class="o">=</span> <span class="n">n_registers</span> <span class="o">+</span> <span class="n">n_context</span> <span class="o">+</span> <span class="n">n_queries</span>
+
+        <span class="k">if</span> <span class="n">has_batch</span><span class="p">:</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="n">attn_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">expanded</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">T_total</span><span class="p">,</span> <span class="n">T_total</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">expanded</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">T_total</span><span class="p">,</span> <span class="n">T_total</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="c1"># Place original mask in the context region</span>
+        <span class="n">ctx_start</span> <span class="o">=</span> <span class="n">n_registers</span>
+        <span class="n">ctx_end</span> <span class="o">=</span> <span class="n">n_registers</span> <span class="o">+</span> <span class="n">n_context</span>
+
+        <span class="k">if</span> <span class="n">has_batch</span><span class="p">:</span>
+            <span class="n">expanded</span><span class="p">[:,</span> <span class="n">ctx_start</span><span class="p">:</span><span class="n">ctx_end</span><span class="p">,</span> <span class="n">ctx_start</span><span class="p">:</span><span class="n">ctx_end</span><span class="p">]</span> <span class="o">=</span> <span class="n">attn_mask</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">expanded</span><span class="p">[</span><span class="n">ctx_start</span><span class="p">:</span><span class="n">ctx_end</span><span class="p">,</span> <span class="n">ctx_start</span><span class="p">:</span><span class="n">ctx_end</span><span class="p">]</span> <span class="o">=</span> <span class="n">attn_mask</span>
+
+        <span class="c1"># Registers and queries can attend to everything (no additional masking)</span>
+        <span class="c1"># If you want queries to also have leave-one-out, extend the mask accordingly</span>
+
+        <span class="k">return</span> <span class="n">expanded</span>
+
 <div class="viewcode-block" id="FlexibleTransformer.forward">
 <a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.vit.FlexibleTransformer.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">context</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-        <span class="n">queries</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-        <span class="n">context_idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-        <span class="n">query_idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">queries</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">context_idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">query_idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">t</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">num_prefix</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">return_all</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">return_registers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">context_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">query_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass.</span>
 
 <span class="sd">        :param context: Context token embeddings [B, N_ctx, input_dim]</span>
@@ -1142,17 +1499,43 @@ document.write(`
 <span class="sd">            return all tokens unshuffled to original position order.</span>
 <span class="sd">            Output shape: [B, N_ctx + N_qry, output_dim].</span>
 <span class="sd">            Ignored for cross-attention modes.</span>
+<span class="sd">        :param return_registers: If True and num_registers &gt; 0, also return</span>
+<span class="sd">            register token outputs as a second tensor. Returns tuple of</span>
+<span class="sd">            (main_output, register_output) where register_output is</span>
+<span class="sd">            [B, num_registers, output_dim].</span>
 <span class="sd">        :param context_mask: Boolean mask indicating which context tokens to replace</span>
 <span class="sd">            with [MASK] token [B, N_ctx]. True = replace with mask. Each sample can</span>
 <span class="sd">            have a different number of True values. Requires add_mask_token=True.</span>
 <span class="sd">        :param query_mask: Boolean mask indicating which query tokens to replace</span>
 <span class="sd">            with [MASK] token [B, N_qry]. True = replace with mask. Each sample can</span>
 <span class="sd">            have a different number of True values. Requires add_mask_token=True.</span>
+<span class="sd">        :param attn_mask: Attention mask for self-attention [T, T] or [B, T, T].</span>
+<span class="sd">            True = blocked (cannot attend), False = allowed.</span>
+<span class="sd">            For leave-one-out prediction, use `torch.eye(T, dtype=torch.bool)`.</span>
+<span class="sd">            Only applies to joint attention mode (cross_attn=False).</span>
+<span class="sd">            The mask is automatically expanded to account for registers.</span>
 <span class="sd">        :return: Output embeddings. Shape depends on mode:</span>
 <span class="sd">            - cross_attn=True: [B, N_qry, output_dim]</span>
 <span class="sd">            - cross_attn=False, return_all=False: [B, N_qry, output_dim]</span>
-<span class="sd">            - cross_attn=False, return_all=True: [B, N_ctx + N_qry, output_dim].</span>
+<span class="sd">            - cross_attn=False, return_all=True: [B, N_ctx + N_qry, output_dim]</span>
+<span class="sd">            If return_registers=True, returns tuple (output, registers) where</span>
+<span class="sd">            registers is [B, num_registers, output_dim].</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">B</span><span class="p">,</span> <span class="n">N_ctx</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">device</span>
+
+        <span class="c1"># Default: empty queries</span>
+        <span class="k">if</span> <span class="n">queries</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">queries</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">new_empty</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">N_qry</span> <span class="o">=</span> <span class="n">queries</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Default: sequential indices</span>
+        <span class="k">if</span> <span class="n">context_idx</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">context_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N_ctx</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">query_idx</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">query_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N_qry</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
         <span class="c1"># Validate mask token usage</span>
         <span class="k">if</span> <span class="n">context_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">query_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_mask_token</span><span class="p">:</span>
@@ -1160,196 +1543,113 @@ document.write(`
                     <span class="s2">&quot;context_mask or query_mask provided but &quot;</span>
                     <span class="s2">&quot;add_mask_token=False at initialization&quot;</span>
                 <span class="p">)</span>
+
         <span class="k">if</span> <span class="n">num_prefix</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">num_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_prefix_tokens</span>
+
+        <span class="n">B</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">n_registers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_registers</span>
+
         <span class="c1"># Project context and optionally replace masked positions with [MASK] token</span>
         <span class="n">context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context_proj</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">context_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">mask_tokens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_token</span><span class="o">.</span><span class="n">expand_as</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
             <span class="n">context</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">context_mask</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">mask_tokens</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
         <span class="n">context</span> <span class="o">=</span> <span class="n">context</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gather_pos</span><span class="p">(</span><span class="n">context_idx</span><span class="p">,</span> <span class="n">num_prefix</span><span class="p">)</span>
+
         <span class="c1"># Project queries and optionally replace masked positions with [MASK] token</span>
         <span class="n">queries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">query_proj</span><span class="p">(</span><span class="n">queries</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">query_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">mask_tokens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_token</span><span class="o">.</span><span class="n">expand_as</span><span class="p">(</span><span class="n">queries</span><span class="p">)</span>
             <span class="n">queries</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">query_mask</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">mask_tokens</span><span class="p">,</span> <span class="n">queries</span><span class="p">)</span>
         <span class="n">queries</span> <span class="o">=</span> <span class="n">queries</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gather_pos</span><span class="p">(</span><span class="n">query_idx</span><span class="p">)</span>
+
+        <span class="n">n_context_orig</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># before adding registers</span>
+        <span class="n">n_queries</span> <span class="o">=</span> <span class="n">queries</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Prepend learnable register tokens to context</span>
+        <span class="k">if</span> <span class="n">n_registers</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">registers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_registers</span><span class="p">(</span><span class="n">B</span><span class="p">)</span>
+            <span class="n">context</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">registers</span><span class="p">,</span> <span class="n">context</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
         <span class="c1"># Time conditioning (only for AdaLN mode)</span>
         <span class="n">cond</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_adaln</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">t</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Timestep t required when use_adaln=True&quot;</span><span class="p">)</span>
             <span class="n">cond</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_mlp</span><span class="p">(</span><span class="n">get_timestep_embed</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">))</span>
-        <span class="n">n_context</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">n_queries</span> <span class="o">=</span> <span class="n">queries</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">n_context</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># includes registers</span>
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_cross_attn</span><span class="p">:</span>
-            <span class="c1"># Cross-attention mode: queries attend to context</span>
+            <span class="c1"># Cross-attention mode: queries attend to context (including registers)</span>
+            <span class="c1"># attn_mask not typically used here, but could be passed for cross-attn masking</span>
             <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks</span><span class="p">:</span>
-                <span class="n">queries</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">queries</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="n">cond</span><span class="o">=</span><span class="n">cond</span><span class="p">)</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">final_norm</span><span class="p">(</span><span class="n">queries</span><span class="p">))</span>
+                <span class="n">queries</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span>
+                    <span class="n">queries</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="n">cond</span><span class="o">=</span><span class="n">cond</span><span class="p">,</span> <span class="n">attn_mask</span><span class="o">=</span><span class="n">attn_mask</span>
+                <span class="p">)</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">final_norm</span><span class="p">(</span><span class="n">queries</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">return_registers</span> <span class="ow">and</span> <span class="n">n_registers</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">reg_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">final_norm</span><span class="p">(</span><span class="n">registers</span><span class="p">))</span>
+                <span class="k">return</span> <span class="n">out</span><span class="p">,</span> <span class="n">reg_out</span>
+
+            <span class="k">return</span> <span class="n">out</span>
+
         <span class="c1"># Joint attention mode</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">context</span><span class="p">,</span> <span class="n">queries</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Expand attention mask to cover [registers, context, queries]</span>
+        <span class="n">expanded_attn_mask</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">attn_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">expanded_attn_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_expand_attn_mask</span><span class="p">(</span>
+                <span class="n">attn_mask</span><span class="p">,</span> <span class="n">n_registers</span><span class="p">,</span> <span class="n">n_context_orig</span><span class="p">,</span> <span class="n">n_queries</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">device</span>
+            <span class="p">)</span>
+
         <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks</span><span class="p">:</span>
-            <span class="n">x</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">cond</span><span class="o">=</span><span class="n">cond</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">cond</span><span class="o">=</span><span class="n">cond</span><span class="p">,</span> <span class="n">attn_mask</span><span class="o">=</span><span class="n">expanded_attn_mask</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">final_norm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># Extract register outputs if needed</span>
+        <span class="n">reg_out</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">return_registers</span> <span class="ow">and</span> <span class="n">n_registers</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">reg_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="p">:</span><span class="n">n_registers</span><span class="p">])</span>
+
         <span class="k">if</span> <span class="n">return_all</span><span class="p">:</span>
-            <span class="c1"># Unshuffle to original positions</span>
-            <span class="n">B</span> <span class="o">=</span> <span class="n">context_idx</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">T</span> <span class="o">=</span> <span class="n">n_context</span> <span class="o">+</span> <span class="n">n_queries</span>
+            <span class="c1"># Unshuffle to original positions (excluding registers)</span>
+            <span class="n">T</span> <span class="o">=</span> <span class="n">n_context_orig</span> <span class="o">+</span> <span class="n">n_queries</span>
             <span class="n">out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+            <span class="c1"># Context part (skip registers)</span>
             <span class="n">out</span><span class="o">.</span><span class="n">scatter_</span><span class="p">(</span>
                 <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                 <span class="n">index</span><span class="o">=</span><span class="n">context_idx</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">),</span>
-                <span class="n">src</span><span class="o">=</span><span class="n">x</span><span class="p">[:,</span> <span class="p">:</span><span class="n">n_context</span><span class="p">],</span>
+                <span class="n">src</span><span class="o">=</span><span class="n">x</span><span class="p">[:,</span> <span class="n">n_registers</span><span class="p">:</span><span class="n">n_context</span><span class="p">],</span>
             <span class="p">)</span>
-            <span class="n">out</span><span class="o">.</span><span class="n">scatter_</span><span class="p">(</span>
-                <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                <span class="n">index</span><span class="o">=</span><span class="n">query_idx</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">),</span>
-                <span class="n">src</span><span class="o">=</span><span class="n">x</span><span class="p">[:,</span> <span class="n">n_context</span><span class="p">:],</span>
-            <span class="p">)</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+            <span class="c1"># Query part</span>
+            <span class="k">if</span> <span class="n">n_queries</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">scatter_</span><span class="p">(</span>
+                    <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="n">index</span><span class="o">=</span><span class="n">query_idx</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">),</span>
+                    <span class="n">src</span><span class="o">=</span><span class="n">x</span><span class="p">[:,</span> <span class="n">n_context</span><span class="p">:],</span>
+                <span class="p">)</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">return_registers</span> <span class="ow">and</span> <span class="n">n_registers</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">out</span><span class="p">,</span> <span class="n">reg_out</span>
+            <span class="k">return</span> <span class="n">out</span>
+
         <span class="c1"># Return only query outputs</span>
         <span class="k">if</span> <span class="n">n_queries</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">B</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span>
                 <span class="n">B</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="o">.</span><span class="n">out_features</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span>
             <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="o">-</span><span class="n">n_queries</span><span class="p">:])</span></div>
-</div>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="o">-</span><span class="n">n_queries</span><span class="p">:])</span>
 
-
-
-<div class="viewcode-block" id="TransformerPredictor">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.vit.TransformerPredictor">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">TransformerPredictor</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Lightweight transformer predictor using TransformerBlock.</span>
-
-<span class="sd">    A flexible predictor module commonly used in masked image modeling (e.g., MAE,</span>
-<span class="sd">    I-JEPA). Processes context tokens and optionally includes learnable register/query</span>
-<span class="sd">    tokens for aggregation.</span>
-<span class="sd">    :param input_dim: Dimension of input context tokens</span>
-<span class="sd">    :param hidden_dim: Internal dimension of transformer layers</span>
-<span class="sd">    :param output_dim: Dimension of output tokens</span>
-<span class="sd">    :param depth: Number of transformer layers</span>
-<span class="sd">    :param num_heads: Number of attention heads</span>
-<span class="sd">    :param num_registers: Number of learnable register/query tokens to prepend</span>
-<span class="sd">    :param mlp_ratio: MLP hidden dimension multiplier</span>
-<span class="sd">    :param drop_path_rate: Stochastic depth rate</span>
-<span class="sd">    :param pos_embed_type: Type of positional embedding (None, &#39;sincos_1d&#39;, &#39;sincos_2d&#39;, &#39;learned&#39;)</span>
-<span class="sd">    :param max_seq_len: Maximum sequence length (required if pos_embed_type=&#39;learned&#39;)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">input_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">output_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">depth</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">num_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
-        <span class="n">num_registers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="n">mlp_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">,</span>
-        <span class="n">drop_path_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="n">pos_embed_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;sincos_1d&quot;</span><span class="p">,</span> <span class="s2">&quot;sincos_2d&quot;</span><span class="p">,</span> <span class="s2">&quot;learned&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">max_seq_len</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span> <span class="o">=</span> <span class="n">hidden_dim</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_registers</span> <span class="o">=</span> <span class="n">num_registers</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pos_embed_type</span> <span class="o">=</span> <span class="n">pos_embed_type</span>
-        <span class="c1"># Projections</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">input_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">output_dim</span><span class="p">)</span>
-        <span class="c1"># Register tokens</span>
-        <span class="k">if</span> <span class="n">num_registers</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">register_tokens</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
-                <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_registers</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
-            <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">register_pos_embed</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
-                <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_registers</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
-            <span class="p">)</span>
-            <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">normal_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">register_tokens</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
-            <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">normal_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">register_pos_embed</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
-        <span class="c1"># Learned positional embeddings (sincos computed on-the-fly)</span>
-        <span class="k">if</span> <span class="n">pos_embed_type</span> <span class="o">==</span> <span class="s2">&quot;learned&quot;</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="n">max_seq_len</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;max_seq_len required for learned pos_embed&quot;</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">pos_embed</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">))</span>
-            <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">normal_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_embed</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
-        <span class="c1"># Transformer blocks</span>
-        <span class="n">dpr</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">drop_path_rate</span><span class="p">,</span> <span class="n">depth</span><span class="p">)]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">blocks</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
-            <span class="p">[</span>
-                <span class="n">TransformerBlock</span><span class="p">(</span>
-                    <span class="n">dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
-                    <span class="n">num_heads</span><span class="o">=</span><span class="n">num_heads</span><span class="p">,</span>
-                    <span class="n">mlp_ratio</span><span class="o">=</span><span class="n">mlp_ratio</span><span class="p">,</span>
-                    <span class="n">self_attn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                    <span class="n">cross_attn</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                    <span class="n">use_adaln</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                    <span class="n">drop_path</span><span class="o">=</span><span class="n">dpr</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
-                <span class="p">)</span>
-                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">depth</span><span class="p">)</span>
-            <span class="p">]</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">norm</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_get_pos_embed</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">ids_keep</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-        <span class="n">grid_size</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gather or generate positional embeddings.&quot;&quot;&quot;</span>
-        <span class="n">B</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="n">ids_keep</span><span class="o">.</span><span class="n">shape</span>
-        <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span> <span class="o">=</span> <span class="n">ids_keep</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_proj</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">dtype</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos_embed_type</span> <span class="o">==</span> <span class="s2">&quot;learned&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">pos_embed</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span>
-                <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                <span class="n">index</span><span class="o">=</span><span class="n">ids_keep</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">),</span>
-            <span class="p">)</span>
-        <span class="c1"># Generate sincos on-the-fly</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos_embed_type</span> <span class="o">==</span> <span class="s2">&quot;sincos_1d&quot;</span><span class="p">:</span>
-            <span class="n">max_pos</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ids_keep</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span> <span class="o">+</span> <span class="mi">1</span>
-            <span class="n">pe</span> <span class="o">=</span> <span class="n">get_1d_sincos_pos_embed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">max_pos</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>  <span class="c1"># sincos_2d</span>
-            <span class="n">pe</span> <span class="o">=</span> <span class="n">get_2d_sincos_pos_embed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">grid_size</span><span class="p">)</span>
-        <span class="n">pe</span> <span class="o">=</span> <span class="n">pe</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span>
-            <span class="n">pe</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ids_keep</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">)</span>
-        <span class="p">)</span>
-
-<div class="viewcode-block" id="TransformerPredictor.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.vit.TransformerPredictor.forward">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">context</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-        <span class="n">pos_embed</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">ids_keep</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">grid_size</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass.</span>
-
-<span class="sd">        :param context: Context tokens [B, N, input_dim]</span>
-<span class="sd">        :param pos_embed: External positional embeddings [B, N, input_dim] (when pos_embed_type=None)</span>
-<span class="sd">        :param ids_keep: Indices of kept positions [B, N] (when pos_embed_type is not None)</span>
-<span class="sd">        :param grid_size: Grid size (H, W) for sincos_2d</span>
-<span class="sd">        :return: Output tokens [B, num_registers + N, output_dim]</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">B</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="c1"># Project to hidden dim</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_proj</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
-        <span class="c1"># Add positional embeddings</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos_embed_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_pos_embed</span><span class="p">(</span><span class="n">ids_keep</span><span class="p">,</span> <span class="n">grid_size</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">pos_embed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_proj</span><span class="p">(</span><span class="n">pos_embed</span><span class="p">)</span>
-        <span class="c1"># Prepend registers</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_registers</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">registers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_tokens</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_pos_embed</span>
-            <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">registers</span><span class="p">,</span> <span class="n">x</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="c1"># Transformer blocks</span>
-        <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks</span><span class="p">:</span>
-            <span class="n">x</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">x</span><span class="p">))</span></div>
+        <span class="k">if</span> <span class="n">return_registers</span> <span class="ow">and</span> <span class="n">n_registers</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">out</span><span class="p">,</span> <span class="n">reg_out</span>
+        <span class="k">return</span> <span class="n">out</span></div>
 </div>
 
 

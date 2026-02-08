@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.env_info &#8212; stable-pretraining 0.1.dev1+g47ebef423 documentation</title>
+    <title>stable_pretraining.callbacks.env_info &#8212; stable-pretraining 0.1.dev1+g715dc086a documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../../../_static/documentation_options.js?v=2fab948f"></script>
+    <script src="../../../../_static/documentation_options.js?v=c72634b2"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g47ebef423 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g715dc086a documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -356,6 +356,7 @@ document.write(`
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callback</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.utilities</span><span class="w"> </span><span class="kn">import</span> <span class="n">rank_zero_only</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
@@ -389,17 +390,13 @@ document.write(`
 
 <div class="viewcode-block" id="EnvironmentDumpCallback.setup">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.env_info.EnvironmentDumpCallback.setup">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">LightningModule</span><span class="p">,</span> <span class="n">stage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="nd">@rank_zero_only</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">LightningModule</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Called when training starts - runs dump in background.&quot;&quot;&quot;</span>
-        <span class="c1"># Only run on rank 0 to avoid DDP conflicts</span>
         <span class="k">if</span> <span class="n">stage</span> <span class="o">!=</span> <span class="s2">&quot;fit&quot;</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping environment dump on </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2"> (only ``fit&#39;&#39; dumps)&quot;</span><span class="p">)</span>
-            <span class="k">return</span>
-
-        <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_rank</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Skipping environment dump on rank </span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_rank</span><span class="si">}</span><span class="s2"> (only rank 0 dumps)&quot;</span>
-            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping environment dump on </span><span class="si">{</span><span class="n">stage</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span>
 
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
@@ -409,7 +406,10 @@ document.write(`
         <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 
         <span class="c1"># 🔥 CRITICAL: Get log_dir in main thread BEFORE starting background thread</span>
+        <span class="c1"># Use trainer.log_dir for the run-specific versioned directory</span>
+        <span class="c1"># Falls back to default_root_dir if no logger is configured</span>
         <span class="n">log_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">default_root_dir</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;EnvironmentDumpCallback  </span><span class="si">{</span><span class="n">log_dir</span><span class="si">=}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">async_dump</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
@@ -431,6 +431,7 @@ document.write(`
 
 <div class="viewcode-block" id="EnvironmentDumpCallback.teardown">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.env_info.EnvironmentDumpCallback.teardown">[docs]</a>
+    <span class="nd">@rank_zero_only</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">teardown</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">LightningModule</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>

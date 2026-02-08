@@ -215,7 +215,7 @@ def build_probes(
                     nn.BatchNorm1d(emb_dim),
                     nn.Linear(emb_dim, num_classes),
                 ),
-                loss_fn=nn.CrossEntropyLoss(),
+                loss=nn.CrossEntropyLoss(),
                 metrics={
                     "top1": torchmetrics.classification.MulticlassAccuracy(num_classes),
                     "top5": torchmetrics.classification.MulticlassAccuracy(

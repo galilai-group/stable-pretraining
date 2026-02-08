@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.utils.mae_loss &#8212; stable-pretraining 0.1.dev1+g47ebef423 documentation</title>
+    <title>stable_pretraining.utils.mae_loss &#8212; stable-pretraining 0.1.dev1+g715dc086a documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../../../_static/documentation_options.js?v=2fab948f"></script>
+    <script src="../../../../_static/documentation_options.js?v=c72634b2"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g47ebef423 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g715dc086a documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -732,14 +732,7 @@ document.write(`
 <span class="sd">        :param imgs: Images of shape (N, C, H, W)</span>
 <span class="sd">        :return: Patches of shape (N, T, P) where T = num_patches, P = pixels_per_patch</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_size</span>
-        <span class="n">N</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">W</span> <span class="o">=</span> <span class="n">imgs</span><span class="o">.</span><span class="n">shape</span>
-
-        <span class="c1"># (N, C, H, W) -&gt; (N, C, H//p, p, W//p, p)</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">imgs</span><span class="o">.</span><span class="n">unfold</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">unfold</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
-        <span class="c1"># (N, C, nH, nW, p, p) -&gt; (N, nH, nW, p, p, C) -&gt; (N, T, P)</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">p</span> <span class="o">*</span> <span class="n">p</span> <span class="o">*</span> <span class="n">C</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">x</span></div>
+        <span class="k">return</span> <span class="n">patchify</span><span class="p">(</span><span class="n">imgs</span><span class="p">,</span> <span class="p">(</span><span class="n">imgs</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_size</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="MAELoss.forward">

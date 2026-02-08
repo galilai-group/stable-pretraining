@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g47ebef423 documentation</title>
+    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g715dc086a documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../../_static/documentation_options.js?v=2fab948f"></script>
+    <script src="../../../_static/documentation_options.js?v=c72634b2"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g47ebef423 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g715dc086a documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -356,8 +356,6 @@ document.write(`
 <span class="kn">from</span><span class="w"> </span><span class="nn">prettytable</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrettyTable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.core.optimizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">LightningOptimizer</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.optim</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_optimizer</span><span class="p">,</span> <span class="n">create_scheduler</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Set</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.utils.error_handling</span><span class="w"> </span><span class="kn">import</span> <span class="n">catch_errors_class</span>
 
 
@@ -1028,152 +1026,6 @@ document.write(`
             <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_frequencies</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;frequency&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="n">optimizers</span><span class="p">,</span> <span class="n">schedulers</span></div>
-
-
-<div class="viewcode-block" id="Module.on_save_checkpoint">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.on_save_checkpoint">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">on_save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Offload checkpoint tensors to CPU to reduce GPU memory usage during save.</span>
-
-<span class="sd">        This method intercepts the checkpoint saving process and recursively moves all</span>
-<span class="sd">        PyTorch tensors (model weights, optimizer states, scheduler states) from GPU</span>
-<span class="sd">        to CPU before writing to disk. This prevents GPU OOM issues when checkpointing</span>
-<span class="sd">        large models (e.g., 2B+ parameters with optimizer states).</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            checkpoint (dict): Lightning checkpoint dictionary containing:</span>
-<span class="sd">                - state_dict: Model parameters (moved to CPU)</span>
-<span class="sd">                - optimizer_states: Optimizer state dicts (moved to CPU)</span>
-<span class="sd">                - lr_schedulers: LR scheduler states (moved to CPU)</span>
-<span class="sd">                - Other keys: Custom objects, metadata (left unchanged)</span>
-
-<span class="sd">        Behavior:</span>
-<span class="sd">            - Processes standard Lightning checkpoint keys (state_dict, optimizer_states, lr_schedulers)</span>
-<span class="sd">            - Recursively traverses dicts, lists, and tuples to find tensors</span>
-<span class="sd">            - Moves all torch.Tensor objects to CPU</span>
-<span class="sd">            - Skips custom objects (returns unchanged)</span>
-<span class="sd">            - Logs GPU memory freed and processing time</span>
-<span class="sd">            - Non-destructive: Checkpoint loading/resuming works normally</span>
-
-<span class="sd">        Side Effects:</span>
-<span class="sd">            - Modifies checkpoint dict in-place (tensors moved to CPU)</span>
-<span class="sd">            - Temporarily increases CPU memory during offload</span>
-<span class="sd">            - Adds ~2-5 seconds to checkpoint save time for 2B models</span>
-<span class="sd">            - Frees ~8-12GB GPU memory for 2B model + optimizer states</span>
-
-<span class="sd">        Custom Objects:</span>
-<span class="sd">            Custom objects in the checkpoint are NOT modified and will be logged as</span>
-<span class="sd">            warnings. These include: custom classes, numpy arrays, primitives, etc.</span>
-<span class="sd">            They are safely skipped and preserved in the checkpoint.</span>
-
-<span class="sd">        Raises:</span>
-<span class="sd">            Exception: If tensor offload fails for any checkpoint key, logs error</span>
-<span class="sd">                       but allows checkpoint save to proceed (non-fatal).</span>
-
-<span class="sd">        Example:</span>
-<span class="sd">            For a 2B parameter model with AdamW optimizer:</span>
-<span class="sd">            - Before: ~12GB GPU memory spike on rank 0 during checkpoint save</span>
-<span class="sd">            - After: ~0.2GB GPU memory spike, ~10-12GB freed</span>
-<span class="sd">            - Checkpoint save time: +2-3 seconds</span>
-<span class="sd">            - Resume from checkpoint: Works normally, tensors auto-loaded to GPU</span>
-
-<span class="sd">        Notes:</span>
-<span class="sd">            - Only rank 0 saves checkpoints in DDP, so only rank 0 sees memory benefit</span>
-<span class="sd">            - Does not affect checkpoint contents or ability to resume training</span>
-<span class="sd">            - Safe for standard PyTorch/Lightning use cases</span>
-<span class="sd">            - If using FSDP/DeepSpeed, consider strategy-specific checkpointing instead</span>
-
-<span class="sd">        See Also:</span>
-<span class="sd">            - PyTorch Lightning ModelCheckpoint callback</span>
-<span class="sd">            - torch.Tensor.cpu() for device transfer behavior</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting checkpoint CPU offload&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Track skipped types</span>
-        <span class="n">skipped_types</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-
-        <span class="c1"># Log initial GPU memory</span>
-        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
-            <span class="n">gpu_mem_before</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_allocated</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e9</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GPU memory before offload: </span><span class="si">{</span><span class="n">gpu_mem_before</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&quot;</span><span class="p">)</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="nf">safe_to_cpu</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;root&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">            </span><span class="sd">&quot;&quot;&quot;Recursively move tensors to CPU, skip custom objects.&quot;&quot;&quot;</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
-                <span class="n">size_mb</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">element_size</span><span class="p">()</span> <span class="o">*</span> <span class="n">obj</span><span class="o">.</span><span class="n">nelement</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e6</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Moving tensor at &#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">size_mb</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB) to CPU&quot;</span>
-                <span class="p">)</span>
-                <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
-
-            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing dict at &#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&#39; with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="si">}</span><span class="s2"> keys&quot;</span><span class="p">)</span>
-                <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">safe_to_cpu</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-
-            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Processing </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> at &#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&#39; with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="si">}</span><span class="s2"> items&quot;</span>
-                <span class="p">)</span>
-                <span class="n">result</span> <span class="o">=</span> <span class="p">[</span><span class="n">safe_to_cpu</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">obj</span><span class="p">)]</span>
-                <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="n">result</span>
-
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># Custom object - don&#39;t modify</span>
-                <span class="n">obj_type</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
-                <span class="n">skipped_types</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">obj_type</span><span class="si">}</span><span class="s2"> at &#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping custom object at &#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">obj_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">return</span> <span class="n">obj</span>
-
-        <span class="c1"># Process each checkpoint component</span>
-        <span class="n">safe_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;state_dict&quot;</span><span class="p">,</span> <span class="s2">&quot;optimizer_states&quot;</span><span class="p">,</span> <span class="s2">&quot;lr_schedulers&quot;</span><span class="p">]</span>
-        <span class="n">processed_keys</span> <span class="o">=</span> <span class="p">[]</span>
-
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">safe_keys</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">checkpoint</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing checkpoint key: &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
-                <span class="n">key_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">checkpoint</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">safe_to_cpu</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">path</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
-                    <span class="n">key_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">key_start</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Completed &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; in </span><span class="si">{</span><span class="n">key_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
-                    <span class="n">processed_keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
-
-                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ Failed to process &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Full traceback:&quot;</span><span class="p">)</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Checkpoint key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; will remain on GPU&quot;</span><span class="p">)</span>
-                    <span class="c1"># Don&#39;t raise - allow checkpoint to proceed</span>
-
-        <span class="c1"># Log skipped custom objects</span>
-        <span class="k">if</span> <span class="n">skipped_types</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipped </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">skipped_types</span><span class="p">)</span><span class="si">}</span><span class="s2"> custom object(s):&quot;</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">obj_info</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">skipped_types</span><span class="p">):</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">obj_info</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Log other checkpoint keys (not processed)</span>
-        <span class="n">other_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">checkpoint</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">safe_keys</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">other_keys</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Other checkpoint keys (not processed): </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">other_keys</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Log final GPU memory and timing</span>
-        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
-            <span class="n">gpu_mem_after</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_allocated</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e9</span>
-            <span class="n">mem_freed</span> <span class="o">=</span> <span class="n">gpu_mem_before</span> <span class="o">-</span> <span class="n">gpu_mem_after</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GPU memory after offload: </span><span class="si">{</span><span class="n">gpu_mem_after</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">mem_freed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ GPU memory freed: </span><span class="si">{</span><span class="n">mem_freed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&quot;</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No GPU memory freed (freed: </span><span class="si">{</span><span class="n">mem_freed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB)&quot;</span><span class="p">)</span>
-
-        <span class="n">total_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Checkpoint CPU offload completed in </span><span class="si">{</span><span class="n">total_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully processed keys: </span><span class="si">{</span><span class="n">processed_keys</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

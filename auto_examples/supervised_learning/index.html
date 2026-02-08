@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Supervised Learning Example &#8212; stable-pretraining 0.1.dev1+g47ebef423 documentation</title>
+    <title>Supervised Learning Example &#8212; stable-pretraining 0.1.dev1+g715dc086a documentation</title>
   
   
   
@@ -40,7 +40,7 @@
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../_static/documentation_options.js?v=2fab948f"></script>
+    <script src="../../_static/documentation_options.js?v=c72634b2"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -134,7 +134,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g47ebef423 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g715dc086a documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -527,7 +527,7 @@ ImageNet-10, ImageNet-100, and ImageNet-1k.</p>
         <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;embedding&quot;</span><span class="p">,</span>
         <span class="n">target</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span>
         <span class="n">probe</span><span class="o">=</span><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html#torch.nn.Linear" title="torch.nn.Linear" class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span></a><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;embedding_dim&quot;</span><span class="p">,</span> <span class="mi">2048</span><span class="p">),</span> <span class="n">num_classes</span><span class="p">),</span>
-        <span class="n">loss_fn</span><span class="o">=</span><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss" title="torch.nn.CrossEntropyLoss" class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span></a><span class="p">(),</span>
+        <span class="n">loss</span><span class="o">=</span><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss" title="torch.nn.CrossEntropyLoss" class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span></a><span class="p">(),</span>
         <span class="n">metrics</span><span class="o">=</span><span class="n">torchmetrics</span><span class="o">.</span><span class="n">classification</span><span class="o">.</span><span class="n">MulticlassAccuracy</span><span class="p">(</span><span class="n">num_classes</span><span class="p">),</span>
     <span class="p">)</span>
     <span class="n">linear_probe_proj</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">OnlineProbe</span><span class="p">(</span>
@@ -536,7 +536,7 @@ ImageNet-10, ImageNet-100, and ImageNet-1k.</p>
         <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;projector&quot;</span><span class="p">,</span>
         <span class="n">target</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span>
         <span class="n">probe</span><span class="o">=</span><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html#torch.nn.Linear" title="torch.nn.Linear" class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span></a><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;projector_dim&quot;</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span> <span class="n">num_classes</span><span class="p">),</span>
-        <span class="n">loss_fn</span><span class="o">=</span><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss" title="torch.nn.CrossEntropyLoss" class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span></a><span class="p">(),</span>
+        <span class="n">loss</span><span class="o">=</span><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss" title="torch.nn.CrossEntropyLoss" class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span></a><span class="p">(),</span>
         <span class="n">metrics</span><span class="o">=</span><span class="n">torchmetrics</span><span class="o">.</span><span class="n">classification</span><span class="o">.</span><span class="n">MulticlassAccuracy</span><span class="p">(</span><span class="n">num_classes</span><span class="p">),</span>
     <span class="p">)</span>
     <span class="n">lr_monitor</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">pytorch</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">LearningRateMonitor</span><span class="p">(</span>
