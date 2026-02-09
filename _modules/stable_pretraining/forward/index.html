@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.forward &#8212; stable-pretraining 0.1.dev1+g715dc086a documentation</title>
+    <title>stable_pretraining.forward &#8212; stable-pretraining 0.1.dev1+g99c0d978e documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../../_static/documentation_options.js?v=c72634b2"></script>
+    <script src="../../../_static/documentation_options.js?v=18d212a7"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g715dc086a documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g99c0d978e documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -380,6 +380,64 @@ document.write(`
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># Single view, return None as sentinel</span>
         <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_views_by_prefix</span><span class="p">(</span>
+    <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">global_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;global&quot;</span><span class="p">,</span> <span class="n">local_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;local&quot;</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Separate views by key prefix into global and local views.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        batch: Input batch, either:</span>
+<span class="sd">            - {&quot;views&quot;: {&quot;global_1&quot;: ..., &quot;local_1&quot;: ...}}</span>
+<span class="sd">            - {&quot;global_1&quot;: ..., &quot;local_1&quot;: ...} (direct dict)</span>
+<span class="sd">            - {&quot;image&quot;: ...} (single view, returns (None, None))</span>
+<span class="sd">        global_prefix: Prefix for global view keys (default: &quot;global&quot;)</span>
+<span class="sd">        local_prefix: Prefix for local view keys (default: &quot;local&quot;)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of (global_views_list, local_views_list, all_views_list), or (None, None, None) for single view.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If views are in list format or if no keys with global_prefix are found</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Get views dict</span>
+    <span class="k">if</span> <span class="s2">&quot;views&quot;</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
+        <span class="n">views_data</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;views&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">views_data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Expected dict of named views with &#39;</span><span class="si">{</span><span class="n">global_prefix</span><span class="si">}</span><span class="s2">&#39; and &#39;</span><span class="si">{</span><span class="n">local_prefix</span><span class="si">}</span><span class="s2">&#39; key prefixes, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;but got a list of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">views_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> views. &quot;</span>
+                <span class="s2">&quot;Please use MultiViewTransform with a dict of named views &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(e.g., </span><span class="se">{{</span><span class="s2">&#39;</span><span class="si">{</span><span class="n">global_prefix</span><span class="si">}</span><span class="s2">_1&#39;: ..., &#39;</span><span class="si">{</span><span class="n">global_prefix</span><span class="si">}</span><span class="s2">_2&#39;: ..., &#39;</span><span class="si">{</span><span class="n">local_prefix</span><span class="si">}</span><span class="s2">_1&#39;: ...</span><span class="se">}}</span><span class="s2">).&quot;</span>
+            <span class="p">)</span>
+        <span class="n">views_dict</span> <span class="o">=</span> <span class="n">views_data</span>
+    <span class="k">elif</span> <span class="s2">&quot;image&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
+        <span class="c1"># Direct dict of named views</span>
+        <span class="n">views_dict</span> <span class="o">=</span> <span class="n">batch</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Single view</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+    <span class="c1"># Separate views by prefix</span>
+    <span class="n">global_views</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">local_views</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">views_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">global_prefix</span><span class="p">):</span>
+            <span class="n">global_views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">local_prefix</span><span class="p">):</span>
+            <span class="n">local_views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+
+    <span class="c1"># Validate that global views exist</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">global_views</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;No views with &#39;</span><span class="si">{</span><span class="n">global_prefix</span><span class="si">}</span><span class="s2">&#39; prefix found in keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">views_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Please ensure keys contain &#39;</span><span class="si">{</span><span class="n">global_prefix</span><span class="si">}</span><span class="s2">&#39; (e.g., &#39;</span><span class="si">{</span><span class="n">global_prefix</span><span class="si">}</span><span class="s2">_1&#39;, &#39;</span><span class="si">{</span><span class="n">global_prefix</span><span class="si">}</span><span class="s2">_2&#39;).&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">all_views</span> <span class="o">=</span> <span class="n">global_views</span> <span class="o">+</span> <span class="n">local_views</span>
+    <span class="k">return</span> <span class="n">global_views</span><span class="p">,</span> <span class="n">local_views</span><span class="p">,</span> <span class="n">all_views</span>
 
 
 <div class="viewcode-block" id="supervised_forward">
@@ -928,30 +986,15 @@ document.write(`
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
 
-    <span class="c1"># Check if batch is dict of named views</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;image&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
-        <span class="c1"># Dict of named views - separate by &quot;global&quot; or &quot;local&quot; in key</span>
-        <span class="n">global_views</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">local_views</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># Use prefix-based view separation for DINO&#39;s global/local distinction</span>
+    <span class="n">global_views</span><span class="p">,</span> <span class="n">local_views</span><span class="p">,</span> <span class="n">all_views</span> <span class="o">=</span> <span class="n">_get_views_by_prefix</span><span class="p">(</span>
+        <span class="n">batch</span><span class="p">,</span> <span class="n">global_prefix</span><span class="o">=</span><span class="s2">&quot;global&quot;</span><span class="p">,</span> <span class="n">local_prefix</span><span class="o">=</span><span class="s2">&quot;local&quot;</span>
+    <span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="s2">&quot;global&quot;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
-                <span class="n">global_views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="s2">&quot;local&quot;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
-                <span class="n">local_views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
-
+    <span class="k">if</span> <span class="n">all_views</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Multi-view training</span>
         <span class="n">n_global</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">global_views</span><span class="p">)</span>
         <span class="n">n_local</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">local_views</span><span class="p">)</span>
-        <span class="n">all_views</span> <span class="o">=</span> <span class="n">global_views</span> <span class="o">+</span> <span class="n">local_views</span>
-
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-        <span class="c1"># List of views - assume first 2 are global</span>
-        <span class="n">all_views</span> <span class="o">=</span> <span class="n">batch</span>
-        <span class="n">n_global</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_views</span><span class="p">))</span>
-        <span class="n">n_local</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_views</span><span class="p">)</span> <span class="o">-</span> <span class="n">n_global</span>
-        <span class="n">global_views</span> <span class="o">=</span> <span class="n">all_views</span><span class="p">[:</span><span class="n">n_global</span><span class="p">]</span>
-        <span class="n">local_views</span> <span class="o">=</span> <span class="n">all_views</span><span class="p">[</span><span class="n">n_global</span><span class="p">:]</span> <span class="k">if</span> <span class="n">n_local</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">[]</span>
-
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># Single view validation</span>
         <span class="n">images</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;image&quot;</span><span class="p">]</span>
@@ -1132,30 +1175,15 @@ document.write(`
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
 
-    <span class="c1"># Check if batch is dict of named views</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;image&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
-        <span class="c1"># Dict of named views - separate by &quot;global&quot; or &quot;local&quot; in key</span>
-        <span class="n">global_views</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">local_views</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># Use prefix-based view separation for DINOv2&#39;s global/local distinction</span>
+    <span class="n">global_views</span><span class="p">,</span> <span class="n">local_views</span><span class="p">,</span> <span class="n">all_views</span> <span class="o">=</span> <span class="n">_get_views_by_prefix</span><span class="p">(</span>
+        <span class="n">batch</span><span class="p">,</span> <span class="n">global_prefix</span><span class="o">=</span><span class="s2">&quot;global&quot;</span><span class="p">,</span> <span class="n">local_prefix</span><span class="o">=</span><span class="s2">&quot;local&quot;</span>
+    <span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="s2">&quot;global&quot;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
-                <span class="n">global_views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="s2">&quot;local&quot;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
-                <span class="n">local_views</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
-
+    <span class="k">if</span> <span class="n">all_views</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Multi-view training</span>
         <span class="n">n_global</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">global_views</span><span class="p">)</span>
         <span class="n">n_local</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">local_views</span><span class="p">)</span>
-        <span class="n">all_views</span> <span class="o">=</span> <span class="n">global_views</span> <span class="o">+</span> <span class="n">local_views</span>
-
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-        <span class="c1"># List of views - assume first 2 are global</span>
-        <span class="n">all_views</span> <span class="o">=</span> <span class="n">batch</span>
-        <span class="n">n_global</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_views</span><span class="p">))</span>
-        <span class="n">n_local</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_views</span><span class="p">)</span> <span class="o">-</span> <span class="n">n_global</span>
-        <span class="n">global_views</span> <span class="o">=</span> <span class="n">all_views</span><span class="p">[:</span><span class="n">n_global</span><span class="p">]</span>
-        <span class="n">local_views</span> <span class="o">=</span> <span class="n">all_views</span><span class="p">[</span><span class="n">n_global</span><span class="p">:]</span> <span class="k">if</span> <span class="n">n_local</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">[]</span>
-
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># Single view validation</span>
         <span class="n">images</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;image&quot;</span><span class="p">]</span>
