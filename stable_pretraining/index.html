@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining package &#8212; stable-pretraining 0.1.dev1+g99c0d978e documentation</title>
+    <title>stable_pretraining package &#8212; stable-pretraining 0.1.dev1+g5cfd909ce documentation</title>
   
   
   
@@ -40,7 +40,7 @@
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../_static/documentation_options.js?v=18d212a7"></script>
+    <script src="../_static/documentation_options.js?v=bbd4c8a0"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -134,7 +134,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g99c0d978e documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g5cfd909ce documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -581,6 +581,7 @@ document.write(`
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.log"><code class="docutils literal notranslate"><span class="pre">log()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.log_dict"><code class="docutils literal notranslate"><span class="pre">log_dict()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -965,6 +966,7 @@ document.write(`
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.registry.get_module"><code class="docutils literal notranslate"><span class="pre">get_module()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.registry.log"><code class="docutils literal notranslate"><span class="pre">log()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.registry.log_dict"><code class="docutils literal notranslate"><span class="pre">log_dict()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.teacher_student">stable_pretraining.callbacks.teacher_student module</a><ul>
@@ -1602,6 +1604,17 @@ document.write(`
 </li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.utils/#module-stable_pretraining.utils.online_topk">stable_pretraining.utils.online_topk module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.online_topk.StreamingTopKEigen"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.online_topk.StreamingTopKEigen.cumulative_explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.cumulative_explained_variance_ratio</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.online_topk.StreamingTopKEigen.explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.explained_variance_ratio</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.online_topk.StreamingTopKEigen.forward"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.online_topk.StreamingTopKEigen.project"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.project()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.online_topk.StreamingTopKEigen.reconstruct"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.reconstruct()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.utils/#module-stable_pretraining.utils.read_csv_logger">stable_pretraining.utils.read_csv_logger module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.read_csv_logger.CSVLogAutoSummarizer"><code class="docutils literal notranslate"><span class="pre">CSVLogAutoSummarizer</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.read_csv_logger.CSVLogAutoSummarizer.METRICS_PATTERNS"><code class="docutils literal notranslate"><span class="pre">CSVLogAutoSummarizer.METRICS_PATTERNS</span></code></a></li>
@@ -1687,6 +1700,14 @@ document.write(`
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.OrderedQueue.get"><code class="docutils literal notranslate"><span class="pre">OrderedQueue.get()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.OrderedQueue.get_unsorted"><code class="docutils literal notranslate"><span class="pre">OrderedQueue.get_unsorted()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.OrderedQueue.load_state_dict"><code class="docutils literal notranslate"><span class="pre">OrderedQueue.load_state_dict()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.StreamingTopKEigen"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.StreamingTopKEigen.cumulative_explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.cumulative_explained_variance_ratio</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.StreamingTopKEigen.explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.explained_variance_ratio</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.StreamingTopKEigen.forward"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.StreamingTopKEigen.project"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.project()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.StreamingTopKEigen.reconstruct"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.reconstruct()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.utils/#stable_pretraining.utils.UnsortedQueue"><code class="docutils literal notranslate"><span class="pre">UnsortedQueue</span></code></a><ul>
@@ -4097,6 +4118,12 @@ A warning is logged if using a custom DataModule without this method.</p>
 <dd><p>Log a metric using the registered module.</p>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="stable_pretraining.log_dict">
+<span class="sig-prename descclassname"><span class="pre">stable_pretraining.</span></span><span class="sig-name descname"><span class="pre">log_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/registry/#log_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.log_dict" title="Link to this definition">#</a></dt>
+<dd><p>Log a metric using the registered module.</p>
+</dd></dl>
+
 </section>
 </section>
 
@@ -4322,6 +4349,7 @@ A warning is logged if using a custom DataModule without this method.</p>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.log"><code class="docutils literal notranslate"><span class="pre">log()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.log_dict"><code class="docutils literal notranslate"><span class="pre">log_dict()</span></code></a></li>
 </ul>
 </li>
 </ul>

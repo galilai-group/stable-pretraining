@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.utils package &#8212; stable-pretraining 0.1.dev1+g99c0d978e documentation</title>
+    <title>stable_pretraining.utils package &#8212; stable-pretraining 0.1.dev1+g5cfd909ce documentation</title>
   
   
   
@@ -40,7 +40,7 @@
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../_static/documentation_options.js?v=18d212a7"></script>
+    <script src="../_static/documentation_options.js?v=bbd4c8a0"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -134,7 +134,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g99c0d978e documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g5cfd909ce documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -541,6 +541,17 @@ document.write(`
 </li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.utils.online_topk">stable_pretraining.utils.online_topk module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.cumulative_explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.cumulative_explained_variance_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.explained_variance_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.forward"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.forward()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.project"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.project()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.reconstruct"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.reconstruct()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.utils.read_csv_logger">stable_pretraining.utils.read_csv_logger module</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.read_csv_logger.CSVLogAutoSummarizer"><code class="docutils literal notranslate"><span class="pre">CSVLogAutoSummarizer</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.read_csv_logger.CSVLogAutoSummarizer.METRICS_PATTERNS"><code class="docutils literal notranslate"><span class="pre">CSVLogAutoSummarizer.METRICS_PATTERNS</span></code></a></li>
@@ -626,6 +637,14 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.OrderedQueue.get"><code class="docutils literal notranslate"><span class="pre">OrderedQueue.get()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.OrderedQueue.get_unsorted"><code class="docutils literal notranslate"><span class="pre">OrderedQueue.get_unsorted()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.OrderedQueue.load_state_dict"><code class="docutils literal notranslate"><span class="pre">OrderedQueue.load_state_dict()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen.cumulative_explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.cumulative_explained_variance_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen.explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.explained_variance_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen.forward"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.forward()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen.project"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.project()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen.reconstruct"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.reconstruct()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.UnsortedQueue"><code class="docutils literal notranslate"><span class="pre">UnsortedQueue</span></code></a><ul class="nav section-nav flex-column">
@@ -1464,8 +1483,8 @@ accumulate_grad_batches to alternative attributes instead of raising errors.</p>
 <span class="sig-prename descclassname"><span class="pre">stable_pretraining.utils.lightning_patch.</span></span><span class="sig-name descname"><span class="pre">apply_manual_optimization_patch</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/utils/lightning_patch/#apply_manual_optimization_patch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.utils.lightning_patch.apply_manual_optimization_patch" title="Link to this definition">#</a></dt>
 <dd><p>Apply the monkey-patch to Lightning’s manual optimization validation.</p>
 <p>This patch modifies the __verify_manual_optimization_support function to:
-1. Transfer gradient_clip_val to <a href="#id21"><span class="problematic" id="id22">gradient_clip_val_</span></a>
-2. Transfer accumulate_grad_batches to <a href="#id23"><span class="problematic" id="id24">accumulate_grad_batches_</span></a>
+1. Transfer gradient_clip_val to <a href="#id31"><span class="problematic" id="id32">gradient_clip_val_</span></a>
+2. Transfer accumulate_grad_batches to <a href="#id33"><span class="problematic" id="id34">accumulate_grad_batches_</span></a>
 3. Clear the original values to avoid Lightning’s error</p>
 <p>This allows users to use standard Trainer parameters even with manual optimization.</p>
 </dd></dl>
@@ -2357,6 +2376,318 @@ maximum length. When the queue is full, new items overwrite the oldest ones.</p>
 </dd></dl>
 
 </section>
+<section id="module-stable_pretraining.utils.online_topk">
+<span id="stable-pretraining-utils-online-topk-module"></span><h2>stable_pretraining.utils.online_topk module<a class="headerlink" href="#module-stable_pretraining.utils.online_topk" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.utils.online_topk.StreamingTopKEigen">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.utils.online_topk.</span></span><span class="sig-name descname"><span class="pre">StreamingTopKEigen</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensor_attributes.html#torch.device" title="(in PyTorch v2.10)"><span class="pre">device</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensor_attributes.html#torch.dtype" title="(in PyTorch v2.10)"><span class="pre">dtype</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/utils/online_topk/#StreamingTopKEigen"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
+<p>Hyperparameter-free streaming estimator for top-K eigenvectors.</p>
+<p>This module maintains running estimates of the top-K eigenvectors and
+eigenvalues of the covariance matrix of streaming data. It requires no
+tuning - learning rates and update schedules are derived automatically
+from theoretical considerations.</p>
+<section id="key-features">
+<h3>Key Features:<a class="headerlink" href="#key-features" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>No hyperparameters</strong>: Learning rates adapt based on sample count and
+current eigenvalue estimates.</p></li>
+<li><p><strong>Memory efficient</strong>: O(dk) storage, no need to store covariance matrix.</p></li>
+<li><p><strong>Numerically stable</strong>: QR orthogonalization + Welford’s algorithm.</p></li>
+<li><p><strong>Fast</strong>: Single-pass update per batch, optimized for GPU.</p></li>
+</ul>
+</section>
+<section id="mathematical-background">
+<h3>Mathematical Background:<a class="headerlink" href="#mathematical-background" title="Link to this heading">#</a></h3>
+<p>Given streaming data x₁, x₂, …, xₙ ∈ ℝᵈ, we want to estimate the top-K
+eigenvectors of the covariance matrix:</p>
+<blockquote>
+<div><p>C = E[(x - μ)(x - μ)ᵀ]</p>
+</div></blockquote>
+<p>The algorithm maintains:
+- Running mean μ̂ (Welford’s algorithm)
+- Eigenvector matrix V ∈ ℝᵈˣᵏ (columns are eigenvectors)
+- Eigenvalue estimates λ̂ ∈ ℝᵏ</p>
+<p>Updates use Sanger’s rule with adaptive learning rates:</p>
+<blockquote>
+<div><p>V ← V + diag(η) · (E[x̃ yᵀ] - V · tril(E[y yᵀ]))</p>
+</div></blockquote>
+<p>where:
+- x̃ = x - μ̂ (centered data)
+- y = Vᵀx̃ (projections)
+- η_i = (1/√n) · (σ²_total / λ̂_i) (adaptive per-component learning rate)
+- tril(·) extracts lower triangular part (for deflation)</p>
+</section>
+<section id="example-usage">
+<h3>Example Usage:<a class="headerlink" href="#example-usage" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Initialize estimator</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span> <span class="o">=</span> <span class="n">StreamingTopKEigen</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Training loop - just call forward on each batch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_epochs</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">x</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]</span>  <span class="c1"># (batch_size, 512)</span>
+<span class="gp">... </span>        <span class="n">eigenvalues</span><span class="p">,</span> <span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">estimator</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>        <span class="c1"># Optional: use for dimensionality reduction</span>
+<span class="gp">... </span>        <span class="n">x_reduced</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># (batch_size, 16)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># After training, eigenvectors are available</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Top eigenvalue: </span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="n">eigenvalues</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Variance explained: </span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="n">explained_variance_ratio</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="integration-with-neural-networks">
+<h3>Integration with Neural Networks:<a class="headerlink" href="#integration-with-neural-networks" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">AutoEncoder</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">latent_dim</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">latent_dim</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">latent_dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="c1"># Track principal components of encoder output</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">pca</span> <span class="o">=</span> <span class="n">StreamingTopKEigen</span><span class="p">(</span><span class="n">latent_dim</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="c1"># Update PCA estimates (no grad needed)</span>
+<span class="gp">... </span>        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+<span class="gp">... </span>            <span class="bp">self</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">param dim<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dimensionality of input features.</p>
+</dd>
+<dt class="field-even">type dim<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+<dt class="field-odd">param k<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of top eigenvectors to estimate. Must satisfy k ≤ dim.</p>
+</dd>
+<dt class="field-even">type k<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+<dt class="field-odd">param device<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Device for tensors. If None, uses default device.</p>
+</dd>
+<dt class="field-even">type device<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.device, optional</p>
+</dd>
+<dt class="field-odd">param dtype<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Data type for computations. Default is float32.
+Use float64 for higher precision if needed.</p>
+</dd>
+<dt class="field-even">type dtype<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.dtype, optional</p>
+</dd>
+<dt class="field-odd">param Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+<dt class="field-even">param ———-<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+<dt class="field-odd">param V<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current eigenvector estimates, shape (dim, k).
+Columns are eigenvectors, sorted by eigenvalue (descending).</p>
+</dd>
+<dt class="field-even">type V<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param eigenvalues<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current eigenvalue estimates, shape (k,), sorted descending.</p>
+</dd>
+<dt class="field-even">type eigenvalues<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param mean<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Running mean estimate, shape (dim,).</p>
+</dd>
+<dt class="field-even">type mean<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param n_samples<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Total number of samples seen so far.</p>
+</dd>
+<dt class="field-even">type n_samples<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param total_variance<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Estimate of total variance (trace of covariance matrix).</p>
+</dd>
+<dt class="field-even">type total_variance<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param initialized<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Boolean flag indicating if first batch has been processed.</p>
+</dd>
+<dt class="field-even">type initialized<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param Notes<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+<dt class="field-even">param —–<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+<dt class="field-odd">param - The estimator uses <cite>register_buffer</cite> for all state<span class="colon">:</span></dt>
+<dd class="field-odd"><p>properly saved/loaded with <cite>state_dict()</cite> and moved with <cite>.to(device)</cite>.</p>
+</dd>
+<dt class="field-even">param so it will be<span class="colon">:</span></dt>
+<dd class="field-even"><p>properly saved/loaded with <cite>state_dict()</cite> and moved with <cite>.to(device)</cite>.</p>
+</dd>
+<dt class="field-odd">param - All updates are performed in <cite>torch.no_grad()</cite> context - this module<span class="colon">:</span></dt>
+<dd class="field-odd"><p>does not participate in gradient computation.</p>
+</dd>
+<dt class="field-even">param - For very small batches (&lt; k samples)<span class="colon">:</span></dt>
+<dd class="field-even"><p>before calling forward for better initialization.</p>
+</dd>
+<dt class="field-odd">param consider accumulating batches<span class="colon">:</span></dt>
+<dd class="field-odd"><p>before calling forward for better initialization.</p>
+</dd>
+<dt class="field-even">param See Also<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+<dt class="field-odd">param ——–<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+<dt class="field-even">param torch.pca_lowrank<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+<dt class="field-odd">type torch.pca_lowrank<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PyTorch’s built-in randomized PCA (non-streaming)</p>
+</dd>
+<dt class="field-even">param sklearn.decomposition.IncrementalPCA<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+<dt class="field-odd">type sklearn.decomposition.IncrementalPCA<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Scikit-learn’s incremental PCA</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="stable_pretraining.utils.online_topk.StreamingTopKEigen.cumulative_explained_variance_ratio">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cumulative_explained_variance_ratio</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span><a class="headerlink" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.cumulative_explained_variance_ratio" title="Link to this definition">#</a></dt>
+<dd><p>Cumulative explained variance ratio.</p>
+<section id="returns">
+<h4>Returns:<a class="headerlink" href="#returns" title="Link to this heading">#</a></h4>
+<dl class="simple">
+<dt>torch.Tensor</dt><dd><p>Cumulative sum of explained variance ratios, shape (k,).</p>
+</dd>
+</dl>
+</section>
+<section id="examples">
+<h4>Examples:<a class="headerlink" href="#examples" title="Link to this heading">#</a></h4>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># How many components for 95% variance?</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cumvar</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">cumulative_explained_variance_ratio</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">n_components_95</span> <span class="o">=</span> <span class="p">(</span><span class="n">cumvar</span> <span class="o">&lt;</span> <span class="mf">0.95</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="stable_pretraining.utils.online_topk.StreamingTopKEigen.explained_variance_ratio">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">explained_variance_ratio</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span><a class="headerlink" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.explained_variance_ratio" title="Link to this definition">#</a></dt>
+<dd><p>Fraction of total variance explained by each component.</p>
+<section id="id11">
+<h4>Returns:<a class="headerlink" href="#id11" title="Link to this heading">#</a></h4>
+<dl class="simple">
+<dt>torch.Tensor</dt><dd><p>Explained variance ratio for each component, shape (k,).
+Sums to less than 1.0 (remaining variance is in other components).</p>
+</dd>
+</dl>
+</section>
+<section id="id12">
+<h4>Examples:<a class="headerlink" href="#id12" title="Link to this heading">#</a></h4>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total explained: </span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="n">explained_variance_ratio</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Top component: </span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="n">explained_variance_ratio</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.utils.online_topk.StreamingTopKEigen.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/stable_pretraining/utils/online_topk/#StreamingTopKEigen.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.forward" title="Link to this definition">#</a></dt>
+<dd><p>Update eigenvector estimates with a new batch of data.</p>
+<p>This is the main entry point. Call this on each mini-batch during
+training. The method automatically handles:
+- Initialization on first call (using exact SVD)
+- Incremental updates on subsequent calls (using Sanger’s rule)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><em>torch.Tensor</em></a>) – Input batch of shape (batch_size, dim).
+Should be on the same device as the module.</p></li>
+<li><p><strong>Returns</strong></p></li>
+<li><p><strong>-------</strong></p></li>
+<li><p><strong>eigenvalues</strong> (<em>...</em>) – Current eigenvalue estimates, shape (k,).
+Sorted in descending order (largest first).</p></li>
+<li><p><strong>eigenvectors</strong> (<a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><em>torch.Tensor</em></a>) – Current eigenvector estimates, shape (dim, k).
+Columns are eigenvectors, corresponding to eigenvalues.
+Vectors are orthonormal: Vᵀ V = I.</p></li>
+<li><p><strong>Examples</strong></p></li>
+<li><p><strong>--------</strong></p></li>
+<li><p><strong>StreamingTopKEigen</strong><strong>(</strong><strong>dim=256</strong> (<em>&gt;&gt;&gt; estimator =</em>)</p></li>
+<li><p><strong>k=8</strong><strong>)</strong></p></li>
+<li><p><strong>dataloader</strong> (<em>&gt;&gt;&gt; for batch in</em>)</p></li>
+<li><p><strong>eigenvalues</strong></p></li>
+<li><p><strong>estimator</strong><strong>(</strong><strong>batch</strong><strong>)</strong> (<em>eigenvectors =</em>)</p></li>
+<li><p><strong>eigenvalue</strong> (<em>...</em><em>     print</em><em>(</em><em>f&quot;Top</em>)</p></li>
+<li><p><strong>Notes</strong></p></li>
+<li><p><strong>-----</strong></p></li>
+<li><p><strong>state</strong> (<em>- Returns clones to prevent accidental modification</em><em> of </em><em>internal</em>)</p></li>
+<li><p><strong>input</strong> (<em>- The returned tensors are on the same device as the</em>)</p></li>
+<li><p><strong>buffers</strong> (<em>- Updates are performed in-place on internal</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.utils.online_topk.StreamingTopKEigen.project">
+<span class="sig-name descname"><span class="pre">project</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/utils/online_topk/#StreamingTopKEigen.project"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.project" title="Link to this definition">#</a></dt>
+<dd><p>Project data onto the estimated principal subspace.</p>
+<p>Computes z = (x - μ) &#64; V, projecting from d dimensions to k dimensions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><em>torch.Tensor</em></a>) – Input data, shape (batch_size, dim) or (dim,).</p></li>
+<li><p><strong>Returns</strong></p></li>
+<li><p><strong>-------</strong></p></li>
+<li><p><strong>torch.Tensor</strong> – Projected data, shape (batch_size, k) or (k,).</p></li>
+<li><p><strong>Examples</strong></p></li>
+<li><p><strong>--------</strong></p></li>
+<li><p><strong>(</strong><strong>batch_size</strong> (<em>dim</em><em>) </em><em>-&gt;</em>)</p></li>
+<li><p><strong>(</strong><strong>batch_size</strong></p></li>
+<li><p><strong>k</strong><strong>)</strong></p></li>
+<li><p><strong>model</strong> (<em>&gt;&gt;&gt; # For downstream</em>)</p></li>
+<li><p><strong>classifier</strong><strong>(</strong><strong>z</strong><strong>)</strong> (<em>&gt;&gt;&gt; output =</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.utils.online_topk.StreamingTopKEigen.reconstruct">
+<span class="sig-name descname"><span class="pre">reconstruct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/utils/online_topk/#StreamingTopKEigen.reconstruct"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.reconstruct" title="Link to this definition">#</a></dt>
+<dd><p>Project and reconstruct data (PCA denoising/compression).</p>
+<p>Computes x̂ = V &#64; Vᵀ &#64; (x - μ) + μ, which projects to the k-dimensional
+principal subspace and back. This removes components outside the
+top-k subspace (denoising) or compresses the representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><em>torch.Tensor</em></a>) – Input data, shape (batch_size, dim) or (dim,).</p></li>
+<li><p><strong>Returns</strong></p></li>
+<li><p><strong>-------</strong></p></li>
+<li><p><strong>torch.Tensor</strong> – Reconstructed data, same shape as input.</p></li>
+<li><p><strong>Examples</strong></p></li>
+<li><p><strong>--------</strong></p></li>
+<li><p><strong>estimator.reconstruct</strong><strong>(</strong><strong>x</strong><strong>)</strong> (<em>&gt;&gt;&gt; x_denoised =</em>)</p></li>
+<li><p><strong>x_denoised</strong><strong>)</strong><strong>.pow</strong><strong>(</strong><strong>2</strong><strong>)</strong><strong>.mean</strong><strong>(</strong><strong>)</strong> (<em>&gt;&gt;&gt; reconstruction_error =</em><em> (</em><em>x -</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</dd></dl>
+
+</section>
 <section id="module-stable_pretraining.utils.read_csv_logger">
 <span id="stable-pretraining-utils-read-csv-logger-module"></span><h2>stable_pretraining.utils.read_csv_logger module<a class="headerlink" href="#module-stable_pretraining.utils.read_csv_logger" title="Link to this heading">#</a></h2>
 <dl class="py class">
@@ -2753,7 +3084,7 @@ bias term is removed from the final BatchNorm layer.</p>
 <p>The bias is frozen at 0 and set to non-trainable, while the weight (scale)
 parameter remains learnable.</p>
 <p class="rubric">Example</p>
-<p><a href="#id11"><span class="problematic" id="id12">``</span></a><a href="#id13"><span class="problematic" id="id14">`</span></a>python
+<p><a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a>python
 # SimCLR-style projector
 projector = nn.Sequential(</p>
 <blockquote>
@@ -2763,8 +3094,8 @@ nn.ReLU(inplace=True),
 nn.Linear(2048, 128, bias=False),
 spt.utils.nn_modules.BatchNorm1dNoBias(128),  # Final layer: no bias</p>
 </div></blockquote>
-<section id="id15">
-<h3>)<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
+<section id="id17">
+<h3>)<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>This is equivalent to TensorFlow’s BatchNorm with center=False, scale=True.</p>
@@ -3052,7 +3383,7 @@ registered hooks while the latter silently ignores them.</p>
 <p>Normalizes the input tensor along the last dimension to have unit L2 norm.
 Commonly used in DINO before the prototypes layer.</p>
 <p class="rubric">Example</p>
-<p><a href="#id16"><span class="problematic" id="id17">``</span></a><a href="#id18"><span class="problematic" id="id19">`</span></a>python
+<p><a href="#id18"><span class="problematic" id="id19">``</span></a><a href="#id20"><span class="problematic" id="id21">`</span></a>python
 projector = nn.Sequential(</p>
 <blockquote>
 <div><p>nn.Linear(512, 2048),
@@ -3061,8 +3392,8 @@ nn.Linear(2048, 256),
 spt.utils.nn_modules.L2Norm(),  # Normalize to unit length
 nn.Linear(256, 4096, bias=False),  # Prototypes</p>
 </div></blockquote>
-<section id="id20">
-<h3>)<a class="headerlink" href="#id20" title="Link to this heading">#</a></h3>
+<section id="id22">
+<h3>)<a class="headerlink" href="#id22" title="Link to this heading">#</a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.utils.L2Norm.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/utils/nn_modules/#L2Norm.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.utils.L2Norm.forward" title="Link to this definition">#</a></dt>
@@ -3293,6 +3624,315 @@ exists in <code class="xref py py-attr docutils literal notranslate"><span class
 </div>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.utils.StreamingTopKEigen">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.utils.</span></span><span class="sig-name descname"><span class="pre">StreamingTopKEigen</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensor_attributes.html#torch.device" title="(in PyTorch v2.10)"><span class="pre">device</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensor_attributes.html#torch.dtype" title="(in PyTorch v2.10)"><span class="pre">dtype</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/utils/online_topk/#StreamingTopKEigen"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.utils.StreamingTopKEigen" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
+<p>Hyperparameter-free streaming estimator for top-K eigenvectors.</p>
+<p>This module maintains running estimates of the top-K eigenvectors and
+eigenvalues of the covariance matrix of streaming data. It requires no
+tuning - learning rates and update schedules are derived automatically
+from theoretical considerations.</p>
+<section id="id23">
+<h3>Key Features:<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>No hyperparameters</strong>: Learning rates adapt based on sample count and
+current eigenvalue estimates.</p></li>
+<li><p><strong>Memory efficient</strong>: O(dk) storage, no need to store covariance matrix.</p></li>
+<li><p><strong>Numerically stable</strong>: QR orthogonalization + Welford’s algorithm.</p></li>
+<li><p><strong>Fast</strong>: Single-pass update per batch, optimized for GPU.</p></li>
+</ul>
+</section>
+<section id="id24">
+<h3>Mathematical Background:<a class="headerlink" href="#id24" title="Link to this heading">#</a></h3>
+<p>Given streaming data x₁, x₂, …, xₙ ∈ ℝᵈ, we want to estimate the top-K
+eigenvectors of the covariance matrix:</p>
+<blockquote>
+<div><p>C = E[(x - μ)(x - μ)ᵀ]</p>
+</div></blockquote>
+<p>The algorithm maintains:
+- Running mean μ̂ (Welford’s algorithm)
+- Eigenvector matrix V ∈ ℝᵈˣᵏ (columns are eigenvectors)
+- Eigenvalue estimates λ̂ ∈ ℝᵏ</p>
+<p>Updates use Sanger’s rule with adaptive learning rates:</p>
+<blockquote>
+<div><p>V ← V + diag(η) · (E[x̃ yᵀ] - V · tril(E[y yᵀ]))</p>
+</div></blockquote>
+<p>where:
+- x̃ = x - μ̂ (centered data)
+- y = Vᵀx̃ (projections)
+- η_i = (1/√n) · (σ²_total / λ̂_i) (adaptive per-component learning rate)
+- tril(·) extracts lower triangular part (for deflation)</p>
+</section>
+<section id="id25">
+<h3>Example Usage:<a class="headerlink" href="#id25" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Initialize estimator</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span> <span class="o">=</span> <span class="n">StreamingTopKEigen</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Training loop - just call forward on each batch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_epochs</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">x</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]</span>  <span class="c1"># (batch_size, 512)</span>
+<span class="gp">... </span>        <span class="n">eigenvalues</span><span class="p">,</span> <span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">estimator</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>        <span class="c1"># Optional: use for dimensionality reduction</span>
+<span class="gp">... </span>        <span class="n">x_reduced</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># (batch_size, 16)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># After training, eigenvectors are available</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Top eigenvalue: </span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="n">eigenvalues</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Variance explained: </span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="n">explained_variance_ratio</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id26">
+<h3>Integration with Neural Networks:<a class="headerlink" href="#id26" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">AutoEncoder</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">latent_dim</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">latent_dim</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">latent_dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="c1"># Track principal components of encoder output</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">pca</span> <span class="o">=</span> <span class="n">StreamingTopKEigen</span><span class="p">(</span><span class="n">latent_dim</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="c1"># Update PCA estimates (no grad needed)</span>
+<span class="gp">... </span>        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+<span class="gp">... </span>            <span class="bp">self</span><span class="o">.</span><span class="n">pca</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">param dim<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dimensionality of input features.</p>
+</dd>
+<dt class="field-even">type dim<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+<dt class="field-odd">param k<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of top eigenvectors to estimate. Must satisfy k ≤ dim.</p>
+</dd>
+<dt class="field-even">type k<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+<dt class="field-odd">param device<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Device for tensors. If None, uses default device.</p>
+</dd>
+<dt class="field-even">type device<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.device, optional</p>
+</dd>
+<dt class="field-odd">param dtype<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Data type for computations. Default is float32.
+Use float64 for higher precision if needed.</p>
+</dd>
+<dt class="field-even">type dtype<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.dtype, optional</p>
+</dd>
+<dt class="field-odd">param Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+<dt class="field-even">param ———-<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+<dt class="field-odd">param V<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current eigenvector estimates, shape (dim, k).
+Columns are eigenvectors, sorted by eigenvalue (descending).</p>
+</dd>
+<dt class="field-even">type V<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param eigenvalues<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current eigenvalue estimates, shape (k,), sorted descending.</p>
+</dd>
+<dt class="field-even">type eigenvalues<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param mean<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Running mean estimate, shape (dim,).</p>
+</dd>
+<dt class="field-even">type mean<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param n_samples<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Total number of samples seen so far.</p>
+</dd>
+<dt class="field-even">type n_samples<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param total_variance<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Estimate of total variance (trace of covariance matrix).</p>
+</dd>
+<dt class="field-even">type total_variance<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param initialized<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Boolean flag indicating if first batch has been processed.</p>
+</dd>
+<dt class="field-even">type initialized<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+<dt class="field-odd">param Notes<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+<dt class="field-even">param —–<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+<dt class="field-odd">param - The estimator uses <cite>register_buffer</cite> for all state<span class="colon">:</span></dt>
+<dd class="field-odd"><p>properly saved/loaded with <cite>state_dict()</cite> and moved with <cite>.to(device)</cite>.</p>
+</dd>
+<dt class="field-even">param so it will be<span class="colon">:</span></dt>
+<dd class="field-even"><p>properly saved/loaded with <cite>state_dict()</cite> and moved with <cite>.to(device)</cite>.</p>
+</dd>
+<dt class="field-odd">param - All updates are performed in <cite>torch.no_grad()</cite> context - this module<span class="colon">:</span></dt>
+<dd class="field-odd"><p>does not participate in gradient computation.</p>
+</dd>
+<dt class="field-even">param - For very small batches (&lt; k samples)<span class="colon">:</span></dt>
+<dd class="field-even"><p>before calling forward for better initialization.</p>
+</dd>
+<dt class="field-odd">param consider accumulating batches<span class="colon">:</span></dt>
+<dd class="field-odd"><p>before calling forward for better initialization.</p>
+</dd>
+<dt class="field-even">param See Also<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+<dt class="field-odd">param ——–<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+<dt class="field-even">param torch.pca_lowrank<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+<dt class="field-odd">type torch.pca_lowrank<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PyTorch’s built-in randomized PCA (non-streaming)</p>
+</dd>
+<dt class="field-even">param sklearn.decomposition.IncrementalPCA<span class="colon">:</span></dt>
+<dd class="field-even"><p></p></dd>
+<dt class="field-odd">type sklearn.decomposition.IncrementalPCA<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Scikit-learn’s incremental PCA</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="stable_pretraining.utils.StreamingTopKEigen.cumulative_explained_variance_ratio">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cumulative_explained_variance_ratio</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span><a class="headerlink" href="#stable_pretraining.utils.StreamingTopKEigen.cumulative_explained_variance_ratio" title="Link to this definition">#</a></dt>
+<dd><p>Cumulative explained variance ratio.</p>
+<section id="id27">
+<h4>Returns:<a class="headerlink" href="#id27" title="Link to this heading">#</a></h4>
+<dl class="simple">
+<dt>torch.Tensor</dt><dd><p>Cumulative sum of explained variance ratios, shape (k,).</p>
+</dd>
+</dl>
+</section>
+<section id="id28">
+<h4>Examples:<a class="headerlink" href="#id28" title="Link to this heading">#</a></h4>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># How many components for 95% variance?</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cumvar</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">cumulative_explained_variance_ratio</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">n_components_95</span> <span class="o">=</span> <span class="p">(</span><span class="n">cumvar</span> <span class="o">&lt;</span> <span class="mf">0.95</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="stable_pretraining.utils.StreamingTopKEigen.explained_variance_ratio">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">explained_variance_ratio</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span><a class="headerlink" href="#stable_pretraining.utils.StreamingTopKEigen.explained_variance_ratio" title="Link to this definition">#</a></dt>
+<dd><p>Fraction of total variance explained by each component.</p>
+<section id="id29">
+<h4>Returns:<a class="headerlink" href="#id29" title="Link to this heading">#</a></h4>
+<dl class="simple">
+<dt>torch.Tensor</dt><dd><p>Explained variance ratio for each component, shape (k,).
+Sums to less than 1.0 (remaining variance is in other components).</p>
+</dd>
+</dl>
+</section>
+<section id="id30">
+<h4>Examples:<a class="headerlink" href="#id30" title="Link to this heading">#</a></h4>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total explained: </span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="n">explained_variance_ratio</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Top component: </span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="n">explained_variance_ratio</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.utils.StreamingTopKEigen.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/stable_pretraining/utils/online_topk/#StreamingTopKEigen.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.utils.StreamingTopKEigen.forward" title="Link to this definition">#</a></dt>
+<dd><p>Update eigenvector estimates with a new batch of data.</p>
+<p>This is the main entry point. Call this on each mini-batch during
+training. The method automatically handles:
+- Initialization on first call (using exact SVD)
+- Incremental updates on subsequent calls (using Sanger’s rule)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><em>torch.Tensor</em></a>) – Input batch of shape (batch_size, dim).
+Should be on the same device as the module.</p></li>
+<li><p><strong>Returns</strong></p></li>
+<li><p><strong>-------</strong></p></li>
+<li><p><strong>eigenvalues</strong> (<em>...</em>) – Current eigenvalue estimates, shape (k,).
+Sorted in descending order (largest first).</p></li>
+<li><p><strong>eigenvectors</strong> (<a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><em>torch.Tensor</em></a>) – Current eigenvector estimates, shape (dim, k).
+Columns are eigenvectors, corresponding to eigenvalues.
+Vectors are orthonormal: Vᵀ V = I.</p></li>
+<li><p><strong>Examples</strong></p></li>
+<li><p><strong>--------</strong></p></li>
+<li><p><strong>StreamingTopKEigen</strong><strong>(</strong><strong>dim=256</strong> (<em>&gt;&gt;&gt; estimator =</em>)</p></li>
+<li><p><strong>k=8</strong><strong>)</strong></p></li>
+<li><p><strong>dataloader</strong> (<em>&gt;&gt;&gt; for batch in</em>)</p></li>
+<li><p><strong>eigenvalues</strong></p></li>
+<li><p><strong>estimator</strong><strong>(</strong><strong>batch</strong><strong>)</strong> (<em>eigenvectors =</em>)</p></li>
+<li><p><strong>eigenvalue</strong> (<em>...</em><em>     print</em><em>(</em><em>f&quot;Top</em>)</p></li>
+<li><p><strong>Notes</strong></p></li>
+<li><p><strong>-----</strong></p></li>
+<li><p><strong>state</strong> (<em>- Returns clones to prevent accidental modification</em><em> of </em><em>internal</em>)</p></li>
+<li><p><strong>input</strong> (<em>- The returned tensors are on the same device as the</em>)</p></li>
+<li><p><strong>buffers</strong> (<em>- Updates are performed in-place on internal</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.utils.StreamingTopKEigen.project">
+<span class="sig-name descname"><span class="pre">project</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/utils/online_topk/#StreamingTopKEigen.project"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.utils.StreamingTopKEigen.project" title="Link to this definition">#</a></dt>
+<dd><p>Project data onto the estimated principal subspace.</p>
+<p>Computes z = (x - μ) &#64; V, projecting from d dimensions to k dimensions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><em>torch.Tensor</em></a>) – Input data, shape (batch_size, dim) or (dim,).</p></li>
+<li><p><strong>Returns</strong></p></li>
+<li><p><strong>-------</strong></p></li>
+<li><p><strong>torch.Tensor</strong> – Projected data, shape (batch_size, k) or (k,).</p></li>
+<li><p><strong>Examples</strong></p></li>
+<li><p><strong>--------</strong></p></li>
+<li><p><strong>(</strong><strong>batch_size</strong> (<em>dim</em><em>) </em><em>-&gt;</em>)</p></li>
+<li><p><strong>(</strong><strong>batch_size</strong></p></li>
+<li><p><strong>k</strong><strong>)</strong></p></li>
+<li><p><strong>model</strong> (<em>&gt;&gt;&gt; # For downstream</em>)</p></li>
+<li><p><strong>classifier</strong><strong>(</strong><strong>z</strong><strong>)</strong> (<em>&gt;&gt;&gt; output =</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.utils.StreamingTopKEigen.reconstruct">
+<span class="sig-name descname"><span class="pre">reconstruct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/utils/online_topk/#StreamingTopKEigen.reconstruct"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.utils.StreamingTopKEigen.reconstruct" title="Link to this definition">#</a></dt>
+<dd><p>Project and reconstruct data (PCA denoising/compression).</p>
+<p>Computes x̂ = V &#64; Vᵀ &#64; (x - μ) + μ, which projects to the k-dimensional
+principal subspace and back. This removes components outside the
+top-k subspace (denoising) or compresses the representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><em>torch.Tensor</em></a>) – Input data, shape (batch_size, dim) or (dim,).</p></li>
+<li><p><strong>Returns</strong></p></li>
+<li><p><strong>-------</strong></p></li>
+<li><p><strong>torch.Tensor</strong> – Reconstructed data, same shape as input.</p></li>
+<li><p><strong>Examples</strong></p></li>
+<li><p><strong>--------</strong></p></li>
+<li><p><strong>estimator.reconstruct</strong><strong>(</strong><strong>x</strong><strong>)</strong> (<em>&gt;&gt;&gt; x_denoised =</em>)</p></li>
+<li><p><strong>x_denoised</strong><strong>)</strong><strong>.pow</strong><strong>(</strong><strong>2</strong><strong>)</strong><strong>.mean</strong><strong>(</strong><strong>)</strong> (<em>&gt;&gt;&gt; reconstruction_error =</em><em> (</em><em>x -</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
 </dd></dl>
 
 <dl class="py class">
@@ -4199,6 +4839,17 @@ is not provided. Defaults to 10.</p></li>
 </li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.utils.online_topk">stable_pretraining.utils.online_topk module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.cumulative_explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.cumulative_explained_variance_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.explained_variance_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.forward"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.forward()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.project"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.project()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.online_topk.StreamingTopKEigen.reconstruct"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.reconstruct()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.utils.read_csv_logger">stable_pretraining.utils.read_csv_logger module</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.read_csv_logger.CSVLogAutoSummarizer"><code class="docutils literal notranslate"><span class="pre">CSVLogAutoSummarizer</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.read_csv_logger.CSVLogAutoSummarizer.METRICS_PATTERNS"><code class="docutils literal notranslate"><span class="pre">CSVLogAutoSummarizer.METRICS_PATTERNS</span></code></a></li>
@@ -4284,6 +4935,14 @@ is not provided. Defaults to 10.</p></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.OrderedQueue.get"><code class="docutils literal notranslate"><span class="pre">OrderedQueue.get()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.OrderedQueue.get_unsorted"><code class="docutils literal notranslate"><span class="pre">OrderedQueue.get_unsorted()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.OrderedQueue.load_state_dict"><code class="docutils literal notranslate"><span class="pre">OrderedQueue.load_state_dict()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen.cumulative_explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.cumulative_explained_variance_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen.explained_variance_ratio"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.explained_variance_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen.forward"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.forward()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen.project"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.project()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.StreamingTopKEigen.reconstruct"><code class="docutils literal notranslate"><span class="pre">StreamingTopKEigen.reconstruct()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.utils.UnsortedQueue"><code class="docutils literal notranslate"><span class="pre">UnsortedQueue</span></code></a><ul class="nav section-nav flex-column">
