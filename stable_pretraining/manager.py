@@ -1,5 +1,4 @@
 import copy
-import json
 import signal
 from datetime import timedelta
 from pathlib import Path
@@ -8,7 +7,6 @@ from typing import Union
 import hydra
 import lightning
 import lightning as pl
-import pandas as pd
 import submitit
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities.rank_zero import rank_zero_only
@@ -96,59 +94,6 @@ class Manager(submitit.helpers.Checkpointable):
             ckpt_path = Path(ckpt_path).with_suffix(".ckpt").resolve()
         self.ckpt_path = ckpt_path
 
-    @rank_zero_only
-    def init_and_sync_wandb(self):
-        """Handles some utilities for WandB."""
-        if not isinstance(
-            self._trainer.logger, lightning.pytorch.loggers.wandb.WandbLogger
-        ):
-            return
-        logging.info("📈📈📈 Using Wandb 📈📈📈")
-        exp = self._trainer.logger.experiment
-
-        if exp.offline:
-            previous_run = self._wandb_previous_dir()
-            logging.info(f"\t\tFound a previous run ({previous_run}), reusing config")
-            with open(previous_run / "files/wandb-config.json", "r") as f:
-                last_config = json.load(f)
-            # at most last_config has an extra `ckpt_path`
-            exp.config.update(last_config)
-            logging.info("\t\treloaded!")
-        elif WANDB_AVAILABLE and wandb.run and len(wandb.config.keys()):
-            logging.info("\t\ta Wandb™ config is provided, not uploading Hydra's:")
-        else:
-            logging.info("\tWandb's config is empty, trying to use Hydra's 📤")
-            config = {}
-            if isinstance(self.trainer, dict):
-                config["trainer"] = OmegaConf.to_container(self.trainer, resolve=True)
-            if isinstance(self.module, dict):
-                config["module"] = OmegaConf.to_container(self.module, resolve=True)
-            if isinstance(self.data, dict):
-                config["data"] = OmegaConf.to_container(self.data, resolve=True)
-            if not config:
-                logging.info(
-                    "\tEverything already instantiated, nothing is added to config!"
-                )
-                return
-            config = pd.json_normalize(config, sep=".")
-            config = config.to_dict(orient="records")[0]
-            while True:
-                logging.info("\t\tflattening one level of Hydra's config) 📤")
-                valid = True
-                for k in list(config.keys()):
-                    if type(config[k]) is list:
-                        valid = False
-                        for i, j in enumerate(config[k]):
-                            config[f"{k}.{i}"] = j
-                        del config[k]
-                config = pd.json_normalize(config, sep=".")
-                config = config.to_dict(orient="records")[0]
-                if valid:
-                    break
-            logging.info(f"\tFinal Hydra's config has {len(config)} items) 📤")
-            if WANDB_AVAILABLE and wandb.run:
-                wandb.config.update(config)
-
     @property
     def instantiated_module(self):
         if not isinstance(self.module, pl.LightningModule):
@@ -227,7 +172,21 @@ class Manager(submitit.helpers.Checkpointable):
                 )
                 self._trainer.callbacks.append(TeacherStudentCallback())
 
-        self.init_and_sync_wandb()
+        # Inject Hydra config into WandbCallback so it can sync to wandb
+        from .callbacks.wandb_lifecycle import WandbCallback
+
+        for cb in self._trainer.callbacks:
+            if isinstance(cb, WandbCallback):
+                hydra_config = {}
+                if isinstance(self.trainer, DictConfig):
+                    hydra_config["trainer"] = self.trainer
+                if isinstance(self.module, DictConfig):
+                    hydra_config["module"] = self.module
+                if isinstance(self.data, DictConfig):
+                    hydra_config["data"] = self.data
+                cb._hydra_config = hydra_config if hydra_config else None
+                break
+
         print_logger_info(self._trainer.logger)
         print_signal_info()
 
@@ -260,7 +219,6 @@ class Manager(submitit.helpers.Checkpointable):
             datamodule=self.instantiated_data,
             ckpt_path=ckpt_path,
         )
-        self._dump_wandb_data()
 
     def validate(self):
         logging.info("📣📣📣 CALLING trainer.validate 📣📣📣")
@@ -268,7 +226,6 @@ class Manager(submitit.helpers.Checkpointable):
         self._trainer.validate(
             self.instantiated_module, datamodule=self.instantiated_data
         )
-        self._dump_wandb_data()
 
     def predict(self):
         logging.info("📣📣📣 CALLING trainer.predict 📣📣📣")
@@ -276,57 +233,11 @@ class Manager(submitit.helpers.Checkpointable):
         self._trainer.predict(
             self.instantiated_module, datamodule=self.instantiated_data
         )
-        self._dump_wandb_data()
 
     def test(self):
         logging.info("📣📣📣 CALLING trainer.test 📣📣📣")
 
         self._trainer.test(self.instantiated_module, datamodule=self.instantiated_data)
-        self._dump_wandb_data()
-        # wandb.finish()
-        # logging.info(f"closing wandb 🗑️")
-        # cfg = wandb.run.config.as_dict()
-        # return cfg, module.info
-
-    @rank_zero_only
-    def _dump_wandb_data(self):
-        if not WANDB_AVAILABLE or wandb.run is None or not wandb.run.offline:
-            return
-
-        # Print the summary
-        logging.info("Summary:")
-        summary_dict = wandb.run.summary._as_dict()
-        logging.info(json.dumps(summary_dict, indent=2))
-        fname = Path(wandb.run.dir) / "wandb-summary.json"
-        if fname.is_file():
-            raise RuntimeError(f"Summary file already exists {fname}")
-        with open(fname, "w") as f:
-            json.dump(summary_dict, f)
-        logging.info(f"\t● Saved summary at {fname} ✅")
-        fname = Path(wandb.run.dir) / "wandb-config.json"
-        if fname.is_file():
-            raise RuntimeError(f"Config file already exists {fname}")
-        with open(fname, "w") as f:
-            json.dump(wandb.run.config.as_dict(), f)
-        logging.info(f"\t● Saved config at {fname} ✅")
-
-    def _wandb_previous_dir(self):
-        if not WANDB_AVAILABLE or not wandb.run:
-            return None
-        # to remove the /files
-        path = Path(wandb.run.dir).parent
-        logging.info(f"\t\t● fetching previous Wandb runs from {path.parent} ✅")
-        # this will be of the form
-        # offline-run-20250413_025716-p8117tgi
-        runs = list(path.parent.glob(f"offline-run-*-{wandb.run.id}"))
-        logging.info(f"\t\t● found {len(runs)} run(s):")
-        runs = sorted(runs)
-        for run in runs:
-            logging.info(f"\t\t\t● {run.name}")
-        assert runs[-1] == path
-        if len(runs) == 1:
-            return None
-        return runs[-2]
 
     def save_checkpoint(
         self, path: str = None, upload_wandb: bool = False, verbose=True
@@ -376,7 +287,9 @@ class Manager(submitit.helpers.Checkpointable):
                 wandb.run.config.update({"ckpt_path": str(ckpt_path.resolve())})
             print("\t● `ckpt_path` added to Wandb config ✅", flush=True)
         # for offline case
-        self._dump_wandb_data()
+        from .callbacks.wandb_lifecycle import WandbCallback
+
+        WandbCallback._dump_wandb_data()
 
     @staticmethod
     def _matches_template(ckpt_name: str, callback: ModelCheckpoint) -> bool:

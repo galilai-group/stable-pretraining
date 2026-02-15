@@ -48,6 +48,7 @@ from .callbacks import (
     RankMe,
     TeacherStudentCallback,
     TrainerInfo,
+    WandbCallback,
 )
 from .callbacks.registry import log, log_dict
 from .manager import Manager
@@ -77,6 +78,7 @@ __all__ = [
     "LiDAR",
     "ImageRetrieval",
     "TeacherStudentCallback",
+    "WandbCallback",
     # Modules
     "utils",
     "data",

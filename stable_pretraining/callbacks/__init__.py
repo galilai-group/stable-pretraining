@@ -1,8 +1,8 @@
 from .checkpoint_sklearn import (
     SklearnCheckpoint,
-    WandbCheckpoint,
     StrictCheckpointCallback,
 )
+from .wandb_lifecycle import WandbCallback, WandbCheckpoint
 from .image_retrieval import ImageRetrieval
 from .knn import OnlineKNN
 from .latent_viz import LatentViz
@@ -26,6 +26,7 @@ from .unused_parameters import LogUnusedParametersOnce
 __all__ = [
     OnlineProbe,
     SklearnCheckpoint,
+    WandbCallback,
     WandbCheckpoint,
     OnlineKNN,
     LatentViz,
