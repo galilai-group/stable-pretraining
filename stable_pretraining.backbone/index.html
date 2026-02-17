@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.backbone package &#8212; stable-pretraining 0.1.dev1+g5cfd909ce documentation</title>
+    <title>stable_pretraining.backbone package &#8212; stable-pretraining 0.1.dev1+gc29a88fe9 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../_static/documentation_options.js?v=bbd4c8a0"></script>
+    <script src="../_static/documentation_options.js?v=fe4698cf"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -134,7 +134,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g5cfd909ce documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gc29a88fe9 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -429,6 +429,18 @@ document.write(`
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.backbone.patch_masking">stable_pretraining.backbone.patch_masking module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput"><code class="docutils literal notranslate"><span class="pre">IJEPAMaskOutput</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.context_idx"><code class="docutils literal notranslate"><span class="pre">IJEPAMaskOutput.context_idx</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.mask"><code class="docutils literal notranslate"><span class="pre">IJEPAMaskOutput.mask</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.target_block_masks"><code class="docutils literal notranslate"><span class="pre">IJEPAMaskOutput.target_block_masks</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.target_idx"><code class="docutils literal notranslate"><span class="pre">IJEPAMaskOutput.target_idx</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMasking"><code class="docutils literal notranslate"><span class="pre">IJEPAMasking</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMasking.extra_repr"><code class="docutils literal notranslate"><span class="pre">IJEPAMasking.extra_repr()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMasking.forward"><code class="docutils literal notranslate"><span class="pre">IJEPAMasking.forward()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput"><code class="docutils literal notranslate"><span class="pre">MaskingOutput</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput.ids_keep"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.ids_keep</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput.ids_restore"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.ids_restore</span></code></a></li>
@@ -504,7 +516,7 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EmbeddingOutput.hidden_states"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.hidden_states</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.hidden_states</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EmbeddingOutput.keys"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.keys()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id6"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.last_hidden_state</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id8"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.last_hidden_state</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EvalOnly"><code class="docutils literal notranslate"><span class="pre">EvalOnly</span></code></a><ul class="nav section-nav flex-column">
@@ -942,6 +954,132 @@ Default is <code class="docutils literal notranslate"><span class="pre">None</sp
 <section id="module-stable_pretraining.backbone.patch_masking">
 <span id="stable-pretraining-backbone-patch-masking-module"></span><h2>stable_pretraining.backbone.patch_masking module<a class="headerlink" href="#module-stable_pretraining.backbone.patch_masking" title="Link to this heading">#</a></h2>
 <p>Patch masking strategies for masked image modeling.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.IJEPAMaskOutput">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.patch_masking.</span></span><span class="sig-name descname"><span class="pre">IJEPAMaskOutput</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_block_masks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/patch_masking/#IJEPAMaskOutput"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Output from I-JEPA masking operation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context_idx</strong> – Indices of context (visible) patches [B, N_ctx]</p></li>
+<li><p><strong>target_idx</strong> – Combined indices of all target patches [B, N_tgt]</p></li>
+<li><p><strong>target_block_masks</strong> – Per-block boolean masks [M x [B, N]], True = in this block</p></li>
+<li><p><strong>mask</strong> – Full mask where 1 = target, 0 = context [B, N]</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.context_idx">
+<span class="sig-name descname"><span class="pre">context_idx</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.context_idx" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.mask">
+<span class="sig-name descname"><span class="pre">mask</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.mask" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.target_block_masks">
+<span class="sig-name descname"><span class="pre">target_block_masks</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.target_block_masks" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.target_idx">
+<span class="sig-name descname"><span class="pre">target_idx</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.target_idx" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.IJEPAMasking">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.patch_masking.</span></span><span class="sig-name descname"><span class="pre">IJEPAMasking</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_targets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(0.15,</span> <span class="pre">0.2)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_aspect_ratio</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(0.75,</span> <span class="pre">1.5)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context_scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(0.85,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_target_overlap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/patch_masking/#IJEPAMasking"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.IJEPAMasking" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
+<p>I-JEPA multi-block masking for joint-embedding predictive architecture.</p>
+<p>Samples M non-overlapping target blocks and a context region that excludes
+all targets. This is the key masking strategy from I-JEPA <a class="footnote-reference brackets" href="#id7" id="id6" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.
+Strategy:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>Sample M target blocks with specified scale and aspect ratio</p></li>
+<li><p>Context = all patches NOT in any target block</p></li>
+<li><p>Optionally subsample context to specified ratio</p></li>
+</ol>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_targets</strong> – Number of target blocks to sample (default: 4)</p></li>
+<li><p><strong>target_scale</strong> – (min, max) fraction of patches per target block</p></li>
+<li><p><strong>target_aspect_ratio</strong> – (min, max) aspect ratio of target blocks</p></li>
+<li><p><strong>context_scale</strong> – (min, max) fraction of non-target patches to keep as context</p></li>
+<li><p><strong>allow_target_overlap</strong> – Allow target blocks to overlap (default: False)</p></li>
+</ul>
+</dd>
+</dl>
+<dl>
+<dt>Example::</dt><dd><dl class="simple">
+<dt>masking = IJEPAMasking(</dt><dd><p>num_targets=4,
+target_scale=(0.15, 0.2),
+target_aspect_ratio=(0.75, 1.5),
+context_scale=(0.85, 1.0),</p>
+</dd>
+</dl>
+<p>)</p>
+<p># x: patch embeddings [B, N, D]
+output = masking(x, grid_h=14, grid_w=14)</p>
+<dl class="simple">
+<dt>context_patches = x.gather(</dt><dd><p>1, output.context_idx.unsqueeze(-1).expand(-1, -1, D)</p>
+</dd>
+</dl>
+<p>)
+target_patches = x.gather(1, output.target_idx.unsqueeze(-1).expand(-1, -1, D))</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id7" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
+<span class="backrefs">(<a role="doc-backlink" href="#id6">1</a>,<a role="doc-backlink" href="#id9">2</a>)</span>
+<p>Assran et al. “Self-Supervised Learning from Images with a
+Joint-Embedding Predictive Architecture.” CVPR 2023.</p>
+</aside>
+</aside>
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.IJEPAMasking.extra_repr">
+<span class="sig-name descname"><span class="pre">extra_repr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/patch_masking/#IJEPAMasking.extra_repr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.IJEPAMasking.extra_repr" title="Link to this definition">#</a></dt>
+<dd><p>Return the extra representation of the module.</p>
+<p>To print customized extra information, you should re-implement
+this method in your own modules. Both single-line and multi-line
+strings are acceptable.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.IJEPAMasking.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_h</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput" title="stable_pretraining.backbone.patch_masking.IJEPAMaskOutput"><span class="pre">IJEPAMaskOutput</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/patch_masking/#IJEPAMasking.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.IJEPAMasking.forward" title="Link to this definition">#</a></dt>
+<dd><p>Apply I-JEPA masking.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – Patch embeddings [B, N, D] where N = grid_h * grid_w</p></li>
+<li><p><strong>grid_h</strong> – Height of patch grid</p></li>
+<li><p><strong>grid_w</strong> – Width of patch grid</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>IJEPAMaskOutput with context/target information</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Always returns exactly <cite>num_targets</cite> block masks. If overlap prevention
+makes it impossible to fit all blocks, some masks will be empty (all False).
+The combined <cite>target_idx</cite> only includes patches from non-empty blocks.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.MaskingOutput">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.patch_masking.</span></span><span class="sig-name descname"><span class="pre">MaskingOutput</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ids_restore</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ids_keep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/patch_masking/#MaskingOutput"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.MaskingOutput" title="Link to this definition">#</a></dt>
@@ -1747,8 +1885,8 @@ The cache will be rebuilt as needed during forward passes.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id6">
-<span class="sig-name descname"><span class="pre">last_hidden_state</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><a class="headerlink" href="#id6" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">last_hidden_state</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><a class="headerlink" href="#id8" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -2566,7 +2704,7 @@ registers is [B, num_registers, output_dim].</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.vit.</span></span><span class="sig-name descname"><span class="pre">MAEDecoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">embed_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">768</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoder_embed_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">512</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">768</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_patches</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">196</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_heads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp_ratio</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos_embed_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'sincos_1d'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'sincos_2d'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'learned'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'sincos_2d'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_path_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#MAEDecoder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.MAEDecoder" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
 <p>MAE-style Vision Transformer Decoder using FlexibleTransformer.</p>
-<p>Implements the decoder component of Masked Autoencoders (MAE) <a href="#id8"><span class="problematic" id="id7">[1]_</span></a> for
+<p>Implements the decoder component of Masked Autoencoders (MAE) <a class="footnote-reference brackets" href="#id7" id="id9" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> for
 self-supervised visual representation learning. The decoder reconstructs
 masked patches from visible patch embeddings using joint self-attention,
 where visible tokens and learnable mask tokens attend to each other.
@@ -3074,6 +3212,18 @@ True = blocked, False = allowed.</p></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.backbone.patch_masking">stable_pretraining.backbone.patch_masking module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput"><code class="docutils literal notranslate"><span class="pre">IJEPAMaskOutput</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.context_idx"><code class="docutils literal notranslate"><span class="pre">IJEPAMaskOutput.context_idx</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.mask"><code class="docutils literal notranslate"><span class="pre">IJEPAMaskOutput.mask</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.target_block_masks"><code class="docutils literal notranslate"><span class="pre">IJEPAMaskOutput.target_block_masks</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput.target_idx"><code class="docutils literal notranslate"><span class="pre">IJEPAMaskOutput.target_idx</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMasking"><code class="docutils literal notranslate"><span class="pre">IJEPAMasking</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMasking.extra_repr"><code class="docutils literal notranslate"><span class="pre">IJEPAMasking.extra_repr()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.IJEPAMasking.forward"><code class="docutils literal notranslate"><span class="pre">IJEPAMasking.forward()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput"><code class="docutils literal notranslate"><span class="pre">MaskingOutput</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput.ids_keep"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.ids_keep</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput.ids_restore"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.ids_restore</span></code></a></li>
@@ -3149,7 +3299,7 @@ True = blocked, False = allowed.</p></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EmbeddingOutput.hidden_states"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.hidden_states</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.hidden_states</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EmbeddingOutput.keys"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.keys()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id6"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.last_hidden_state</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id8"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.last_hidden_state</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EvalOnly"><code class="docutils literal notranslate"><span class="pre">EvalOnly</span></code></a><ul class="nav section-nav flex-column">

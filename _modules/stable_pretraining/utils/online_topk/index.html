@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.utils.online_topk &#8212; stable-pretraining 0.1.dev1+g5cfd909ce documentation</title>
+    <title>stable_pretraining.utils.online_topk &#8212; stable-pretraining 0.1.dev1+gc29a88fe9 documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../../../_static/documentation_options.js?v=bbd4c8a0"></script>
+    <script src="../../../../_static/documentation_options.js?v=fe4698cf"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g5cfd909ce documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gc29a88fe9 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -344,6 +344,7 @@ document.write(`
   <h1>Source code for stable_pretraining.utils.online_topk</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.distributed</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dist</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
 
 
@@ -357,6 +358,10 @@ document.write(`
 <span class="sd">    tuning - learning rates and update schedules are derived automatically</span>
 <span class="sd">    from theoretical considerations.</span>
 
+<span class="sd">    **DDP Support**: When used with DistributedDataParallel, this module</span>
+<span class="sd">    automatically aggregates statistics across all processes using efficient</span>
+<span class="sd">    all-reduce operations. No data gathering to a single GPU is performed.</span>
+
 <span class="sd">    Key Features:</span>
 <span class="sd">    -------------</span>
 <span class="sd">    - **No hyperparameters**: Learning rates adapt based on sample count and</span>
@@ -364,6 +369,7 @@ document.write(`
 <span class="sd">    - **Memory efficient**: O(dk) storage, no need to store covariance matrix.</span>
 <span class="sd">    - **Numerically stable**: QR orthogonalization + Welford&#39;s algorithm.</span>
 <span class="sd">    - **Fast**: Single-pass update per batch, optimized for GPU.</span>
+<span class="sd">    - **DDP-aware**: Automatically synchronizes across processes when distributed.</span>
 
 <span class="sd">    Mathematical Background:</span>
 <span class="sd">    ------------------------</span>
@@ -405,22 +411,16 @@ document.write(`
 <span class="sd">    &gt;&gt;&gt; print(f&quot;Top eigenvalue: {estimator.eigenvalues[0]:.4f}&quot;)</span>
 <span class="sd">    &gt;&gt;&gt; print(f&quot;Variance explained: {estimator.explained_variance_ratio.sum():.2%}&quot;)</span>
 
-<span class="sd">    Integration with Neural Networks:</span>
-<span class="sd">    ---------------------------------</span>
-<span class="sd">    &gt;&gt;&gt; class AutoEncoder(nn.Module):</span>
-<span class="sd">    ...     def __init__(self, dim, latent_dim):</span>
-<span class="sd">    ...         super().__init__()</span>
-<span class="sd">    ...         self.encoder = nn.Linear(dim, latent_dim)</span>
-<span class="sd">    ...         self.decoder = nn.Linear(latent_dim, dim)</span>
-<span class="sd">    ...         # Track principal components of encoder output</span>
-<span class="sd">    ...         self.pca = StreamingTopKEigen(latent_dim, k=8)</span>
-<span class="sd">    ...</span>
-<span class="sd">    ...     def forward(self, x):</span>
-<span class="sd">    ...         z = self.encoder(x)</span>
-<span class="sd">    ...         # Update PCA estimates (no grad needed)</span>
-<span class="sd">    ...         with torch.no_grad():</span>
-<span class="sd">    ...             self.pca(z)</span>
-<span class="sd">    ...         return self.decoder(z)</span>
+<span class="sd">    DDP Usage:</span>
+<span class="sd">    ----------</span>
+<span class="sd">    &gt;&gt;&gt; # Works automatically with DDP - no changes needed!</span>
+<span class="sd">    &gt;&gt;&gt; model = MyModel()</span>
+<span class="sd">    &gt;&gt;&gt; model.pca = StreamingTopKEigen(dim=256, k=16)</span>
+<span class="sd">    &gt;&gt;&gt; model = DDP(model, device_ids=[local_rank])</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; for batch in dataloader:</span>
+<span class="sd">    ...     # Statistics are automatically aggregated across all GPUs</span>
+<span class="sd">    ...     eigenvalues, eigenvectors = model.module.pca(features)</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -433,6 +433,9 @@ document.write(`
 <span class="sd">    dtype : torch.dtype, optional</span>
 <span class="sd">        Data type for computations. Default is float32.</span>
 <span class="sd">        Use float64 for higher precision if needed.</span>
+<span class="sd">    sync_distributed : bool, optional</span>
+<span class="sd">        Whether to synchronize across processes in distributed training.</span>
+<span class="sd">        Default is True. Set to False if you want per-GPU estimates.</span>
 
 <span class="sd">    Attributes:</span>
 <span class="sd">    ----------</span>
@@ -458,6 +461,7 @@ document.write(`
 <span class="sd">      does not participate in gradient computation.</span>
 <span class="sd">    - For very small batches (&lt; k samples), consider accumulating batches</span>
 <span class="sd">      before calling forward for better initialization.</span>
+<span class="sd">    - In DDP mode, all processes will have identical state after each update.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">    --------</span>
@@ -475,6 +479,7 @@ document.write(`
         <span class="n">k</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">device</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+        <span class="n">sync_distributed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the streaming eigenvector estimator.</span>
 
@@ -488,6 +493,8 @@ document.write(`
 <span class="sd">            Computation device (cpu/cuda).</span>
 <span class="sd">        dtype : torch.dtype, optional</span>
 <span class="sd">            Tensor dtype, default float32.</span>
+<span class="sd">        sync_distributed : bool, optional</span>
+<span class="sd">            Whether to sync across distributed processes. Default True.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
@@ -504,20 +511,19 @@ document.write(`
 
         <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">=</span> <span class="n">dim</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="n">k</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sync_distributed</span> <span class="o">=</span> <span class="n">sync_distributed</span>
 
         <span class="c1"># ---------------------------------------------------------------------</span>
         <span class="c1"># State buffers (will be saved with state_dict, moved with .to())</span>
         <span class="c1"># ---------------------------------------------------------------------</span>
 
         <span class="c1"># Eigenvector matrix: columns are eigenvectors, shape (dim, k)</span>
-        <span class="c1"># Initialized properly on first forward pass</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;V&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">))</span>
 
         <span class="c1"># Running mean estimate, shape (dim,)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">))</span>
 
         <span class="c1"># Eigenvalue estimates (variance along each principal direction)</span>
-        <span class="c1"># Initialized to 1.0 to avoid division by zero before first update</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;eigenvalues&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">))</span>
 
         <span class="c1"># Total sample count (as float for smooth division)</span>
@@ -527,53 +533,146 @@ document.write(`
         <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;initialized&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">))</span>
 
         <span class="c1"># Total variance estimate (trace of covariance matrix)</span>
-        <span class="c1"># Used for learning rate scaling to achieve scale invariance</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span>
             <span class="s2">&quot;total_variance&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
         <span class="p">)</span>
 
     <span class="c1"># =========================================================================</span>
-    <span class="c1"># Initialization from First Batch</span>
+    <span class="c1"># Distributed Utilities</span>
+    <span class="c1"># =========================================================================</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_is_distributed</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if we should use distributed operations.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sync_distributed</span> <span class="ow">and</span> <span class="n">dist</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="ow">and</span> <span class="n">dist</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">()</span>
+
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_all_reduce_sum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;All-reduce tensor with SUM operation across processes.</span>
+
+<span class="sd">        This is the core primitive for distributed aggregation.</span>
+<span class="sd">        Each process contributes its local tensor, and all processes</span>
+<span class="sd">        receive the sum.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tensor : torch.Tensor</span>
+<span class="sd">            Local tensor to aggregate.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        -------</span>
+<span class="sd">        torch.Tensor</span>
+<span class="sd">            Sum across all processes (in-place modification of input).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_distributed</span><span class="p">():</span>
+            <span class="n">dist</span><span class="o">.</span><span class="n">all_reduce</span><span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">dist</span><span class="o">.</span><span class="n">ReduceOp</span><span class="o">.</span><span class="n">SUM</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tensor</span>
+
+    <span class="c1"># =========================================================================</span>
+    <span class="c1"># Initialization from First Batch (DDP-aware)</span>
     <span class="c1"># =========================================================================</span>
 
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_init_from_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize eigenvector estimates from the first batch using SVD.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize eigenvector estimates from the first batch.</span>
 
-<span class="sd">        Fixed to properly handle batch_size &lt; k case.</span>
+<span class="sd">        In distributed mode, aggregates statistics across all processes</span>
+<span class="sd">        before computing eigendecomposition. Uses covariance estimation</span>
+<span class="sd">        rather than gathering raw data for memory efficiency.</span>
+
+<span class="sd">        Strategy for DDP:</span>
+<span class="sd">        1. Aggregate mean across processes via all-reduce</span>
+<span class="sd">        2. Aggregate scatter matrix (X^T X) across processes via all-reduce</span>
+<span class="sd">        3. Compute covariance from aggregated statistics</span>
+<span class="sd">        4. Eigendecompose covariance to get initial eigenvectors</span>
+
+<span class="sd">        This avoids gathering O(n*d) data to a single GPU, instead</span>
+<span class="sd">        only communicating O(d^2) covariance statistics.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">batch_size</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">local_batch_size</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-        <span class="c1"># Step 1: Compute batch mean</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
-        <span class="n">x_centered</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span>
+        <span class="c1"># ---------------------------------------------------------------------</span>
+        <span class="c1"># Step 1: Compute global batch size and mean</span>
+        <span class="c1"># ---------------------------------------------------------------------</span>
+        <span class="n">local_sum</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># (dim,)</span>
+        <span class="n">local_count</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">local_batch_size</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="p">)</span>
 
-        <span class="c1"># Step 2: Estimate total variance</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">total_variance</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">x_centered</span><span class="o">.</span><span class="n">var</span><span class="p">()</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">)</span>
+        <span class="c1"># Aggregate across processes</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_distributed</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_all_reduce_sum</span><span class="p">(</span><span class="n">local_sum</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_all_reduce_sum</span><span class="p">(</span><span class="n">local_count</span><span class="p">)</span>
 
-        <span class="c1"># Step 3: Truncated SVD</span>
-        <span class="n">U</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">Vh</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">x_centered</span><span class="p">,</span> <span class="n">full_matrices</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">global_batch_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">local_count</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+        <span class="n">global_mean</span> <span class="o">=</span> <span class="n">local_sum</span> <span class="o">/</span> <span class="n">local_count</span>
 
-        <span class="c1"># Number of valid components from SVD</span>
-        <span class="c1"># SVD of (n, d) matrix gives at most min(n, d) singular values</span>
-        <span class="n">k_available</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">S</span><span class="p">))</span>
+        <span class="c1"># Set mean</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">global_mean</span><span class="p">)</span>
 
-        <span class="c1"># Only use non-zero singular values</span>
-        <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">S</span> <span class="o">&gt;</span> <span class="mf">1e-10</span>
-        <span class="n">k_valid</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">k_available</span><span class="p">,</span> <span class="n">valid_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+        <span class="c1"># Center local data with global mean</span>
+        <span class="n">x_centered</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">global_mean</span>
+
+        <span class="c1"># ---------------------------------------------------------------------</span>
+        <span class="c1"># Step 2: Compute global covariance via scatter matrix</span>
+        <span class="c1"># ---------------------------------------------------------------------</span>
+        <span class="c1"># Local scatter matrix: X^T X (unnormalized covariance contribution)</span>
+        <span class="n">local_scatter</span> <span class="o">=</span> <span class="n">x_centered</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">x_centered</span>  <span class="c1"># (dim, dim)</span>
+
+        <span class="c1"># Local sum of squared norms for total variance</span>
+        <span class="n">local_sq_norm_sum</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_centered</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="c1"># Aggregate across processes</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_distributed</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_all_reduce_sum</span><span class="p">(</span><span class="n">local_scatter</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_all_reduce_sum</span><span class="p">(</span><span class="n">local_sq_norm_sum</span><span class="p">)</span>
+
+        <span class="c1"># Global covariance estimate</span>
+        <span class="n">global_cov</span> <span class="o">=</span> <span class="n">local_scatter</span> <span class="o">/</span> <span class="n">local_count</span>
+
+        <span class="c1"># Global total variance: trace(Cov) = E[||x - μ||²]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_variance</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">local_sq_norm_sum</span> <span class="o">/</span> <span class="n">local_count</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">)</span>
+
+        <span class="c1"># ---------------------------------------------------------------------</span>
+        <span class="c1"># Step 3: Eigendecomposition of covariance</span>
+        <span class="c1"># ---------------------------------------------------------------------</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">eigenvalues</span><span class="p">,</span> <span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigh</span><span class="p">(</span><span class="n">global_cov</span><span class="p">)</span>
+            <span class="c1"># Reverse to get descending order (eigh returns ascending)</span>
+            <span class="n">eigenvalues</span> <span class="o">=</span> <span class="n">eigenvalues</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">eigenvectors</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+            <span class="c1"># Fallback to SVD if eigh fails</span>
+            <span class="n">U</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">Vh</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">global_cov</span><span class="p">,</span> <span class="n">full_matrices</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">eigenvalues</span> <span class="o">=</span> <span class="n">S</span>
+            <span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">U</span>
+
+        <span class="c1"># Take top-k</span>
+        <span class="n">k_valid</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">eigenvalues</span><span class="p">))</span>
+
+        <span class="c1"># Filter out near-zero eigenvalues</span>
+        <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">eigenvalues</span><span class="p">[:</span><span class="n">k_valid</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">1e-10</span>
+        <span class="n">k_valid</span> <span class="o">=</span> <span class="n">valid_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">k_valid</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="p">:</span><span class="n">k_valid</span><span class="p">]</span> <span class="o">=</span> <span class="n">Vh</span><span class="p">[:</span><span class="n">k_valid</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">eigenvalues</span><span class="p">[:</span><span class="n">k_valid</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">S</span><span class="p">[:</span><span class="n">k_valid</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">batch_size</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="p">:</span><span class="n">k_valid</span><span class="p">]</span> <span class="o">=</span> <span class="n">eigenvectors</span><span class="p">[:,</span> <span class="p">:</span><span class="n">k_valid</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eigenvalues</span><span class="p">[:</span><span class="n">k_valid</span><span class="p">]</span> <span class="o">=</span> <span class="n">eigenvalues</span><span class="p">[:</span><span class="n">k_valid</span><span class="p">]</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mf">1e-10</span><span class="p">)</span>
 
+        <span class="c1"># ---------------------------------------------------------------------</span>
         <span class="c1"># Step 4: Handle remaining components (if k_valid &lt; k)</span>
+        <span class="c1"># ---------------------------------------------------------------------</span>
         <span class="k">if</span> <span class="n">k_valid</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">:</span>
             <span class="n">remaining_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">-</span> <span class="n">k_valid</span>
 
-            <span class="c1"># Generate random orthonormal vectors for remaining components</span>
-            <span class="c1"># Use QR on random matrix for numerical stability</span>
+            <span class="c1"># Use deterministic seed for consistency across ranks</span>
+            <span class="n">generator</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Generator</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">generator</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="mi">42</span> <span class="o">+</span> <span class="n">global_batch_size</span><span class="p">)</span>
+
             <span class="n">random_vecs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">remaining_count</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span>
+                <span class="n">remaining_count</span><span class="p">,</span>
+                <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                <span class="n">generator</span><span class="o">=</span><span class="n">generator</span><span class="p">,</span>
             <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">k_valid</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -584,20 +683,16 @@ document.write(`
             <span class="c1"># QR decomposition to get orthonormal vectors</span>
             <span class="n">Q</span><span class="p">,</span> <span class="n">R</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">qr</span><span class="p">(</span><span class="n">random_vecs</span><span class="p">)</span>
 
-            <span class="c1"># Ensure we have the right number of columns</span>
-            <span class="c1"># (QR might return fewer if random_vecs was rank-deficient)</span>
             <span class="n">n_from_qr</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">Q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">remaining_count</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="n">k_valid</span> <span class="p">:</span> <span class="n">k_valid</span> <span class="o">+</span> <span class="n">n_from_qr</span><span class="p">]</span> <span class="o">=</span> <span class="n">Q</span><span class="p">[:,</span> <span class="p">:</span><span class="n">n_from_qr</span><span class="p">]</span>
 
-            <span class="c1"># If still not enough (extremely rare), fill with random unit vectors</span>
-            <span class="k">if</span> <span class="n">k_valid</span> <span class="o">+</span> <span class="n">n_from_qr</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k_valid</span> <span class="o">+</span> <span class="n">n_from_qr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">):</span>
-                    <span class="n">v</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-                    <span class="c1"># Orthogonalize against all previous</span>
-                    <span class="n">v</span> <span class="o">=</span> <span class="n">v</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="p">:</span><span class="n">i</span><span class="p">]</span> <span class="o">@</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="p">:</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">v</span><span class="p">)</span>
-                    <span class="n">norm</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">norm</span><span class="p">()</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span> <span class="o">/</span> <span class="n">norm</span> <span class="k">if</span> <span class="n">norm</span> <span class="o">&gt;</span> <span class="mf">1e-8</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn_like</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">norm</span><span class="p">()</span>
+            <span class="c1"># Handle edge case</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k_valid</span> <span class="o">+</span> <span class="n">n_from_qr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">):</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">v</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="p">:</span><span class="n">i</span><span class="p">]</span> <span class="o">@</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="p">:</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">v</span><span class="p">)</span>
+                <span class="n">norm</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">norm</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span> <span class="o">/</span> <span class="n">norm</span> <span class="k">if</span> <span class="n">norm</span> <span class="o">&gt;</span> <span class="mf">1e-8</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn_like</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">norm</span><span class="p">()</span>
 
             <span class="c1"># Set eigenvalues for remaining components</span>
             <span class="k">if</span> <span class="n">k_valid</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -606,7 +701,8 @@ document.write(`
                 <span class="n">min_eigenvalue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_variance</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">eigenvalues</span><span class="p">[</span><span class="n">k_valid</span><span class="p">:]</span> <span class="o">=</span> <span class="n">min_eigenvalue</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">batch_size</span><span class="p">))</span>
+        <span class="c1"># Update sample count and flag</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">global_batch_size</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">initialized</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="c1"># =========================================================================</span>
@@ -625,62 +721,30 @@ document.write(`
 <span class="sd">        - base_lr = 1/√n decays with sample count</span>
 <span class="sd">        - total_variance / λ_i provides natural gradient scaling</span>
 
-<span class="sd">        Theoretical Motivation:</span>
-<span class="sd">        -----------------------</span>
-
-<span class="sd">        1. **1/√n decay**: This is the optimal rate for streaming estimation.</span>
-<span class="sd">           - Too slow (1/n): High bias, slow adaptation</span>
-<span class="sd">           - Too fast (constant): High variance, no convergence</span>
-<span class="sd">           - Just right (1/√n): Optimal bias-variance tradeoff</span>
-
-<span class="sd">        2. **Per-component scaling by 1/λ_i**: This is &quot;natural gradient&quot; or</span>
-<span class="sd">           &quot;Newton-like&quot; scaling. Components with smaller eigenvalues need</span>
-<span class="sd">           larger learning rates because:</span>
-<span class="sd">           - The gradient magnitude is proportional to λ_i</span>
-<span class="sd">           - Without scaling, small eigenvalue components converge slowly</span>
-<span class="sd">           - This equalizes convergence rates across all components</span>
-
-<span class="sd">        3. **Normalization by total_variance**: Makes the algorithm invariant</span>
-<span class="sd">           to the overall scale of the data.</span>
-
 <span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        torch.Tensor</span>
 <span class="sd">            Learning rates for each component, shape (k,).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Base learning rate: decays as 1/√n</span>
-        <span class="c1"># The +1 prevents division by zero and smooths early updates</span>
         <span class="n">base_lr</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span>
 
-        <span class="c1"># Per-component scaling by inverse eigenvalue</span>
-        <span class="c1"># Clamp eigenvalues to avoid division by very small numbers</span>
-        <span class="c1"># Minimum is set relative to total variance for scale invariance</span>
         <span class="n">min_eigenvalue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_variance</span> <span class="o">*</span> <span class="mf">1e-6</span>
         <span class="n">lambda_safe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eigenvalues</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="n">min_eigenvalue</span><span class="p">)</span>
 
-        <span class="c1"># Natural gradient scaling: larger lr for smaller eigenvalues</span>
-        <span class="c1"># Normalized by total variance for scale invariance</span>
         <span class="n">lr_per_component</span> <span class="o">=</span> <span class="n">base_lr</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_variance</span> <span class="o">/</span> <span class="n">lambda_safe</span><span class="p">)</span>
 
-        <span class="c1"># Clamp to reasonable range to prevent instability</span>
-        <span class="c1"># - Min 0.001: Ensures some update even for dominant components</span>
-        <span class="c1"># - Max 1.0: Prevents overshooting</span>
         <span class="k">return</span> <span class="n">lr_per_component</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
 
     <span class="c1"># =========================================================================</span>
-    <span class="c1"># Running Mean Update</span>
+    <span class="c1"># Running Mean Update (DDP-aware)</span>
     <span class="c1"># =========================================================================</span>
 
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_update_mean</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_mean</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Update running mean estimate and return centered data.</span>
 
-<span class="sd">        Uses Welford&#39;s algorithm for numerically stable incremental mean:</span>
-
-<span class="sd">            μ_new = (n_old × μ_old + n_batch × μ_batch) / n_total</span>
-
-<span class="sd">        This is mathematically equivalent to computing the mean of all data</span>
-<span class="sd">        seen so far, but doesn&#39;t require storing the data.</span>
+<span class="sd">        In distributed mode, aggregates across all processes to compute</span>
+<span class="sd">        the true global mean.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -689,164 +753,131 @@ document.write(`
 
 <span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
-<span class="sd">        torch.Tensor</span>
-<span class="sd">            Centered data (x - updated_mean), shape (batch_size, dim).</span>
+<span class="sd">        Tuple[torch.Tensor, int]</span>
+<span class="sd">            - Centered data (x - updated_mean), shape (batch_size, dim).</span>
+<span class="sd">            - Global batch size across all processes.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">batch_size</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">n_total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span> <span class="o">+</span> <span class="n">batch_size</span>
+        <span class="n">local_batch_size</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Compute local statistics</span>
+        <span class="n">local_sum</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">local_count</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">local_batch_size</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Aggregate across processes</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_distributed</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_all_reduce_sum</span><span class="p">(</span><span class="n">local_sum</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_all_reduce_sum</span><span class="p">(</span><span class="n">local_count</span><span class="p">)</span>
+
+        <span class="n">global_batch_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">local_count</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+        <span class="n">batch_mean</span> <span class="o">=</span> <span class="n">local_sum</span> <span class="o">/</span> <span class="n">local_count</span>
+
+        <span class="n">n_total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span> <span class="o">+</span> <span class="n">global_batch_size</span>
 
         <span class="c1"># Incremental mean update (Welford&#39;s algorithm)</span>
-        <span class="c1"># μ_new = (n_old/n_total) × μ_old + (n_new/n_total) × μ_batch</span>
-        <span class="n">batch_mean</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span> <span class="o">/</span> <span class="n">n_total</span><span class="p">)</span>  <span class="c1"># Scale old mean</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">batch_mean</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">batch_size</span> <span class="o">/</span> <span class="n">n_total</span><span class="p">)</span>  <span class="c1"># Add batch contribution</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span> <span class="o">/</span> <span class="n">n_total</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">batch_mean</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">global_batch_size</span> <span class="o">/</span> <span class="n">n_total</span><span class="p">)</span>
 
         <span class="c1"># Return centered data using the NEW mean</span>
-        <span class="c1"># (This is important for unbiased covariance estimation)</span>
-        <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">global_batch_size</span>
 
     <span class="c1"># =========================================================================</span>
-    <span class="c1"># Core Update: Sanger&#39;s Rule</span>
+    <span class="c1"># Core Update: Sanger&#39;s Rule (DDP-aware)</span>
     <span class="c1"># =========================================================================</span>
 
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_sanger_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_centered</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_sanger_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_centered</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">global_batch_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform one step of Sanger&#39;s rule (Generalized Hebbian Algorithm).</span>
 
-<span class="sd">        Sanger&#39;s rule is an extension of Oja&#39;s rule for extracting multiple</span>
-<span class="sd">        principal components simultaneously. It uses &quot;deflation&quot; to ensure</span>
-<span class="sd">        that each component captures variance orthogonal to previous ones.</span>
+<span class="sd">        In distributed mode, aggregates gradient statistics across all</span>
+<span class="sd">        processes before applying the update.</span>
 
-<span class="sd">        Update Rule:</span>
-<span class="sd">        ------------</span>
-<span class="sd">        For each component i:</span>
-
-<span class="sd">            Δvᵢ = ηᵢ × E[x̃ × yᵢ - yᵢ × Σⱼ≤ᵢ(yⱼ × vⱼ)]</span>
-
-<span class="sd">        where:</span>
-<span class="sd">        - x̃ = centered data</span>
-<span class="sd">        - yᵢ = vᵢᵀx̃ = projection onto component i</span>
-<span class="sd">        - The sum Σⱼ≤ᵢ provides deflation (removes contribution of earlier components)</span>
-
-<span class="sd">        In matrix form, this becomes:</span>
-
-<span class="sd">            ΔV = diag(η) × (E[x̃ yᵀ] - V × tril(E[y yᵀ]))</span>
-
-<span class="sd">        where tril() extracts the lower triangular part (including diagonal).</span>
-
-<span class="sd">        The Algorithm Step-by-Step:</span>
-<span class="sd">        ---------------------------</span>
-<span class="sd">        1. Compute projections y = Vᵀx̃</span>
-<span class="sd">        2. Compute gradient term: E[x̃ yᵀ]</span>
-<span class="sd">        3. Compute deflation term: V × tril(E[y yᵀ])</span>
-<span class="sd">        4. Apply per-component learning rates</span>
-<span class="sd">        5. Update V</span>
-<span class="sd">        6. Re-orthogonalize using QR decomposition</span>
-<span class="sd">        7. Update eigenvalue estimates</span>
+<span class="sd">        Distributed Aggregation Strategy:</span>
+<span class="sd">        ---------------------------------</span>
+<span class="sd">        Instead of gathering raw data (O(n*d) communication), we aggregate:</span>
+<span class="sd">        - Hebbian term: sum of x̃ yᵀ across processes (O(d*k))</span>
+<span class="sd">        - Projection covariance: sum of y yᵀ across processes (O(k²))</span>
+<span class="sd">        - Eigenvalue statistics: sum of y² across processes (O(k))</span>
+<span class="sd">        - Total variance: sum of ||x̃||² across processes (O(1))</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        x_centered : torch.Tensor</span>
-<span class="sd">            Centered input data, shape (batch_size, dim).</span>
-
-<span class="sd">        Notes:</span>
-<span class="sd">        -----</span>
-<span class="sd">        The QR orthogonalization step is crucial for numerical stability.</span>
-<span class="sd">        Without it, the eigenvectors would slowly drift from orthogonality</span>
-<span class="sd">        due to floating-point errors, eventually collapsing.</span>
+<span class="sd">            Centered input data, shape (local_batch_size, dim).</span>
+<span class="sd">        global_batch_size : int</span>
+<span class="sd">            Total batch size across all processes.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">batch_size</span> <span class="o">=</span> <span class="n">x_centered</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-        <span class="c1"># Get adaptive learning rates (one per component)</span>
-        <span class="n">lr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_adaptive_lr</span><span class="p">()</span>  <span class="c1"># shape: (k,)</span>
+        <span class="c1"># Get adaptive learning rates</span>
+        <span class="n">lr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_adaptive_lr</span><span class="p">()</span>
 
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Step 1: Compute projections</span>
+        <span class="c1"># Step 1: Compute local projections</span>
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># y = Vᵀx̃, shape: (batch_size, k)</span>
-        <span class="c1"># Each column yᵢ contains the projection of all samples onto eigenvector vᵢ</span>
-        <span class="n">proj</span> <span class="o">=</span> <span class="n">x_centered</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span>
+        <span class="n">proj</span> <span class="o">=</span> <span class="n">x_centered</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span>  <span class="c1"># (local_batch_size, k)</span>
 
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Step 2: Compute Hebbian term (what we want to move toward)</span>
+        <span class="c1"># Step 2: Compute local statistics (unnormalized - sums, not means)</span>
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># E[x̃ yᵀ] = (1/n) X̃ᵀ Y, shape: (dim, k)</span>
-        <span class="c1"># This is the correlation between input dimensions and projections</span>
-        <span class="c1"># Points the update in the direction that maximizes variance</span>
-        <span class="n">hebbian_term</span> <span class="o">=</span> <span class="n">x_centered</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">proj</span> <span class="o">/</span> <span class="n">batch_size</span>
+        <span class="n">local_hebbian_sum</span> <span class="o">=</span> <span class="n">x_centered</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">proj</span>  <span class="c1"># (dim, k)</span>
+        <span class="n">local_proj_cov_sum</span> <span class="o">=</span> <span class="n">proj</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">proj</span>  <span class="c1"># (k, k)</span>
+        <span class="n">local_eigenvalue_sum</span> <span class="o">=</span> <span class="p">(</span><span class="n">proj</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># (k,)</span>
+        <span class="n">local_total_var_sum</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_centered</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>  <span class="c1"># scalar</span>
 
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Step 3: Compute deflation term (what we want to move away from)</span>
+        <span class="c1"># Step 3: Aggregate across processes (if distributed)</span>
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># E[y yᵀ] = (1/n) Yᵀ Y, shape: (k, k)</span>
-        <span class="c1"># This is the covariance of the projections</span>
-        <span class="n">proj_cov</span> <span class="o">=</span> <span class="n">proj</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">proj</span> <span class="o">/</span> <span class="n">batch_size</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_distributed</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_all_reduce_sum</span><span class="p">(</span><span class="n">local_hebbian_sum</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_all_reduce_sum</span><span class="p">(</span><span class="n">local_proj_cov_sum</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_all_reduce_sum</span><span class="p">(</span><span class="n">local_eigenvalue_sum</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_all_reduce_sum</span><span class="p">(</span><span class="n">local_total_var_sum</span><span class="p">)</span>
 
-        <span class="c1"># Extract lower triangular (including diagonal)</span>
-        <span class="c1"># The diagonal handles self-normalization</span>
-        <span class="c1"># Below-diagonal handles deflation from earlier components</span>
+        <span class="c1"># ---------------------------------------------------------------------</span>
+        <span class="c1"># Step 4: Normalize by global batch size to get expectations</span>
+        <span class="c1"># ---------------------------------------------------------------------</span>
+        <span class="n">hebbian_term</span> <span class="o">=</span> <span class="n">local_hebbian_sum</span> <span class="o">/</span> <span class="n">global_batch_size</span>
+        <span class="n">proj_cov</span> <span class="o">=</span> <span class="n">local_proj_cov_sum</span> <span class="o">/</span> <span class="n">global_batch_size</span>
+        <span class="n">batch_eigenvalues</span> <span class="o">=</span> <span class="n">local_eigenvalue_sum</span> <span class="o">/</span> <span class="n">global_batch_size</span>
+        <span class="n">batch_total_var</span> <span class="o">=</span> <span class="n">local_total_var_sum</span> <span class="o">/</span> <span class="n">global_batch_size</span>
+
+        <span class="c1"># ---------------------------------------------------------------------</span>
+        <span class="c1"># Step 5: Compute deflation term</span>
+        <span class="c1"># ---------------------------------------------------------------------</span>
         <span class="n">lower_tri</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tril</span><span class="p">(</span><span class="n">proj_cov</span><span class="p">)</span>
-
-        <span class="c1"># Deflation term: V @ lower_tri, shape: (dim, k)</span>
         <span class="n">deflation_term</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span> <span class="o">@</span> <span class="n">lower_tri</span>
 
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Step 4: Compute gradient and apply update</span>
+        <span class="c1"># Step 6: Compute gradient and apply update</span>
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Gradient = Hebbian - Deflation</span>
         <span class="n">gradient</span> <span class="o">=</span> <span class="n">hebbian_term</span> <span class="o">-</span> <span class="n">deflation_term</span>
-
-        <span class="c1"># Apply per-component learning rate</span>
-        <span class="c1"># lr has shape (k,), we broadcast over dim</span>
         <span class="n">scaled_gradient</span> <span class="o">=</span> <span class="n">gradient</span> <span class="o">*</span> <span class="n">lr</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-
-        <span class="c1"># Update eigenvector estimates</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">scaled_gradient</span><span class="p">)</span>
 
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Step 5: Re-orthogonalize using QR decomposition</span>
+        <span class="c1"># Step 7: Re-orthogonalize using QR decomposition</span>
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># QR decomposition: V = Q @ R where Q is orthonormal</span>
-        <span class="c1"># This is more stable than Gram-Schmidt and very fast on GPU</span>
         <span class="n">Q</span><span class="p">,</span> <span class="n">R</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">qr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">)</span>
-
-        <span class="c1"># Ensure consistent sign convention</span>
-        <span class="c1"># We want the diagonal of R to be positive (standard convention)</span>
-        <span class="c1"># This prevents sign flips between updates</span>
         <span class="n">signs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">R</span><span class="p">)</span><span class="o">.</span><span class="n">sign</span><span class="p">()</span>
-        <span class="n">signs</span><span class="p">[</span><span class="n">signs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Handle exact zeros (rare)</span>
-
-        <span class="c1"># Apply sign correction to Q</span>
+        <span class="n">signs</span><span class="p">[</span><span class="n">signs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">Q</span> <span class="o">*</span> <span class="n">signs</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
 
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Step 6: Update eigenvalue estimates</span>
+        <span class="c1"># Step 8: Update eigenvalue estimates</span>
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Eigenvalue = E[yᵢ²] = variance along eigenvector i</span>
-        <span class="c1"># We use exponential moving average for smooth estimates</span>
-
-        <span class="c1"># Adaptive decay rate (faster updates early, slower later)</span>
         <span class="n">eigenvalue_lr</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span>
-        <span class="n">eigenvalue_lr</span> <span class="o">=</span> <span class="n">eigenvalue_lr</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">max</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># Cap at 0.5 for stability</span>
-
-        <span class="c1"># New eigenvalue estimates from this batch</span>
-        <span class="n">batch_eigenvalues</span> <span class="o">=</span> <span class="p">(</span><span class="n">proj</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
-        <span class="c1"># EMA update: λ_new = (1 - lr) × λ_old + lr × λ_batch</span>
+        <span class="n">eigenvalue_lr</span> <span class="o">=</span> <span class="n">eigenvalue_lr</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">max</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">eigenvalues</span><span class="o">.</span><span class="n">lerp_</span><span class="p">(</span><span class="n">batch_eigenvalues</span><span class="p">,</span> <span class="n">eigenvalue_lr</span><span class="p">)</span>
 
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Step 7: Update total variance estimate</span>
+        <span class="c1"># Step 9: Update total variance estimate</span>
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Total variance = trace(Cov) = E[‖x̃‖²]</span>
-        <span class="n">batch_total_var</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_centered</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_variance</span><span class="o">.</span><span class="n">lerp_</span><span class="p">(</span><span class="n">batch_total_var</span><span class="p">,</span> <span class="n">eigenvalue_lr</span><span class="p">)</span>
 
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Step 8: Update sample count</span>
+        <span class="c1"># Step 10: Update sample count (with global count!)</span>
         <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">global_batch_size</span><span class="p">)</span>
 
     <span class="c1"># =========================================================================</span>
     <span class="c1"># Main Forward Method</span>
@@ -858,39 +889,17 @@ document.write(`
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Update eigenvector estimates with a new batch of data.</span>
 
-<span class="sd">        This is the main entry point. Call this on each mini-batch during</span>
-<span class="sd">        training. The method automatically handles:</span>
-<span class="sd">        - Initialization on first call (using exact SVD)</span>
-<span class="sd">        - Incremental updates on subsequent calls (using Sanger&#39;s rule)</span>
-
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        x : torch.Tensor</span>
 <span class="sd">            Input batch of shape (batch_size, dim).</span>
-<span class="sd">            Should be on the same device as the module.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        eigenvalues : torch.Tensor</span>
 <span class="sd">            Current eigenvalue estimates, shape (k,).</span>
-<span class="sd">            Sorted in descending order (largest first).</span>
 <span class="sd">        eigenvectors : torch.Tensor</span>
 <span class="sd">            Current eigenvector estimates, shape (dim, k).</span>
-<span class="sd">            Columns are eigenvectors, corresponding to eigenvalues.</span>
-<span class="sd">            Vectors are orthonormal: Vᵀ V = I.</span>
-
-<span class="sd">        Examples:</span>
-<span class="sd">        --------</span>
-<span class="sd">        &gt;&gt;&gt; estimator = StreamingTopKEigen(dim=256, k=8)</span>
-<span class="sd">        &gt;&gt;&gt; for batch in dataloader:</span>
-<span class="sd">        ...     eigenvalues, eigenvectors = estimator(batch)</span>
-<span class="sd">        ...     print(f&quot;Top eigenvalue: {eigenvalues[0]:.4f}&quot;)</span>
-
-<span class="sd">        Notes:</span>
-<span class="sd">        -----</span>
-<span class="sd">        - Returns clones to prevent accidental modification of internal state</span>
-<span class="sd">        - The returned tensors are on the same device as the input</span>
-<span class="sd">        - Updates are performed in-place on internal buffers</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Input validation</span>
         <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
@@ -904,14 +913,11 @@ document.write(`
 
         <span class="c1"># Dispatch to initialization or update</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialized</span><span class="p">:</span>
-            <span class="c1"># First batch: initialize with exact SVD</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_init_from_batch</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Subsequent batches: incremental update</span>
-            <span class="n">x_centered</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_mean</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_sanger_update</span><span class="p">(</span><span class="n">x_centered</span><span class="p">)</span>
+            <span class="n">x_centered</span><span class="p">,</span> <span class="n">global_batch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_mean</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sanger_update</span><span class="p">(</span><span class="n">x_centered</span><span class="p">,</span> <span class="n">global_batch_size</span><span class="p">)</span>
 
-        <span class="c1"># Return copies of current estimates</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">eigenvalues</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span></div>
 
 
@@ -922,89 +928,26 @@ document.write(`
 <div class="viewcode-block" id="StreamingTopKEigen.project">
 <a class="viewcode-back" href="../../../../stable_pretraining.utils/#stable_pretraining.utils.online_topk.StreamingTopKEigen.project">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Project data onto the estimated principal subspace.</span>
-
-<span class="sd">        Computes z = (x - μ) @ V, projecting from d dimensions to k dimensions.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        x : torch.Tensor</span>
-<span class="sd">            Input data, shape (batch_size, dim) or (dim,).</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">        -------</span>
-<span class="sd">        torch.Tensor</span>
-<span class="sd">            Projected data, shape (batch_size, k) or (k,).</span>
-
-<span class="sd">        Examples:</span>
-<span class="sd">        --------</span>
-<span class="sd">        &gt;&gt;&gt; z = estimator.project(x)  # (batch_size, dim) -&gt; (batch_size, k)</span>
-<span class="sd">        &gt;&gt;&gt; # For downstream model</span>
-<span class="sd">        &gt;&gt;&gt; output = classifier(z)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Project data onto the estimated principal subspace.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span></div>
 
 
 <div class="viewcode-block" id="StreamingTopKEigen.reconstruct">
 <a class="viewcode-back" href="../../../../stable_pretraining.utils/#stable_pretraining.utils.online_topk.StreamingTopKEigen.reconstruct">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">reconstruct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Project and reconstruct data (PCA denoising/compression).</span>
-
-<span class="sd">        Computes x̂ = V @ Vᵀ @ (x - μ) + μ, which projects to the k-dimensional</span>
-<span class="sd">        principal subspace and back. This removes components outside the</span>
-<span class="sd">        top-k subspace (denoising) or compresses the representation.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        x : torch.Tensor</span>
-<span class="sd">            Input data, shape (batch_size, dim) or (dim,).</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">        -------</span>
-<span class="sd">        torch.Tensor</span>
-<span class="sd">            Reconstructed data, same shape as input.</span>
-
-<span class="sd">        Examples:</span>
-<span class="sd">        --------</span>
-<span class="sd">        &gt;&gt;&gt; x_denoised = estimator.reconstruct(x)</span>
-<span class="sd">        &gt;&gt;&gt; reconstruction_error = (x - x_denoised).pow(2).mean()</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># Project to k dimensions</span>
-        <span class="k">return</span> <span class="n">z</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="o">.</span><span class="n">T</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span>  <span class="c1"># Reconstruct to d dimensions</span></div>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Project and reconstruct data (PCA denoising/compression).&quot;&quot;&quot;</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">z</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="o">.</span><span class="n">T</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span></div>
 
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">explained_variance_ratio</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fraction of total variance explained by each component.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">        -------</span>
-<span class="sd">        torch.Tensor</span>
-<span class="sd">            Explained variance ratio for each component, shape (k,).</span>
-<span class="sd">            Sums to less than 1.0 (remaining variance is in other components).</span>
-
-<span class="sd">        Examples:</span>
-<span class="sd">        --------</span>
-<span class="sd">        &gt;&gt;&gt; print(f&quot;Total explained: {estimator.explained_variance_ratio.sum():.1%}&quot;)</span>
-<span class="sd">        &gt;&gt;&gt; print(f&quot;Top component: {estimator.explained_variance_ratio[0]:.1%}&quot;)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fraction of total variance explained by each component.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">eigenvalues</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_variance</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">cumulative_explained_variance_ratio</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Cumulative explained variance ratio.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">        -------</span>
-<span class="sd">        torch.Tensor</span>
-<span class="sd">            Cumulative sum of explained variance ratios, shape (k,).</span>
-
-<span class="sd">        Examples:</span>
-<span class="sd">        --------</span>
-<span class="sd">        &gt;&gt;&gt; # How many components for 95% variance?</span>
-<span class="sd">        &gt;&gt;&gt; cumvar = estimator.cumulative_explained_variance_ratio</span>
-<span class="sd">        &gt;&gt;&gt; n_components_95 = (cumvar &lt; 0.95).sum() + 1</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Cumulative explained variance ratio.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">explained_variance_ratio</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>

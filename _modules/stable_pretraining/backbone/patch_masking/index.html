@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.patch_masking &#8212; stable-pretraining 0.1.dev1+g5cfd909ce documentation</title>
+    <title>stable_pretraining.backbone.patch_masking &#8212; stable-pretraining 0.1.dev1+gc29a88fe9 documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../../../_static/documentation_options.js?v=bbd4c8a0"></script>
+    <script src="../../../../_static/documentation_options.js?v=fe4698cf"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g5cfd909ce documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gc29a88fe9 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -349,8 +349,9 @@ document.write(`
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;PatchMasking&quot;</span><span class="p">,</span> <span class="s2">&quot;MaskingOutput&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;PatchMasking&quot;</span><span class="p">,</span> <span class="s2">&quot;MaskingOutput&quot;</span><span class="p">,</span> <span class="s2">&quot;IJEPAMasking&quot;</span><span class="p">,</span> <span class="s2">&quot;IJEPAMaskOutput&quot;</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="MaskingOutput">
@@ -716,6 +717,284 @@ document.write(`
         <span class="k">return</span> <span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;mask_ratio=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mask_ratio</span><span class="si">}</span><span class="s2">, block_size=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">block_size</span><span class="si">}</span><span class="s2">, &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;crop_ratio=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">crop_ratio</span><span class="si">}</span><span class="s2">, crop_aspect_ratio=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">crop_aspect_ratio</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="IJEPAMaskOutput">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">IJEPAMaskOutput</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Output from I-JEPA masking operation.</span>
+
+<span class="sd">    :ivar context_idx: Indices of context (visible) patches [B, N_ctx]</span>
+<span class="sd">    :ivar target_idx: Combined indices of all target patches [B, N_tgt]</span>
+<span class="sd">    :ivar target_block_masks: Per-block boolean masks [M x [B, N]], True = in this block</span>
+<span class="sd">    :ivar mask: Full mask where 1 = target, 0 = context [B, N]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">context_idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+    <span class="n">target_idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+    <span class="n">target_block_masks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span>
+    <span class="n">mask</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span></div>
+
+
+
+<div class="viewcode-block" id="IJEPAMasking">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.IJEPAMasking">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IJEPAMasking</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;I-JEPA multi-block masking for joint-embedding predictive architecture.</span>
+
+<span class="sd">    Samples M non-overlapping target blocks and a context region that excludes</span>
+<span class="sd">    all targets. This is the key masking strategy from I-JEPA [1]_.</span>
+<span class="sd">    Strategy:</span>
+<span class="sd">        1. Sample M target blocks with specified scale and aspect ratio</span>
+<span class="sd">        2. Context = all patches NOT in any target block</span>
+<span class="sd">        3. Optionally subsample context to specified ratio</span>
+<span class="sd">    :param num_targets: Number of target blocks to sample (default: 4)</span>
+<span class="sd">    :param target_scale: (min, max) fraction of patches per target block</span>
+<span class="sd">    :param target_aspect_ratio: (min, max) aspect ratio of target blocks</span>
+<span class="sd">    :param context_scale: (min, max) fraction of non-target patches to keep as context</span>
+<span class="sd">    :param allow_target_overlap: Allow target blocks to overlap (default: False)</span>
+<span class="sd">    Example::</span>
+<span class="sd">        masking = IJEPAMasking(</span>
+<span class="sd">            num_targets=4,</span>
+<span class="sd">            target_scale=(0.15, 0.2),</span>
+<span class="sd">            target_aspect_ratio=(0.75, 1.5),</span>
+<span class="sd">            context_scale=(0.85, 1.0),</span>
+<span class="sd">        )</span>
+
+<span class="sd">        # x: patch embeddings [B, N, D]</span>
+<span class="sd">        output = masking(x, grid_h=14, grid_w=14)</span>
+
+<span class="sd">        context_patches = x.gather(</span>
+<span class="sd">            1, output.context_idx.unsqueeze(-1).expand(-1, -1, D)</span>
+<span class="sd">        )</span>
+<span class="sd">        target_patches = x.gather(1, output.target_idx.unsqueeze(-1).expand(-1, -1, D))</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        .. [1] Assran et al. &quot;Self-Supervised Learning from Images with a</span>
+<span class="sd">               Joint-Embedding Predictive Architecture.&quot; CVPR 2023.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">num_targets</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+        <span class="n">target_scale</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">),</span>
+        <span class="n">target_aspect_ratio</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">),</span>
+        <span class="n">context_scale</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.85</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+        <span class="n">allow_target_overlap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">num_targets</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;num_targets must be &gt;= 1, got </span><span class="si">{</span><span class="n">num_targets</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">target_scale</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">target_scale</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;target_scale must be in (0, 1), got </span><span class="si">{</span><span class="n">target_scale</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">target_aspect_ratio</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">target_aspect_ratio</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;target_aspect_ratio values must be positive&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">context_scale</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">context_scale</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;context_scale must be in (0, 1], got </span><span class="si">{</span><span class="n">context_scale</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span> <span class="o">=</span> <span class="n">num_targets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_scale</span> <span class="o">=</span> <span class="n">target_scale</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_aspect_ratio</span> <span class="o">=</span> <span class="n">target_aspect_ratio</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context_scale</span> <span class="o">=</span> <span class="n">context_scale</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allow_target_overlap</span> <span class="o">=</span> <span class="n">allow_target_overlap</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_sample_block_params</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">grid_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_w</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sample parameters for a single target block.</span>
+
+<span class="sd">        :return: (top, left, height, width) of the block</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">num_patches</span> <span class="o">=</span> <span class="n">grid_h</span> <span class="o">*</span> <span class="n">grid_w</span>
+
+        <span class="c1"># Sample scale and aspect ratio</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">uniform_</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">target_scale</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="n">log_ar</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">uniform_</span><span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_aspect_ratio</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">log</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_aspect_ratio</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">log</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+            <span class="p">)</span>
+            <span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">aspect_ratio</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">log_ar</span><span class="p">)</span><span class="o">.</span><span class="n">exp</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+
+        <span class="c1"># Compute block dimensions</span>
+        <span class="n">block_area</span> <span class="o">=</span> <span class="n">num_patches</span> <span class="o">*</span> <span class="n">scale</span>
+        <span class="n">block_h</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">((</span><span class="n">block_area</span> <span class="o">/</span> <span class="n">aspect_ratio</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">))</span>
+        <span class="n">block_w</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">((</span><span class="n">block_area</span> <span class="o">*</span> <span class="n">aspect_ratio</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">))</span>
+
+        <span class="c1"># Clamp to grid bounds</span>
+        <span class="n">block_h</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">block_h</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">))</span>
+        <span class="n">block_w</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">block_w</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">))</span>
+
+        <span class="c1"># Sample position</span>
+        <span class="n">top</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">grid_h</span> <span class="o">-</span> <span class="n">block_h</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="n">left</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span>
+            <span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">grid_w</span> <span class="o">-</span> <span class="n">block_w</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">top</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">block_h</span><span class="p">,</span> <span class="n">block_w</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_block_mask</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">top</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">left</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">block_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">block_w</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_w</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a 2D boolean mask for a block.</span>
+
+<span class="sd">        :return: Boolean mask [grid_h, grid_w], True = in block</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">mask</span><span class="p">[</span><span class="n">top</span> <span class="p">:</span> <span class="n">top</span> <span class="o">+</span> <span class="n">block_h</span><span class="p">,</span> <span class="n">left</span> <span class="p">:</span> <span class="n">left</span> <span class="o">+</span> <span class="n">block_w</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="n">mask</span>
+
+<div class="viewcode-block" id="IJEPAMasking.forward">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.IJEPAMasking.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">grid_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_w</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">IJEPAMaskOutput</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply I-JEPA masking.</span>
+
+<span class="sd">        :param x: Patch embeddings [B, N, D] where N = grid_h * grid_w</span>
+<span class="sd">        :param grid_h: Height of patch grid</span>
+<span class="sd">        :param grid_w: Width of patch grid</span>
+<span class="sd">        :return: IJEPAMaskOutput with context/target information</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            Always returns exactly `num_targets` block masks. If overlap prevention</span>
+<span class="sd">            makes it impossible to fit all blocks, some masks will be empty (all False).</span>
+<span class="sd">            The combined `target_idx` only includes patches from non-empty blocks.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected 3D input (B, N, D), got </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span><span class="si">}</span><span class="s2">D&quot;</span><span class="p">)</span>
+
+        <span class="n">B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">D</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">device</span>
+
+        <span class="k">if</span> <span class="n">N</span> <span class="o">!=</span> <span class="n">grid_h</span> <span class="o">*</span> <span class="n">grid_w</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;N=</span><span class="si">{</span><span class="n">N</span><span class="si">}</span><span class="s2"> doesn&#39;t match grid </span><span class="si">{</span><span class="n">grid_h</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">grid_w</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">grid_h</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">grid_w</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Eval mode: no masking, everything is context</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="n">all_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">empty_block_masks</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="k">return</span> <span class="n">IJEPAMaskOutput</span><span class="p">(</span>
+                <span class="n">context_idx</span><span class="o">=</span><span class="n">all_idx</span><span class="p">,</span>
+                <span class="n">target_idx</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">),</span>
+                <span class="n">target_block_masks</span><span class="o">=</span><span class="n">empty_block_masks</span><span class="p">,</span>
+                <span class="n">mask</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Sample target blocks (shared across batch for efficiency)</span>
+        <span class="n">target_masks_2d</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">combined_target</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="n">max_attempts_per_block</span> <span class="o">=</span> <span class="mi">100</span>
+
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span><span class="p">):</span>
+            <span class="n">block_mask</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="c1"># Try to find a valid (non-overlapping if required) block</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_attempts_per_block</span><span class="p">):</span>
+                <span class="n">top</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">bh</span><span class="p">,</span> <span class="n">bw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_block_params</span><span class="p">(</span><span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+                <span class="n">candidate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_block_mask</span><span class="p">(</span>
+                    <span class="n">top</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">bh</span><span class="p">,</span> <span class="n">bw</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="n">device</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Accept if overlap allowed OR no overlap with existing targets</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow_target_overlap</span> <span class="ow">or</span> <span class="ow">not</span> <span class="p">(</span><span class="n">candidate</span> <span class="o">&amp;</span> <span class="n">combined_target</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                    <span class="n">block_mask</span> <span class="o">=</span> <span class="n">candidate</span>
+                    <span class="k">break</span>
+
+            <span class="k">if</span> <span class="n">block_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Found a valid block</span>
+                <span class="n">target_masks_2d</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">block_mask</span><span class="p">)</span>
+                <span class="n">combined_target</span> <span class="o">=</span> <span class="n">combined_target</span> <span class="o">|</span> <span class="n">block_mask</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Couldn&#39;t find non-overlapping block, append empty mask</span>
+                <span class="n">empty_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                    <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span>
+                <span class="p">)</span>
+                <span class="n">target_masks_2d</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">empty_mask</span><span class="p">)</span>
+
+        <span class="c1"># Guarantee: len(target_masks_2d) == self.num_targets</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_masks_2d</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span>
+
+        <span class="c1"># Flatten masks: List of [B, N] tensors</span>
+        <span class="n">target_block_masks_flat</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">target_masks_2d</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Combined target indices (only from non-empty blocks)</span>
+        <span class="n">combined_target_flat</span> <span class="o">=</span> <span class="n">combined_target</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>  <span class="c1"># [N]</span>
+        <span class="n">target_idx</span> <span class="o">=</span> <span class="n">combined_target_flat</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">as_tuple</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># [N_tgt]</span>
+        <span class="n">target_idx</span> <span class="o">=</span> <span class="n">target_idx</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [B, N_tgt]</span>
+
+        <span class="c1"># Context = non-target patches, subsampled according to context_scale</span>
+        <span class="n">context_available</span> <span class="o">=</span> <span class="o">~</span><span class="n">combined_target_flat</span>  <span class="c1"># [N]</span>
+        <span class="n">available_idx</span> <span class="o">=</span> <span class="n">context_available</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">as_tuple</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">n_available</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_idx</span><span class="p">)</span>
+
+        <span class="c1"># Handle edge case: all patches are targets</span>
+        <span class="k">if</span> <span class="n">n_available</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Fallback: use all patches as context (degenerate case)</span>
+            <span class="n">context_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Subsample context</span>
+            <span class="n">context_ratio</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">uniform_</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">context_scale</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="n">n_context</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_available</span> <span class="o">*</span> <span class="n">context_ratio</span><span class="p">))</span>
+
+            <span class="c1"># Per-sample random subsampling</span>
+            <span class="n">context_idx_list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">B</span><span class="p">):</span>
+                <span class="n">perm</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="n">n_available</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)[:</span><span class="n">n_context</span><span class="p">]</span>
+                <span class="n">ctx_idx</span> <span class="o">=</span> <span class="n">available_idx</span><span class="p">[</span><span class="n">perm</span><span class="p">]</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+                <span class="n">context_idx_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ctx_idx</span><span class="p">)</span>
+
+            <span class="n">context_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">context_idx_list</span><span class="p">)</span>  <span class="c1"># [B, N_ctx]</span>
+
+        <span class="c1"># Full mask: 1 = target, 0 = context/available</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">combined_target_flat</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># [B, N]</span>
+
+        <span class="k">return</span> <span class="n">IJEPAMaskOutput</span><span class="p">(</span>
+            <span class="n">context_idx</span><span class="o">=</span><span class="n">context_idx</span><span class="p">,</span>
+            <span class="n">target_idx</span><span class="o">=</span><span class="n">target_idx</span><span class="p">,</span>
+            <span class="n">target_block_masks</span><span class="o">=</span><span class="n">target_block_masks_flat</span><span class="p">,</span>
+            <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="IJEPAMasking.extra_repr">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.IJEPAMasking.extra_repr">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">extra_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;num_targets=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;target_scale=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target_scale</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;target_aspect_ratio=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target_aspect_ratio</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;context_scale=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">context_scale</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span></div>
 </div>
 
