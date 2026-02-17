@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 import torchmetrics
 
+from stable_pretraining.callbacks.knn import OnlineKNN
+
 
 @pytest.mark.unit
 class TestProbingUnit:
@@ -249,3 +251,134 @@ class TestProbingUnit:
         assert len(module.callbacks_metrics) == 1
         assert len(module.callbacks_modules) == 1
         module.configure_optimizers()
+
+
+@pytest.mark.unit
+class TestOnlineKNNNumClasses:
+    """Test num_classes handling in OnlineKNN."""
+
+    def test_explicit_num_classes(self):
+        """Test that explicit num_classes is used over label inference."""
+        knn = OnlineKNN(
+            name="test_knn",
+            input="embedding",
+            target="label",
+            queue_length=100,
+            metrics={"accuracy": torchmetrics.classification.MulticlassAccuracy(10)},
+            num_classes=10,
+            input_dim=32,
+            k=3,
+        )
+
+        # Cache has only classes 0-5 (6 of 10 classes)
+        cached_features = torch.randn(50, 32)
+        cached_labels = torch.randint(0, 6, (50,))
+        features = torch.randn(4, 32)
+
+        predictions = knn._compute_knn_predictions(
+            features, cached_features, cached_labels
+        )
+        # Should have 10 columns (explicit), not 6 (inferred from max label)
+        assert predictions.shape == (4, 10)
+
+    def test_infer_num_classes_from_metrics(self):
+        """Test that num_classes is inferred from metrics when not explicit."""
+        knn = OnlineKNN(
+            name="test_knn",
+            input="embedding",
+            target="label",
+            queue_length=100,
+            metrics={"accuracy": torchmetrics.classification.MulticlassAccuracy(10)},
+            input_dim=32,
+            k=3,
+        )
+
+        # Simulate what setup() does for num_classes inference
+        inferred = knn._infer_num_classes_from_metrics()
+        assert inferred == 10
+
+    def test_infer_num_classes_from_metrics_list(self):
+        """Test inference from a list of metrics."""
+        knn = OnlineKNN(
+            name="test_knn",
+            input="embedding",
+            target="label",
+            queue_length=100,
+            metrics={
+                "top1": torchmetrics.classification.MulticlassAccuracy(8),
+                "top5": torchmetrics.classification.MulticlassAccuracy(8, top_k=5),
+            },
+            input_dim=32,
+            k=3,
+        )
+
+        inferred = knn._infer_num_classes_from_metrics()
+        assert inferred == 8
+
+    def test_missing_classes_without_fix_would_fail(self):
+        """Dataset has 8 classes but the queue only cached samples from 6.
+
+        Without num_classes, the predictions tensor has 6 columns,
+        but the metric expects 8 — causing a shape mismatch.
+        """
+        num_classes = 8
+        knn = OnlineKNN(
+            name="test_knn",
+            input="embedding",
+            target="label",
+            queue_length=100,
+            metrics={
+                "accuracy": torchmetrics.classification.MulticlassAccuracy(num_classes)
+            },
+            input_dim=32,
+            k=3,
+        )
+
+        # Simulate setup() inference
+        knn.num_classes = knn._infer_num_classes_from_metrics()
+        assert knn.num_classes == num_classes
+
+        # Cache only has classes 0, 1, 2, 3, 4, 5 (missing 6 and 7)
+        cached_features = torch.randn(60, 32)
+        cached_labels = torch.randint(0, 6, (60,))
+        assert cached_labels.max().item() < num_classes  # confirms the gap
+
+        # Validation batch has a sample from class 7
+        features = torch.randn(4, 32)
+        targets = torch.tensor([0, 3, 5, 7])
+
+        predictions = knn._compute_knn_predictions(
+            features, cached_features, cached_labels
+        )
+        assert predictions.shape == (4, num_classes)
+
+        # This would crash without the fix: metric expects 8 cols, would get 6
+        metric = torchmetrics.classification.MulticlassAccuracy(num_classes)
+        metric(predictions, targets)  # should not raise
+
+    def test_fallback_to_label_inference(self):
+        """Test fallback when no num_classes source is available."""
+        # Metrics without num_classes attribute
+        mock_metric = Mock(spec=[])  # empty spec = no num_classes attr
+        knn = OnlineKNN(
+            name="test_knn",
+            input="embedding",
+            target="label",
+            queue_length=100,
+            metrics={"custom": mock_metric},
+            input_dim=32,
+            k=3,
+        )
+
+        assert knn.num_classes is None
+        assert knn._infer_num_classes_from_metrics() is None
+
+        # Should fall back to max label + 1
+        cached_features = torch.randn(20, 32)
+        cached_labels = torch.tensor([0, 1, 2, 3, 4] * 4)
+        features = torch.randn(2, 32)
+
+        predictions = knn._compute_knn_predictions(
+            features, cached_features, cached_labels
+        )
+        assert predictions.shape == (2, 5)  # max label is 4, so 5 classes

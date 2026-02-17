@@ -37,6 +37,10 @@ class OnlineKNN(Callback):
             Larger values provide more representative samples but use more memory.
         metrics: Dictionary of metrics to compute during validation. Keys are metric
             names, values are metric instances (e.g., torchmetrics.Accuracy).
+        num_classes: Explicit number of classes for prediction output. If None,
+            inferred from metrics (via num_classes attribute) or from cached labels.
+            Setting this explicitly avoids shape mismatches when the queue cache
+            doesn't contain all classes (e.g., few-shot or imbalanced data).
         input_dim: Expected dimensionality of input features. Can be int, tuple/list
             (will be flattened to product), or None to accept any dimension.
         target_dim: Expected dimensionality of targets. None accepts any dimension.
@@ -65,6 +69,7 @@ class OnlineKNN(Callback):
         target: str,
         queue_length: int,
         metrics: Dict,
+        num_classes: Optional[int] = None,
         input_dim: Optional[Union[Tuple[int, ...], List[int], int]] = None,
         target_dim: Optional[int] = None,
         k: int = 5,
@@ -90,6 +95,7 @@ class OnlineKNN(Callback):
         self.input = input
         self.target = target
         self.queue_length = queue_length
+        self.num_classes = num_classes
         self.input_dim = input_dim
         self.target_dim = target_dim
         self.k = k
@@ -136,6 +142,14 @@ class OnlineKNN(Callback):
             pl_module.callbacks_metrics[self.name] = format_metrics_as_dict(
                 self.metrics
             )
+
+            # Infer num_classes from metrics if not explicitly provided
+            if self.num_classes is None:
+                self.num_classes = self._infer_num_classes_from_metrics()
+                if self.num_classes is not None:
+                    logging.info(
+                        f"{self.name}: Inferred num_classes={self.num_classes} from metrics"
+                    )
 
     def on_validation_batch_end(
         self,
@@ -186,6 +200,21 @@ class OnlineKNN(Callback):
 
             self._log_metrics(pl_module, predictions, batch[self.target])
 
+    def _infer_num_classes_from_metrics(self) -> Optional[int]:
+        """Try to extract num_classes from the configured metrics."""
+        metrics = self.metrics
+        if isinstance(metrics, dict):
+            items = metrics.values()
+        elif isinstance(metrics, (list, tuple)):
+            items = metrics
+        else:
+            items = [metrics]
+
+        for metric in items:
+            if hasattr(metric, "num_classes") and metric.num_classes is not None:
+                return metric.num_classes
+        return None
+
     @torch.no_grad()
     def _compute_knn_predictions(
         self,
@@ -195,15 +224,15 @@ class OnlineKNN(Callback):
     ) -> Optional[Tensor]:
         """Compute KNN predictions."""
         batch_size = features.size(0)
-        num_classes = int(cached_labels.max().item()) + 1
+
+        if self.num_classes is not None:
+            num_classes = self.num_classes
+        else:
+            num_classes = int(cached_labels.max().item()) + 1
 
         predictions = torch.zeros(
             batch_size, num_classes, device=features.device, dtype=torch.float32
         )
-
-        if cached_features.device != features.device:
-            cached_features = cached_features.to(features.device)
-            cached_labels = cached_labels.to(features.device)
 
         k_actual = min(self.k, cached_features.size(0))
 

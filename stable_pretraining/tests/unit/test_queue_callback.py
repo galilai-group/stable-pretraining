@@ -14,6 +14,11 @@ from stable_pretraining.callbacks.queue import (
 class TestUnifiedQueueManagement:
     """Test the unified queue size management functionality."""
 
+    def setup_method(self):
+        """Clear class-level shared state between tests."""
+        OnlineQueue._shared_queues.clear()
+        OnlineQueue._queue_info.clear()
+
     def test_single_queue_multiple_sizes(self):
         """Test that multiple callbacks with same key but different sizes share a queue."""
         trainer = Trainer()
@@ -54,9 +59,11 @@ class TestUnifiedQueueManagement:
         trainer = Trainer()
 
         # Mock a LightningModule for setup
-        class MockModule:
+        class MockModule(torch.nn.Module):
             def __init__(self):
-                self.callbacks_modules = {}
+                super().__init__()
+                self.callbacks_modules = torch.nn.ModuleDict()
+                self._dummy = torch.nn.Linear(1, 1)
 
         pl_module = MockModule()
 
@@ -97,9 +104,11 @@ class TestUnifiedQueueManagement:
         """Test that each callback gets the correct amount of data."""
         trainer = Trainer()
 
-        class MockModule:
+        class MockModule(torch.nn.Module):
             def __init__(self):
-                self.callbacks_modules = {}
+                super().__init__()
+                self.callbacks_modules = torch.nn.ModuleDict()
+                self._dummy = torch.nn.Linear(1, 1)
 
             def all_gather(self, tensor):
                 return tensor.unsqueeze(0)
@@ -198,9 +207,11 @@ class TestUnifiedQueueManagement:
         """Test that the OrderedQueue maintains insertion order."""
         trainer = Trainer()
 
-        class MockModule:
+        class MockModule(torch.nn.Module):
             def __init__(self):
-                self.callbacks_modules = {}
+                super().__init__()
+                self.callbacks_modules = torch.nn.ModuleDict()
+                self._dummy = torch.nn.Linear(1, 1)
 
         pl_module = MockModule()
 
@@ -225,3 +236,59 @@ class TestUnifiedQueueManagement:
         )
 
         assert torch.allclose(result, expected)
+
+    def test_queue_device_matches_module(self):
+        """Test that the queue is created on the same device as pl_module."""
+        trainer = Trainer()
+
+        class MockModule(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.callbacks_modules = torch.nn.ModuleDict()
+                self._dummy = torch.nn.Linear(1, 1)
+
+        pl_module = MockModule()
+        expected_device = next(pl_module.parameters()).device
+
+        queue = find_or_create_queue_callback(
+            trainer=trainer,
+            key="device_test",
+            queue_length=100,
+            dim=16,
+        )
+        queue.setup(trainer, pl_module, "fit")
+
+        shared_queue = OnlineQueue._shared_queues["device_test"]
+        assert shared_queue.out.device == expected_device
+        assert shared_queue.pointer.device == expected_device
+
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+    def test_queue_device_matches_module_cuda(self):
+        """Test that the queue lands on GPU when the module is on GPU."""
+        trainer = Trainer()
+
+        class MockModule(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.callbacks_modules = torch.nn.ModuleDict()
+                self._dummy = torch.nn.Linear(1, 1)
+
+        pl_module = MockModule().cuda()
+
+        queue = find_or_create_queue_callback(
+            trainer=trainer,
+            key="cuda_device_test",
+            queue_length=100,
+            dim=16,
+        )
+        queue.setup(trainer, pl_module, "fit")
+
+        shared_queue = OnlineQueue._shared_queues["cuda_device_test"]
+        assert shared_queue.out.is_cuda
+        assert shared_queue.pointer.is_cuda
+
+        # Append GPU data — should not raise a device mismatch
+        data = torch.randn(10, 16, device="cuda")
+        shared_queue.append(data)
+        result = shared_queue.get()
+        assert result.is_cuda
