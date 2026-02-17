@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.backbone package &#8212; stable-pretraining 0.1.dev1+g5059ec3d9 documentation</title>
+    <title>stable_pretraining.backbone package &#8212; stable-pretraining 0.1.dev1+g10eb8e9a8 documentation</title>
   
   
   
@@ -40,7 +40,7 @@
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../_static/documentation_options.js?v=721ff2ef"></script>
+    <script src="../_static/documentation_options.js?v=ab1a5f5f"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -134,7 +134,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g5059ec3d9 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g10eb8e9a8 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -554,6 +554,7 @@ document.write(`
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.backbone.vit">stable_pretraining.backbone.vit module</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.Attention"><code class="docutils literal notranslate"><span class="pre">Attention</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.Attention.extra_repr"><code class="docutils literal notranslate"><span class="pre">Attention.extra_repr()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.Attention.forward"><code class="docutils literal notranslate"><span class="pre">Attention.forward()</span></code></a></li>
 </ul>
 </li>
@@ -584,6 +585,16 @@ document.write(`
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.PositionalEncoding2D"><code class="docutils literal notranslate"><span class="pre">PositionalEncoding2D</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.PositionalEncoding2D.forward"><code class="docutils literal notranslate"><span class="pre">PositionalEncoding2D.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.QKNorm"><code class="docutils literal notranslate"><span class="pre">QKNorm</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.QKNorm.extra_repr"><code class="docutils literal notranslate"><span class="pre">QKNorm.extra_repr()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.QKNorm.forward"><code class="docutils literal notranslate"><span class="pre">QKNorm.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.SwiGLU"><code class="docutils literal notranslate"><span class="pre">SwiGLU</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.SwiGLU.extra_repr"><code class="docutils literal notranslate"><span class="pre">SwiGLU.extra_repr()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.SwiGLU.forward"><code class="docutils literal notranslate"><span class="pre">SwiGLU.forward()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.TransformerBlock"><code class="docutils literal notranslate"><span class="pre">TransformerBlock</span></code></a><ul class="nav section-nav flex-column">
@@ -2382,65 +2393,171 @@ After execution, the original parameters and buffers are restored. No real compu
 <span id="stable-pretraining-backbone-vit-module"></span><h2>stable_pretraining.backbone.vit module<a class="headerlink" href="#module-stable_pretraining.backbone.vit" title="Link to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="stable_pretraining.backbone.vit.Attention">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.vit.</span></span><span class="sig-name descname"><span class="pre">Attention</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_heads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qkv_bias</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attn_drop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_drop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#Attention"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.Attention" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.vit.</span></span><span class="sig-name descname"><span class="pre">Attention</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_heads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qkv_bias</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attn_drop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_drop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_rope</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_qk_norm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_grid_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#Attention"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.Attention" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
 <p>Multi-head self-attention with efficient SDPA backend.</p>
-<p>Uses F.scaled_dot_product_attention which automatically selects:
-- Flash Attention (when available, fastest)
-- Memory-efficient attention (xformers-style)
-- Math fallback</p>
-<p>Supports attention masking for patterns like:
-- Causal (autoregressive) attention
-- Leave-one-out prediction (diagonal blocked)
-- Arbitrary sparse patterns</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>dim</strong> – Input dimension</p></li>
-<li><p><strong>num_heads</strong> – Number of attention heads</p></li>
-<li><p><strong>qkv_bias</strong> – Add bias to QKV projection</p></li>
-<li><p><strong>attn_drop</strong> – Attention dropout rate</p></li>
-<li><p><strong>proj_drop</strong> – Output projection dropout rate</p></li>
+<p>Supports modern transformer features including Rotary Position Embeddings
+(RoPE) and Query-Key Normalization (QK-Norm) for improved training stability
+and positional generalization.</p>
+<p>Uses <code class="docutils literal notranslate"><span class="pre">F.scaled_dot_product_attention</span></code> which automatically selects the
+optimal backend:</p>
+<ul class="simple">
+<li><p><strong>Flash Attention</strong> (when available, fastest)</p></li>
+<li><p><strong>Memory-efficient attention</strong> (xformers-style)</p></li>
+<li><p><strong>Math fallback</strong></p></li>
 </ul>
+<section id="architecture-features">
+<h3>Architecture Features<a class="headerlink" href="#architecture-features" title="Link to this heading">#</a></h3>
+<dl>
+<dt><strong>RoPE (Rotary Position Embedding)</strong>:</dt><dd><p>Encodes relative 2D positions via complex rotations applied to Q and K.
+Unlike additive positional embeddings, RoPE:</p>
+<ul class="simple">
+<li><p>Naturally captures relative positions</p></li>
+<li><p>Generalizes to unseen sequence lengths</p></li>
+<li><p>Requires no extra parameters</p></li>
+</ul>
+<p>Enable with <code class="docutils literal notranslate"><span class="pre">use_rope=True</span></code>. Requires <code class="docutils literal notranslate"><span class="pre">grid_size</span></code> in forward().</p>
+</dd>
+<dt><strong>QK-Norm (Query-Key Normalization)</strong>:</dt><dd><p>Applies LayerNorm (without learnable params) to Q and K before
+computing attention scores. Benefits:</p>
+<ul class="simple">
+<li><p>Prevents attention logit explosion in deep networks</p></li>
+<li><p>Stabilizes training without extra hyperparameter tuning</p></li>
+<li><p>Essential when combined with SwiGLU/LayerScale</p></li>
+</ul>
+<p>Enable with <code class="docutils literal notranslate"><span class="pre">use_qk_norm=True</span></code>.</p>
+</dd>
+</dl>
+</section>
+<section id="attention-masking">
+<h3>Attention Masking<a class="headerlink" href="#attention-masking" title="Link to this heading">#</a></h3>
+<p>Supports flexible attention patterns via <code class="docutils literal notranslate"><span class="pre">attn_mask</span></code>:</p>
+<ul class="simple">
+<li><p><strong>Causal (autoregressive)</strong>: <code class="docutils literal notranslate"><span class="pre">torch.triu(ones,</span> <span class="pre">diagonal=1)</span></code></p></li>
+<li><p><strong>Bidirectional</strong>: <code class="docutils literal notranslate"><span class="pre">attn_mask=None</span></code></p></li>
+<li><p><strong>Block sparse</strong>: Custom boolean masks</p></li>
+<li><p><strong>Leave-one-out</strong>: <code class="docutils literal notranslate"><span class="pre">torch.eye(N)</span></code> (each token ignores itself)</p></li>
+</ul>
+<p>Mask convention: <code class="docutils literal notranslate"><span class="pre">True</span></code> = blocked (cannot attend), <code class="docutils literal notranslate"><span class="pre">False</span></code> = allowed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">param dim<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Input/output embedding dimension</p>
+</dd>
+<dt class="field-even">param num_heads<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of parallel attention heads. Must divide <code class="docutils literal notranslate"><span class="pre">dim</span></code>.</p>
+</dd>
+<dt class="field-odd">param qkv_bias<span class="colon">:</span></dt>
+<dd class="field-odd"><p>If True, add learnable bias to Q, K, V projections.
+Default True following ViT convention.</p>
+</dd>
+<dt class="field-even">param attn_drop<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dropout probability on attention weights. Applied only
+during training.</p>
+</dd>
+<dt class="field-odd">param proj_drop<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dropout probability on output projection.</p>
+</dd>
+<dt class="field-even">param use_rope<span class="colon">:</span></dt>
+<dd class="field-even"><p>Enable 2D Rotary Position Embedding. When True, position
+information is encoded via rotation in attention rather than additive
+embeddings. Requires <code class="docutils literal notranslate"><span class="pre">grid_size</span></code> parameter in forward().</p>
+</dd>
+<dt class="field-odd">param use_qk_norm<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Enable Query-Key normalization. Applies LayerNorm
+(without learnable parameters) to Q and K tensors before attention.
+Recommended for deep networks or when using SwiGLU.</p>
+</dd>
+<dt class="field-even">param max_grid_size<span class="colon">:</span></dt>
+<dd class="field-even"><p>Maximum spatial grid size for RoPE frequency cache.
+Only used when <code class="docutils literal notranslate"><span class="pre">use_rope=True</span></code>. Set to largest expected grid dimension.</p>
 </dd>
 </dl>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">attn</span> <span class="o">=</span> <span class="n">Attention</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">768</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-
-<span class="c1"># Standard self-attention</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Standard attention</span>
+<span class="n">attn</span> <span class="o">=</span> <span class="n">Attention</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">768</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
 <span class="n">out</span> <span class="o">=</span> <span class="n">attn</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># [B, N, 768]</span>
 
-<span class="c1"># Leave-one-out: each token cannot attend to itself</span>
-<span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-<span class="n">out</span> <span class="o">=</span> <span class="n">attn</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">attn_mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span>  <span class="c1"># out[:, i] based on x[:, ≠i]</span>
+<span class="c1"># With RoPE for vision (requires grid_size)</span>
+<span class="n">attn</span> <span class="o">=</span> <span class="n">Attention</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">768</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">use_rope</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">attn</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">grid_size</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">14</span><span class="p">))</span>
 
-<span class="c1"># Causal attention</span>
+<span class="c1"># With QK-Norm for training stability</span>
+<span class="n">attn</span> <span class="o">=</span> <span class="n">Attention</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">768</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">use_qk_norm</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">attn</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="c1"># Causal attention (autoregressive)</span>
+<span class="n">N</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 <span class="n">causal_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">triu</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span> <span class="n">diagonal</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 <span class="n">out</span> <span class="o">=</span> <span class="n">attn</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">attn_mask</span><span class="o">=</span><span class="n">causal_mask</span><span class="p">)</span>
+
+<span class="c1"># NEPA-style: RoPE + QK-Norm + causal</span>
+<span class="n">attn</span> <span class="o">=</span> <span class="n">Attention</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">768</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">use_rope</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_qk_norm</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">causal_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">triu</span><span class="p">(</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">),</span> <span class="n">diagonal</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">attn</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">attn_mask</span><span class="o">=</span><span class="n">causal_mask</span><span class="p">,</span> <span class="n">grid_size</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">14</span><span class="p">))</span>
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">use_rope=True</span></code>, do NOT add positional embeddings to input tokens.
+RoPE encodes positions internally via Q/K rotation.</p>
+</div>
+<p class="rubric">References</p>
+<ul class="simple">
+<li><p>RoPE: Su et al., “RoFormer: Enhanced Transformer with Rotary
+Position Embedding” (2021)</p></li>
+<li><p>QK-Norm: Henry et al., “Query-Key Normalization for Transformers” (2020)</p></li>
+<li><p>Flash Attention: Dao et al., “FlashAttention: Fast and Memory-Efficient
+Exact Attention” (2022)</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.vit.Attention.extra_repr">
+<span class="sig-name descname"><span class="pre">extra_repr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#Attention.extra_repr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.Attention.extra_repr" title="Link to this definition">#</a></dt>
+<dd><p>Return the extra representation of the module.</p>
+<p>To print customized extra information, you should re-implement
+this method in your own modules. Both single-line and multi-line
+strings are acceptable.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.backbone.vit.Attention.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">attn_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#Attention.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.Attention.forward" title="Link to this definition">#</a></dt>
-<dd><p>Forward pass.</p>
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">attn_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#Attention.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.Attention.forward" title="Link to this definition">#</a></dt>
+<dd><p>Compute multi-head self-attention.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> – Input tensor [B, N, D]</p></li>
-<li><p><strong>attn_mask</strong> – Attention mask. Can be one of:
-- [N, N]: Same mask for all batches and heads
-- [B, N, N]: Per-batch mask, broadcast over heads
-- [B, H, N, N]: Full per-batch, per-head mask
-Mask values: True = blocked (cannot attend), False = allowed.
-For leave-one-out prediction, use <cite>torch.eye(N, dtype=torch.bool)</cite>.</p></li>
+<li><p><strong>x</strong> – Input tensor of shape <code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">N,</span> <span class="pre">D]</span></code> where B is batch size,
+N is sequence length, and D is embedding dimension.</p></li>
+<li><p><strong>attn_mask</strong> – <p>Optional attention mask. Supported shapes:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">[N,</span> <span class="pre">N]</span></code>: Same mask for all batches and heads</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">N,</span> <span class="pre">N]</span></code>: Per-batch mask, broadcast over heads</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">H,</span> <span class="pre">N,</span> <span class="pre">N]</span></code>: Full per-batch, per-head mask</p></li>
+</ul>
+<p>Values: <code class="docutils literal notranslate"><span class="pre">True</span></code> = blocked (cannot attend), <code class="docutils literal notranslate"><span class="pre">False</span></code> = allowed.</p>
+<p>Common patterns:</p>
+<ul>
+<li><p>Causal: <code class="docutils literal notranslate"><span class="pre">torch.triu(torch.ones(N,</span> <span class="pre">N,</span> <span class="pre">dtype=torch.bool),</span> <span class="pre">diagonal=1)</span></code></p></li>
+<li><p>Leave-one-out: <code class="docutils literal notranslate"><span class="pre">torch.eye(N,</span> <span class="pre">dtype=torch.bool)</span></code></p></li>
+</ul>
+</p></li>
+<li><p><strong>grid_size</strong> – Spatial grid dimensions as <code class="docutils literal notranslate"><span class="pre">(height,</span> <span class="pre">width)</span></code>.
+<strong>Required when</strong> <code class="docutils literal notranslate"><span class="pre">use_rope=True</span></code>. Used to compute 2D rotary
+position embeddings. For a 224x224 image with patch_size=16,
+use <code class="docutils literal notranslate"><span class="pre">grid_size=(14,</span> <span class="pre">14)</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Output tensor [B, N, D]</p>
+<dd class="field-even"><p>Output tensor of shape <code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">N,</span> <span class="pre">D]</span></code></p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">use_rope=True</span></code> but <code class="docutils literal notranslate"><span class="pre">grid_size</span></code> is None</p>
 </dd>
 </dl>
 </dd></dl>
 
+</section>
 </dd></dl>
 
 <dl class="py class">
@@ -3057,69 +3174,361 @@ strings are acceptable.</p>
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.vit.TransformerBlock">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.vit.</span></span><span class="sig-name descname"><span class="pre">TransformerBlock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_heads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp_ratio</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">self_attn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_attn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_adaln</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attn_drop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_drop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">act_layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;class</span> <span class="pre">'torch.nn.modules.activation.GELU'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#TransformerBlock"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.TransformerBlock" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="stable_pretraining.backbone.vit.QKNorm">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.vit.</span></span><span class="sig-name descname"><span class="pre">QKNorm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">head_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#QKNorm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.QKNorm" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
-<p>Unified transformer block with optional AdaLN-Zero conditioning.</p>
-<p>Supports three attention configurations:</p>
-<dl class="simple">
-<dt><strong>Mode 1: Pure Cross-Attention</strong> (<cite>self_attn=False, cross_attn=True</cite>)</dt><dd><ul class="simple">
-<li><p>Queries attend to context but not to each other</p></li>
-<li><p>Use case: Lightweight decoder</p></li>
-</ul>
+<p>Query-Key Normalization for attention stabilization.</p>
+<p>Applies LayerNorm (without learnable parameters) independently to query
+and key tensors before computing attention scores. This simple technique
+dramatically improves training stability in deep transformers.
+Why QK-Norm Works
+—————–
+In deep transformers, attention logits (Q·Kᵀ) can grow unboundedly large,
+causing:
+- <strong>Gradient explosion</strong>: Large logits → extreme softmax → tiny gradients
+- <strong>Attention collapse</strong>: All mass on single token
+- <strong>Training instability</strong>: Requires very small learning rates
+QK-Norm bounds the attention logits by normalizing Q and K to unit variance:
+- Attention logits become bounded: <code class="docutils literal notranslate"><span class="pre">|q·k|</span> <span class="pre">≤</span> <span class="pre">||q||</span> <span class="pre">||k||</span> <span class="pre">=</span> <span class="pre">O(√d)</span></code>
+- Gradients remain stable throughout training
+- Enables larger learning rates and faster convergence
+Implementation Details
+———————-
+- Uses <strong>LayerNorm without learnable parameters</strong> (γ=1, β=0)
+- Normalizes per-head: applied to <code class="docutils literal notranslate"><span class="pre">[...,</span> <span class="pre">head_dim]</span></code> dimension
+- Zero computational overhead in modern frameworks (fused with attention)
+:param head_dim: Dimension per attention head. Each head is normalized</p>
+<blockquote>
+<div><p>independently to preserve multi-head diversity.</p>
+</div></blockquote>
+<dl>
+<dt>Example::</dt><dd><p># In attention forward pass
+qk_norm = QKNorm(head_dim=64)
+# q, k shape: [B, num_heads, seq_len, head_dim]
+q, k = qk_norm(q, k)
+# Now safe to compute attention
+attn = (q &#64; k.transpose(-2, -1)) * scale</p>
 </dd>
-<dt><strong>Mode 2: Decoder-Style</strong> (<cite>self_attn=True, cross_attn=True</cite>)</dt><dd><ul class="simple">
-<li><p>Self-attention on queries, then cross-attention to context</p></li>
-<li><p>Use case: Standard decoder (IJEPA predictor, etc.)</p></li>
-</ul>
+<dt>Example integration with Attention::</dt><dd><dl>
+<dt>class Attention(nn.Module):</dt><dd><dl>
+<dt>def __init__(self, dim, num_heads, use_qk_norm=True):</dt><dd><p>…
+if use_qk_norm:</p>
+<blockquote>
+<div><p>self.qk_norm = QKNorm(dim // num_heads)</p>
+</div></blockquote>
 </dd>
-<dt><strong>Mode 3: Joint Attention</strong> (<cite>self_attn=True, cross_attn=False</cite>)</dt><dd><ul class="simple">
-<li><p>All tokens attend to all tokens (caller concatenates context + queries)</p></li>
-<li><p>Use case: Full bidirectional flow (DiT, high masking ratio)</p></li>
-</ul>
-</dd>
-<dt><strong>Conditioning:</strong></dt><dd><ul class="simple">
-<li><p><cite>use_adaln=True</cite>: AdaLN-Zero modulation (scale, shift, gate per operation)</p></li>
-<li><p><cite>use_adaln=False</cite>: Standard pre-norm transformer</p></li>
-</ul>
-</dd>
-<dt><strong>Attention Masking:</strong></dt><dd><ul class="simple">
-<li><p>Pass <cite>attn_mask</cite> to block attention patterns (e.g., leave-one-out)</p></li>
-<li><p>Mask format: <cite>True</cite> = blocked, <cite>False</cite> = allowed</p></li>
-</ul>
+<dt>def forward(self, x):</dt><dd><p>q, k, v = self.qkv(x).chunk(3, dim=-1)
+if self.use_qk_norm:</p>
+<blockquote>
+<div><p>q, k = self.qk_norm(q, k)</p>
+</div></blockquote>
+<p>…</p>
 </dd>
 </dl>
+</dd>
+</dl>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>QK-Norm is especially important when combined with:
+- <strong>SwiGLU</strong>: Gated activations can amplify hidden states
+- <strong>LayerScale</strong>: Small initial residual scale needs stable attention
+- <strong>Deep networks</strong>: Logit growth compounds with depth
+Without QK-Norm, these combinations often fail to train or require
+extensive hyperparameter tuning.</p>
+</div>
+<p class="rubric">References</p>
+<ul class="simple">
+<li><p>Henry et al., “Query-Key Normalization for Transformers” (EMNLP 2020)</p></li>
+<li><p>Dehghani et al., “Scaling Vision Transformers to 22B Parameters” (2023)</p></li>
+<li><p>Wortsman et al., “Small-scale proxies for large-scale Transformer training” (2023).</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.vit.QKNorm.extra_repr">
+<span class="sig-name descname"><span class="pre">extra_repr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#QKNorm.extra_repr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.QKNorm.extra_repr" title="Link to this definition">#</a></dt>
+<dd><p>Return the extra representation of the module.</p>
+<p>To print customized extra information, you should re-implement
+this method in your own modules. Both single-line and multi-line
+strings are acceptable.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.vit.QKNorm.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#QKNorm.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.QKNorm.forward" title="Link to this definition">#</a></dt>
+<dd><p>Normalize query and key tensors independently.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dim</strong> – Hidden dimension</p></li>
-<li><p><strong>num_heads</strong> – Number of attention heads</p></li>
-<li><p><strong>mlp_ratio</strong> – MLP hidden dim = dim * mlp_ratio</p></li>
-<li><p><strong>self_attn</strong> – Enable self-attention</p></li>
-<li><p><strong>cross_attn</strong> – Enable cross-attention</p></li>
-<li><p><strong>use_adaln</strong> – Enable AdaLN-Zero conditioning</p></li>
-<li><p><strong>drop_path</strong> – Stochastic depth rate</p></li>
-<li><p><strong>attn_drop</strong> – Attention dropout rate</p></li>
-<li><p><strong>proj_drop</strong> – Projection dropout rate</p></li>
-<li><p><strong>act_layer</strong> – Activation layer for MLP</p></li>
+<li><p><strong>q</strong> – Query tensor of shape <code class="docutils literal notranslate"><span class="pre">[B,</span> <span class="pre">num_heads,</span> <span class="pre">seq_len,</span> <span class="pre">head_dim]</span></code>
+or any shape with last dimension = head_dim</p></li>
+<li><p><strong>k</strong> – Key tensor of same shape as q</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple of (normalized_q, normalized_k) with same shapes</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Normalization is applied to the last dimension (head_dim).
+Each head is normalized independently, preserving multi-head
+representation diversity.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.vit.SwiGLU">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.vit.</span></span><span class="sig-name descname"><span class="pre">SwiGLU</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">hidden_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#SwiGLU"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.SwiGLU" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
+<p>SwiGLU: Gated Linear Unit with Swish activation.</p>
+<p>A parameter-efficient gated activation that combines the benefits of
+gating mechanisms with the smooth, non-monotonic Swish activation.
+Empirically improves transformer performance over standard GeLU MLPs.
+Architecture
+————
+Standard MLP:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>x → Linear → GeLU → Linear → out
+Parameters: 2 * d * h
+</pre></div>
+</div>
+<dl>
+<dt>SwiGLU::</dt><dd><dl class="simple">
+<dt>x → Linear(W₁) → SiLU ─┐</dt><dd><p>├─ element-wise multiply → Linear(W₃) → out</p>
+</dd>
+</dl>
+<p>x → Linear(W₂) ────────┘
+Parameters: 3 * d * h’  (where h’ = 2h/3 to match param count)</p>
+</dd>
+</dl>
+<p>The hidden dimension is scaled to <code class="docutils literal notranslate"><span class="pre">2/3</span> <span class="pre">*</span> <span class="pre">hidden_features</span></code> so that
+total parameter count matches a standard 2-layer MLP:
+<code class="docutils literal notranslate"><span class="pre">3</span> <span class="pre">*</span> <span class="pre">d</span> <span class="pre">*</span> <span class="pre">(2h/3)</span> <span class="pre">=</span> <span class="pre">2</span> <span class="pre">*</span> <span class="pre">d</span> <span class="pre">*</span> <span class="pre">h</span></code>
+Performance Benefits
+——————–
+- <strong>Better gradient flow</strong>: Gating provides multiplicative paths
+- <strong>Smoother optimization</strong>: SiLU (Swish) is smooth and non-monotonic
+- <strong>Quality</strong>: Consistently outperforms GeLU in language and vision models
+:param in_features: Input dimension
+:param hidden_features: Nominal hidden dimension. Actual hidden size is</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">int(2</span> <span class="pre">*</span> <span class="pre">hidden_features</span> <span class="pre">/</span> <span class="pre">3)</span></code> to maintain parameter parity with
+standard MLPs.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>out_features</strong> – Output dimension. Defaults to <code class="docutils literal notranslate"><span class="pre">in_features</span></code>.</p></li>
+<li><p><strong>bias</strong> – If True, use bias in linear layers. Default False following
+LLaMA/PaLM convention for better training stability.</p></li>
+<li><p><strong>drop</strong> – Dropout probability applied after gating.</p></li>
 </ul>
 </dd>
 </dl>
+<dl>
+<dt>Example::</dt><dd><p># Replace standard MLP in transformer
+# Old: mlp = Mlp(768, 3072, 768)
+# New:
+mlp = SwiGLU(768, 3072, 768)
+x = torch.randn(4, 196, 768)
+out = mlp(x)  # [4, 196, 768]
+# Parameter count comparison
+standard_mlp = nn.Sequential(</p>
+<blockquote>
+<div><p>nn.Linear(768, 3072), nn.GELU(), nn.Linear(3072, 768)</p>
+</div></blockquote>
+<p>)
+swiglu = SwiGLU(768, 3072, 768)
+print(sum(p.numel() for p in standard_mlp.parameters()))  # 4,722,432
+print(sum(p.numel() for p in swiglu.parameters()))  # 4,722,432 (same!)</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For best results, combine SwiGLU with:
+- <strong>LayerScale</strong>: Stabilizes residual connections
+- <strong>QK-Norm</strong>: Prevents attention explosion
+- <strong>RoPE</strong>: Better positional generalization
+This combination is used in LLaMA, PaLM, and modern vision transformers.</p>
+</div>
+<p class="rubric">References</p>
+<ul class="simple">
+<li><p>Shazeer, “GLU Variants Improve Transformer” (2020)</p></li>
+<li><p>Touvron et al., “LLaMA: Open and Efficient Foundation Language Models” (2023)</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.vit.SwiGLU.extra_repr">
+<span class="sig-name descname"><span class="pre">extra_repr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#SwiGLU.extra_repr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.SwiGLU.extra_repr" title="Link to this definition">#</a></dt>
+<dd><p>Return the extra representation of the module.</p>
+<p>To print customized extra information, you should re-implement
+this method in your own modules. Both single-line and multi-line
+strings are acceptable.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.vit.SwiGLU.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#SwiGLU.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.SwiGLU.forward" title="Link to this definition">#</a></dt>
+<dd><p>Apply SwiGLU transformation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.vit.TransformerBlock">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.vit.</span></span><span class="sig-name descname"><span class="pre">TransformerBlock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_heads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp_ratio</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">self_attn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_attn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_adaln</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_rope</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_qk_norm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal['gelu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'swiglu']</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gelu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_layer_scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_scale_init</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attn_drop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_drop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_grid_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">act_layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;class</span> <span class="pre">'torch.nn.modules.activation.GELU'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#TransformerBlock"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.TransformerBlock" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
+<p>Unified transformer block supporting multiple architectures.</p>
+<p>Configurable for various modern transformer designs:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Architecture</p></th>
+<th class="head"><p>RoPE</p></th>
+<th class="head"><p>QK-Norm</p></th>
+<th class="head"><p>MLP</p></th>
+<th class="head"><p>LayerScale</p></th>
+<th class="head"><p>AdaLN</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Standard ViT
+DINOv2 / Modern
+NEPA
+DiT / Flow</p></td>
+<td><p>✗
+✓
+✓
+✗</p></td>
+<td><p>✗
+✓
+✓
+✗</p></td>
+<td><p>gelu
+swiglu
+swiglu
+gelu</p></td>
+<td><p>✗
+✓
+✓
+✗</p></td>
+<td><p>✗
+✗
+✗
+✓</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<section id="attention-modes">
+<h3>Attention Modes<a class="headerlink" href="#attention-modes" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt><strong>Mode 1: Self-Attention Only</strong> (<code class="docutils literal notranslate"><span class="pre">self_attn=True,</span> <span class="pre">cross_attn=False</span></code>)</dt><dd><p>Standard encoder block. Used for NEPA, ViT encoder, etc.</p>
+</dd>
+<dt><strong>Mode 2: Cross-Attention Only</strong> (<code class="docutils literal notranslate"><span class="pre">self_attn=False,</span> <span class="pre">cross_attn=True</span></code>)</dt><dd><p>Queries attend to context only. Lightweight decoder.</p>
+</dd>
+<dt><strong>Mode 3: Full Decoder</strong> (<code class="docutils literal notranslate"><span class="pre">self_attn=True,</span> <span class="pre">cross_attn=True</span></code>)</dt><dd><p>Self-attention on queries, then cross-attention to context.</p>
+</dd>
+</dl>
+</section>
+<section id="modern-components">
+<h3>Modern Components<a class="headerlink" href="#modern-components" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt><strong>RoPE</strong> (<code class="docutils literal notranslate"><span class="pre">use_rope=True</span></code>):</dt><dd><p>2D Rotary Position Embedding. Encodes positions via Q/K rotation.
+Requires <code class="docutils literal notranslate"><span class="pre">grid_size</span></code> in forward(). Don’t use additive pos_embed.</p>
+</dd>
+<dt><strong>QK-Norm</strong> (<code class="docutils literal notranslate"><span class="pre">use_qk_norm=True</span></code>):</dt><dd><p>Normalizes Q and K before attention. Stabilizes deep networks.</p>
+</dd>
+<dt><strong>SwiGLU</strong> (<code class="docutils literal notranslate"><span class="pre">mlp_type='swiglu'</span></code>):</dt><dd><p>Gated MLP with SiLU activation. Better than GeLU empirically.</p>
+</dd>
+<dt><strong>LayerScale</strong> (<code class="docutils literal notranslate"><span class="pre">use_layer_scale=True</span></code>):</dt><dd><p>Learnable per-channel scaling on residuals. Stabilizes training.
+Initialize near zero (e.g., 1e-5) for identity-like initialization.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">param dim<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Hidden dimension</p>
+</dd>
+<dt class="field-even">param num_heads<span class="colon">:</span></dt>
+<dd class="field-even"><p>Number of attention heads</p>
+</dd>
+<dt class="field-odd">param mlp_ratio<span class="colon">:</span></dt>
+<dd class="field-odd"><p>MLP hidden dim = dim * mlp_ratio</p>
+</dd>
+<dt class="field-even">param self_attn<span class="colon">:</span></dt>
+<dd class="field-even"><p>Enable self-attention</p>
+</dd>
+<dt class="field-odd">param cross_attn<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Enable cross-attention</p>
+</dd>
+<dt class="field-even">param use_adaln<span class="colon">:</span></dt>
+<dd class="field-even"><p>Enable AdaLN-Zero conditioning (for diffusion/flow)</p>
+</dd>
+<dt class="field-odd">param use_rope<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Enable 2D Rotary Position Embedding in attention</p>
+</dd>
+<dt class="field-even">param use_qk_norm<span class="colon">:</span></dt>
+<dd class="field-even"><p>Enable Query-Key normalization in attention</p>
+</dd>
+<dt class="field-odd">param mlp_type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>MLP activation type: ‘gelu’ or ‘swiglu’</p>
+</dd>
+<dt class="field-even">param use_layer_scale<span class="colon">:</span></dt>
+<dd class="field-even"><p>Enable LayerScale on residual connections</p>
+</dd>
+<dt class="field-odd">param layer_scale_init<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Initial value for LayerScale (default: 1e-5)</p>
+</dd>
+<dt class="field-even">param drop_path<span class="colon">:</span></dt>
+<dd class="field-even"><p>Stochastic depth rate</p>
+</dd>
+<dt class="field-odd">param attn_drop<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Attention dropout rate</p>
+</dd>
+<dt class="field-even">param proj_drop<span class="colon">:</span></dt>
+<dd class="field-even"><p>Projection dropout rate</p>
+</dd>
+<dt class="field-odd">param max_grid_size<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Maximum grid size for RoPE cache</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Standard ViT block</span>
+<span class="n">block</span> <span class="o">=</span> <span class="n">TransformerBlock</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">768</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+
+<span class="c1"># Modern ViT (DINOv2-style)</span>
+<span class="n">block</span> <span class="o">=</span> <span class="n">TransformerBlock</span><span class="p">(</span>
+    <span class="n">dim</span><span class="o">=</span><span class="mi">768</span><span class="p">,</span>
+    <span class="n">num_heads</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+    <span class="n">use_rope</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">use_qk_norm</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">mlp_type</span><span class="o">=</span><span class="s2">&quot;swiglu&quot;</span><span class="p">,</span>
+    <span class="n">use_layer_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">grid_size</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">14</span><span class="p">))</span>
+
+<span class="c1"># NEPA block (modern + causal)</span>
+<span class="n">causal_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">triu</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">),</span> <span class="n">diagonal</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">grid_size</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">14</span><span class="p">),</span> <span class="n">attn_mask</span><span class="o">=</span><span class="n">causal_mask</span><span class="p">)</span>
+
+<span class="c1"># DiT block (with conditioning)</span>
+<span class="n">block</span> <span class="o">=</span> <span class="n">TransformerBlock</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">768</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">use_adaln</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">cond</span><span class="o">=</span><span class="n">time_emb</span><span class="p">)</span>
+</pre></div>
+</div>
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.backbone.vit.TransformerBlock.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cond</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attn_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_attn_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#TransformerBlock.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.TransformerBlock.forward" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cond</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attn_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_attn_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#TransformerBlock.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.TransformerBlock.forward" title="Link to this definition">#</a></dt>
 <dd><p>Forward pass.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>x</strong> – Input tensor [B, N, D]</p></li>
-<li><p><strong>context</strong> – Context for cross-attention [B, M, D] (required if cross_attn=True)</p></li>
+<li><p><strong>context</strong> – Context for cross-attention [B, M, D]</p></li>
 <li><p><strong>cond</strong> – Conditioning tensor [B, D] (required if use_adaln=True)</p></li>
-<li><p><strong>attn_mask</strong> – Self-attention mask [N, N] or [B, N, N].
-True = blocked (cannot attend), False = allowed.
-Use <cite>torch.eye(N, dtype=torch.bool)</cite> for leave-one-out prediction.</p></li>
-<li><p><strong>cross_attn_mask</strong> – Cross-attention mask [N, M] or [B, N, M].
-True = blocked, False = allowed.</p></li>
+<li><p><strong>attn_mask</strong> – Self-attention mask. True = blocked.</p></li>
+<li><p><strong>cross_attn_mask</strong> – Cross-attention mask. True = blocked.</p></li>
+<li><p><strong>grid_size</strong> – (grid_h, grid_w) for RoPE. Required if use_rope=True.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -3128,6 +3537,7 @@ True = blocked, False = allowed.</p></li>
 </dl>
 </dd></dl>
 
+</section>
 </dd></dl>
 
 <dl class="py function">
@@ -3337,6 +3747,7 @@ True = blocked, False = allowed.</p></li>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.backbone.vit">stable_pretraining.backbone.vit module</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.Attention"><code class="docutils literal notranslate"><span class="pre">Attention</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.Attention.extra_repr"><code class="docutils literal notranslate"><span class="pre">Attention.extra_repr()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.Attention.forward"><code class="docutils literal notranslate"><span class="pre">Attention.forward()</span></code></a></li>
 </ul>
 </li>
@@ -3367,6 +3778,16 @@ True = blocked, False = allowed.</p></li>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.PositionalEncoding2D"><code class="docutils literal notranslate"><span class="pre">PositionalEncoding2D</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.PositionalEncoding2D.forward"><code class="docutils literal notranslate"><span class="pre">PositionalEncoding2D.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.QKNorm"><code class="docutils literal notranslate"><span class="pre">QKNorm</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.QKNorm.extra_repr"><code class="docutils literal notranslate"><span class="pre">QKNorm.extra_repr()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.QKNorm.forward"><code class="docutils literal notranslate"><span class="pre">QKNorm.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.SwiGLU"><code class="docutils literal notranslate"><span class="pre">SwiGLU</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.SwiGLU.extra_repr"><code class="docutils literal notranslate"><span class="pre">SwiGLU.extra_repr()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.SwiGLU.forward"><code class="docutils literal notranslate"><span class="pre">SwiGLU.forward()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.vit.TransformerBlock"><code class="docutils literal notranslate"><span class="pre">TransformerBlock</span></code></a><ul class="nav section-nav flex-column">
