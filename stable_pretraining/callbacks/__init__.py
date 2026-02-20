@@ -14,6 +14,7 @@ from .trainer_info import LoggingCallback, ModuleSummary, TrainerInfo, SLURMInfo
 from .utils import EarlyStopping
 from .writer import OnlineWriter
 from .clip_zero_shot import CLIPZeroShot
+from .eval_on_dataset import EvalOnDataset, callback_to_evaluator
 from .embedding_cache import EmbeddingCache
 from .earlystop import EpochMilestones
 from .wd_schedule import WeightDecayUpdater
@@ -41,6 +42,8 @@ __all__ = [
     CPUOffloadCallback,
     TeacherStudentCallback,
     CLIPZeroShot,
+    EvalOnDataset,
+    callback_to_evaluator,
     EmbeddingCache,
     EpochMilestones,
     WeightDecayUpdater,
