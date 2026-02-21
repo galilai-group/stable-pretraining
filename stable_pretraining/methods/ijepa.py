@@ -36,6 +36,7 @@ Example::
 from dataclasses import dataclass
 from typing import Tuple
 
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -54,6 +55,7 @@ class IJEPAOutput:
     """Output from IJEPA forward pass.
 
     :ivar loss: Prediction loss (0 in eval mode)
+    :ivar embedding: Patch embeddings [B, N, D] for downstream use
     :ivar predictions: Predicted representations [B, N_tgt, D] (or context in eval)
     :ivar targets: Target representations [B, N_tgt, D] (or context in eval)
     :ivar num_targets: Number of target patches (0 in eval)
@@ -61,6 +63,7 @@ class IJEPAOutput:
     """
 
     loss: torch.Tensor
+    embedding: torch.Tensor
     predictions: torch.Tensor
     targets: torch.Tensor
     num_targets: int
@@ -151,11 +154,17 @@ class IJEPA(Module):
         super().__init__()
 
         # Encoder with EMA wrapper (enables TeacherStudentCallback)
-        base_encoder = MaskedEncoder(encoder_name, masking=None, pretrained=pretrained)
+        base_encoder = MaskedEncoder(
+            encoder_name,
+            masking=None,
+            pretrained=pretrained,
+            norm_layer=nn.LayerNorm,  # important that elementwise_affine=True (default param)
+        )
         self.encoder = TeacherStudentWrapper(
             base_encoder,
-            ema_decay_start=ema_decay_start,
-            ema_decay_end=ema_decay_end,
+            warm_init=True,
+            base_ema_coefficient=ema_decay_start,
+            final_ema_coefficient=ema_decay_end,
         )
 
         embed_dim = base_encoder.embed_dim
@@ -170,15 +179,12 @@ class IJEPA(Module):
             depth=predictor_depth,
             num_heads=max(1, predictor_embed_dim // 64),
             self_attn=True,
-            cross_attn=True,
+            cross_attn=False,
+            add_mask_token=True,
             use_adaln=False,
             num_prefix_tokens=0,
-            zero_init_output=True,
+            zero_init_output=False,
         )
-
-        # Learnable query token for target positions
-        self.target_query = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        nn.init.trunc_normal_(self.target_query, std=0.02)
 
         # I-JEPA multi-block masking
         self.masking = IJEPAMasking(
@@ -189,6 +195,7 @@ class IJEPA(Module):
         )
 
         self.embed_dim = embed_dim
+        self._fix_init_weight()
 
     def _encode(
         self,
@@ -208,20 +215,17 @@ class IJEPA(Module):
         :return: Encoded representations [B, K, D]
         """
         B, _, D = patches.shape
-        x = torch.gather(patches, 1, indices.unsqueeze(-1).expand(-1, -1, D))
-
-        # Add positional embeddings
-        _, pos = self.encoder.student._get_pos_embed(grid_h, grid_w)
-        x = x + torch.gather(
-            pos.expand(B, -1, -1), 1, indices.unsqueeze(-1).expand(-1, -1, D)
-        )
-
-        # Forward through transformer
+        # patch -> posemb -> mask -> block -> norm
+        _, pos = encoder._get_pos_embed(grid_h, grid_w)
+        x = patches + pos.expand(B, -1, -1)
+        x = torch.gather(x, 1, indices.unsqueeze(-1).expand(-1, -1, D))
         x = encoder.vit.pos_drop(x)
         x = encoder.vit.blocks(x)
         return encoder.vit.norm(x)
 
-    def forward(self, images: torch.Tensor) -> IJEPAOutput:
+    def forward(
+        self, images: torch.Tensor, embedding_source: str = "teacher"
+    ) -> IJEPAOutput:
         """Forward pass.
 
         In training mode:
@@ -233,52 +237,122 @@ class IJEPA(Module):
         In eval mode:
             - No masking, all patches treated as context
             - Returns encoded features with zero loss
+            - Always uses student encoder
 
         :param images: Input images [B, C, H, W]
+        :param embedding_source: Which encoder to use for the embedding output.
+            ``"teacher"`` (default) or ``"student"``. Only affects training mode;
+            eval mode always uses student.
         :return: :class:`IJEPAOutput` with loss and representations
         """
+        if embedding_source not in ("teacher", "student"):
+            raise ValueError(
+                f"embedding_source must be 'teacher' or 'student', got '{embedding_source}'"
+            )
+
         B = images.shape[0]
         grid_h, grid_w = self.encoder.student._get_grid_size(images)
-        patches = self.encoder.student.patch_embed(images)
+        student_patches = self.encoder.student.patch_embed(images)
+        teacher_patches = self.encoder.teacher.patch_embed(images)
 
         # Apply masking (returns all patches as context in eval mode)
-        mask_out = self.masking(patches, grid_h, grid_w)
+        mask_out = self.masking(student_patches, grid_h, grid_w)
 
         if self.training:
-            # Encode context (student) and targets (teacher, no grad)
+            # Context: student sees only context patches
             context = self._encode(
-                patches, mask_out.context_idx, grid_h, grid_w, self.encoder.student
+                student_patches,
+                mask_out.context_idx,
+                grid_h,
+                grid_w,
+                self.encoder.student,
             )
 
             with torch.no_grad():
-                targets = self._encode(
-                    patches, mask_out.target_idx, grid_h, grid_w, self.encoder.teacher
+                # Teacher: full forward with ALL patches visible, then select targets
+                all_idx = (
+                    torch.arange(grid_h * grid_w, device=images.device)
+                    .unsqueeze(0)
+                    .expand(B, -1)
                 )
 
-            # Predict target representations via cross-attention
+                teacher_full = self._encode(
+                    teacher_patches, all_idx, grid_h, grid_w, self.encoder.teacher
+                )  # teacher's vit.norm already applied
+
+                teacher_full_normed = F.layer_norm(
+                    teacher_full,
+                    [teacher_full.size(-1)],
+                    weight=None,
+                    bias=None,  # extra norm but affine as per paper
+                )
+                # Select target patches from the full encoding
+                D = teacher_full.size(-1)
+                targets = torch.gather(
+                    teacher_full_normed,
+                    1,
+                    mask_out.target_idx.unsqueeze(-1).expand(-1, -1, D),
+                )
+
+                # Embedding: reuse teacher_full (unnormed, full sequence) for the probe
+                if embedding_source == "teacher":
+                    embedding = teacher_full
+                else:
+                    embedding = self._encode(
+                        student_patches, all_idx, grid_h, grid_w, self.encoder.student
+                    )
+
+            # Predict target representations via joint self-attention on [context + mask tokens]
             N_tgt = mask_out.target_idx.shape[1]
-            queries = self.target_query.expand(B, N_tgt, -1)
+            # Create dummy queries and just mask them all out
+            queries = torch.zeros(
+                B, N_tgt, self.embed_dim, device=images.device, dtype=context.dtype
+            )
+            query_mask = torch.ones(B, N_tgt, device=images.device, dtype=torch.bool)
             predictions = self.predictor(
                 context=context,
                 queries=queries,
                 context_idx=mask_out.context_idx,
                 query_idx=mask_out.target_idx,
+                query_mask=query_mask,
             )
 
-            loss = F.smooth_l1_loss(predictions, targets, beta=2.0)
+            loss = F.smooth_l1_loss(predictions, targets, beta=1.0)
         else:
             # Eval: encode all patches through student
-            context = self._encode(
-                patches, mask_out.context_idx, grid_h, grid_w, self.encoder.student
-            )
+            with torch.no_grad():
+                context = self._encode(
+                    student_patches,
+                    mask_out.context_idx,
+                    grid_h,
+                    grid_w,
+                    self.encoder.student,
+                )
             predictions = context
             targets = context
+            embedding = context
             loss = torch.tensor(0.0, device=images.device)
 
         return IJEPAOutput(
             loss=loss,
+            embedding=embedding,
             predictions=predictions,
             targets=targets,
             num_targets=mask_out.target_idx.shape[1],
             num_context=mask_out.context_idx.shape[1],
         )
+
+    def _fix_init_weight(self):
+        """Rescale attention proj and MLP output weights by depth, matching I-JEPA init from the repo."""
+
+        def rescale(param, layer_id):
+            param.div_(math.sqrt(2.0 * layer_id))
+
+        for encoder in (self.encoder.student, self.encoder.teacher):
+            for layer_id, block in enumerate(encoder.vit.blocks):
+                rescale(block.attn.proj.weight.data, layer_id + 1)
+                rescale(block.mlp.fc2.weight.data, layer_id + 1)
+
+        for layer_id, block in enumerate(self.predictor.blocks):
+            rescale(block.attn.proj.weight.data, layer_id + 1)
+            rescale(block.mlp.fc2.weight.data, layer_id + 1)

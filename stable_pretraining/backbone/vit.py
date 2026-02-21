@@ -241,6 +241,7 @@ class MaskedEncoder(nn.Module):
         img_size: Optional[Union[int, Tuple[int, int]]] = None,
         patch_size: Optional[Union[int, Tuple[int, int]]] = None,
         dynamic_img_size: bool = False,
+        norm_layer: Optional[nn.Module] = None,
     ):
         super().__init__()
         self.dynamic_img_size = dynamic_img_size
@@ -261,6 +262,9 @@ class MaskedEncoder(nn.Module):
                         f"Warning: Changing patch_size to {patch_size} will reinitialize "
                         f"patch_embed weights. Pretrained weights won't fully apply."
                     )
+            if norm_layer is not None:
+                create_kwargs["norm_layer"] = norm_layer
+
             self.vit = timm.create_model(model_or_model_name, **create_kwargs)
         else:
             self.vit = model_or_model_name
@@ -352,7 +356,9 @@ class MaskedEncoder(nn.Module):
             tokens.append(self.vit.reg_token.expand(B, -1, -1))
         return torch.cat(tokens, dim=1) if tokens else None
 
-    def forward(self, images: torch.Tensor) -> MaskedEncoderOutput:
+    def forward(
+        self, images: torch.Tensor, apply_mask: bool | None = None
+    ) -> MaskedEncoderOutput:
         """Encode images with optional masking.
 
         :param images: Input images (B, C, H, W)
@@ -360,14 +366,20 @@ class MaskedEncoder(nn.Module):
         """
         B = images.shape[0]
         device = images.device
+
         grid_h, grid_w = self._get_grid_size(images)
         num_patches = grid_h * grid_w
+
         # Patch embed + positional embed
         x = self.patch_embed(images)
         prefix_pos, patch_pos = self._get_pos_embed(grid_h, grid_w)
         x = x + patch_pos
+
+        if apply_mask is None:
+            apply_mask = self.training
+
         # Apply masking (training only)
-        if self.training and self.masking is not None:
+        if apply_mask and self.masking is not None:
             mask_out = self.masking(x, grid_h, grid_w)
             x = mask_out.visible
             mask = mask_out.mask
@@ -396,12 +408,8 @@ class MaskedEncoder(nn.Module):
 
     def forward_features(self, images: torch.Tensor) -> torch.Tensor:
         """Encode without masking (for inference)."""
-        was_training = self.training
-        self.eval()
         with torch.no_grad():
-            output = self.forward(images)
-        if was_training:
-            self.train()
+            output = self.forward(images, apply_mask=False)
         return output.encoded
 
     def extra_repr(self) -> str:
@@ -1116,7 +1124,8 @@ class FlexibleTransformer(nn.Module):
             196,
             depth=6,
             self_attn=True,
-            cross_attn=True,
+            cross_attn=False,
+            add_mask_token=True,
             use_adaln=False,
         )
         out = predictor(context, queries, context_idx, query_idx)
@@ -1768,12 +1777,14 @@ class MAEDecoder(nn.Module):
         self,
         x: torch.Tensor,
         mask: torch.Tensor,
+        ids_keep: torch.Tensor | None = None,
         output_masked_only: bool = False,
     ) -> torch.Tensor:
         """Forward pass.
 
         :param x: Visible tokens [B, N_vis, D] or full sequence [B, T, D]
         :param mask: Binary mask [B, T], 0=kept, 1=masked
+        :param ids_keep: Indices of kept (visible) patches (B, N_keep)
         :param output_masked_only: If True, return [B, N_mask, D].
                                 If False, return [B, T, D].
         :return: Predictions
@@ -1781,20 +1792,51 @@ class MAEDecoder(nn.Module):
         B, T = mask.shape
         mask_bool = mask.bool()  # Convert once, use everywhere
 
-        N_vis = (~mask_bool).sum(dim=1)[0].int().item()
-        N_mask = T - N_vis
+        n_vis_per = (~mask_bool).sum(dim=1)
+        n_mask_per = mask_bool.sum(dim=1)
+
+        assert torch.all(n_vis_per == n_vis_per[0]), (
+            "Number of visible patches must be the same for all samples"
+        )
+
+        N_vis = int(n_vis_per[0].item())
+        N_mask = int(n_mask_per[0].item())
+
+        if N_mask == 0:
+            # visible idx is all patches in order
+            visible_idx = torch.arange(T, device=mask.device).unsqueeze(0).expand(B, -1)
+            visible_tokens = x if x.shape[1] == T else x
+            out = self.transformer(
+                context=visible_tokens,
+                queries=visible_tokens.new_empty(B, 0, visible_tokens.shape[-1]),
+                context_idx=visible_idx,
+                query_idx=visible_idx[:, :0],
+                return_all=True,
+            )
+
+            if output_masked_only:
+                return out[:, :0]
+            return out
+
         # Get indices (sort False/0 before True/1, so visible indices come first)
         visible_idx = torch.argsort(mask_bool.int(), dim=1, stable=True)[:, :N_vis]
-        masked_idx = torch.argsort((~mask_bool).int(), dim=1, stable=True)[:, :N_mask]
+        masked_idx = torch.argsort(mask_bool.int(), dim=1, stable=True)[:, N_vis:]
         # Get visible tokens
         if x.shape[1] == T:
             visible_tokens = torch.gather(
                 x, dim=1, index=visible_idx.unsqueeze(-1).expand(-1, -1, x.shape[-1])
             )
         else:
+            if ids_keep is not None:
+                visible_idx = ids_keep
             visible_tokens = x
+
+        order = torch.argsort(mask_bool.int(), dim=1, stable=True)
+        masked_idx = order[:, N_vis:]
+
         # Mask tokens for masked positions
         mask_tokens = self.mask_token.expand(B, N_mask, -1)
+
         return self.transformer(
             context=visible_tokens,
             queries=mask_tokens,
