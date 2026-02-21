@@ -1,5 +1,7 @@
 """Callback for running evaluation functions on arbitrary datasets during training."""
 
+from dataclasses import dataclass
+
 import torch
 from lightning.pytorch import Callback, LightningModule, Trainer
 from loguru import logger as logging
@@ -9,54 +11,67 @@ from torch.utils.data.distributed import DistributedSampler
 from .utils import TrainableCallback
 
 
-class EvalOnDataset(Callback):
-    """Run evaluation functions on a custom dataset every N epochs.
+@dataclass
+class EvalDatasetEntry:
+    """One eval dataset with its evaluators.
 
     Args:
         name: Unique name for this eval run (used as log prefix).
         data: Pre-built DataLoader for the eval dataset.
         evaluators: List of callables with signature
             fn(trainer, pl_module, dataloader) -> dict[str, float].
+    """
+
+    name: str
+    data: DataLoader
+    evaluators: list
+
+
+class EvalOnDataset(Callback):
+    """Run evaluation functions on one or more datasets every N epochs.
+
+    All datasets are evaluated sequentially with a single DDP barrier at the end.
+
+    Args:
+        datasets: List of EvalDatasetEntry instances.
         every_n_epochs: Run evaluation every N epochs.
         start_epoch: First epoch to run evaluation.
     """
 
     def __init__(
         self,
-        name: str,
-        data: DataLoader,
-        evaluators: list,
+        datasets: list[EvalDatasetEntry],
         every_n_epochs: int = 1,
         start_epoch: int = 0,
     ):
         super().__init__()
-        self.name = name
-        self._dataloader = data
-        self.evaluators = evaluators
+        self.datasets = datasets
         self.every_n_epochs = every_n_epochs
         self.start_epoch = start_epoch
 
     def setup(self, trainer: Trainer, pl_module: LightningModule, stage: str) -> None:
-        """Add DistributedSampler if needed."""
-        if trainer.world_size > 1 and not isinstance(
-            self._dataloader.sampler, DistributedSampler
-        ):
-            logging.info(f"{self.name}: Adding DistributedSampler for DDP")
-            sampler = DistributedSampler(
-                self._dataloader.dataset,
-                num_replicas=trainer.world_size,
-                rank=trainer.global_rank,
-                shuffle=False,
-            )
-            self._dataloader = DataLoader(
-                dataset=self._dataloader.dataset,
-                batch_size=self._dataloader.batch_size,
-                sampler=sampler,
-                num_workers=self._dataloader.num_workers,
-                pin_memory=self._dataloader.pin_memory,
-                drop_last=self._dataloader.drop_last,
-                collate_fn=self._dataloader.collate_fn,
-            )
+        """Add DistributedSampler to each dataloader if needed."""
+        if trainer.world_size <= 1:
+            return
+        for entry in self.datasets:
+            dl = entry.data
+            if not isinstance(dl.sampler, DistributedSampler):
+                logging.info(f"{entry.name}: Adding DistributedSampler for DDP")
+                sampler = DistributedSampler(
+                    dl.dataset,
+                    num_replicas=trainer.world_size,
+                    rank=trainer.global_rank,
+                    shuffle=False,
+                )
+                entry.data = DataLoader(
+                    dataset=dl.dataset,
+                    batch_size=dl.batch_size,
+                    sampler=sampler,
+                    num_workers=dl.num_workers,
+                    pin_memory=dl.pin_memory,
+                    drop_last=dl.drop_last,
+                    collate_fn=dl.collate_fn,
+                )
 
     def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
         epoch = trainer.current_epoch
@@ -65,27 +80,29 @@ class EvalOnDataset(Callback):
         if (epoch - self.start_epoch) % self.every_n_epochs != 0:
             return
 
-        logging.info(f"[Epoch {epoch}] Running {self.name} evaluation")
-
-        # Set sampler epoch for proper sharding
-        if hasattr(self._dataloader.sampler, "set_epoch"):
-            self._dataloader.sampler.set_epoch(epoch)
-
-        # Run each evaluator
         all_metrics = {}
-        for evaluator in self.evaluators:
-            metrics = evaluator(trainer, pl_module, self._dataloader)
-            if metrics:
-                all_metrics.update(metrics)
 
-        # Log on rank 0
+        for entry in self.datasets:
+            logging.info(f"[Epoch {epoch}] Running {entry.name} evaluation")
+
+            # Set sampler epoch for proper sharding
+            if hasattr(entry.data.sampler, "set_epoch"):
+                entry.data.sampler.set_epoch(epoch)
+
+            for evaluator in entry.evaluators:
+                metrics = evaluator(trainer, pl_module, entry.data)
+                if metrics:
+                    all_metrics.update(
+                        {f"eval/{entry.name}/{k}": v for k, v in metrics.items()}
+                    )
+
+        # Log once on rank 0
         if trainer.is_global_zero and all_metrics:
-            prefixed = {f"eval/{self.name}/{k}": v for k, v in all_metrics.items()}
             if trainer.logger is not None:
-                trainer.logger.log_metrics(prefixed, step=trainer.global_step)
-            logging.info(f"[Epoch {epoch}] {self.name}: {all_metrics}")
+                trainer.logger.log_metrics(all_metrics, step=trainer.global_step)
+            logging.info(f"[Epoch {epoch}] eval: {all_metrics}")
 
-        # DDP barrier
+        # Single DDP barrier
         if torch.distributed.is_initialized():
             torch.distributed.barrier()
 

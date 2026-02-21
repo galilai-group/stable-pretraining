@@ -9,6 +9,7 @@ import torchmetrics
 
 from stable_pretraining.callbacks.eval_on_dataset import (
     EvalOnDataset,
+    EvalDatasetEntry,
     callback_to_evaluator,
     _move_to_device,
     _eval_hook_callback,
@@ -30,74 +31,67 @@ class TestEvalOnDataset:
         t.logger = logger
         return t
 
+    def _entry(self, name="test", evaluators=None):
+        return EvalDatasetEntry(
+            name=name,
+            data=Mock(),
+            evaluators=evaluators or [Mock(return_value={})],
+        )
+
     def test_init_stores_params(self):
-        loader = Mock()
-        evaluators = [Mock()]
+        entry = self._entry()
         cb = EvalOnDataset(
-            name="test_eval",
-            data=loader,
-            evaluators=evaluators,
+            datasets=[entry],
             every_n_epochs=3,
             start_epoch=2,
         )
-        assert cb.name == "test_eval"
-        assert cb._dataloader is loader
-        assert cb.evaluators is evaluators
+        assert cb.datasets == [entry]
         assert cb.every_n_epochs == 3
         assert cb.start_epoch == 2
 
     def test_epoch_scheduling_skip_before_start(self):
-        evaluator = Mock(return_value={})
+        entry = self._entry()
         cb = EvalOnDataset(
-            name="test",
-            data=Mock(),
-            evaluators=[evaluator],
+            datasets=[entry],
             every_n_epochs=1,
             start_epoch=5,
         )
         trainer = self._make_trainer(epoch=3)
         cb.on_train_epoch_end(trainer, Mock())
-        evaluator.assert_not_called()
+        entry.evaluators[0].assert_not_called()
 
     def test_epoch_scheduling_runs_at_start(self):
-        evaluator = Mock(return_value={"acc": 0.9})
+        entry = self._entry(evaluators=[Mock(return_value={"acc": 0.9})])
         cb = EvalOnDataset(
-            name="test",
-            data=Mock(),
-            evaluators=[evaluator],
+            datasets=[entry],
             every_n_epochs=2,
             start_epoch=4,
         )
         trainer = self._make_trainer(epoch=4)
         cb.on_train_epoch_end(trainer, Mock())
-        evaluator.assert_called_once()
+        entry.evaluators[0].assert_called_once()
 
     def test_epoch_scheduling_every_n(self):
-        evaluator = Mock(return_value={})
+        entry = self._entry()
         cb = EvalOnDataset(
-            name="test",
-            data=Mock(),
-            evaluators=[evaluator],
+            datasets=[entry],
             every_n_epochs=3,
             start_epoch=0,
         )
         # epoch 0: run, epoch 1: skip, epoch 2: skip, epoch 3: run
         for epoch, should_call in [(0, True), (1, False), (2, False), (3, True)]:
-            evaluator.reset_mock()
+            entry.evaluators[0].reset_mock()
             trainer = self._make_trainer(epoch=epoch)
             cb.on_train_epoch_end(trainer, Mock())
-            assert evaluator.called == should_call, f"epoch={epoch}"
+            assert entry.evaluators[0].called == should_call, f"epoch={epoch}"
 
     def test_metrics_logged_with_prefix(self):
-        evaluator = Mock(return_value={"top1": 0.85, "top5": 0.95})
-        logger = Mock()
-        cb = EvalOnDataset(
+        entry = self._entry(
             name="cifar",
-            data=Mock(),
-            evaluators=[evaluator],
-            every_n_epochs=1,
-            start_epoch=0,
+            evaluators=[Mock(return_value={"top1": 0.85, "top5": 0.95})],
         )
+        logger = Mock()
+        cb = EvalOnDataset(datasets=[entry], every_n_epochs=1, start_epoch=0)
         trainer = self._make_trainer(epoch=0, logger=logger)
         cb.on_train_epoch_end(trainer, Mock())
         logger.log_metrics.assert_called_once()
@@ -106,17 +100,31 @@ class TestEvalOnDataset:
         assert "eval/cifar/top5" in logged
         assert logged["eval/cifar/top1"] == 0.85
 
-    def test_multiple_evaluators(self):
+    def test_multiple_datasets_single_log_call(self):
+        e1 = self._entry(
+            name="cifar", evaluators=[Mock(return_value={"zs_top1": 0.8})]
+        )
+        e2 = self._entry(
+            name="imagenet", evaluators=[Mock(return_value={"zs_top1": 0.7})]
+        )
+        logger = Mock()
+        cb = EvalOnDataset(datasets=[e1, e2], every_n_epochs=1, start_epoch=0)
+        trainer = self._make_trainer(epoch=0, logger=logger)
+        cb.on_train_epoch_end(trainer, Mock())
+        e1.evaluators[0].assert_called_once()
+        e2.evaluators[0].assert_called_once()
+        # Single log_metrics call with both datasets
+        logger.log_metrics.assert_called_once()
+        logged = logger.log_metrics.call_args[0][0]
+        assert "eval/cifar/zs_top1" in logged
+        assert "eval/imagenet/zs_top1" in logged
+
+    def test_multiple_evaluators_per_dataset(self):
         ev1 = Mock(return_value={"zs_top1": 0.8})
         ev2 = Mock(return_value={"knn_top1": 0.7})
+        entry = self._entry(name="test", evaluators=[ev1, ev2])
         logger = Mock()
-        cb = EvalOnDataset(
-            name="test",
-            data=Mock(),
-            evaluators=[ev1, ev2],
-            every_n_epochs=1,
-            start_epoch=0,
-        )
+        cb = EvalOnDataset(datasets=[entry], every_n_epochs=1, start_epoch=0)
         trainer = self._make_trainer(epoch=0, logger=logger)
         cb.on_train_epoch_end(trainer, Mock())
         ev1.assert_called_once()
@@ -127,14 +135,8 @@ class TestEvalOnDataset:
 
     @patch("torch.distributed.is_initialized", return_value=False)
     def test_no_barrier_without_distributed(self, mock_dist):
-        evaluator = Mock(return_value={})
-        cb = EvalOnDataset(
-            name="test",
-            data=Mock(),
-            evaluators=[evaluator],
-            every_n_epochs=1,
-            start_epoch=0,
-        )
+        entry = self._entry()
+        cb = EvalOnDataset(datasets=[entry], every_n_epochs=1, start_epoch=0)
         trainer = self._make_trainer(epoch=0)
         with patch("torch.distributed.barrier") as mock_barrier:
             cb.on_train_epoch_end(trainer, Mock())
