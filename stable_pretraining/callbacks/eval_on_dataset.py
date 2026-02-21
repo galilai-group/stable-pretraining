@@ -96,11 +96,8 @@ class EvalOnDataset(Callback):
                         {f"eval/{entry.name}/{k}": v for k, v in metrics.items()}
                     )
 
-        # Log once on rank 0
-        if trainer.is_global_zero and all_metrics:
-            if trainer.logger is not None:
-                trainer.logger.log_metrics(all_metrics, step=trainer.global_step)
-            logging.info(f"[Epoch {epoch}] eval: {all_metrics}")
+        if all_metrics:
+            pl_module.log_dict(all_metrics, sync_dist=True)
 
         # Single DDP barrier
         if torch.distributed.is_initialized():

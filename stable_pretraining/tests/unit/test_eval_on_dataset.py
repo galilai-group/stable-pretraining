@@ -90,12 +90,12 @@ class TestEvalOnDataset:
             name="cifar",
             evaluators=[Mock(return_value={"top1": 0.85, "top5": 0.95})],
         )
-        logger = Mock()
+        pl_module = Mock()
         cb = EvalOnDataset(datasets=[entry], every_n_epochs=1, start_epoch=0)
-        trainer = self._make_trainer(epoch=0, logger=logger)
-        cb.on_train_epoch_end(trainer, Mock())
-        logger.log_metrics.assert_called_once()
-        logged = logger.log_metrics.call_args[0][0]
+        trainer = self._make_trainer(epoch=0)
+        cb.on_train_epoch_end(trainer, pl_module)
+        pl_module.log_dict.assert_called_once()
+        logged = pl_module.log_dict.call_args[0][0]
         assert "eval/cifar/top1" in logged
         assert "eval/cifar/top5" in logged
         assert logged["eval/cifar/top1"] == 0.85
@@ -107,15 +107,15 @@ class TestEvalOnDataset:
         e2 = self._entry(
             name="imagenet", evaluators=[Mock(return_value={"zs_top1": 0.7})]
         )
-        logger = Mock()
+        pl_module = Mock()
         cb = EvalOnDataset(datasets=[e1, e2], every_n_epochs=1, start_epoch=0)
-        trainer = self._make_trainer(epoch=0, logger=logger)
-        cb.on_train_epoch_end(trainer, Mock())
+        trainer = self._make_trainer(epoch=0)
+        cb.on_train_epoch_end(trainer, pl_module)
         e1.evaluators[0].assert_called_once()
         e2.evaluators[0].assert_called_once()
-        # Single log_metrics call with both datasets
-        logger.log_metrics.assert_called_once()
-        logged = logger.log_metrics.call_args[0][0]
+        # Single log_dict call with both datasets
+        pl_module.log_dict.assert_called_once()
+        logged = pl_module.log_dict.call_args[0][0]
         assert "eval/cifar/zs_top1" in logged
         assert "eval/imagenet/zs_top1" in logged
 
@@ -123,13 +123,13 @@ class TestEvalOnDataset:
         ev1 = Mock(return_value={"zs_top1": 0.8})
         ev2 = Mock(return_value={"knn_top1": 0.7})
         entry = self._entry(name="test", evaluators=[ev1, ev2])
-        logger = Mock()
+        pl_module = Mock()
         cb = EvalOnDataset(datasets=[entry], every_n_epochs=1, start_epoch=0)
-        trainer = self._make_trainer(epoch=0, logger=logger)
-        cb.on_train_epoch_end(trainer, Mock())
+        trainer = self._make_trainer(epoch=0)
+        cb.on_train_epoch_end(trainer, pl_module)
         ev1.assert_called_once()
         ev2.assert_called_once()
-        logged = logger.log_metrics.call_args[0][0]
+        logged = pl_module.log_dict.call_args[0][0]
         assert "eval/test/zs_top1" in logged
         assert "eval/test/knn_top1" in logged
 
