@@ -66,6 +66,8 @@ class Module(pl.LightningModule):
     - Returns the `state` dict from `forward` unchanged for logging/inspection.
     """
 
+    _warned_named_parameters = False
+
     def __init__(self, *args, forward: callable = None, hparams: dict = None, **kwargs):
         super().__init__()
         logging.info("Initializing Module configuration...")
@@ -154,7 +156,8 @@ class Module(pl.LightningModule):
         Yields:
             tuple[str, torch.nn.Parameter]: Name and parameter pairs.
         """
-        if with_callbacks:
+        if with_callbacks and not Module._warned_named_parameters:
+            Module._warned_named_parameters = True
             logging.warning(
                 "You are calling self.parameters which also gives callbacks "
                 "parameters, to remove then, pass `with_callbacks=False`"
