@@ -38,13 +38,15 @@ jobs:
           python -m pip install --user -e .[dev]
       # Run Tests
       - name: Run Unit Tests
-        run: pytest stable_pretraining/ -m unit --verbose --cov=stable_pretraining --cov-report term
+        run: pytest stable_pretraining/ -m unit --verbose --cov=stable_pretraining --cov-report term --cov-report xml
       # Codecov
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.0.1
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: ${{ github.repository }}
+          files: ./coverage.xml
+          fail_ci_if_error: false
 
   Test-minimal:
     runs-on: ubuntu-latest
@@ -71,9 +73,3 @@ jobs:
       # Run Tests
       - name: Run Unit Tests
         run: pytest stable_pretraining/ -m unit --verbose --cov=stable_pretraining --cov-report term
-      # Codecov
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.0.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: ${{ github.repository }}

@@ -1,9 +1,10 @@
 import copy
+import inspect
 import json
 import signal
 from datetime import timedelta
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import hydra
 import lightning
@@ -70,6 +71,8 @@ class Manager(submitit.helpers.Checkpointable):
         data (Union[dict, DictConfig, pl.LightningDataModule]): Data module configuration or instance.
         seed (int, optional): Random seed for reproducibility. Defaults to None.
         ckpt_path (str, optional): Path to checkpoint for resuming training. Defaults to "last".
+        resume_weights_only (bool | None, optional): Forwarded to ``Trainer.fit(weights_only=...)``
+            when supported by the installed Lightning version. Defaults to ``False``.
         compile (bool, optional): Should we compile the given module. Defaults to False.
     """
 
@@ -80,6 +83,7 @@ class Manager(submitit.helpers.Checkpointable):
         data: Union[dict, DictConfig, pl.LightningDataModule],
         seed: int = None,
         ckpt_path: str = None,
+        resume_weights_only: Optional[bool] = False,
         compile: bool = False,
     ):
         if seed is None:
@@ -95,6 +99,7 @@ class Manager(submitit.helpers.Checkpointable):
         if ckpt_path is not None:
             ckpt_path = Path(ckpt_path).with_suffix(".ckpt").resolve()
         self.ckpt_path = ckpt_path
+        self.resume_weights_only = resume_weights_only
 
     @rank_zero_only
     def init_and_sync_wandb(self):
@@ -254,11 +259,26 @@ class Manager(submitit.helpers.Checkpointable):
         if self.compile:
             logging.warning("Compiling module!")
             self.instantiated_module.compile()
-        logging.info(f"📣📣📣 CALLING trainer.fit with {ckpt_path=} 📣📣📣")
+
+        fit_kwargs = {
+            "datamodule": self.instantiated_data,
+            "ckpt_path": ckpt_path,
+        }
+        if "weights_only" in inspect.signature(self._trainer.fit).parameters:
+            fit_kwargs["weights_only"] = self.resume_weights_only
+        elif self.resume_weights_only is not None:
+            logging.warning(
+                "Installed Lightning Trainer.fit does not accept `weights_only`; "
+                f"ignoring manager.resume_weights_only={self.resume_weights_only}."
+            )
+
+        logging.info(
+            "📣📣📣 CALLING trainer.fit with "
+            f"{ckpt_path=} and {self.resume_weights_only=} 📣📣📣"
+        )
         self._trainer.fit(
             self.instantiated_module,
-            datamodule=self.instantiated_data,
-            ckpt_path=ckpt_path,
+            **fit_kwargs,
         )
         self._dump_wandb_data()
 
