@@ -11,6 +11,7 @@ Subpackages
    stable_pretraining.callbacks
    stable_pretraining.data
    stable_pretraining.losses
+   stable_pretraining.methods
    stable_pretraining.optim
    stable_pretraining.utils
 

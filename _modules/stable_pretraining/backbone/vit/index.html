@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.vit &#8212; stable-pretraining 0.1.dev1+g10eb8e9a8 documentation</title>
+    <title>stable_pretraining.backbone.vit &#8212; stable-pretraining 0.1.dev1+gc95948944 documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../../../../_static/documentation_options.js?v=ab1a5f5f"></script>
+    <script src="../../../../_static/documentation_options.js?v=c7ac60cb"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g10eb8e9a8 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gc95948944 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -608,6 +608,7 @@ document.write(`
         <span class="n">img_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">patch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dynamic_img_size</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">norm_layer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dynamic_img_size</span> <span class="o">=</span> <span class="n">dynamic_img_size</span>
@@ -628,6 +629,9 @@ document.write(`
                         <span class="sa">f</span><span class="s2">&quot;Warning: Changing patch_size to </span><span class="si">{</span><span class="n">patch_size</span><span class="si">}</span><span class="s2"> will reinitialize &quot;</span>
                         <span class="sa">f</span><span class="s2">&quot;patch_embed weights. Pretrained weights won&#39;t fully apply.&quot;</span>
                     <span class="p">)</span>
+            <span class="k">if</span> <span class="n">norm_layer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">create_kwargs</span><span class="p">[</span><span class="s2">&quot;norm_layer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">norm_layer</span>
+
             <span class="bp">self</span><span class="o">.</span><span class="n">vit</span> <span class="o">=</span> <span class="n">timm</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">model_or_model_name</span><span class="p">,</span> <span class="o">**</span><span class="n">create_kwargs</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">vit</span> <span class="o">=</span> <span class="n">model_or_model_name</span>
@@ -729,12 +733,15 @@ document.write(`
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">B</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">device</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">device</span>
+
         <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_grid_size</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
         <span class="n">num_patches</span> <span class="o">=</span> <span class="n">grid_h</span> <span class="o">*</span> <span class="n">grid_w</span>
+
         <span class="c1"># Patch embed + positional embed</span>
         <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_embed</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
         <span class="n">prefix_pos</span><span class="p">,</span> <span class="n">patch_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_pos_embed</span><span class="p">(</span><span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">patch_pos</span>
+
         <span class="c1"># Apply masking (training only)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">masking</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">mask_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">masking</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">)</span>
@@ -1519,7 +1526,8 @@ document.write(`
 <span class="sd">            196,</span>
 <span class="sd">            depth=6,</span>
 <span class="sd">            self_attn=True,</span>
-<span class="sd">            cross_attn=True,</span>
+<span class="sd">            cross_attn=False,</span>
+<span class="sd">            add_mask_token=True,</span>
 <span class="sd">            use_adaln=False,</span>
 <span class="sd">        )</span>
 <span class="sd">        out = predictor(context, queries, context_idx, query_idx)</span>
@@ -2179,12 +2187,14 @@ document.write(`
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
         <span class="n">mask</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">ids_keep</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">output_masked_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass.</span>
 
 <span class="sd">        :param x: Visible tokens [B, N_vis, D] or full sequence [B, T, D]</span>
 <span class="sd">        :param mask: Binary mask [B, T], 0=kept, 1=masked</span>
+<span class="sd">        :param ids_keep: Indices of kept (visible) patches (B, N_keep)</span>
 <span class="sd">        :param output_masked_only: If True, return [B, N_mask, D].</span>
 <span class="sd">                                If False, return [B, T, D].</span>
 <span class="sd">        :return: Predictions</span>
@@ -2192,20 +2202,51 @@ document.write(`
         <span class="n">B</span><span class="p">,</span> <span class="n">T</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">shape</span>
         <span class="n">mask_bool</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">bool</span><span class="p">()</span>  <span class="c1"># Convert once, use everywhere</span>
 
-        <span class="n">N_vis</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">mask_bool</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">int</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
-        <span class="n">N_mask</span> <span class="o">=</span> <span class="n">T</span> <span class="o">-</span> <span class="n">N_vis</span>
+        <span class="n">n_vis_per</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">mask_bool</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">n_mask_per</span> <span class="o">=</span> <span class="n">mask_bool</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">torch</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">n_vis_per</span> <span class="o">==</span> <span class="n">n_vis_per</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="p">(</span>
+            <span class="s2">&quot;Number of visible patches must be the same for all samples&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">N_vis</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_vis_per</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+        <span class="n">N_mask</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_mask_per</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+
+        <span class="k">if</span> <span class="n">N_mask</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># visible idx is all patches in order</span>
+            <span class="n">visible_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">mask</span><span class="o">.</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">visible_tokens</span> <span class="o">=</span> <span class="n">x</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">T</span> <span class="k">else</span> <span class="n">x</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transformer</span><span class="p">(</span>
+                <span class="n">context</span><span class="o">=</span><span class="n">visible_tokens</span><span class="p">,</span>
+                <span class="n">queries</span><span class="o">=</span><span class="n">visible_tokens</span><span class="o">.</span><span class="n">new_empty</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">visible_tokens</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span>
+                <span class="n">context_idx</span><span class="o">=</span><span class="n">visible_idx</span><span class="p">,</span>
+                <span class="n">query_idx</span><span class="o">=</span><span class="n">visible_idx</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">return_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">output_masked_only</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">out</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">out</span>
+
         <span class="c1"># Get indices (sort False/0 before True/1, so visible indices come first)</span>
         <span class="n">visible_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">mask_bool</span><span class="o">.</span><span class="n">int</span><span class="p">(),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stable</span><span class="o">=</span><span class="kc">True</span><span class="p">)[:,</span> <span class="p">:</span><span class="n">N_vis</span><span class="p">]</span>
-        <span class="n">masked_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">argsort</span><span class="p">((</span><span class="o">~</span><span class="n">mask_bool</span><span class="p">)</span><span class="o">.</span><span class="n">int</span><span class="p">(),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stable</span><span class="o">=</span><span class="kc">True</span><span class="p">)[:,</span> <span class="p">:</span><span class="n">N_mask</span><span class="p">]</span>
+        <span class="n">masked_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">mask_bool</span><span class="o">.</span><span class="n">int</span><span class="p">(),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stable</span><span class="o">=</span><span class="kc">True</span><span class="p">)[:,</span> <span class="n">N_vis</span><span class="p">:]</span>
         <span class="c1"># Get visible tokens</span>
         <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">T</span><span class="p">:</span>
             <span class="n">visible_tokens</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span>
                 <span class="n">x</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">visible_idx</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ids_keep</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">visible_idx</span> <span class="o">=</span> <span class="n">ids_keep</span>
             <span class="n">visible_tokens</span> <span class="o">=</span> <span class="n">x</span>
+
+        <span class="n">order</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">mask_bool</span><span class="o">.</span><span class="n">int</span><span class="p">(),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">masked_idx</span> <span class="o">=</span> <span class="n">order</span><span class="p">[:,</span> <span class="n">N_vis</span><span class="p">:]</span>
+
         <span class="c1"># Mask tokens for masked positions</span>
         <span class="n">mask_tokens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_token</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">N_mask</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">transformer</span><span class="p">(</span>
             <span class="n">context</span><span class="o">=</span><span class="n">visible_tokens</span><span class="p">,</span>
             <span class="n">queries</span><span class="o">=</span><span class="n">mask_tokens</span><span class="p">,</span>
