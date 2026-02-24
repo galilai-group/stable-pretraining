@@ -128,9 +128,13 @@ def callback_to_evaluator(callback):
         nonlocal _setup_done
         device = pl_module.device
 
-        # One-time setup
+        # One-time setup — callback.setup() creates metrics on CPU, but the
+        # model is already on GPU (unlike Lightning's normal lifecycle where
+        # setup runs before device placement). Move metrics to device here.
         if not _setup_done:
             callback.setup(trainer, pl_module, "validate")
+            if hasattr(callback, "name") and callback.name in pl_module.callbacks_metrics:
+                pl_module.callbacks_metrics[callback.name].to(device)
             _setup_done = True
 
         if isinstance(callback, TrainableCallback):
