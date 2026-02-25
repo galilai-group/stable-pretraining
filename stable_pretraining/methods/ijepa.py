@@ -16,7 +16,7 @@ Example::
 
     # Create model
     model = IJEPA(
-        encoder_name="vit_base_patch16_224",
+        model_or_model_name="vit_base_patch16_224",
         predictor_embed_dim=384,
         predictor_depth=6,
         num_targets=4,
@@ -34,10 +34,11 @@ Example::
 """
 
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Union
 
 import math
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 from stable_pretraining.backbone import (
@@ -80,7 +81,7 @@ class IJEPA(Module):
     The context encoder is wrapped with :class:`TeacherStudentWrapper`, enabling
     automatic EMA updates via :class:`TeacherStudentCallback`.
 
-    :param encoder_name: timm model name (e.g., "vit_base_patch16_224")
+    :param model_or_model_name: timm model name string or pre-instantiated nn.Module
     :param predictor_embed_dim: Predictor hidden dimension (default: 384)
     :param predictor_depth: Number of predictor blocks (default: 6)
     :param num_targets: Number of target blocks to sample (default: 4)
@@ -139,7 +140,7 @@ class IJEPA(Module):
 
     def __init__(
         self,
-        encoder_name: str = "vit_base_patch16_224",
+        model_or_model_name: Union[str, nn.Module] = "vit_base_patch16_224",
         predictor_embed_dim: int = 384,
         predictor_depth: int = 6,
         num_targets: int = 4,
@@ -154,7 +155,7 @@ class IJEPA(Module):
 
         # Encoder with EMA wrapper (enables TeacherStudentCallback)
         base_encoder = MaskedEncoder(
-            encoder_name,
+            model_or_model_name,
             masking=None,
             pretrained=pretrained,
         )
