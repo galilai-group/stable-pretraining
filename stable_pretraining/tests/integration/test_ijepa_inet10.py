@@ -82,7 +82,7 @@ class TestIJEPAImagenet10:
 
         # Create IJEPA module with vit_tiny for fast CPU testing
         module = IJEPA(
-            encoder_name="vit_tiny_patch16_224",
+            model_or_model_name="vit_tiny_patch16_224",
             predictor_embed_dim=192,
             predictor_depth=6,
             num_targets=4,
