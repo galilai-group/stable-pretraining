@@ -12,6 +12,14 @@ stable\_pretraining.methods.ijepa module
    :show-inheritance:
    :undoc-members:
 
+stable\_pretraining.methods.lejepa module
+-----------------------------------------
+
+.. automodule:: stable_pretraining.methods.lejepa
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 stable\_pretraining.methods.mae module
 --------------------------------------
 

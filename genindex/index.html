@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; stable-pretraining 0.1.dev1+gc95948944 documentation</title>
+    <title>Index &#8212; stable-pretraining 0.1.dev1+ge5c81f6cc documentation</title>
   
   
   
@@ -39,7 +39,7 @@
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
   <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
 
-    <script src="../_static/documentation_options.js?v=c7ac60cb"></script>
+    <script src="../_static/documentation_options.js?v=c71507ff"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
@@ -135,7 +135,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gc95948944 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+ge5c81f6cc documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -755,7 +755,11 @@ document.write(`
 </li>
       </ul></li>
       <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.ijepa.IJEPAOutput.embedding">embedding (stable_pretraining.methods.ijepa.IJEPAOutput attribute)</a>
+
+      <ul>
+        <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.lejepa.LeJEPAOutput.embedding">(stable_pretraining.methods.lejepa.LeJEPAOutput attribute)</a>
 </li>
+      </ul></li>
       <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.embedding_cache.EmbeddingCache">EmbeddingCache (class in stable_pretraining.callbacks.embedding_cache)</a>
 </li>
       <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.utils.EmbeddingOutput">EmbeddingOutput (class in stable_pretraining.backbone.utils)</a>
@@ -768,12 +772,14 @@ document.write(`
 </li>
       <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.earlystop.EpochMilestones">EpochMilestones (class in stable_pretraining.callbacks.earlystop)</a>
 </li>
-      <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.visualization.escape_labels">escape_labels() (in module stable_pretraining.utils.visualization)</a>
+      <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.lejepa.EppsPulley">EppsPulley (class in stable_pretraining.methods.lejepa)</a>
 </li>
-      <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.solver.ODESolver.EULER">EULER (stable_pretraining.utils.solver.ODESolver attribute)</a>
+      <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.visualization.escape_labels">escape_labels() (in module stable_pretraining.utils.visualization)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.solver.ODESolver.EULER">EULER (stable_pretraining.utils.solver.ODESolver attribute)</a>
+</li>
       <li><a href="../api/gen_modules/stable_pretraining.backbone.EvalOnly/#stable_pretraining.backbone.EvalOnly">EvalOnly (class in stable_pretraining.backbone)</a>
 
       <ul>
@@ -970,6 +976,14 @@ document.write(`
         <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.IJEPA.forward">(stable_pretraining.methods.IJEPA method)</a>
 </li>
         <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.ijepa.IJEPA.forward">(stable_pretraining.methods.ijepa.IJEPA method)</a>
+</li>
+        <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.LeJEPA.forward">(stable_pretraining.methods.LeJEPA method)</a>
+</li>
+        <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.lejepa.EppsPulley.forward">(stable_pretraining.methods.lejepa.EppsPulley method)</a>
+</li>
+        <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.lejepa.LeJEPA.forward">(stable_pretraining.methods.lejepa.LeJEPA method)</a>
+</li>
+        <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.lejepa.SlicedEppsPulley.forward">(stable_pretraining.methods.lejepa.SlicedEppsPulley method)</a>
 </li>
         <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.MAE.forward">(stable_pretraining.methods.MAE method)</a>
 </li>
@@ -1354,6 +1368,8 @@ document.write(`
       </ul></li>
       <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.interpolate_pos_embed">interpolate_pos_embed() (in module stable_pretraining.backbone.pos_embed)</a>
 </li>
+      <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.lejepa.LeJEPAOutput.inv_loss">inv_loss (stable_pretraining.methods.lejepa.LeJEPAOutput attribute)</a>
+</li>
       <li><a href="../stable_pretraining.optim/#stable_pretraining.optim.utils.is_bias_or_norm_param">is_bias_or_norm_param() (in module stable_pretraining.optim.utils)</a>
 </li>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.config.is_dist">is_dist() (in module stable_pretraining.utils.config)</a>
@@ -1420,6 +1436,14 @@ document.write(`
 </li>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.visualization.latex_escape">latex_escape() (in module stable_pretraining.utils.visualization)</a>
 </li>
+      <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.LeJEPA">LeJEPA (class in stable_pretraining.methods)</a>
+
+      <ul>
+        <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.lejepa.LeJEPA">(class in stable_pretraining.methods.lejepa)</a>
+</li>
+      </ul></li>
+      <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.lejepa.LeJEPAOutput">LeJEPAOutput (class in stable_pretraining.methods.lejepa)</a>
+</li>
       <li><a href="../stable_pretraining/#stable_pretraining.LiDAR">LiDAR (class in stable_pretraining)</a>
 
       <ul>
@@ -1450,10 +1474,10 @@ document.write(`
 </li>
       <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.probe.MultiHeadAttentiveProbe.ln">ln (stable_pretraining.backbone.probe.MultiHeadAttentiveProbe attribute)</a>
 </li>
-      <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.read_csv_logger.load_best_compressed">load_best_compressed() (in module stable_pretraining.utils.read_csv_logger)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.read_csv_logger.load_best_compressed">load_best_compressed() (in module stable_pretraining.utils.read_csv_logger)</a>
+</li>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.load_hparams_from_ckpt">load_hparams_from_ckpt() (in module stable_pretraining.utils)</a>
 
       <ul>
@@ -1503,6 +1527,8 @@ document.write(`
       <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.ijepa.IJEPAOutput.loss">loss (stable_pretraining.methods.ijepa.IJEPAOutput attribute)</a>
 
       <ul>
+        <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.lejepa.LeJEPAOutput.loss">(stable_pretraining.methods.lejepa.LeJEPAOutput attribute)</a>
+</li>
         <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.mae.MAEOutput.loss">(stable_pretraining.methods.mae.MAEOutput attribute)</a>
 </li>
         <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.nepa.NEPAOutput.loss">(stable_pretraining.methods.nepa.NEPAOutput attribute)</a>
@@ -1733,6 +1759,8 @@ document.write(`
         <li><a href="../stable_pretraining.methods/#module-stable_pretraining.methods">stable_pretraining.methods</a>
 </li>
         <li><a href="../stable_pretraining.methods/#module-stable_pretraining.methods.ijepa">stable_pretraining.methods.ijepa</a>
+</li>
+        <li><a href="../stable_pretraining.methods/#module-stable_pretraining.methods.lejepa">stable_pretraining.methods.lejepa</a>
 </li>
         <li><a href="../stable_pretraining.methods/#module-stable_pretraining.methods.mae">stable_pretraining.methods.mae</a>
 </li>
@@ -2511,6 +2539,8 @@ document.write(`
         <li><a href="../stable_pretraining/#stable_pretraining.EarlyStopping.should_stop">(stable_pretraining.EarlyStopping method)</a>
 </li>
       </ul></li>
+      <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.lejepa.LeJEPAOutput.sigreg_loss">sigreg_loss (stable_pretraining.methods.lejepa.LeJEPAOutput attribute)</a>
+</li>
       <li><a href="../api/forward/#stable_pretraining.forward.simclr_forward">simclr_forward() (in module stable_pretraining.forward)</a>, <a href="../stable_pretraining/#stable_pretraining.forward.simclr_forward">[1]</a>
 </li>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.Transform.single_nested_get">single_nested_get() (stable_pretraining.data.transforms.Transform method)</a>
@@ -2543,6 +2573,8 @@ document.write(`
         <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.checkpoint_sklearn.SklearnCheckpoint">(class in stable_pretraining.callbacks.checkpoint_sklearn)</a>
 </li>
       </ul></li>
+      <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.lejepa.SlicedEppsPulley">SlicedEppsPulley (class in stable_pretraining.methods.lejepa)</a>
+</li>
       <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.trainer_info.SLURMInfo">SLURMInfo (class in stable_pretraining.callbacks.trainer_info)</a>
 </li>
       <li><a href="../stable_pretraining.losses/#stable_pretraining.losses.dino.DINOv1Loss.softmax_center_teacher">softmax_center_teacher() (stable_pretraining.losses.dino.DINOv1Loss method)</a>
@@ -2959,6 +2991,13 @@ document.write(`
 
       <ul>
         <li><a href="../stable_pretraining.methods/#module-stable_pretraining.methods.ijepa">module</a>
+</li>
+      </ul></li>
+      <li>
+    stable_pretraining.methods.lejepa
+
+      <ul>
+        <li><a href="../stable_pretraining.methods/#module-stable_pretraining.methods.lejepa">module</a>
 </li>
       </ul></li>
       <li>
