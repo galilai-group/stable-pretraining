@@ -47,6 +47,8 @@ class OnlineKNN(Callback):
             to compute all distances at once. Default is -1.
         distance_metric: Distance metric for finding nearest neighbors. Options are
             'euclidean', 'squared_euclidean', 'cosine', 'manhattan'. Default is 'euclidean'.
+        multi_label: Whether the dataset uses multi-label classification. Default is False.
+        num_classes: Number of total classes. Required if multi_label is True.
 
     Raises:
         ValueError: If k <= 0, temperature <= 0, or chunk_size is invalid.
@@ -73,6 +75,8 @@ class OnlineKNN(Callback):
         distance_metric: Literal[
             "euclidean", "squared_euclidean", "cosine", "manhattan"
         ] = "euclidean",
+        multi_label: bool = False,
+        num_classes: Optional[int] = None,
     ) -> None:
         super().__init__()
 
@@ -82,6 +86,9 @@ class OnlineKNN(Callback):
             raise ValueError(f"temperature must be positive, got {temperature}")
         if chunk_size == 0 or chunk_size < -1:
             raise ValueError(f"chunk_size must be positive or -1, got {chunk_size}")
+
+        if multi_label and num_classes is None:
+            raise ValueError("You must provide `num_classes` when `multi_label=True`.")
 
         if input_dim is not None and isinstance(input_dim, (list, tuple)):
             input_dim = int(np.prod(input_dim))
@@ -97,9 +104,19 @@ class OnlineKNN(Callback):
         self.chunk_size = chunk_size
         self.distance_metric = distance_metric
         self.metrics = metrics
+        self.multi_label = multi_label
+        self.num_classes = num_classes
 
         self._input_queue = None
         self._target_queue = None
+
+        for metric in self.metrics.values():
+            if metric.__class__.__name__ in ["MultilabelAUROC", "MulticlassAUROC"]:
+                logging.warning(
+                    f"[{self.name}] AUROC metric detected. torchmetrics expects target labels to be Long integers. "
+                    "If you are passing float targets, you can cast them to long in your dataset/forward pass. "
+                )
+                break
 
     @property
     def state_key(self) -> str:
@@ -126,7 +143,6 @@ class OnlineKNN(Callback):
                 self.target,
                 self.queue_length,
                 self.target_dim,
-                torch.long if self.target_dim is not None else None,
                 gather_distributed=True,
                 create_if_missing=True,
             )
@@ -195,11 +211,6 @@ class OnlineKNN(Callback):
     ) -> Optional[Tensor]:
         """Compute KNN predictions."""
         batch_size = features.size(0)
-        num_classes = int(cached_labels.max().item()) + 1
-
-        predictions = torch.zeros(
-            batch_size, num_classes, device=features.device, dtype=torch.float32
-        )
 
         if cached_features.device != features.device:
             cached_features = cached_features.to(features.device)
@@ -223,13 +234,21 @@ class OnlineKNN(Callback):
 
         dist_weight = 1 / dist_weight.add_(self.temperature)
 
-        labels_1d = (
-            cached_labels.squeeze(-1) if cached_labels.dim() > 1 else cached_labels
-        )
-        selected_labels = labels_1d[sim_indices].long()
-        one_hot_labels = F.one_hot(selected_labels, num_classes=num_classes)
+        if self.multi_label:
+            selected_labels = cached_labels[sim_indices].float()
+            weighted_votes = dist_weight.unsqueeze(-1) * selected_labels
+            total_votes = weighted_votes.sum(dim=0)
+            sum_of_weights = dist_weight.sum(dim=0).unsqueeze(-1)
+            predictions = total_votes / sum_of_weights
+        else:
+            num_classes = int(cached_labels.max().item()) + 1
+            labels_1d = (
+                cached_labels.squeeze(-1) if cached_labels.dim() > 1 else cached_labels
+            )
+            selected_labels = labels_1d[sim_indices].long()
+            one_hot_labels = F.one_hot(selected_labels, num_classes=num_classes)
+            predictions = (dist_weight.unsqueeze(-1) * one_hot_labels).sum(0)
 
-        predictions = (dist_weight.unsqueeze(-1) * one_hot_labels).sum(0)
         return predictions
 
     def _log_metrics(

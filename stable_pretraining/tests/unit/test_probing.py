@@ -249,3 +249,77 @@ class TestProbingUnit:
         assert len(module.callbacks_metrics) == 1
         assert len(module.callbacks_modules) == 1
         module.configure_optimizers()
+
+    @patch("stable_pretraining.callbacks.knn.logging.warning")
+    def test_online_knn_multilabel_initialization(self, mock_warning):
+        """Test multi-label initialization, required args, and AUROC warnings."""
+        from stable_pretraining.callbacks import OnlineKNN
+        import torchmetrics
+
+        #Test missing num_classes raises ValueError
+        with pytest.raises(ValueError, match="You must provide `num_classes`"):
+            OnlineKNN(
+                name="knn_probe",
+                input="embedding",
+                target="label",
+                queue_length=100,
+                metrics={},
+                multi_label=True,
+            )
+
+        #Test AUROC warning is triggered properly
+        metrics = {"auroc": torchmetrics.classification.MultilabelAUROC(num_labels=3)}
+        knn = OnlineKNN(
+            name="knn_probe",
+            input="embedding",
+            target="label",
+            queue_length=100,
+            metrics=metrics,
+            multi_label=True,
+            num_classes=3,
+        )
+
+        assert knn.multi_label is True
+        assert knn.num_classes == 3
+        mock_warning.assert_called_once()
+        assert "AUROC metric detected" in mock_warning.call_args[0][0]
+
+    def test_online_knn_multilabel_math(self):
+        """Test the multi-label KNN distance weighting and voting math."""
+        from stable_pretraining.callbacks import OnlineKNN
+
+        knn = OnlineKNN(
+            name="knn_probe",
+            input="embedding",
+            target="label",
+            queue_length=10,
+            metrics={},
+            k=2,
+            temperature=1.0,  # dist_weight = 1 / (dist + 1)
+            multi_label=True,
+            num_classes=3,
+        )
+
+        # Setup mock data
+        query = torch.tensor([[0.0, 0.0]])
+        cached_features = torch.tensor([
+            [0.0, 0.0],   # dist=0 -> weight=1.0
+            [2.0, 0.0],   # dist=2 -> weight=0.3333
+            [10.0, 10.0]  # Ignored because k=2
+        ])
+        
+        cached_labels = torch.tensor([
+            [1.0, 0.0, 1.0],  
+            [1.0, 1.0, 0.0],  
+            [0.0, 0.0, 0.0]   
+        ])
+
+        preds = knn._compute_knn_predictions(query, cached_features, cached_labels)
+        
+        # Expected votes:
+        # Class 0: (1.0 * 1) + (0.333 * 1) = 1.333 / 1.333 = 1.0
+        # Class 1: (1.0 * 0) + (0.333 * 1) = 0.333 / 1.333 = 0.25
+        # Class 2: (1.0 * 1) + (0.333 * 0) = 1.000 / 1.333 = 0.75
+        expected = torch.tensor([[1.00, 0.25, 0.75]])
+        
+        assert torch.allclose(preds, expected, atol=1e-3)

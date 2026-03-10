@@ -108,6 +108,15 @@ class OnlineProbe(TrainableCallback):
         self.metrics = metrics
         logging.info(f"{self.name}: We are wrapping up your `forward`!")
         self.wrap_forward(pl_module=module)
+        for metric in self.metrics.values():
+            if metric.__class__.__name__ in ["MultilabelAUROC", "MulticlassAUROC"]:
+                logging.warning(
+                    f"[{self.name}] AUROC metric detected. torchmetrics expects target labels to be Long integers. "
+                    "If you are passing float targets, you can cast them to long in your dataset/forward pass. "
+                    "If your loss function requires floats, you can handle it there (e.g., "
+                    "`loss=lambda p, t: torch.nn.functional.binary_cross_entropy_with_logits(p, t.float())`)."
+                )
+                break
 
     def configure_model(self, pl_module: LightningModule) -> torch.nn.Module:
         """Initialize the probe module from configuration."""
