@@ -1,5 +1,4 @@
 import sys
-import types
 from pathlib import Path
 
 import lightning as pl
@@ -18,21 +17,6 @@ def main():
 
     num_gpus = torch.cuda.device_count() or 1
     batch_size = 64
-
-    def mae_forward(self, batch, stage):
-        output = MAE.forward(self, batch["image"])
-        with torch.no_grad():
-            features = self.encoder.forward_features(batch["image"])
-
-        self.log(
-            f"{stage}/loss", output.loss, on_step=True, on_epoch=True, sync_dist=True
-        )
-
-        return {
-            "loss": output.loss,
-            "embedding": features[:, 1:].mean(dim=1).detach(),  # skip cls
-            **({"label": batch["label"].long()} if "label" in batch else {}),
-        }
 
     data_dir = str(get_data_dir("imagenet10"))
 
@@ -87,7 +71,6 @@ def main():
         pretrained=False,
     )
 
-    module.forward = types.MethodType(mae_forward, module)
     module.optim = {
         "optimizer": {
             "type": "AdamW",

@@ -11,19 +11,20 @@ References:
 
 Example::
 
-    from stable_pretraining.methods.lejepa import LeJEPA
+    import lightning as pl
+    import stable_pretraining as spt
+    from stable_pretraining.methods import LeJEPA
 
-    model = LeJEPA("vit_small_patch16_224")
-
-    global_images = [torch.randn(4, 3, 224, 224)] * 2
-    all_images = [torch.randn(4, 3, 224, 224)] * 6
-    model.train()
-    output = model(global_images, all_images)
-    output.loss.backward()
-
-    model.eval()
-    output = model(images=torch.randn(4, 3, 224, 224))
-    features = output.embedding  # [N, D]
+    model = LeJEPA("vit_base_patch16_224")
+    model.optim = {
+        "optimizer": {"type": "AdamW", "lr": 4e-4, "weight_decay": 0.05},
+        "scheduler": {"type": "LinearWarmupCosineAnnealing"},
+        "interval": "epoch",
+    }
+    manager = spt.Manager(
+        trainer=pl.Trainer(max_epochs=600), module=model, data=datamodule
+    )
+    manager()
 """
 
 from dataclasses import dataclass
@@ -170,39 +171,19 @@ class LeJEPA(Module):
 
     Example::
 
-        model = LeJEPA("vit_base_patch16_224")
-        images = torch.randn(4, 3, 224, 224)
-
-        model.train()
-        output = model(
-            global_views=[images, images],
-            all_views=[images, images, images, images],
-        )
-        output.loss.backward()
-
-        model.eval()
-        output = model(images=images)
-        features = output.embedding  # [4, 768]
-
-    Example with Lightning::
-
         import lightning as pl
-        from stable_pretraining.methods.lejepa import LeJEPA
+        import stable_pretraining as spt
 
-
-        class LeJEPALightning(pl.LightningModule):
-            def __init__(self):
-                super().__init__()
-                self.model = LeJEPA("vit_base_patch16_224")
-
-            def training_step(self, batch, batch_idx):
-                views = [v["image"] for v in batch["views"]]
-                output = self.model(global_views=views, all_views=views)
-                self.log("loss", output.loss)
-                return output.loss
-
-            def configure_optimizers(self):
-                return torch.optim.AdamW(self.parameters(), lr=1e-3)
+        model = LeJEPA("vit_base_patch16_224")
+        model.optim = {
+            "optimizer": {"type": "AdamW", "lr": 4e-4, "weight_decay": 0.05},
+            "scheduler": {"type": "LinearWarmupCosineAnnealing"},
+            "interval": "epoch",
+        }
+        manager = spt.Manager(
+            trainer=pl.Trainer(max_epochs=600), module=model, data=datamodule
+        )
+        manager()
     """
 
     def __init__(
@@ -272,16 +253,42 @@ class LeJEPA(Module):
         loss = inv_loss + lamb * sigreg_loss
         return loss, inv_loss, sigreg_loss
 
-    def forward(
-        self,
-        global_views: Optional[list[torch.Tensor]] = None,
-        local_views: Optional[list[torch.Tensor]] = None,
-        images: Optional[torch.Tensor] = None,
-    ) -> LeJEPAOutput:
-        if self.training:
-            assert global_views is not None and local_views is not None, (
-                "global_views and local_views must be provided in training mode"
-            )
+    def forward(self, batch: dict, stage: str) -> dict:
+        """LeJEPA forward: multi-view invariance + SIGReg.
+
+        In training mode, concatenates all global and local views through the
+        backbone and projector, then computes the invariance loss (MSE to the
+        global-view center) and the sliced Epps-Pulley goodness-of-fit
+        regulariser (SIGReg).  In eval mode, encodes a single image with the
+        backbone only (no projector, zero loss).
+
+        Expected batch keys:
+
+            - **Training** (``stage="fit"``): named multi-view keys
+              ``"global_0"``, ``"global_1"``, ..., ``"local_0"``, ``"local_1"``, ...
+              Each value is a dict with ``"image"`` ``[B, C, H, W]``
+              and ``"label"`` ``[B]``.
+            - **Eval**: ``"image"`` ``[B, C, H, W]`` and ``"label"`` ``[B]``.
+
+        :param batch: Batch dictionary from the dataloader.
+        :param stage: Lightning stage string (``"fit"``, ``"validate"``,
+            ``"test"``, or ``"predict"``).
+        :return: Dictionary with:
+
+            - ``"loss"``: Combined invariance + SIGReg scalar
+            - ``"embedding"``: Global-view backbone features
+              ``[n_global * B, D]`` in training (detached), ``[B, D]`` in eval
+            - ``"label"``: Class labels — repeated ``n_global`` times in
+              training to match the embedding batch dimension, original ``[B]``
+              in eval
+        """
+        if stage == "fit":
+            global_views = [
+                batch[k]["image"] for k in sorted(batch) if k.startswith("global")
+            ]
+            local_views = [
+                batch[k]["image"] for k in sorted(batch) if k.startswith("local")
+            ]
 
             g_features = self.backbone(torch.cat(global_views))
             l_features = self.backbone(torch.cat(local_views))
@@ -298,19 +305,26 @@ class LeJEPA(Module):
             )
 
             embedding = g_features.detach()
-            return LeJEPAOutput(
-                loss=loss,
-                embedding=embedding,
-                inv_loss=inv_loss,
-                sigreg_loss=sigreg_loss,
-            )
+            first_global_key = next(k for k in sorted(batch) if k.startswith("global"))
+            labels = batch[first_global_key]["label"].long().repeat(len(global_views))
         else:
-            assert images is not None, "images must be provided in eval mode"
-            embedding = self.backbone(images)
-            zero = torch.tensor(0.0, device=images.device)
-            return LeJEPAOutput(
-                loss=zero,
-                embedding=embedding,
-                inv_loss=zero,
-                sigreg_loss=zero,
-            )
+            embedding = self.backbone(batch["image"])
+            zero = torch.tensor(0.0, device=batch["image"].device)
+            loss, inv_loss, sigreg_loss = zero, zero, zero
+            labels = batch["label"].long()
+
+        self.log(
+            f"{stage}/sigreg",
+            sigreg_loss,
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        self.log(f"{stage}/inv", inv_loss, on_step=True, on_epoch=True, sync_dist=True)
+        self.log(f"{stage}/loss", loss, on_step=True, on_epoch=True, sync_dist=True)
+
+        return {
+            "loss": loss,
+            "embedding": embedding,
+            "label": labels,
+        }

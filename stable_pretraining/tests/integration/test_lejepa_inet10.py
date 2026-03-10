@@ -1,7 +1,5 @@
 """Deterministic smoke test for the LeJEPA training pipeline."""
 
-import types
-
 import lightning as pl
 import pytest
 import torch
@@ -80,41 +78,6 @@ class TestLeJEPAImagenet10:
             ),
         )
 
-        # Forward function matching benchmark pattern
-        def lejepa_forward(self, batch, stage):
-            if stage == "fit":
-                global_views = [
-                    batch[key]["image"]
-                    for key in sorted(batch)
-                    if key.startswith("global")
-                ]
-                local_views = [
-                    batch[key]["image"]
-                    for key in sorted(batch)
-                    if key.startswith("local")
-                ]
-                output = LeJEPA.forward(
-                    self, global_views=global_views, local_views=local_views
-                )
-                labels = batch["global_0"]["label"].long()
-            else:
-                output = LeJEPA.forward(self, images=batch["image"])
-                labels = batch["label"].long()
-
-            self.log(
-                f"{stage}/loss",
-                output.loss,
-                on_step=True,
-                on_epoch=True,
-                sync_dist=True,
-            )
-
-            return {
-                "loss": output.loss,
-                "embedding": output.embedding,
-                "label": labels,
-            }
-
         # Create LeJEPA module with vit_tiny for fast CPU testing
         # drop_path_rate=0.0 for determinism on CPU
         module = LeJEPA(
@@ -125,8 +88,6 @@ class TestLeJEPAImagenet10:
             pretrained=False,
             drop_path_rate=0.0,
         )
-
-        module.forward = types.MethodType(lejepa_forward, module)
         module.optim = {
             "optimizer": {
                 "type": "AdamW",

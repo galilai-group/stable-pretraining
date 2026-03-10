@@ -1,7 +1,5 @@
 """Deterministic smoke test for the MAE training pipeline."""
 
-import types
-
 import lightning as pl
 import pytest
 import torch
@@ -59,26 +57,6 @@ class TestMAEImagenet10:
             ),
         )
 
-        # Forward function matching benchmark pattern
-        def mae_forward(self, batch, stage):
-            output = MAE.forward(self, batch["image"])
-            with torch.no_grad():
-                features = self.encoder.forward_features(batch["image"])
-
-            self.log(
-                f"{stage}/loss",
-                output.loss,
-                on_step=True,
-                on_epoch=True,
-                sync_dist=True,
-            )
-
-            return {
-                "loss": output.loss,
-                "embedding": features[:, 1:].mean(dim=1).detach(),
-                **({"label": batch["label"].long()} if "label" in batch else {}),
-            }
-
         # Create MAE module with vit_tiny for fast CPU testing
         module = MAE(
             encoder_name="vit_tiny_patch16_224",
@@ -92,7 +70,6 @@ class TestMAEImagenet10:
             pretrained=False,
         )
 
-        module.forward = types.MethodType(mae_forward, module)
         module.optim = {
             "optimizer": {
                 "type": "AdamW",

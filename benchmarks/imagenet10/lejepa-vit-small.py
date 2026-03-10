@@ -15,7 +15,7 @@ import torchmetrics
 
 import stable_pretraining as spt
 from stable_pretraining.data import transforms
-from stable_pretraining.methods.lejepa import LeJEPA, LeJEPAOutput
+from stable_pretraining.methods.lejepa import LeJEPA
 
 
 def _photometric_transforms() -> list:
@@ -46,66 +46,6 @@ def _local_transform():
         *_photometric_transforms(),
         transforms.ToImage(**spt.data.static.ImageNet),
     )
-
-
-def lejepa_forward(self, batch, stage):
-    """LeJEPA forward: multi-view invariance + Epps-Pulley goodness-of-fit (SIGReg).
-
-    Expects ``self`` to have attributes:
-        - ``backbone``: Feature extraction network
-        - ``projector``: Projection head
-        - ``sigreg``: :class:`SlicedEppsPulley` module
-        - ``lamb``: SIGReg weight λ
-
-    Batch format:
-        - Training: dict of named views (``"global_0"``, ``"local_2"``, etc.)
-        - Eval: single dict with ``"image"`` key
-
-    Args:
-        self: Module instance (automatically bound).
-        batch: Named view dict or single-image dict.
-        stage: Training stage ('train', 'val', or 'test').
-
-    Returns:
-        Dictionary with ``"loss"``, ``"embedding"``, and optionally ``"label"``.
-    """
-    out = {}
-
-    images = batch.get("image")
-    if stage == "fit":
-        global_views = [
-            batch[key]["image"] for key in batch if key.startswith("global")
-        ]
-        local_views = [batch[key]["image"] for key in batch if key.startswith("local")]
-        labels = next(
-            batch[key]["label"]
-            for key in batch
-            if key.startswith("global") or key.startswith("local")
-        )
-
-        output: LeJEPAOutput = self.model.forward(
-            global_views=global_views, local_views=local_views, images=images
-        )
-        out["label"] = labels.repeat(len(global_views))
-    else:
-        output: LeJEPAOutput = self.model.forward(images=images)
-        out["label"] = batch["label"].long()
-
-    out["loss"] = output.loss
-    out["embedding"] = output.embedding
-
-    self.log(
-        f"{stage}/sigreg",
-        output.sigreg_loss,
-        on_step=True,
-        on_epoch=True,
-        sync_dist=True,
-    )
-    self.log(
-        f"{stage}/inv", output.inv_loss, on_step=True, on_epoch=True, sync_dist=True
-    )
-    self.log(f"{stage}/loss", output.loss, on_step=True, on_epoch=True, sync_dist=True)
-    return out
 
 
 def main():
@@ -168,33 +108,28 @@ def main():
         ),
     )
 
-    model = LeJEPA(
+    module = LeJEPA(
         encoder_name="vit_small_patch16_224",
         lamb=0.02,
         n_slices=1024,
         n_points=17,
     )
-
-    module = spt.Module(
-        model=model,
-        forward=lejepa_forward,
-        optim={
-            "optimizer": {
-                "type": "AdamW",
-                "lr": (lr := 4e-4),
-                "weight_decay": 0.05,
-                "betas": (0.9, 0.999),
-            },
-            "scheduler": {
-                "type": "LinearWarmupCosineAnnealing",
-                "peak_step": 10 / max_epochs,
-                "start_factor": 0.01,
-                "end_lr": lr / 1000,
-                "total_steps": (len(data.train) // num_gpus) * max_epochs,
-            },
-            "interval": "step",
+    module.optim = {
+        "optimizer": {
+            "type": "AdamW",
+            "lr": (lr := 4e-4),
+            "weight_decay": 0.05,
+            "betas": (0.9, 0.999),
         },
-    )
+        "scheduler": {
+            "type": "LinearWarmupCosineAnnealing",
+            "peak_step": 10 / max_epochs,
+            "start_factor": 0.01,
+            "end_lr": lr / 1000,
+            "total_steps": (len(data.train) // num_gpus) * max_epochs,
+        },
+        "interval": "step",
+    }
 
     trainer = pl.Trainer(
         max_epochs=max_epochs,
@@ -205,7 +140,7 @@ def main():
                 name="linear_probe",
                 input="embedding",
                 target="label",
-                probe=nn.Linear(model.embed_dim, 10),
+                probe=nn.Linear(module.embed_dim, 10),
                 loss=nn.CrossEntropyLoss(),
                 metrics={
                     "top1": torchmetrics.classification.MulticlassAccuracy(10),
@@ -219,14 +154,14 @@ def main():
                 target="label",
                 queue_length=10000,
                 metrics={"top1": torchmetrics.classification.MulticlassAccuracy(10)},
-                input_dim=model.embed_dim,
+                input_dim=module.embed_dim,
                 k=20,
             ),
             spt.callbacks.RankMe(
                 name="rankme",
                 target="embedding",
                 queue_length=1000,
-                target_shape=model.embed_dim,
+                target_shape=module.embed_dim,
             ),
             pl.pytorch.callbacks.ModelCheckpoint(
                 dirpath=str(Path(__file__).parent / "checkpoints" / "lejepa-vits"),

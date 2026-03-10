@@ -1,5 +1,4 @@
 import sys
-import types
 from pathlib import Path
 
 import lightning as pl
@@ -19,22 +18,6 @@ def main():
     num_gpus = torch.cuda.device_count() or 1
     batch_size = 256
     scaled_lr = 5e-4 * (batch_size * num_gpus / 2048)
-
-    def ijepa_forward(self, batch, stage):
-        output = IJEPA.forward(self, batch["image"])
-        embedding = output.embedding.mean(dim=1)
-        if self.training:
-            embedding = embedding.detach()
-
-        self.log(
-            f"{stage}/loss", output.loss, on_step=True, on_epoch=True, sync_dist=True
-        )
-
-        return {
-            "loss": output.loss,
-            "embedding": embedding,
-            **({"label": batch["label"].long()} if "label" in batch else {}),
-        }
 
     data = spt.data.DataModule(
         train=torch.utils.data.DataLoader(
@@ -85,7 +68,6 @@ def main():
         pretrained=False,
     )
 
-    module.forward = types.MethodType(ijepa_forward, module)
     module.optim = {
         "optimizer": {
             "type": "AdamW",

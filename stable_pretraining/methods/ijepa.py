@@ -10,24 +10,20 @@ References:
 
 Example::
 
-    from stable_pretraining.backbone import IJEPA
+    from stable_pretraining.methods import IJEPA
     from stable_pretraining.callbacks import TeacherStudentCallback
     import lightning as pl
+    import stable_pretraining as spt
 
-    # Create model
-    model = IJEPA(
-        encoder_name="vit_base_patch16_224",
-        predictor_embed_dim=384,
-        predictor_depth=6,
-        num_targets=4,
-    )
-
-    # Training with PyTorch Lightning
-    trainer = pl.Trainer(
-        max_epochs=300,
-        callbacks=[TeacherStudentCallback()],  # Handles EMA updates
-    )
-    trainer.fit(model, dataloader)
+    model = IJEPA("vit_base_patch16_224")
+    model.optim = {
+        "optimizer": {"type": "AdamW", "lr": 6e-4, "weight_decay": 0.05},
+        "scheduler": {"type": "LinearWarmupCosineAnnealing"},
+        "interval": "epoch",
+    }
+    trainer = pl.Trainer(max_epochs=300, callbacks=[TeacherStudentCallback()])
+    manager = spt.Manager(trainer=trainer, module=model, data=datamodule)
+    manager()
 
     # Get encoder for downstream tasks
     encoder = model.encoder.student
@@ -93,43 +89,19 @@ class IJEPA(Module):
 
     Example::
 
-        # Basic usage
-        model = IJEPA("vit_base_patch16_224")
-        images = torch.randn(4, 3, 224, 224)
-
-        # Training mode: predicts masked targets
-        model.train()
-        output = model(images)
-        output.loss.backward()
-
-        # Eval mode: encodes all patches (no masking)
-        model.eval()
-        output = model(images)
-        features = output.predictions  # [B, N, D]
-
-    Example with Lightning::
-
         import lightning as pl
+        import stable_pretraining as spt
         from stable_pretraining.callbacks import TeacherStudentCallback
 
-
-        class IJEPALightning(pl.LightningModule):
-            def __init__(self):
-                super().__init__()
-                self.model = IJEPA("vit_base_patch16_224")
-
-            def training_step(self, batch, batch_idx):
-                images = batch[0] if isinstance(batch, (list, tuple)) else batch
-                output = self.model(images)
-                self.log("loss", output.loss)
-                return output.loss
-
-            def configure_optimizers(self):
-                return torch.optim.AdamW(self.parameters(), lr=1.5e-4)
-
-
-        trainer = pl.Trainer(callbacks=[TeacherStudentCallback()])
-        trainer.fit(IJEPALightning(), dataloader)
+        model = IJEPA("vit_base_patch16_224")
+        model.optim = {
+            "optimizer": {"type": "AdamW", "lr": 6e-4, "weight_decay": 0.05},
+            "scheduler": {"type": "LinearWarmupCosineAnnealing"},
+            "interval": "epoch",
+        }
+        trainer = pl.Trainer(max_epochs=300, callbacks=[TeacherStudentCallback()])
+        manager = spt.Manager(trainer=trainer, module=model, data=datamodule)
+        manager()
 
     Note:
         - Use :class:`TeacherStudentCallback` to handle EMA updates automatically
@@ -221,15 +193,13 @@ class IJEPA(Module):
         x = encoder.vit.blocks(x)
         return encoder.vit.norm(x)
 
-    def forward(
-        self, images: torch.Tensor, embedding_source: str = "teacher"
-    ) -> IJEPAOutput:
-        """Forward pass.
+    def forward(self, batch: dict, stage: str) -> dict:
+        """I-JEPA forward: context-to-target prediction with masking.
 
         In training mode:
             - Samples target blocks and context region via :class:`IJEPAMasking`
             - Encodes context through student, targets through teacher (EMA)
-            - Predicts target representations from context
+            - Predicts target representations from context via predictor
             - Returns smooth L1 loss between predictions and targets
 
         In eval mode:
@@ -237,17 +207,24 @@ class IJEPA(Module):
             - Returns encoded features with zero loss
             - Always uses student encoder
 
-        :param images: Input images [B, C, H, W]
-        :param embedding_source: Which encoder to use for the embedding output.
-            ``"teacher"`` (default) or ``"student"``. Only affects training mode;
-            eval mode always uses student.
-        :return: :class:`IJEPAOutput` with loss and representations
-        """
-        if embedding_source not in ("teacher", "student"):
-            raise ValueError(
-                f"embedding_source must be 'teacher' or 'student', got '{embedding_source}'"
-            )
+        Expected batch keys:
 
+            - ``"image"`` *(required)*: Input images ``[B, C, H, W]``
+            - ``"label"`` *(optional)*: Class labels ``[B]``,
+              passed through when present (e.g. for online probes)
+
+        :param batch: Batch dictionary from the dataloader.
+        :param stage: Lightning stage string (``"fit"``, ``"validate"``,
+            ``"test"``, or ``"predict"``).
+        :return: Dictionary with:
+
+            - ``"loss"``: Smooth-L1 prediction loss scalar
+            - ``"embedding"``: Mean-pooled student patch features ``[B, D]``
+              (detached during training to prevent probe gradients from
+              interfering with the encoder)
+            - ``"label"``: Class labels ``[B]`` *(only if present in batch)*
+        """
+        images = batch["image"]
         B = images.shape[0]
         grid_h, grid_w = self.encoder.student._get_grid_size(images)
         student_patches = self.encoder.student.patch_embed(images)
@@ -292,17 +269,13 @@ class IJEPA(Module):
                     mask_out.target_idx.unsqueeze(-1).expand(-1, -1, D),
                 )
 
-                # Embedding: reuse teacher_full (unnormed, full sequence) for the probe
-                if embedding_source == "teacher":
-                    embedding = teacher_full
-                else:
-                    embedding = self._encode(
-                        student_patches, all_idx, grid_h, grid_w, self.encoder.student
-                    )
+                # Embedding: use student encoder for the probe
+                embedding = self._encode(
+                    student_patches, all_idx, grid_h, grid_w, self.encoder.student
+                )
 
             # Predict target representations via joint self-attention on [context + mask tokens]
             N_tgt = mask_out.target_idx.shape[1]
-            # Create dummy queries and just mask them all out
             queries = torch.zeros(
                 B, N_tgt, self.embed_dim, device=images.device, dtype=context.dtype
             )
@@ -319,26 +292,26 @@ class IJEPA(Module):
         else:
             # Eval: encode all patches through student
             with torch.no_grad():
-                context = self._encode(
+                embedding = self._encode(
                     student_patches,
                     mask_out.context_idx,
                     grid_h,
                     grid_w,
                     self.encoder.student,
                 )
-            predictions = context
-            targets = context
-            embedding = context
             loss = torch.tensor(0.0, device=images.device)
 
-        return IJEPAOutput(
-            loss=loss,
-            embedding=embedding,
-            predictions=predictions,
-            targets=targets,
-            num_targets=mask_out.target_idx.shape[1],
-            num_context=mask_out.context_idx.shape[1],
-        )
+        embedding = embedding.mean(dim=1)
+        if self.training:
+            embedding = embedding.detach()
+
+        self.log(f"{stage}/loss", loss, on_step=True, on_epoch=True, sync_dist=True)
+
+        return {
+            "loss": loss,
+            "embedding": embedding,
+            **({"label": batch["label"].long()} if "label" in batch else {}),
+        }
 
     def _fix_init_weight(self):
         """Rescale attention proj and MLP output weights by depth, matching I-JEPA init from the repo."""

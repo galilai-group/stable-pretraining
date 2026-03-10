@@ -1,7 +1,5 @@
 """Deterministic smoke test for the IJEPA training pipeline."""
 
-import types
-
 import lightning as pl
 import pytest
 import torch
@@ -59,27 +57,6 @@ class TestIJEPAImagenet10:
             ),
         )
 
-        # Forward function matching benchmark pattern
-        def ijepa_forward(self, batch, stage):
-            output = IJEPA.forward(self, batch["image"], embedding_source="student")
-            embedding = output.embedding.mean(dim=1)
-            if self.training:
-                embedding = embedding.detach()
-
-            self.log(
-                f"{stage}/loss",
-                output.loss,
-                on_step=True,
-                on_epoch=True,
-                sync_dist=True,
-            )
-
-            return {
-                "loss": output.loss,
-                "embedding": embedding,
-                **({"label": batch["label"].long()} if "label" in batch else {}),
-            }
-
         # Create IJEPA module with vit_tiny for fast CPU testing
         module = IJEPA(
             encoder_name="vit_tiny_patch16_224",
@@ -94,7 +71,6 @@ class TestIJEPAImagenet10:
             pretrained=False,
         )
 
-        module.forward = types.MethodType(ijepa_forward, module)
         module.optim = {
             "optimizer": {
                 "type": "AdamW",
