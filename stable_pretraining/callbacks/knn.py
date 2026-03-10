@@ -143,6 +143,7 @@ class OnlineKNN(Callback):
                 self.target,
                 self.queue_length,
                 self.target_dim,
+                torch.long if self.target_dim is not None else None,
                 gather_distributed=True,
                 create_if_missing=True,
             )

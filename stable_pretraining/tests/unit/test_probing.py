@@ -256,7 +256,7 @@ class TestProbingUnit:
         from stable_pretraining.callbacks import OnlineKNN
         import torchmetrics
 
-        #Test missing num_classes raises ValueError
+        # Test missing num_classes raises ValueError
         with pytest.raises(ValueError, match="You must provide `num_classes`"):
             OnlineKNN(
                 name="knn_probe",
@@ -267,7 +267,7 @@ class TestProbingUnit:
                 multi_label=True,
             )
 
-        #Test AUROC warning is triggered properly
+        # Test AUROC warning is triggered properly
         metrics = {"auroc": torchmetrics.classification.MultilabelAUROC(num_labels=3)}
         knn = OnlineKNN(
             name="knn_probe",
@@ -302,24 +302,24 @@ class TestProbingUnit:
 
         # Setup mock data
         query = torch.tensor([[0.0, 0.0]])
-        cached_features = torch.tensor([
-            [0.0, 0.0],   # dist=0 -> weight=1.0
-            [2.0, 0.0],   # dist=2 -> weight=0.3333
-            [10.0, 10.0]  # Ignored because k=2
-        ])
-        
-        cached_labels = torch.tensor([
-            [1.0, 0.0, 1.0],  
-            [1.0, 1.0, 0.0],  
-            [0.0, 0.0, 0.0]   
-        ])
+        cached_features = torch.tensor(
+            [
+                [0.0, 0.0],  # dist=0 -> weight=1.0
+                [2.0, 0.0],  # dist=2 -> weight=0.3333
+                [10.0, 10.0],  # Ignored because k=2
+            ]
+        )
+
+        cached_labels = torch.tensor(
+            [[1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [0.0, 0.0, 0.0]]
+        )
 
         preds = knn._compute_knn_predictions(query, cached_features, cached_labels)
-        
+
         # Expected votes:
         # Class 0: (1.0 * 1) + (0.333 * 1) = 1.333 / 1.333 = 1.0
         # Class 1: (1.0 * 0) + (0.333 * 1) = 0.333 / 1.333 = 0.25
         # Class 2: (1.0 * 1) + (0.333 * 0) = 1.000 / 1.333 = 0.75
         expected = torch.tensor([[1.00, 0.25, 0.75]])
-        
+
         assert torch.allclose(preds, expected, atol=1e-3)
