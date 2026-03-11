@@ -7,7 +7,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Tuple
 
-__all__ = ["PatchMasking", "MaskingOutput", "IJEPAMasking", "IJEPAMaskOutput"]
+__all__ = [
+    "PatchMasking",
+    "MaskingOutput",
+    "IJEPAMasking",
+    "IJEPAMaskOutput",
+    "VJEPAMasking",
+    "VJEPAMaskOutput",
+]
 
 
 @dataclass
@@ -620,6 +627,267 @@ class IJEPAMasking(nn.Module):
             context_idx=context_idx,
             target_idx=target_idx,
             target_block_masks=target_block_masks_flat,
+            mask=mask,
+        )
+
+    def extra_repr(self) -> str:
+        return (
+            f"num_targets={self.num_targets}, "
+            f"target_scale={self.target_scale}, "
+            f"target_aspect_ratio={self.target_aspect_ratio}, "
+            f"context_scale={self.context_scale}"
+        )
+
+
+# =============================================================================
+# V-JEPA tube masking
+# =============================================================================
+
+
+@dataclass
+class VJEPAMaskOutput:
+    """Output from V-JEPA tube masking operation.
+
+    :ivar context_idx: Indices of context (visible) patches [B, N_ctx]
+        (flat indices into T*N_spatial)
+    :ivar target_idx: Combined indices of all target patches [B, N_tgt]
+    :ivar target_block_masks: Per-tube boolean masks [num_targets × (B, T*N_spatial)]
+    :ivar mask: Full mask where 1 = target, 0 = context [B, T*N_spatial]
+    """
+
+    context_idx: torch.Tensor
+    target_idx: torch.Tensor
+    target_block_masks: List[torch.Tensor]
+    mask: torch.Tensor
+
+
+class VJEPAMasking(nn.Module):
+    """V-JEPA multi-block tube masking for video joint-embedding predictive architecture.
+
+    Extends I-JEPA multi-block masking to video by replicating each 2D spatial
+    block across **all** temporal frames, forming *tubes*.  Target tubes share
+    the same spatial footprint across every frame; context is all non-target
+    spatio-temporal tokens (optionally subsampled).
+
+    Strategy:
+        1. Sample M spatial blocks (identical scale / aspect-ratio rules as I-JEPA)
+        2. Extend each spatial block to a tube: same region across all T frames
+        3. Context = all T×N_spatial tokens NOT in any tube
+        4. Optionally subsample context to ``context_scale`` ratio
+
+    :param num_targets: Number of target tubes to sample (default: 8)
+    :param target_scale: (min, max) fraction of *spatial* patches per block
+    :param target_aspect_ratio: (min, max) aspect ratio of spatial blocks
+    :param context_scale: (min, max) fraction of non-target patches kept as context.
+        V-JEPA uses the full context so the default is ``(1.0, 1.0)``.
+    :param allow_target_overlap: Allow tubes to overlap spatially (default: False)
+
+    Example::
+
+        masking = VJEPAMasking(num_targets=8)
+
+        # x: video patch embeddings [B, T*N_spatial, D]
+        output = masking(x, grid_t=8, grid_h=14, grid_w=14)
+
+        context = x.gather(1, output.context_idx.unsqueeze(-1).expand(-1, -1, D))
+        targets = x.gather(1, output.target_idx.unsqueeze(-1).expand(-1, -1, D))
+
+    References:
+        Bardes et al. "V-JEPA: Latent Video Prediction for Visual Representation
+        Learning." ICLR 2024. https://arxiv.org/abs/2404.08471
+    """
+
+    def __init__(
+        self,
+        num_targets: int = 8,
+        target_scale: Tuple[float, float] = (0.15, 0.2),
+        target_aspect_ratio: Tuple[float, float] = (0.75, 1.5),
+        context_scale: Tuple[float, float] = (1.0, 1.0),
+        allow_target_overlap: bool = False,
+    ):
+        super().__init__()
+
+        if num_targets < 1:
+            raise ValueError(f"num_targets must be >= 1, got {num_targets}")
+        if not (0 < target_scale[0] <= target_scale[1] < 1):
+            raise ValueError(f"target_scale must be in (0, 1), got {target_scale}")
+        if not (0 < target_aspect_ratio[0] <= target_aspect_ratio[1]):
+            raise ValueError("target_aspect_ratio values must be positive")
+        if not (0 < context_scale[0] <= context_scale[1] <= 1):
+            raise ValueError(f"context_scale must be in (0, 1], got {context_scale}")
+
+        self.num_targets = num_targets
+        self.target_scale = target_scale
+        self.target_aspect_ratio = target_aspect_ratio
+        self.context_scale = context_scale
+        self.allow_target_overlap = allow_target_overlap
+
+    def _sample_block_params(
+        self,
+        grid_h: int,
+        grid_w: int,
+        device: torch.device,
+    ) -> Tuple[int, int, int, int]:
+        """Sample (top, left, block_h, block_w) for a single spatial target block."""
+        num_patches = grid_h * grid_w
+        scale = torch.empty(1, device=device).uniform_(*self.target_scale).item()
+        log_ar = (
+            torch.empty(1, device=device)
+            .uniform_(
+                torch.tensor(self.target_aspect_ratio[0]).log().item(),
+                torch.tensor(self.target_aspect_ratio[1]).log().item(),
+            )
+            .item()
+        )
+        aspect_ratio = torch.tensor(log_ar).exp().item()
+        block_area = num_patches * scale
+        block_h = int(round((block_area / aspect_ratio) ** 0.5))
+        block_w = int(round((block_area * aspect_ratio) ** 0.5))
+        block_h = max(1, min(block_h, grid_h))
+        block_w = max(1, min(block_w, grid_w))
+        top = torch.randint(0, max(1, grid_h - block_h + 1), (1,), device=device).item()
+        left = torch.randint(
+            0, max(1, grid_w - block_w + 1), (1,), device=device
+        ).item()
+        return top, left, block_h, block_w
+
+    def _create_spatial_mask(
+        self,
+        top: int,
+        left: int,
+        block_h: int,
+        block_w: int,
+        grid_h: int,
+        grid_w: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        """Create 2D spatial block mask [grid_h, grid_w], True = in block."""
+        mask = torch.zeros(grid_h, grid_w, dtype=torch.bool, device=device)
+        mask[top : top + block_h, left : left + block_w] = True
+        return mask
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        grid_t: int,
+        grid_h: int,
+        grid_w: int,
+    ) -> VJEPAMaskOutput:
+        """Apply V-JEPA tube masking.
+
+        :param x: Video patch embeddings [B, T*N_spatial, D]
+        :param grid_t: Number of temporal frames (T)
+        :param grid_h: Spatial grid height
+        :param grid_w: Spatial grid width
+        :return: VJEPAMaskOutput with context/target indices
+
+        In eval mode all patches are returned as context (no masking).
+        Tube masks are sampled once per batch (shared across samples) to keep
+        the spatiotemporal structure consistent within a batch.
+        """
+        if x.dim() != 3:
+            raise ValueError(f"Expected 3D input (B, T*N, D), got {x.dim()}D")
+
+        B, TN, D = x.shape
+        N_spatial = grid_h * grid_w
+        N_total = grid_t * N_spatial
+        device = x.device
+
+        if TN != N_total:
+            raise ValueError(
+                f"TN={TN} doesn't match grid_t*grid_h*grid_w="
+                f"{grid_t}*{grid_h}*{grid_w}={N_total}"
+            )
+
+        # Eval mode: all patches as context, no masking
+        if not self.training:
+            all_idx = torch.arange(N_total, device=device).unsqueeze(0).expand(B, -1)
+            empty_masks = [
+                torch.zeros(B, N_total, dtype=torch.bool, device=device)
+                for _ in range(self.num_targets)
+            ]
+            return VJEPAMaskOutput(
+                context_idx=all_idx,
+                target_idx=torch.empty(B, 0, dtype=torch.long, device=device),
+                target_block_masks=empty_masks,
+                mask=torch.zeros(B, N_total, device=device),
+            )
+
+        # Sample spatial blocks (shared across the batch for consistent structure)
+        spatial_masks: List[torch.Tensor] = []
+        combined_spatial = torch.zeros(grid_h, grid_w, dtype=torch.bool, device=device)
+
+        for _ in range(self.num_targets):
+            block_mask = None
+            for _ in range(100):  # max attempts per block
+                top, left, bh, bw = self._sample_block_params(grid_h, grid_w, device)
+                candidate = self._create_spatial_mask(
+                    top, left, bh, bw, grid_h, grid_w, device
+                )
+                if (
+                    self.allow_target_overlap
+                    or not (candidate & combined_spatial).any()
+                ):
+                    block_mask = candidate
+                    break
+            if block_mask is not None:
+                spatial_masks.append(block_mask)
+                combined_spatial = combined_spatial | block_mask
+            else:
+                # Could not place non-overlapping block; append empty
+                spatial_masks.append(
+                    torch.zeros(grid_h, grid_w, dtype=torch.bool, device=device)
+                )
+
+        assert len(spatial_masks) == self.num_targets
+
+        # Extend each spatial mask into a tube: replicate across T frames.
+        # Flat index for token at (t, h, w): t * N_spatial + h * grid_w + w
+        tube_masks: List[torch.Tensor] = []
+        for s_mask in spatial_masks:
+            # s_mask: [grid_h, grid_w] -> tube: [grid_t, grid_h, grid_w] -> [T*N]
+            tube = s_mask.unsqueeze(0).expand(grid_t, -1, -1).reshape(-1)
+            tube_masks.append(tube)
+
+        # Combined target mask over all T*N_spatial positions
+        combined_tube = torch.zeros(N_total, dtype=torch.bool, device=device)
+        for tube in tube_masks:
+            combined_tube = combined_tube | tube
+
+        # Per-batch tube masks [B, T*N_spatial]
+        target_block_masks_batch = [t.unsqueeze(0).expand(B, -1) for t in tube_masks]
+
+        # Target indices [B, N_tgt]
+        target_idx = combined_tube.nonzero(as_tuple=True)[0].unsqueeze(0).expand(B, -1)
+
+        # Context indices: non-target patches, subsampled per-sample
+        available_idx = (~combined_tube).nonzero(as_tuple=True)[0]
+        n_available = len(available_idx)
+
+        if n_available == 0:
+            # Degenerate: all patches are targets → fall back to full context
+            context_idx = (
+                torch.arange(N_total, device=device).unsqueeze(0).expand(B, -1)
+            )
+        else:
+            ctx_ratio = (
+                torch.empty(1, device=device).uniform_(*self.context_scale).item()
+            )
+            n_context = max(1, int(n_available * ctx_ratio))
+
+            context_idx_list = []
+            for _ in range(B):
+                perm = torch.randperm(n_available, device=device)[:n_context]
+                ctx_idx = available_idx[perm].sort().values
+                context_idx_list.append(ctx_idx)
+            context_idx = torch.stack(context_idx_list)  # [B, N_ctx]
+
+        mask = combined_tube.float().unsqueeze(0).expand(B, -1)  # [B, N_total]
+
+        return VJEPAMaskOutput(
+            context_idx=context_idx,
+            target_idx=target_idx,
+            target_block_masks=target_block_masks_batch,
             mask=mask,
         )
 
