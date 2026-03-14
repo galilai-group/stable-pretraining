@@ -76,7 +76,7 @@ def main():
     )
 
     module = IJEPA(
-        encoder_name="vit_base_patch16_224",
+        model_or_model_name="vit_base_patch16_224",
         predictor_embed_dim=384,
         predictor_depth=12,
         num_targets=4,

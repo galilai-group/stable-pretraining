@@ -73,7 +73,7 @@ def main():
     )
 
     module = MAE(
-        encoder_name="vit_base_patch16_224",
+        model_or_model_name="vit_base_patch16_224",
         decoder_embed_dim=512,
         decoder_depth=8,
         decoder_num_heads=16,

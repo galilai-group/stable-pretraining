@@ -1,9 +1,10 @@
-"""Deterministic smoke test for the IJEPA training pipeline."""
+"""Deterministic smoke test for IJEPA with pre-instantiated nn.Module backbone."""
 
 import types
 
 import lightning as pl
 import pytest
+import timm
 import torch
 
 import stable_pretraining as spt
@@ -11,16 +12,30 @@ from stable_pretraining.data import transforms
 from stable_pretraining.methods.ijepa import IJEPA
 
 
+def load_backbone(backbone_name: str, pretrained: bool = False, img_size: int = 224):
+    """Load a backbone from TIMM (simplified version for testing)."""
+    backbone = timm.create_model(
+        backbone_name, pretrained=pretrained, num_classes=0, img_size=img_size
+    )
+    for p in backbone.parameters():
+        p.requires_grad = True
+    return backbone
+
+
 @pytest.mark.integration
 @pytest.mark.download
 @pytest.mark.filterwarnings("ignore:`isinstance.treespec, LeafSpec.` is deprecated")
 @pytest.mark.filterwarnings("ignore:.*does not have many workers")
 @pytest.mark.filterwarnings("ignore:Trying to infer the `batch_size`")
-class TestIJEPAImagenet10:
-    """Run IJEPA (vit_tiny) on imagenette for 10 steps and check determinism."""
+class TestIJEPAModuleInput:
+    """Run IJEPA with a pre-loaded backbone on imagenette for 3 steps.
 
-    def test_ijepa_10_steps(self):
-        """Train IJEPA for 10 steps and assert loss matches expected value."""
+    Mirrors test_ijepa_inet10.py but passes an nn.Module instead of a string
+    to IJEPA(), verifying the model_or_model_name interface.
+    """
+
+    def test_ijepa_3_steps_with_loaded_backbone(self):
+        """Train IJEPA (pre-loaded backbone) for 3 steps and assert loss matches."""
         pl.seed_everything(42, workers=True)
 
         # Build data from frgfm/imagenette
@@ -80,9 +95,11 @@ class TestIJEPAImagenet10:
                 **({"label": batch["label"].long()} if "label" in batch else {}),
             }
 
-        # Create IJEPA module with vit_tiny for fast CPU testing
+        # Load backbone externally, then pass nn.Module to IJEPA
+        backbone = load_backbone("vit_tiny_patch16_224", pretrained=False)
+
         module = IJEPA(
-            model_or_model_name="vit_tiny_patch16_224",
+            model_or_model_name=backbone,
             predictor_embed_dim=192,
             predictor_depth=6,
             num_targets=4,
@@ -91,7 +108,6 @@ class TestIJEPAImagenet10:
             context_scale=(0.85, 1.0),
             ema_decay_start=0.996,
             ema_decay_end=1.0,
-            pretrained=False,
         )
 
         module.forward = types.MethodType(ijepa_forward, module)
@@ -130,7 +146,9 @@ class TestIJEPAImagenet10:
         # Verify deterministic loss
         final_loss = trainer.callback_metrics.get("fit/loss_step")
         assert final_loss is not None, "No loss logged"
-        print(f"\nIJEPA final loss after 3 steps: {final_loss.item():.6f}")
+        print(
+            f"\nIJEPA (loaded module) final loss after 3 steps: {final_loss.item():.6f}"
+        )
         expected = torch.tensor(0.515345)
         assert torch.isclose(final_loss.cpu(), expected, atol=1e-4), (
             f"IJEPA loss {final_loss.item():.6f} != expected {expected.item():.6f}"

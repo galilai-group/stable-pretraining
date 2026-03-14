@@ -81,7 +81,7 @@ class TestMAEImagenet10:
 
         # Create MAE module with vit_tiny for fast CPU testing
         module = MAE(
-            encoder_name="vit_tiny_patch16_224",
+            model_or_model_name="vit_tiny_patch16_224",
             decoder_embed_dim=192,
             decoder_depth=4,
             decoder_num_heads=3,
