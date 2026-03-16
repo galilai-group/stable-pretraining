@@ -289,7 +289,7 @@ class MaskedEncoder(nn.Module):
         self.default_grid_h, self.default_grid_w = (
             (gs, gs) if isinstance(gs, int) else gs
         )
-       
+
         self.has_class_token = (
             hasattr(self.vit, "cls_token") and self.vit.cls_token is not None
         )
@@ -298,8 +298,8 @@ class MaskedEncoder(nn.Module):
         else:
             self.num_reg_tokens = getattr(self.vit, "num_reg_tokens", 0)
         self.num_prefix_tokens = (
-            (1 if self.has_class_token else 0) + self.num_reg_tokens
-        )
+            1 if self.has_class_token else 0
+        ) + self.num_reg_tokens
         self.no_embed_class = getattr(self.vit, "no_embed_class", False)
 
     def _rebuild_patch_embed(

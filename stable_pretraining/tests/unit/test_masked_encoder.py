@@ -125,8 +125,7 @@ def sample_images(encoder_no_mask):
 @pytest.mark.unit
 @pytest.mark.download
 class TestPrefixTokenDetection:
-    """Verify num_prefix_tokens, has_class_token, and num_reg_tokens are
-    correctly inferred from the underlying timm model parameters."""
+    """Verify prefix token attributes are correctly inferred from timm model."""
 
     def test_has_class_token(self, encoder_no_mask):
         enc, cfg = encoder_no_mask
@@ -141,21 +140,17 @@ class TestPrefixTokenDetection:
         )
 
     def test_num_prefix_matches_actual(self, encoder_no_mask):
-        """num_prefix_tokens must equal the number of tokens _get_prefix_tokens
-        actually prepends — the mismatch here was the root cause of the
-        45-vs-49 decoder crash."""
+        """num_prefix_tokens must equal what _get_prefix_tokens actually prepends."""
         enc, _ = encoder_no_mask
         assert enc.num_prefix_tokens == _actual_prefix_count(enc)
 
     def test_num_prefix_matches_timm(self, encoder_no_mask):
-        """Our computed prefix count must agree with timm's own attribute
-        (when it exists)."""
+        """Computed prefix count must agree with timm's own attribute."""
         enc, cfg = encoder_no_mask
         timm_val = getattr(enc.vit, "num_prefix_tokens", None)
         if timm_val is not None:
             assert enc.num_prefix_tokens == timm_val, (
-                f"{cfg['name']}: computed {enc.num_prefix_tokens} "
-                f"vs timm {timm_val}"
+                f"{cfg['name']}: computed {enc.num_prefix_tokens} vs timm {timm_val}"
             )
 
 
@@ -167,8 +162,7 @@ class TestPrefixTokenDetection:
 @pytest.mark.unit
 @pytest.mark.download
 class TestPrefixTokenDetectionPreInstantiated:
-    """Ensure pre-instantiated-model path gives identical prefix detection
-    as the string path."""
+    """Ensure pre-instantiated model path gives identical prefix detection."""
 
     def test_same_prefix_count(self, encoder_with_mask, encoder_from_model):
         enc_str, _ = encoder_with_mask
@@ -205,8 +199,7 @@ class TestPosEmbedPresence:
         pos_embed = enc.vit.pos_embed
         if cfg["pos_embed_is_none"]:
             assert pos_embed is None, (
-                f"{cfg['name']}: expected pos_embed=None (RoPE), "
-                f"got {type(pos_embed)}"
+                f"{cfg['name']}: expected pos_embed=None (RoPE), got {type(pos_embed)}"
             )
         else:
             assert pos_embed is not None, (
@@ -353,9 +346,7 @@ class TestForwardWithMask:
         assert not torch.isnan(output.encoded).any()
 
     def test_prefix_strip_matches_ids_keep(self, encoder_with_mask, sample_images):
-        """The core invariant that broke before: after stripping
-        num_prefix_tokens from encoded, the remaining dim-1 must equal
-        ids_keep.shape[1]."""
+        """Encoded patches after stripping prefix must match ids_keep length."""
         enc, _ = encoder_with_mask
         enc.train()
         output = enc(sample_images)
@@ -374,8 +365,7 @@ class TestForwardWithMask:
 @pytest.mark.unit
 @pytest.mark.download
 class TestForwardWithMaskPreInstantiated:
-    """Test forward with masking when MaskedEncoder wraps a pre-instantiated
-    timm model (the actual training code path)."""
+    """Test forward with masking using a pre-instantiated timm model."""
 
     def test_output_shape(self, encoder_from_model):
         enc, cfg = encoder_from_model
@@ -390,7 +380,9 @@ class TestForwardWithMaskPreInstantiated:
         num_prefix = _actual_prefix_count(enc)
 
         assert output.encoded.shape == (
-            BATCH_SIZE, num_prefix + num_visible, enc.embed_dim
+            BATCH_SIZE,
+            num_prefix + num_visible,
+            enc.embed_dim,
         )
         assert output.ids_keep.shape == (BATCH_SIZE, num_visible)
 
