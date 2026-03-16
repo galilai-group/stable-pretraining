@@ -381,6 +381,8 @@ class MaskedEncoder(nn.Module):
 
         # Patch embed + positional embed
         x = self.patch_embed(images)
+        if x.ndim == 4:
+            x = x.reshape(B, -1, x.shape[-1])
         prefix_pos, patch_pos = self._get_pos_embed(grid_h, grid_w)
         if patch_pos is not None:
             x = x + patch_pos
