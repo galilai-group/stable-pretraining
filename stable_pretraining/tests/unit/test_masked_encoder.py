@@ -1,13 +1,15 @@
-"""Unit tests for MaskedEncoder with RoPE (no pos_embed) and learned pos_embed models.
+"""Unit tests for MaskedEncoder across diverse timm ViT families.
 
-Tests two real timm models:
-- vit_base_patch16_224: standard ViT with learned positional embeddings
-- vit_base_patch16_dinov3.lvd1689m: DINOv3 with RoPE (pos_embed is None)
+Tests six real timm models covering standard ViT, DINOv2, DINOv3 (Eva/RoPE),
+MAE, and CLIP backbones. Validates prefix-token detection, positional embedding
+handling, forward passes (with/without masking), gradient flow, and that
+string-based vs pre-instantiated model creation produces identical behaviour.
 
 Run with: pytest stable_pretraining/tests/unit/test_masked_encoder.py -v -s
 """
 
 import pytest
+import timm
 import torch
 
 from stable_pretraining.backbone import MaskedEncoder, PatchMasking
@@ -15,29 +17,69 @@ from stable_pretraining.backbone import MaskedEncoder, PatchMasking
 
 BATCH_SIZE = 2
 CHANNELS = 3
+MASK_RATIO = 0.75
 
 MODELS = {
     "vit_base": {
         "name": "vit_base_patch16_224",
         "img_size": 224,
         "pos_embed_is_none": False,
+        "expected_num_reg": 0,
+    },
+    "dinov2": {
+        "name": "vit_base_patch14_dinov2.lvd142m",
+        "img_size": 518,
+        "pos_embed_is_none": False,
+        "expected_num_reg": 0,
     },
     "dinov3": {
         "name": "vit_base_patch16_dinov3.lvd1689m",
         "img_size": 256,
         "pos_embed_is_none": True,
+        "expected_num_reg": 4,
+    },
+    "mae": {
+        "name": "vit_base_patch16_224.mae",
+        "img_size": 224,
+        "pos_embed_is_none": False,
+        "expected_num_reg": 0,
+    },
+    "clip_openai": {
+        "name": "vit_base_patch16_clip_224.openai",
+        "img_size": 224,
+        "pos_embed_is_none": False,
+        "expected_num_reg": 0,
+    },
+    "clip_laion": {
+        "name": "vit_base_patch16_clip_224.laion2b",
+        "img_size": 224,
+        "pos_embed_is_none": False,
+        "expected_num_reg": 0,
     },
 }
 
+ALL_KEYS = list(MODELS.keys())
 
-@pytest.fixture(params=["vit_base", "dinov3"], scope="module")
+
+def _actual_prefix_count(enc: MaskedEncoder) -> int:
+    """Count how many prefix tokens _get_prefix_tokens actually prepends."""
+    prefix = enc._get_prefix_tokens(1)
+    return prefix.shape[1] if prefix is not None else 0
+
+
+# ============================================================================
+# Fixtures
+# ============================================================================
+
+
+@pytest.fixture(params=ALL_KEYS, scope="module")
 def model_key(request):
     return request.param
 
 
 @pytest.fixture(scope="module")
 def encoder_no_mask(model_key):
-    """MaskedEncoder without masking (inference-like)."""
+    """MaskedEncoder without masking (inference-like), created from string."""
     cfg = MODELS[model_key]
     enc = MaskedEncoder(cfg["name"], masking=None, pretrained=False)
     enc.eval()
@@ -46,10 +88,23 @@ def encoder_no_mask(model_key):
 
 @pytest.fixture(scope="module")
 def encoder_with_mask(model_key):
-    """MaskedEncoder with 75% random masking."""
+    """MaskedEncoder with masking, created from string."""
     cfg = MODELS[model_key]
-    masking = PatchMasking(mask_ratio=0.75)
+    masking = PatchMasking(mask_ratio=MASK_RATIO)
     enc = MaskedEncoder(cfg["name"], masking=masking, pretrained=False)
+    enc.train()
+    return enc, cfg
+
+
+@pytest.fixture(scope="module")
+def encoder_from_model(model_key):
+    """MaskedEncoder created from a pre-instantiated timm model (training path)."""
+    cfg = MODELS[model_key]
+    backbone = timm.create_model(
+        cfg["name"], pretrained=False, num_classes=0, img_size=cfg["img_size"]
+    )
+    masking = PatchMasking(mask_ratio=MASK_RATIO)
+    enc = MaskedEncoder(backbone, masking=masking)
     enc.train()
     return enc, cfg
 
@@ -58,14 +113,81 @@ def encoder_with_mask(model_key):
 def sample_images(encoder_no_mask):
     """Generate sample images matching the model's expected input size."""
     _, cfg = encoder_no_mask
-    img_size = cfg["img_size"]
-    return torch.randn(BATCH_SIZE, CHANNELS, img_size, img_size)
+    s = cfg["img_size"]
+    return torch.randn(BATCH_SIZE, CHANNELS, s, s)
 
 
-def _actual_prefix_count(enc) -> int:
-    """Count how many prefix tokens _get_prefix_tokens actually prepends."""
-    prefix = enc._get_prefix_tokens(1)
-    return prefix.shape[1] if prefix is not None else 0
+# ============================================================================
+# Prefix token detection
+# ============================================================================
+
+
+@pytest.mark.unit
+@pytest.mark.download
+class TestPrefixTokenDetection:
+    """Verify num_prefix_tokens, has_class_token, and num_reg_tokens are
+    correctly inferred from the underlying timm model parameters."""
+
+    def test_has_class_token(self, encoder_no_mask):
+        enc, cfg = encoder_no_mask
+        vit_has_cls = hasattr(enc.vit, "cls_token") and enc.vit.cls_token is not None
+        assert enc.has_class_token == vit_has_cls
+
+    def test_num_reg_tokens(self, encoder_no_mask):
+        enc, cfg = encoder_no_mask
+        assert enc.num_reg_tokens == cfg["expected_num_reg"], (
+            f"{cfg['name']}: expected {cfg['expected_num_reg']} register tokens, "
+            f"got {enc.num_reg_tokens}"
+        )
+
+    def test_num_prefix_matches_actual(self, encoder_no_mask):
+        """num_prefix_tokens must equal the number of tokens _get_prefix_tokens
+        actually prepends — the mismatch here was the root cause of the
+        45-vs-49 decoder crash."""
+        enc, _ = encoder_no_mask
+        assert enc.num_prefix_tokens == _actual_prefix_count(enc)
+
+    def test_num_prefix_matches_timm(self, encoder_no_mask):
+        """Our computed prefix count must agree with timm's own attribute
+        (when it exists)."""
+        enc, cfg = encoder_no_mask
+        timm_val = getattr(enc.vit, "num_prefix_tokens", None)
+        if timm_val is not None:
+            assert enc.num_prefix_tokens == timm_val, (
+                f"{cfg['name']}: computed {enc.num_prefix_tokens} "
+                f"vs timm {timm_val}"
+            )
+
+
+# ============================================================================
+# Prefix detection: string vs pre-instantiated model
+# ============================================================================
+
+
+@pytest.mark.unit
+@pytest.mark.download
+class TestPrefixTokenDetectionPreInstantiated:
+    """Ensure pre-instantiated-model path gives identical prefix detection
+    as the string path."""
+
+    def test_same_prefix_count(self, encoder_with_mask, encoder_from_model):
+        enc_str, _ = encoder_with_mask
+        enc_mod, _ = encoder_from_model
+        assert enc_str.num_prefix_tokens == enc_mod.num_prefix_tokens
+
+    def test_same_reg_count(self, encoder_with_mask, encoder_from_model):
+        enc_str, _ = encoder_with_mask
+        enc_mod, _ = encoder_from_model
+        assert enc_str.num_reg_tokens == enc_mod.num_reg_tokens
+
+    def test_same_has_class_token(self, encoder_with_mask, encoder_from_model):
+        enc_str, _ = encoder_with_mask
+        enc_mod, _ = encoder_from_model
+        assert enc_str.has_class_token == enc_mod.has_class_token
+
+    def test_prefix_matches_actual_pre_instantiated(self, encoder_from_model):
+        enc, _ = encoder_from_model
+        assert enc.num_prefix_tokens == _actual_prefix_count(enc)
 
 
 # ============================================================================
@@ -76,14 +198,15 @@ def _actual_prefix_count(enc) -> int:
 @pytest.mark.unit
 @pytest.mark.download
 class TestPosEmbedPresence:
-    """Verify pos_embed is None for RoPE models and exists for standard models."""
+    """Verify pos_embed is None for RoPE models and exists for standard ones."""
 
     def test_pos_embed_value(self, encoder_no_mask):
         enc, cfg = encoder_no_mask
         pos_embed = enc.vit.pos_embed
         if cfg["pos_embed_is_none"]:
             assert pos_embed is None, (
-                f"{cfg['name']}: expected pos_embed=None (RoPE), got {type(pos_embed)}"
+                f"{cfg['name']}: expected pos_embed=None (RoPE), "
+                f"got {type(pos_embed)}"
             )
         else:
             assert pos_embed is not None, (
@@ -126,9 +249,8 @@ class TestGetPosEmbed:
 class TestResizePosEmbed:
     """Test _resize_pos_embed is safe when pos_embed is None."""
 
-    @pytest.fixture(params=["vit_base", "dinov3"])
+    @pytest.fixture(params=ALL_KEYS)
     def fresh_encoder(self, request):
-        """A per-test encoder so resize doesn't pollute other tests."""
         cfg = MODELS[request.param]
         enc = MaskedEncoder(cfg["name"], masking=None, pretrained=False)
         enc.eval()
@@ -154,7 +276,7 @@ class TestResizePosEmbed:
 @pytest.mark.unit
 @pytest.mark.download
 class TestForwardNoMask:
-    """Test forward pass without masking for both model types."""
+    """Test forward pass without masking for all model types."""
 
     def test_output_shape(self, encoder_no_mask, sample_images):
         enc, cfg = encoder_no_mask
@@ -192,14 +314,14 @@ class TestForwardNoMask:
 
 
 # ============================================================================
-# Forward (with masking)
+# Forward (with masking) — string path
 # ============================================================================
 
 
 @pytest.mark.unit
 @pytest.mark.download
 class TestForwardWithMask:
-    """Test forward pass with masking for both model types."""
+    """Test forward pass with masking (encoder created from model name)."""
 
     def test_output_shape_masked(self, encoder_with_mask, sample_images):
         enc, cfg = encoder_with_mask
@@ -208,7 +330,7 @@ class TestForwardWithMask:
 
         grid_h, grid_w = enc.default_grid_h, enc.default_grid_w
         num_patches = grid_h * grid_w
-        num_visible = num_patches - int(num_patches * 0.75)
+        num_visible = num_patches - int(num_patches * MASK_RATIO)
         num_prefix = _actual_prefix_count(enc)
         expected_seq_len = num_prefix + num_visible
 
@@ -230,6 +352,68 @@ class TestForwardWithMask:
         output = enc(sample_images)
         assert not torch.isnan(output.encoded).any()
 
+    def test_prefix_strip_matches_ids_keep(self, encoder_with_mask, sample_images):
+        """The core invariant that broke before: after stripping
+        num_prefix_tokens from encoded, the remaining dim-1 must equal
+        ids_keep.shape[1]."""
+        enc, _ = encoder_with_mask
+        enc.train()
+        output = enc(sample_images)
+        encoded_patches = output.encoded[:, enc.num_prefix_tokens :]
+        assert encoded_patches.shape[1] == output.ids_keep.shape[1], (
+            f"encoded_patches dim 1 = {encoded_patches.shape[1]}, "
+            f"ids_keep dim 1 = {output.ids_keep.shape[1]}"
+        )
+
+
+# ============================================================================
+# Forward (with masking) — pre-instantiated model path
+# ============================================================================
+
+
+@pytest.mark.unit
+@pytest.mark.download
+class TestForwardWithMaskPreInstantiated:
+    """Test forward with masking when MaskedEncoder wraps a pre-instantiated
+    timm model (the actual training code path)."""
+
+    def test_output_shape(self, encoder_from_model):
+        enc, cfg = encoder_from_model
+        enc.train()
+        s = cfg["img_size"]
+        images = torch.randn(BATCH_SIZE, CHANNELS, s, s)
+        output = enc(images)
+
+        grid_h, grid_w = enc.default_grid_h, enc.default_grid_w
+        num_patches = grid_h * grid_w
+        num_visible = num_patches - int(num_patches * MASK_RATIO)
+        num_prefix = _actual_prefix_count(enc)
+
+        assert output.encoded.shape == (
+            BATCH_SIZE, num_prefix + num_visible, enc.embed_dim
+        )
+        assert output.ids_keep.shape == (BATCH_SIZE, num_visible)
+
+    def test_prefix_strip_matches_ids_keep(self, encoder_from_model):
+        enc, cfg = encoder_from_model
+        enc.train()
+        s = cfg["img_size"]
+        images = torch.randn(BATCH_SIZE, CHANNELS, s, s)
+        output = enc(images)
+        encoded_patches = output.encoded[:, enc.num_prefix_tokens :]
+        assert encoded_patches.shape[1] == output.ids_keep.shape[1], (
+            f"Pre-instantiated {cfg['name']}: encoded_patches dim 1 = "
+            f"{encoded_patches.shape[1]}, ids_keep dim 1 = {output.ids_keep.shape[1]}"
+        )
+
+    def test_no_nan(self, encoder_from_model):
+        enc, cfg = encoder_from_model
+        enc.train()
+        s = cfg["img_size"]
+        images = torch.randn(BATCH_SIZE, CHANNELS, s, s)
+        output = enc(images)
+        assert not torch.isnan(output.encoded).any()
+
 
 # ============================================================================
 # Gradient flow
@@ -239,7 +423,7 @@ class TestForwardWithMask:
 @pytest.mark.unit
 @pytest.mark.download
 class TestGradientFlow:
-    """Test gradients flow correctly for both model types."""
+    """Test gradients flow correctly for all model types."""
 
     def test_gradient_no_mask(self, encoder_no_mask, sample_images):
         enc, _ = encoder_no_mask
