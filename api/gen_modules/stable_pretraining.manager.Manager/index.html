@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Manager &#8212; stable-pretraining 0.1.dev1+g72fdb9ffe documentation</title>
+    <title>Manager &#8212; stable-pretraining 0.1.dev1+g399bd8437 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ba1e31cf"></script>
+    <script src="../../../_static/documentation_options.js?v=10695a17"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g72fdb9ffe documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g399bd8437 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -404,6 +404,8 @@
 <li><p><strong>data</strong> (<em>Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>DictConfig</em><em>, </em><em>pl.LightningDataModule</em><em>]</em>) – Data module configuration or instance.</p></li>
 <li><p><strong>seed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Random seed for reproducibility. Defaults to None.</p></li>
 <li><p><strong>ckpt_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Path to checkpoint for resuming training. Defaults to “last”.</p></li>
+<li><p><strong>resume_weights_only</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em> | </em><em>None</em><em>, </em><em>optional</em>) – Forwarded to <code class="docutils literal notranslate"><span class="pre">Trainer.fit(weights_only=...)</span></code>
+when supported by the installed Lightning version. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
 <li><p><strong>compile</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Should we compile the given module. Defaults to False.</p></li>
 </ul>
 </dd>
