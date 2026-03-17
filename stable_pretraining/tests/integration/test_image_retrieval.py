@@ -14,6 +14,7 @@ from stable_pretraining.data import transforms
 class TestImageRetrievalIntegration:
     """Integration tests for image retrieval with actual models and data."""
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     @pytest.mark.download
     @pytest.mark.slow
@@ -120,6 +121,7 @@ class TestImageRetrievalIntegration:
         manager()
         manager.validate()
 
+    @pytest.mark.v1
     @pytest.mark.download
     def test_retrieval_dataset_loading(self):
         """Test loading and processing of retrieval datasets."""
@@ -168,6 +170,7 @@ class TestImageRetrievalIntegration:
         # Verify output shape
         assert cls_embed.shape == (2, 384)  # DINO ViT-S/16 has 384-dim features
 
+    @pytest.mark.v1
     def test_retrieval_metrics_computation(self):
         """Test retrieval metrics computation."""
         # Create dummy embeddings and labels

@@ -14,6 +14,7 @@ from stable_pretraining.data import transforms
 class TestProbingIntegration:
     """Integration tests for probing with actual models and data."""
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     @pytest.mark.download
     @pytest.mark.slow
@@ -195,6 +196,7 @@ class TestProbingIntegration:
         assert predictions.shape == (10,)
         assert all(0 <= p <= 9 for p in predictions)
 
+    @pytest.mark.v1
     @pytest.mark.download
     def test_imagenette_dataset_loading(self):
         """Test ImageNette dataset loading."""
@@ -240,6 +242,7 @@ class TestProbingIntegration:
 
         assert output.shape == (2, 5)
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     def test_mixed_precision_probing(self):
         """Test probing with mixed precision training."""

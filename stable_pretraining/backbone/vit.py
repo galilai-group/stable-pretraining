@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from typing import Optional, Tuple, Literal, Union
 import timm
 from timm.layers import DropPath, Mlp, trunc_normal_
+from loguru import logger
 from .patch_masking import PatchMasking
 from dataclasses import dataclass
 from .pos_embed import (
@@ -241,6 +242,7 @@ class MaskedEncoder(nn.Module):
         img_size: Optional[Union[int, Tuple[int, int]]] = None,
         patch_size: Optional[Union[int, Tuple[int, int]]] = None,
         dynamic_img_size: bool = False,
+        norm_layer: Optional[nn.Module] = None,
     ):
         super().__init__()
         self.dynamic_img_size = dynamic_img_size
@@ -261,8 +263,17 @@ class MaskedEncoder(nn.Module):
                         f"Warning: Changing patch_size to {patch_size} will reinitialize "
                         f"patch_embed weights. Pretrained weights won't fully apply."
                     )
+            if norm_layer is not None:
+                create_kwargs["norm_layer"] = norm_layer
+
             self.vit = timm.create_model(model_or_model_name, **create_kwargs)
         else:
+            logger.warning(
+                "MaskedEncoder received a pre-instantiated nn.Module. "
+                "Internals assume a timm ViT model with attributes such as "
+                "patch_embed, pos_embed, cls_token, blocks, norm, etc. "
+                "If you pass a non-timm module, unexpected errors may occur."
+            )
             self.vit = model_or_model_name
             if patch_size is not None:
                 self._rebuild_patch_embed(patch_size, img_size)
@@ -278,9 +289,17 @@ class MaskedEncoder(nn.Module):
         self.default_grid_h, self.default_grid_w = (
             (gs, gs) if isinstance(gs, int) else gs
         )
-        self.num_prefix_tokens = getattr(self.vit, "num_prefix_tokens", 1)
-        self.has_class_token = getattr(self.vit, "has_class_token", True)
-        self.num_reg_tokens = getattr(self.vit, "num_reg_tokens", 0)
+
+        self.has_class_token = (
+            hasattr(self.vit, "cls_token") and self.vit.cls_token is not None
+        )
+        if hasattr(self.vit, "reg_token") and self.vit.reg_token is not None:
+            self.num_reg_tokens = self.vit.reg_token.shape[1]
+        else:
+            self.num_reg_tokens = getattr(self.vit, "num_reg_tokens", 0)
+        self.num_prefix_tokens = (
+            1 if self.has_class_token else 0
+        ) + self.num_reg_tokens
         self.no_embed_class = getattr(self.vit, "no_embed_class", False)
 
     def _rebuild_patch_embed(
@@ -309,6 +328,8 @@ class MaskedEncoder(nn.Module):
     def _resize_pos_embed(self, new_grid_size: Tuple[int, int]) -> None:
         """Resize positional embeddings to new grid size."""
         old_pos = self.vit.pos_embed
+        if old_pos is None:
+            return
         num_prefix = self.num_prefix_tokens if not self.no_embed_class else 0
         src_patches = old_pos.shape[1] - num_prefix
         src_size = int(src_patches**0.5)
@@ -324,9 +345,11 @@ class MaskedEncoder(nn.Module):
 
     def _get_pos_embed(
         self, grid_h: int, grid_w: int
-    ) -> Tuple[Optional[torch.Tensor], torch.Tensor]:
+    ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
         """Get positional embeddings, interpolating if needed for dynamic size."""
         pos_embed = self.vit.pos_embed
+        if pos_embed is None:
+            return None, None
         num_prefix = self.num_prefix_tokens if not self.no_embed_class else 0
         if self.dynamic_img_size and (
             grid_h != self.default_grid_h or grid_w != self.default_grid_w
@@ -360,12 +383,18 @@ class MaskedEncoder(nn.Module):
         """
         B = images.shape[0]
         device = images.device
+
         grid_h, grid_w = self._get_grid_size(images)
         num_patches = grid_h * grid_w
+
         # Patch embed + positional embed
         x = self.patch_embed(images)
+        if x.ndim == 4:
+            x = x.reshape(B, -1, x.shape[-1])
         prefix_pos, patch_pos = self._get_pos_embed(grid_h, grid_w)
-        x = x + patch_pos
+        if patch_pos is not None:
+            x = x + patch_pos
+
         # Apply masking (training only)
         if self.training and self.masking is not None:
             mask_out = self.masking(x, grid_h, grid_w)
@@ -385,7 +414,12 @@ class MaskedEncoder(nn.Module):
             x = torch.cat([prefix, x], dim=1)
         # Transformer blocks
         x = self.vit.pos_drop(x)
-        x = self.vit.blocks(x) if hasattr(self.vit, "blocks") else self.vit.layers(x)
+        blocks = self.vit.blocks if hasattr(self.vit, "blocks") else self.vit.layers
+        if isinstance(blocks, nn.ModuleList):
+            for blk in blocks:
+                x = blk(x)
+        else:
+            x = blocks(x)
         x = self.vit.norm(x)
         return MaskedEncoderOutput(
             encoded=x,
@@ -1116,7 +1150,8 @@ class FlexibleTransformer(nn.Module):
             196,
             depth=6,
             self_attn=True,
-            cross_attn=True,
+            cross_attn=False,
+            add_mask_token=True,
             use_adaln=False,
         )
         out = predictor(context, queries, context_idx, query_idx)
@@ -1768,12 +1803,14 @@ class MAEDecoder(nn.Module):
         self,
         x: torch.Tensor,
         mask: torch.Tensor,
+        ids_keep: torch.Tensor | None = None,
         output_masked_only: bool = False,
     ) -> torch.Tensor:
         """Forward pass.
 
         :param x: Visible tokens [B, N_vis, D] or full sequence [B, T, D]
         :param mask: Binary mask [B, T], 0=kept, 1=masked
+        :param ids_keep: Indices of kept (visible) patches (B, N_keep)
         :param output_masked_only: If True, return [B, N_mask, D].
                                 If False, return [B, T, D].
         :return: Predictions
@@ -1781,20 +1818,51 @@ class MAEDecoder(nn.Module):
         B, T = mask.shape
         mask_bool = mask.bool()  # Convert once, use everywhere
 
-        N_vis = (~mask_bool).sum(dim=1)[0].int().item()
-        N_mask = T - N_vis
+        n_vis_per = (~mask_bool).sum(dim=1)
+        n_mask_per = mask_bool.sum(dim=1)
+
+        assert torch.all(n_vis_per == n_vis_per[0]), (
+            "Number of visible patches must be the same for all samples"
+        )
+
+        N_vis = int(n_vis_per[0].item())
+        N_mask = int(n_mask_per[0].item())
+
+        if N_mask == 0:
+            # visible idx is all patches in order
+            visible_idx = torch.arange(T, device=mask.device).unsqueeze(0).expand(B, -1)
+            visible_tokens = x if x.shape[1] == T else x
+            out = self.transformer(
+                context=visible_tokens,
+                queries=visible_tokens.new_empty(B, 0, visible_tokens.shape[-1]),
+                context_idx=visible_idx,
+                query_idx=visible_idx[:, :0],
+                return_all=True,
+            )
+
+            if output_masked_only:
+                return out[:, :0]
+            return out
+
         # Get indices (sort False/0 before True/1, so visible indices come first)
         visible_idx = torch.argsort(mask_bool.int(), dim=1, stable=True)[:, :N_vis]
-        masked_idx = torch.argsort((~mask_bool).int(), dim=1, stable=True)[:, :N_mask]
+        masked_idx = torch.argsort(mask_bool.int(), dim=1, stable=True)[:, N_vis:]
         # Get visible tokens
         if x.shape[1] == T:
             visible_tokens = torch.gather(
                 x, dim=1, index=visible_idx.unsqueeze(-1).expand(-1, -1, x.shape[-1])
             )
         else:
+            if ids_keep is not None:
+                visible_idx = ids_keep
             visible_tokens = x
+
+        order = torch.argsort(mask_bool.int(), dim=1, stable=True)
+        masked_idx = order[:, N_vis:]
+
         # Mask tokens for masked positions
         mask_tokens = self.mask_token.expand(B, N_mask, -1)
+
         return self.transformer(
             context=visible_tokens,
             queries=mask_tokens,
