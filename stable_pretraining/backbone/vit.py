@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from typing import Optional, Tuple, Literal, Union
 import timm
 from timm.layers import DropPath, Mlp, trunc_normal_
+from loguru import logger
 from .patch_masking import PatchMasking
 from dataclasses import dataclass
 from .pos_embed import (
@@ -267,6 +268,12 @@ class MaskedEncoder(nn.Module):
 
             self.vit = timm.create_model(model_or_model_name, **create_kwargs)
         else:
+            logger.warning(
+                "MaskedEncoder received a pre-instantiated nn.Module. "
+                "Internals assume a timm ViT model with attributes such as "
+                "patch_embed, pos_embed, cls_token, blocks, norm, etc. "
+                "If you pass a non-timm module, unexpected errors may occur."
+            )
             self.vit = model_or_model_name
             if patch_size is not None:
                 self._rebuild_patch_embed(patch_size, img_size)
@@ -282,9 +289,17 @@ class MaskedEncoder(nn.Module):
         self.default_grid_h, self.default_grid_w = (
             (gs, gs) if isinstance(gs, int) else gs
         )
-        self.num_prefix_tokens = getattr(self.vit, "num_prefix_tokens", 1)
-        self.has_class_token = getattr(self.vit, "has_class_token", True)
-        self.num_reg_tokens = getattr(self.vit, "num_reg_tokens", 0)
+
+        self.has_class_token = (
+            hasattr(self.vit, "cls_token") and self.vit.cls_token is not None
+        )
+        if hasattr(self.vit, "reg_token") and self.vit.reg_token is not None:
+            self.num_reg_tokens = self.vit.reg_token.shape[1]
+        else:
+            self.num_reg_tokens = getattr(self.vit, "num_reg_tokens", 0)
+        self.num_prefix_tokens = (
+            1 if self.has_class_token else 0
+        ) + self.num_reg_tokens
         self.no_embed_class = getattr(self.vit, "no_embed_class", False)
 
     def _rebuild_patch_embed(
@@ -313,6 +328,8 @@ class MaskedEncoder(nn.Module):
     def _resize_pos_embed(self, new_grid_size: Tuple[int, int]) -> None:
         """Resize positional embeddings to new grid size."""
         old_pos = self.vit.pos_embed
+        if old_pos is None:
+            return
         num_prefix = self.num_prefix_tokens if not self.no_embed_class else 0
         src_patches = old_pos.shape[1] - num_prefix
         src_size = int(src_patches**0.5)
@@ -328,9 +345,11 @@ class MaskedEncoder(nn.Module):
 
     def _get_pos_embed(
         self, grid_h: int, grid_w: int
-    ) -> Tuple[Optional[torch.Tensor], torch.Tensor]:
+    ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
         """Get positional embeddings, interpolating if needed for dynamic size."""
         pos_embed = self.vit.pos_embed
+        if pos_embed is None:
+            return None, None
         num_prefix = self.num_prefix_tokens if not self.no_embed_class else 0
         if self.dynamic_img_size and (
             grid_h != self.default_grid_h or grid_w != self.default_grid_w
@@ -370,8 +389,11 @@ class MaskedEncoder(nn.Module):
 
         # Patch embed + positional embed
         x = self.patch_embed(images)
+        if x.ndim == 4:
+            x = x.reshape(B, -1, x.shape[-1])
         prefix_pos, patch_pos = self._get_pos_embed(grid_h, grid_w)
-        x = x + patch_pos
+        if patch_pos is not None:
+            x = x + patch_pos
 
         # Apply masking (training only)
         if self.training and self.masking is not None:
@@ -392,7 +414,12 @@ class MaskedEncoder(nn.Module):
             x = torch.cat([prefix, x], dim=1)
         # Transformer blocks
         x = self.vit.pos_drop(x)
-        x = self.vit.blocks(x) if hasattr(self.vit, "blocks") else self.vit.layers(x)
+        blocks = self.vit.blocks if hasattr(self.vit, "blocks") else self.vit.layers
+        if isinstance(blocks, nn.ModuleList):
+            for blk in blocks:
+                x = blk(x)
+        else:
+            x = blocks(x)
         x = self.vit.norm(x)
         return MaskedEncoderOutput(
             encoded=x,
