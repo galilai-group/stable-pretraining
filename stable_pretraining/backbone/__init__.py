@@ -16,7 +16,12 @@ from .probe import (
     AutoLinearClassifier,
     AutoTuneMLP,
 )
-from .patch_masking import PatchMasking, IJEPAMasking, IJEPAMaskOutput
+from .patch_masking import (
+    PatchMasking,
+    IJEPAMasking,
+    IJEPAMaskOutput,
+    MultiBlockMasking,
+)
 from .utils import (
     EvalOnly,
     FeaturesConcat,
@@ -71,6 +76,7 @@ __all__ = [
     FlexibleTransformer,
     IJEPAMasking,
     IJEPAMaskOutput,
+    MultiBlockMasking,
     modulate,
 ]
 

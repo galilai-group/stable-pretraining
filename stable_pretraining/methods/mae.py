@@ -24,6 +24,7 @@ Example::
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -69,6 +70,8 @@ class MAE(Module):
     :param norm_pix_loss: Normalize target pixels per patch (default: True)
     :param loss_type: Loss type for MAELoss (default: 'mse')
     :param pretrained: Load pretrained encoder weights
+    :param masking: Custom masking module (e.g., MultiBlockMasking).
+        When provided, overrides mask_ratio and block_size.
 
     Example::
 
@@ -109,11 +112,15 @@ class MAE(Module):
         norm_pix_loss: bool = True,
         loss_type: str = "mse",
         pretrained: bool = False,
+        masking: Optional[nn.Module] = None,
     ):
         super().__init__()
 
         # Encoder with masking
-        self.masking = PatchMasking(mask_ratio=mask_ratio, block_size=block_size)
+        if masking is not None:
+            self.masking = masking
+        else:
+            self.masking = PatchMasking(mask_ratio=mask_ratio, block_size=block_size)
         self.encoder = MaskedEncoder(
             model_or_model_name, masking=self.masking, pretrained=pretrained
         )
