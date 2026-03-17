@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.losses.joint_embedding &#8212; stable-pretraining 0.1.dev1+ga24d5c919 documentation</title>
+    <title>stable_pretraining.losses.joint_embedding &#8212; stable-pretraining 0.1.dev1+g72fdb9ffe documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=b7a8bac0"></script>
+    <script src="../../../../_static/documentation_options.js?v=ba1e31cf"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+ga24d5c919 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g72fdb9ffe documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -341,7 +341,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">all_gather</span><span class="p">,</span> <span class="n">all_reduce</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">off_diagonal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">off_diagonal</span><span class="p">,</span> <span class="n">VCRegLoss</span>
 
 
 <div class="viewcode-block" id="BYOLLoss">
@@ -400,9 +400,7 @@
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sim_coeff</span> <span class="o">=</span> <span class="n">sim_coeff</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">std_coeff</span> <span class="o">=</span> <span class="n">std_coeff</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cov_coeff</span> <span class="o">=</span> <span class="n">cov_coeff</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span> <span class="o">=</span> <span class="n">epsilon</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vcreg_loss</span> <span class="o">=</span> <span class="n">VCRegLoss</span><span class="p">(</span><span class="n">std_coeff</span><span class="p">,</span> <span class="n">cov_coeff</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">)</span>
 
 <div class="viewcode-block" id="VICRegLoss.forward">
 <a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.VICRegLoss.forward">[docs]</a>
@@ -418,27 +416,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">repr_loss</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">z_i</span><span class="p">,</span> <span class="n">z_j</span><span class="p">)</span>
 
-        <span class="n">z_i</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">all_gather</span><span class="p">(</span><span class="n">z_i</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="n">z_j</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">all_gather</span><span class="p">(</span><span class="n">z_j</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
-
-        <span class="n">z_i</span> <span class="o">=</span> <span class="n">z_i</span> <span class="o">-</span> <span class="n">z_i</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="n">z_j</span> <span class="o">=</span> <span class="n">z_j</span> <span class="o">-</span> <span class="n">z_j</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
-        <span class="n">std_i</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">z_i</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span><span class="p">)</span>
-        <span class="n">std_j</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">z_j</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span><span class="p">)</span>
-        <span class="n">std_loss</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">std_i</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">std_j</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span>
-
-        <span class="n">cov_i</span> <span class="o">=</span> <span class="p">(</span><span class="n">z_i</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">z_i</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">z_i</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="n">cov_j</span> <span class="o">=</span> <span class="p">(</span><span class="n">z_j</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">z_j</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">z_i</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="n">cov_loss</span> <span class="o">=</span> <span class="n">off_diagonal</span><span class="p">(</span><span class="n">cov_i</span><span class="p">)</span><span class="o">.</span><span class="n">pow_</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">div</span><span class="p">(</span><span class="n">z_i</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">+</span> <span class="n">off_diagonal</span><span class="p">(</span>
-            <span class="n">cov_j</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">pow_</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">div</span><span class="p">(</span><span class="n">z_i</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-
-        <span class="n">loss</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">sim_coeff</span> <span class="o">*</span> <span class="n">repr_loss</span>
-            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">std_coeff</span> <span class="o">*</span> <span class="n">std_loss</span>
-            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cov_coeff</span> <span class="o">*</span> <span class="n">cov_loss</span>
-        <span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sim_coeff</span> <span class="o">*</span> <span class="n">repr_loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcreg_loss</span><span class="p">(</span><span class="n">z_i</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">vcreg_loss</span><span class="p">(</span><span class="n">z_j</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">loss</span></div>
 </div>
 
