@@ -136,7 +136,7 @@ def main(cfg: dict):
         input="embedding",
         target="label",
         probe=torch.nn.Linear(cfg.get("embedding_dim", 2048), num_classes),
-        loss_fn=torch.nn.CrossEntropyLoss(),
+        loss=torch.nn.CrossEntropyLoss(),
         metrics=torchmetrics.classification.MulticlassAccuracy(num_classes),
     )
     linear_probe_proj = spt.callbacks.OnlineProbe(
@@ -145,7 +145,7 @@ def main(cfg: dict):
         input="projector",
         target="label",
         probe=torch.nn.Linear(cfg.get("projector_dim", 128), num_classes),
-        loss_fn=torch.nn.CrossEntropyLoss(),
+        loss=torch.nn.CrossEntropyLoss(),
         metrics=torchmetrics.classification.MulticlassAccuracy(num_classes),
     )
     lr_monitor = pl.pytorch.callbacks.LearningRateMonitor(

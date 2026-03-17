@@ -10,6 +10,7 @@ import stable_pretraining as spt
 import stable_pretraining.data.transforms as transforms
 
 
+@pytest.mark.v1
 @pytest.mark.integration
 @pytest.mark.download
 @pytest.mark.parametrize(
@@ -34,8 +35,8 @@ def test_controlled_transforms(our_transform, true_transform):
         transforms.ControlledTransform(transform=our_transform, seed_offset=0),
         transforms.ToImage(),
     )
-    our_dataset = spt.data.dataset.DictFormat(CIFAR10("~/data", download=True))
-    our_dataset = spt.data.dataset.AddTransform(our_dataset, transform)
+    our_dataset = spt.data.module.DictFormat(CIFAR10("~/data", download=True))
+    our_dataset = spt.data.datasets.AddTransform(our_dataset, transform)
     t = v2.Compose(
         [true_transform, v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]
     )
@@ -48,6 +49,7 @@ def test_controlled_transforms(our_transform, true_transform):
             assert torch.allclose(ours["image"], truth[0], atol=1e-5)
 
 
+@pytest.mark.v1
 @pytest.mark.integration
 @pytest.mark.slow
 def test_transforms_performance():

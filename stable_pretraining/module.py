@@ -12,8 +12,6 @@ from pathlib import Path
 from prettytable import PrettyTable
 from lightning.pytorch.core.optimizer import LightningOptimizer
 from .optim import create_optimizer, create_scheduler
-from typing import Any, Set
-import time
 from stable_pretraining.utils.error_handling import catch_errors_class
 
 
@@ -67,6 +65,8 @@ class Module(pl.LightningModule):
     - Gradient clipping: uses Trainer's `gradient_clip_val` and `gradient_clip_algorithm` before each step.
     - Returns the `state` dict from `forward` unchanged for logging/inspection.
     """
+
+    _warned_named_parameters = False
 
     def __init__(self, *args, forward: callable = None, hparams: dict = None, **kwargs):
         super().__init__()
@@ -156,7 +156,8 @@ class Module(pl.LightningModule):
         Yields:
             tuple[str, torch.nn.Parameter]: Name and parameter pairs.
         """
-        if with_callbacks:
+        if with_callbacks and not Module._warned_named_parameters:
+            Module._warned_named_parameters = True
             logging.warning(
                 "You are calling self.parameters which also gives callbacks "
                 "parameters, to remove then, pass `with_callbacks=False`"
@@ -405,6 +406,7 @@ class Module(pl.LightningModule):
 
         Returns:
             params_by_name: dict[name, List[nn.Parameter]]
+            named_params_by_name: dict[name, List[Tuple[str, nn.Parameter]]]
             modules_by_name: dict[name, List[str]]
         """
         # Pre-compile regex with stable order from optim_items
@@ -414,6 +416,7 @@ class Module(pl.LightningModule):
 
         # Initialize containers
         params_by_name = {name: [] for name, _ in compiled}
+        named_params_by_name = {name: [] for name, _ in compiled}
         modules_by_name = {name: [] for name, _ in compiled}
 
         # Map module -> group index with inheritance
@@ -445,6 +448,15 @@ class Module(pl.LightningModule):
                 direct_params = list(module.parameters(recurse=False))
                 if direct_params:
                     params_by_name[group_name].extend(direct_params)
+                # Also collect named parameters for exclude_bias_norm support
+                direct_named_params = list(module.named_parameters(recurse=False))
+                if direct_named_params:
+                    # Prefix with module's qualified name
+                    prefixed = [
+                        (f"{qual_name}.{pname}" if qual_name else pname, p)
+                        for pname, p in direct_named_params
+                    ]
+                    named_params_by_name[group_name].extend(prefixed)
 
         # Logging summary
         rows = []
@@ -478,7 +490,7 @@ class Module(pl.LightningModule):
                 "\n" + tabulate(rows, headers=headers, tablefmt="heavy_outline")
             )
 
-        return params_by_name, modules_by_name
+        return params_by_name, named_params_by_name, modules_by_name
 
     def configure_optimizers(self):
         """Configure optimizers and schedulers for manual optimization.
@@ -561,7 +573,9 @@ class Module(pl.LightningModule):
             # Direct parameter extraction - use globally filtered parameters
             params = list(self.parameters(with_callbacks=False))
 
-            opt = create_optimizer(params, optimizer_cfg)
+            # Pass named_params for exclude_bias_norm support
+            named_params = list(self.named_parameters(with_callbacks=False))
+            opt = create_optimizer(params, optimizer_cfg, named_params=named_params)
 
             # Create scheduler
             default = dict(
@@ -597,8 +611,8 @@ class Module(pl.LightningModule):
         )
 
         # Build grouping with detailed logging
-        params_by_name, modules_by_name = self._collect_parameters_by_optimizer_groups(
-            optim_items
+        params_by_name, named_params_by_name, modules_by_name = (
+            self._collect_parameters_by_optimizer_groups(optim_items)
         )
 
         # Build optimizers and schedulers
@@ -612,7 +626,11 @@ class Module(pl.LightningModule):
                 # skip registration when there are no parameters
                 continue
 
-            opt = create_optimizer(params, config["optimizer"])
+            # Pass named_params for exclude_bias_norm support
+            named_params = named_params_by_name.get(name, [])
+            opt = create_optimizer(
+                params, config["optimizer"], named_params=named_params
+            )
             optimizers.append(opt)
 
             sched_config = config.get("scheduler", "CosineAnnealingLR")
@@ -633,146 +651,3 @@ class Module(pl.LightningModule):
             self._optimizer_frequencies[name] = int(config.get("frequency", 1))
 
         return optimizers, schedulers
-
-    def on_save_checkpoint(self, checkpoint):
-        """Offload checkpoint tensors to CPU to reduce GPU memory usage during save.
-
-        This method intercepts the checkpoint saving process and recursively moves all
-        PyTorch tensors (model weights, optimizer states, scheduler states) from GPU
-        to CPU before writing to disk. This prevents GPU OOM issues when checkpointing
-        large models (e.g., 2B+ parameters with optimizer states).
-
-        Args:
-            checkpoint (dict): Lightning checkpoint dictionary containing:
-                - state_dict: Model parameters (moved to CPU)
-                - optimizer_states: Optimizer state dicts (moved to CPU)
-                - lr_schedulers: LR scheduler states (moved to CPU)
-                - Other keys: Custom objects, metadata (left unchanged)
-
-        Behavior:
-            - Processes standard Lightning checkpoint keys (state_dict, optimizer_states, lr_schedulers)
-            - Recursively traverses dicts, lists, and tuples to find tensors
-            - Moves all torch.Tensor objects to CPU
-            - Skips custom objects (returns unchanged)
-            - Logs GPU memory freed and processing time
-            - Non-destructive: Checkpoint loading/resuming works normally
-
-        Side Effects:
-            - Modifies checkpoint dict in-place (tensors moved to CPU)
-            - Temporarily increases CPU memory during offload
-            - Adds ~2-5 seconds to checkpoint save time for 2B models
-            - Frees ~8-12GB GPU memory for 2B model + optimizer states
-
-        Custom Objects:
-            Custom objects in the checkpoint are NOT modified and will be logged as
-            warnings. These include: custom classes, numpy arrays, primitives, etc.
-            They are safely skipped and preserved in the checkpoint.
-
-        Raises:
-            Exception: If tensor offload fails for any checkpoint key, logs error
-                       but allows checkpoint save to proceed (non-fatal).
-
-        Example:
-            For a 2B parameter model with AdamW optimizer:
-            - Before: ~12GB GPU memory spike on rank 0 during checkpoint save
-            - After: ~0.2GB GPU memory spike, ~10-12GB freed
-            - Checkpoint save time: +2-3 seconds
-            - Resume from checkpoint: Works normally, tensors auto-loaded to GPU
-
-        Notes:
-            - Only rank 0 saves checkpoints in DDP, so only rank 0 sees memory benefit
-            - Does not affect checkpoint contents or ability to resume training
-            - Safe for standard PyTorch/Lightning use cases
-            - If using FSDP/DeepSpeed, consider strategy-specific checkpointing instead
-
-        See Also:
-            - PyTorch Lightning ModelCheckpoint callback
-            - torch.Tensor.cpu() for device transfer behavior
-        """
-        start_time = time.time()
-
-        logging.info("=" * 60)
-        logging.info("Starting checkpoint CPU offload")
-
-        # Track skipped types
-        skipped_types: Set[str] = set()
-
-        # Log initial GPU memory
-        if torch.cuda.is_available():
-            gpu_mem_before = torch.cuda.memory_allocated() / 1e9
-            logging.info(f"GPU memory before offload: {gpu_mem_before:.2f} GB")
-
-        def safe_to_cpu(obj: Any, path: str = "root") -> Any:
-            """Recursively move tensors to CPU, skip custom objects."""
-            if isinstance(obj, torch.Tensor):
-                size_mb = obj.element_size() * obj.nelement() / 1e6
-                logging.debug(
-                    f"Moving tensor at '{path}': {tuple(obj.shape)} "
-                    f"({size_mb:.1f} MB) to CPU"
-                )
-                return obj.cpu()
-
-            elif isinstance(obj, dict):
-                logging.trace(f"Processing dict at '{path}' with {len(obj)} keys")
-                return {k: safe_to_cpu(v, f"{path}.{k}") for k, v in obj.items()}
-
-            elif isinstance(obj, (list, tuple)):
-                logging.trace(
-                    f"Processing {type(obj).__name__} at '{path}' with {len(obj)} items"
-                )
-                result = [safe_to_cpu(v, f"{path}[{i}]") for i, v in enumerate(obj)]
-                return tuple(result) if isinstance(obj, tuple) else result
-
-            else:
-                # Custom object - don't modify
-                obj_type = type(obj).__name__
-                skipped_types.add(f"{obj_type} at '{path}'")
-                logging.debug(f"Skipping custom object at '{path}': {obj_type}")
-                return obj
-
-        # Process each checkpoint component
-        safe_keys = ["state_dict", "optimizer_states", "lr_schedulers"]
-        processed_keys = []
-
-        for key in safe_keys:
-            if key in checkpoint:
-                logging.info(f"Processing checkpoint key: '{key}'")
-                key_start = time.time()
-
-                try:
-                    checkpoint[key] = safe_to_cpu(checkpoint[key], path=key)
-                    key_time = time.time() - key_start
-                    logging.success(f"✓ Completed '{key}' in {key_time:.2f}s")
-                    processed_keys.append(key)
-
-                except Exception as e:
-                    logging.error(f"✗ Failed to process '{key}': {e}")
-                    logging.exception("Full traceback:")
-                    logging.warning(f"Checkpoint key '{key}' will remain on GPU")
-                    # Don't raise - allow checkpoint to proceed
-
-        # Log skipped custom objects
-        if skipped_types:
-            logging.warning(f"Skipped {len(skipped_types)} custom object(s):")
-            for obj_info in sorted(skipped_types):
-                logging.warning(f"  - {obj_info}")
-
-        # Log other checkpoint keys (not processed)
-        other_keys = set(checkpoint.keys()) - set(safe_keys)
-        if other_keys:
-            logging.info(f"Other checkpoint keys (not processed): {sorted(other_keys)}")
-
-        # Log final GPU memory and timing
-        if torch.cuda.is_available():
-            gpu_mem_after = torch.cuda.memory_allocated() / 1e9
-            mem_freed = gpu_mem_before - gpu_mem_after
-            logging.info(f"GPU memory after offload: {gpu_mem_after:.2f} GB")
-            if mem_freed > 0:
-                logging.success(f"✓ GPU memory freed: {mem_freed:.2f} GB")
-            else:
-                logging.warning(f"No GPU memory freed (freed: {mem_freed:.2f} GB)")
-
-        total_time = time.time() - start_time
-        logging.success(f"Checkpoint CPU offload completed in {total_time:.2f}s")
-        logging.info(f"Successfully processed keys: {processed_keys}")
-        logging.info("=" * 60)

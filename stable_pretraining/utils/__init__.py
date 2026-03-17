@@ -52,8 +52,9 @@ from .nn_modules import (
 )
 from .visualization import format_df_to_latex
 from . import flops, solver
-from .stats import mean_std
-from .mae_loss import mae_loss, unpatchify
+from .stats import mean_std, mean_var
+from .mae_loss import MAELoss, unpatchify, patchify
+from .online_topk import StreamingTopKEigen
 
 __all__ = [
     "detach_tensors",
@@ -112,7 +113,10 @@ __all__ = [
     "format_df_to_latex",
     "flops",
     "mean_std",
-    "mae_loss",
+    "mean_var",
+    "MAELoss",
+    "patchify",
     "unpatchify",
     "solver",
+    "StreamingTopKEigen",
 ]

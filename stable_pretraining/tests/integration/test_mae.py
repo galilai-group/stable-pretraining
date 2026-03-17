@@ -13,6 +13,7 @@ from stable_pretraining.data import transforms
 class TestMAEIntegration:
     """Integration tests for MAE with actual training and data."""
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     @pytest.mark.download
     @pytest.mark.slow
@@ -92,7 +93,7 @@ class TestMAEIntegration:
             "embedding",
             "label",
             probe=torch.nn.Linear(768, 10),
-            loss_fn=torch.nn.CrossEntropyLoss(),
+            loss=torch.nn.CrossEntropyLoss(),
             metrics={
                 "top1": torchmetrics.classification.MulticlassAccuracy(10),
                 "top5": torchmetrics.classification.MulticlassAccuracy(10, top_k=5),
@@ -171,6 +172,7 @@ class TestMAEIntegration:
         num_patches = (224 // 16) ** 2  # 196
         assert patches.shape == (2, num_patches, 768)
 
+    @pytest.mark.v1
     @pytest.mark.download
     def test_mae_with_different_masking_ratios(self):
         """Test MAE with different masking ratios."""
@@ -219,6 +221,7 @@ class TestMAEIntegration:
         # Due to the random nature of sampling, we can't guarantee exact duplicates
         # but the sampler should be working
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     def test_mae_training_step(self):
         """Test a single MAE training step."""

@@ -12,6 +12,7 @@ import time
 
 import lightning as pl
 from lightning.pytorch.callbacks import Callback
+from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 
 import tempfile
@@ -41,17 +42,13 @@ class EnvironmentDumpCallback(Callback):
             f"EnvironmentDumpCallback initialized (filename={filename}, async={async_dump})"
         )
 
-    def setup(self, trainer: pl.Trainer, pl_module: pl.LightningModule, stage) -> None:
+    @rank_zero_only
+    def setup(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule, stage: str
+    ) -> None:
         """Called when training starts - runs dump in background."""
-        # Only run on rank 0 to avoid DDP conflicts
         if stage != "fit":
-            logger.info(f"Skipping environment dump on {stage} (only ``fit'' dumps)")
-            return
-
-        if trainer.global_rank != 0:
-            logger.info(
-                f"Skipping environment dump on rank {trainer.global_rank} (only rank 0 dumps)"
-            )
+            logger.info(f"Skipping environment dump on {stage=}")
             return
 
         logger.info("=" * 70)
@@ -61,7 +58,10 @@ class EnvironmentDumpCallback(Callback):
         self._start_time = time.time()
 
         # 🔥 CRITICAL: Get log_dir in main thread BEFORE starting background thread
+        # Use trainer.log_dir for the run-specific versioned directory
+        # Falls back to default_root_dir if no logger is configured
         log_dir = Path(trainer.default_root_dir)
+        logger.info(f"EnvironmentDumpCallback  {log_dir=}")
 
         if self.async_dump:
             logger.info(
@@ -80,6 +80,7 @@ class EnvironmentDumpCallback(Callback):
             logger.info("🔄 Running environment dump synchronously (blocking)")
             self._dump_environment(log_dir)
 
+    @rank_zero_only
     def teardown(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule, stage: str
     ) -> None:

@@ -166,9 +166,21 @@ class EvalOnly(nn.Module):
         self.backbone = backbone
         self.backbone.train(False)
         self.requires_grad_(False)
+        self.training = False  # Also set wrapper to eval mode
         assert not self.backbone.training
 
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            # Delegate to backbone if not found on self
+            backbone = self._modules.get("backbone")
+            if backbone is not None:
+                return getattr(backbone, name)
+            raise
+
     def train(self, mode):
+        self.training = False
         return self
 
     def forward(self, *args, **kwargs):

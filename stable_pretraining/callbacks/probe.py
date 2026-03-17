@@ -35,7 +35,7 @@ class OnlineProbe(TrainableCallback):
         target: Key in batch dict containing ground truth target labels.
         probe: The probe module to train. Can be a nn.Module instance, callable that
             returns a module, or Hydra config to instantiate.
-        loss_fn: Loss function for probe training (e.g., nn.CrossEntropyLoss()).
+        loss: Loss function for probe training (e.g., nn.CrossEntropyLoss()).
         optimizer: Optimizer configuration for the probe. Can be:
             - str: optimizer name (e.g., "AdamW", "SGD", "LARS")
             - dict: {"type": "AdamW", "lr": 1e-3, ...}
@@ -69,7 +69,7 @@ class OnlineProbe(TrainableCallback):
         input: str,
         target: str,
         probe: torch.nn.Module,
-        loss_fn: callable = None,
+        loss: callable = None,
         optimizer: Optional[Union[str, dict, partial, torch.optim.Optimizer]] = None,
         scheduler: Optional[
             Union[str, dict, partial, torch.optim.lr_scheduler.LRScheduler]
@@ -82,9 +82,9 @@ class OnlineProbe(TrainableCallback):
         # Initialize base class
         self.input = input
         self.target = target
-        if loss_fn is None:
+        if loss is None:
             logging.warning(f"Not loss given to {name}, will use output of `probe`")
-        self.loss_fn = loss_fn
+        self.loss = loss
 
         # Store probe configuration for later initialization
         self._probe_config = probe
@@ -99,6 +99,7 @@ class OnlineProbe(TrainableCallback):
             gradient_clip_val=gradient_clip_val,
             gradient_clip_algorithm=gradient_clip_algorithm,
         )
+
         logging.info(f"Initialized {self.name}")
         logging.info(f"  - Input: {input}")
         logging.info(f"  - Target: {target}")
@@ -126,11 +127,11 @@ class OnlineProbe(TrainableCallback):
             if (
                 callback.input is None
                 or callback.target is None
-                or callback.loss_fn is None
+                or callback.loss is None
             ):
                 assert callback.target is None
                 assert callback.input is None
-                assert callback.loss_fn is None
+                assert callback.loss is None
                 return callback.module(batch, outputs, self)
             else:
                 x = get_data_from_batch_or_outputs(
@@ -154,7 +155,7 @@ class OnlineProbe(TrainableCallback):
 
             logs = {}
             if stage == "fit":
-                loss = callback.loss_fn(preds, y)
+                loss = callback.loss(preds, y)
                 assert f"train/{callback.name}_loss" not in logs
                 if "loss" not in outputs:
                     outputs["loss"] = 0

@@ -16,7 +16,12 @@ from .probe import (
     AutoLinearClassifier,
     AutoTuneMLP,
 )
-from .patch_masking import PatchMasking
+from .patch_masking import (
+    PatchMasking,
+    IJEPAMasking,
+    IJEPAMaskOutput,
+    MultiBlockMasking,
+)
 from .utils import (
     EvalOnly,
     FeaturesConcat,
@@ -33,7 +38,6 @@ from .vit import (
     MAEDecoder,
     MaskedEncoder,
     MaskedEncoderOutput,
-    TransformerPredictor,
     Attention,
     CrossAttention,
     TransformerBlock,
@@ -63,15 +67,16 @@ __all__ = [
     AutoTuneMLP,
     HiddenStateExtractor,
     PatchMasking,
-    TransformerPredictor,
     MAEDecoder,
     MaskedEncoder,
     MaskedEncoderOutput,
-    TransformerPredictor,
     Attention,
     CrossAttention,
     TransformerBlock,
     FlexibleTransformer,
+    IJEPAMasking,
+    IJEPAMaskOutput,
+    MultiBlockMasking,
     modulate,
 ]
 

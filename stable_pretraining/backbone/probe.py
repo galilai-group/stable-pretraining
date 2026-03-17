@@ -171,6 +171,7 @@ class AutoLinearClassifier(torch.nn.Module):
             "mean",
             None,
         ), "pooling must be 'cls' or 'mean' or None"
+        self.pooling = pooling
         self.fc = torch.nn.ModuleDict()
         self.losses = torch.nn.ModuleDict()
         metrics = {}

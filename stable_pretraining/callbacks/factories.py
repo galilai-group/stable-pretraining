@@ -3,6 +3,7 @@ from .trainer_info import LoggingCallback, ModuleSummary, TrainerInfo, SLURMInfo
 from .env_info import EnvironmentDumpCallback
 from .registry import ModuleRegistryCallback
 from .unused_parameters import LogUnusedParametersOnce
+from .cpu_offload import CPUOffloadCallback
 
 
 def default():
@@ -18,6 +19,7 @@ def default():
         ModuleSummary(),
         SLURMInfo(),
         LogUnusedParametersOnce(),
+        CPUOffloadCallback(),
     ]
 
     return callbacks

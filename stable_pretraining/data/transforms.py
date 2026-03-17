@@ -838,38 +838,38 @@ class MultiViewTransform(v2.Transform):
                    - Dict: Returns a dict of views with the same keys
 
     Returns:
-        Union[List[dict], Dict[str, dict]]:
-            - If transforms is a list: Returns a list of transformed sample dicts
-            - If transforms is a dict: Returns a dict of transformed sample dicts with same keys
+        Dict[str, Union[Dict, List[Dict]]:
+            - If transforms is a list: Returns a dict mapping the key "views" to a list of transformed sample dicts
+            - If transforms is a dict: Returns a dict of transformed sample dicts with the corresponding keys mapping to the samples.
             Each dict contains NEW tensors, not references to the original.
 
     Example:
-        # List input - returns list of views
-        transform = MultiViewTransform([
-            strong_augmentation,  # Creates first view with strong aug
-            weak_augmentation,    # Creates second view with weak aug
-        ])
-        # Input: {"image": img, "label": 0}
-        # Output: [{"image": img_strong, "label": 0}, {"image": img_weak, "label": 0}]
+    # List input - returns dict with key "views" mapping to a list of views
+    transform = MultiViewTransform([
+        strong_augmentation,  # Creates first view with strong aug
+        weak_augmentation,    # Creates second view with weak aug
+    ])
+    # Input: {"image": img, "label": 0}
+    # Output: {"views": [{"image": img_strong, "label": 0}, {"image": img_weak, "label": 0}]}
 
-        # Dict input - returns dict of named views
-        transform = MultiViewTransform({
-            "student": strong_augmentation,
-            "teacher": weak_augmentation,
-        })
-        # Input: {"image": img, "label": 0}
-        # Output: {"student": {"image": img_strong, "label": 0},
-        #          "teacher": {"image": img_weak, "label": 0}}
+    # Dict input - returns dict of named views
+    transform = MultiViewTransform({
+        "student": strong_augmentation,
+        "teacher": weak_augmentation,
+    })
+    # Input: {"image": img, "label": 0}
+    # Output: {"student": {"image": img_strong, "label": 0},
+    #          "teacher": {"image": img_weak, "label": 0}}
     """
 
     def __init__(self, transforms):
         super().__init__()
         self.transforms = transforms
-        self.return_dict = isinstance(transforms, dict)
+        self.is_keys_specified = isinstance(transforms, dict)
 
     def __call__(self, sample):
         """Create multiple views by applying different transforms to the sample."""
-        if self.return_dict:
+        if self.is_keys_specified:
             # Dict input - return dict of views
             views = {}
             for key, transform in self.transforms.items():
@@ -880,13 +880,15 @@ class MultiViewTransform(v2.Transform):
                 views[key] = transformed
         else:
             # List input - return list of views
-            views = []
+            views_list = []
             for transform in self.transforms:
                 # Copy to avoid transforms modifying the original
                 sample_copy = sample.copy()
                 # Apply transform to entire dict
                 transformed = transform(sample_copy)
-                views.append(transformed)
+                views_list.append(transformed)
+
+            views = {"views": views_list}
 
         return views
 
@@ -927,7 +929,7 @@ class ContextTargetsMultiBlockMask(Transform):
         if len(target_scales) != len(target_aspect_ratios):
             raise ValueError(
                 "Each scale must have its associated aspect ratio and vice versa.",
-                "Received {len(target_scales)=} {len(target_aspect_ratios)=}",
+                f"Received {len(target_scales)=} {len(target_aspect_ratios)=}",
             )
 
         self.min_keep = min_keep

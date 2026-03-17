@@ -7,7 +7,11 @@ from .lr_scheduler import (
     LinearWarmupThreeStepsAnnealing,
     create_scheduler,
 )
-from .utils import create_optimizer
+from .utils import (
+    create_optimizer,
+    is_bias_or_norm_param,
+    split_params_for_weight_decay,
+)
 
 __all__ = [
     LARS,
@@ -18,4 +22,6 @@ __all__ = [
     LinearWarmupThreeStepsAnnealing,
     create_scheduler,
     create_optimizer,
+    is_bias_or_norm_param,
+    split_params_for_weight_decay,
 ]

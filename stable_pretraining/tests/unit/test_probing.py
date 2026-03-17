@@ -230,7 +230,7 @@ class TestProbingUnit:
             input="embedding",
             target="label",
             probe=nn.Linear(128, 10),
-            loss_fn=nn.CrossEntropyLoss(),
+            loss=nn.CrossEntropyLoss(),
             metrics={"accuracy": torchmetrics.classification.MulticlassAccuracy(10)},
         )
         module.configure_model()

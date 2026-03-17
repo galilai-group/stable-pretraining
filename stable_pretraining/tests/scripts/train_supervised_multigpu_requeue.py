@@ -112,7 +112,7 @@ def main(cfg):
         input="embedding",
         target="label",
         probe=torch.nn.Linear(512, 10),
-        loss_fn=torch.nn.CrossEntropyLoss(),
+        loss=torch.nn.CrossEntropyLoss(),
         metrics={
             "top1": torchmetrics.classification.MulticlassAccuracy(10),
             "top5": torchmetrics.classification.MulticlassAccuracy(10, top_k=5),

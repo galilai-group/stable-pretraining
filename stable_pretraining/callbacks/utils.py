@@ -262,22 +262,22 @@ def format_metrics_as_dict(metrics):
         train = {}
         eval = torch.nn.ModuleDict({metrics.__class__.__name__: metrics})
     elif type(metrics) is dict and set(metrics.keys()) == set(["train", "val"]):
+        train = {}
+        eval = {}
         if type(metrics["train"]) in [list, tuple]:
-            train = {}
             for m in metrics["train"]:
                 if not isinstance(m, torchmetrics.Metric):
                     raise ValueError(f"metric {m} is no a torchmetric")
                 train[m.__class__.__name__] = m
         else:
-            train = metrics["train"]
+            train[metrics["train"].__class__.__name__] = metrics["train"]
         if type(metrics["val"]) in [list, tuple]:
-            eval = {}
             for m in metrics["val"]:
                 if not isinstance(m, torchmetrics.Metric):
                     raise ValueError(f"metric {m} is no a torchmetric")
                 eval[m.__class__.__name__] = m
         else:
-            eval = metrics["val"]
+            eval[metrics["val"].__class__.__name__] = metrics["val"]
     elif type(metrics) is dict:
         train = {}
         for k, v in metrics.items():

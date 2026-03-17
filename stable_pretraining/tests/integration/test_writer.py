@@ -27,6 +27,7 @@ class TestWriterIntegration:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     @pytest.mark.download
     @pytest.mark.slow
@@ -107,7 +108,7 @@ class TestWriterIntegration:
             "embedding",
             "label",
             probe=torch.nn.Linear(512, 10),
-            loss_fn=torch.nn.CrossEntropyLoss(),
+            loss=torch.nn.CrossEntropyLoss(),
             metrics={
                 "top1": torchmetrics.classification.MulticlassAccuracy(10),
                 "top5": torchmetrics.classification.MulticlassAccuracy(10, top_k=5),

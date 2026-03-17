@@ -17,6 +17,13 @@ def log(name: str, value: Any, module_name: str = "default", **kwargs) -> None:
         module.log(name, value, **kwargs)
 
 
+def log_dict(*args, module_name: str = "default", **kwargs) -> None:
+    """Log a metric using the registered module."""
+    module = _MODULE_REGISTRY.get(module_name)
+    if module is not None:
+        module.log(*args, **kwargs)
+
+
 class ModuleRegistryCallback(Callback):
     """Callback that automatically registers the module for global logging access."""
 

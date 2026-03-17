@@ -2,8 +2,9 @@
 
 import torch
 import torch.nn.functional as F
-from typing import Literal
+from typing import Literal, Tuple
 import math
+from torch import nn
 
 __all__ = [
     "get_sincos_pos_embed",
@@ -209,3 +210,163 @@ def interpolate_pos_embed(
     result = torch.cat([prefix_pos, patch_pos], dim=1)
 
     return result.squeeze(0) if squeeze_output else result
+
+
+# =============================================================================
+# Rotary Position Embedding (RoPE)
+# =============================================================================
+def apply_rotary_emb(
+    x: torch.Tensor,
+    cos: torch.Tensor,
+    sin: torch.Tensor,
+) -> torch.Tensor:
+    """Apply rotary embeddings to input tensor.
+
+    :param x: Input tensor [..., seq_len, dim]
+    :param cos: Cosine frequencies [seq_len, dim] or [1, 1, seq_len, dim]
+    :param sin: Sine frequencies [seq_len, dim] or [1, 1, seq_len, dim]
+    :return: Rotated tensor
+    """
+    # Split into pairs and rotate
+    x1, x2 = x[..., ::2], x[..., 1::2]
+
+    # Ensure cos/sin have right shape for broadcasting
+    if cos.dim() == 2:
+        cos = cos[..., ::2]  # [seq_len, dim//2]
+        sin = sin[..., ::2]
+    else:
+        cos = cos[..., ::2]
+        sin = sin[..., ::2]
+
+    # Apply rotation
+    out = torch.stack(
+        [
+            x1 * cos - x2 * sin,
+            x1 * sin + x2 * cos,
+        ],
+        dim=-1,
+    ).flatten(-2)
+
+    return out
+
+
+class RotaryPositionEmbedding2D(nn.Module):
+    """2D Rotary Position Embedding (RoPE) for vision transformers.
+
+    Encodes relative 2D positions via complex rotations in attention,
+    improving generalization across varying image sizes. Uses separate
+    frequencies for height and width dimensions.
+    :param head_dim: Dimension per attention head
+    :param max_grid_size: Maximum grid size for precomputed frequencies
+    :param base: Base for frequency computation (default: 10000.0)
+    Example::
+        rope = RotaryPositionEmbedding2D(head_dim=64, max_grid_size=32)
+        # In attention forward:
+        q, k = rope(q, k, grid_h=14, grid_w=14)
+        # Or get frequencies and apply manually:
+        cos, sin = rope.get_freqs(grid_h=14, grid_w=14, device=q.device)
+        q = apply_rotary_emb(q, cos, sin)
+        k = apply_rotary_emb(k, cos, sin).
+    """
+
+    def __init__(
+        self,
+        head_dim: int,
+        max_grid_size: int = 32,
+        base: float = 10000.0,
+    ):
+        super().__init__()
+        self.head_dim = head_dim
+        self.max_grid_size = max_grid_size
+        self.base = base
+        # Each 2D axis gets head_dim // 4 frequency pairs
+        # Total: (head_dim // 4) * 2 for height + (head_dim // 4) * 2 for width = head_dim
+        dim_per_axis = head_dim // 4
+        if dim_per_axis <= 0:
+            raise ValueError(f"head_dim must be >= 4, got {head_dim}")
+        inv_freq = 1.0 / (
+            base ** (torch.arange(0, dim_per_axis, 2).float() / dim_per_axis)
+        )
+        self.register_buffer("inv_freq", inv_freq)
+        # Cache for current grid size
+        self._cached_grid_h = 0
+        self._cached_grid_w = 0
+
+    def _build_cache(
+        self,
+        grid_h: int,
+        grid_w: int,
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> None:
+        """Build and cache sin/cos frequencies for given grid size."""
+        # Height frequencies
+        pos_h = torch.arange(grid_h, device=device, dtype=dtype)
+        freqs_h = torch.outer(pos_h, self.inv_freq.to(device=device, dtype=dtype))
+        # Width frequencies
+        pos_w = torch.arange(grid_w, device=device, dtype=dtype)
+        freqs_w = torch.outer(pos_w, self.inv_freq.to(device=device, dtype=dtype))
+        # Expand to full grid [H, W, dim_per_axis]
+        freqs_h = freqs_h.unsqueeze(1).expand(-1, grid_w, -1)  # [H, W, dim//4]
+        freqs_w = freqs_w.unsqueeze(0).expand(grid_h, -1, -1)  # [H, W, dim//4]
+        # Flatten to [H*W, dim_per_axis] and duplicate for sin/cos pairs
+        freqs_h = freqs_h.reshape(-1, freqs_h.shape[-1])  # [H*W, dim//4]
+        freqs_w = freqs_w.reshape(-1, freqs_w.shape[-1])  # [H*W, dim//4]
+        # Combine: [H*W, head_dim] with interleaved h/w frequencies
+        freqs = torch.cat(
+            [
+                freqs_h,
+                freqs_h,  # height (for sin/cos pairs)
+                freqs_w,
+                freqs_w,  # width (for sin/cos pairs)
+            ],
+            dim=-1,
+        )
+        self.register_buffer("cos_cached", freqs.cos(), persistent=False)
+        self.register_buffer("sin_cached", freqs.sin(), persistent=False)
+        self._cached_grid_h = grid_h
+        self._cached_grid_w = grid_w
+
+    def get_freqs(
+        self,
+        grid_h: int,
+        grid_w: int,
+        device: torch.device,
+        dtype: torch.dtype = torch.float32,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Get cos/sin frequencies for given grid size.
+
+        :param grid_h: Grid height
+        :param grid_w: Grid width
+        :param device: Target device
+        :param dtype: Target dtype
+        :return: (cos, sin) tensors of shape [H*W, head_dim].
+        """
+        if grid_h != self._cached_grid_h or grid_w != self._cached_grid_w:
+            self._build_cache(grid_h, grid_w, device, dtype)
+        seq_len = grid_h * grid_w
+        return self.cos_cached[:seq_len], self.sin_cached[:seq_len]
+
+    def forward(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        grid_h: int,
+        grid_w: int,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Apply 2D rotary embeddings to query and key tensors.
+
+        :param q: Query tensor [B, num_heads, seq_len, head_dim]
+        :param k: Key tensor [B, num_heads, seq_len, head_dim]
+        :param grid_h: Patch grid height
+        :param grid_w: Patch grid width
+        :return: (rotated_q, rotated_k).
+        """
+        cos, sin = self.get_freqs(grid_h, grid_w, q.device, q.dtype)
+
+        q_rot = apply_rotary_emb(q, cos, sin)
+        k_rot = apply_rotary_emb(k, cos, sin)
+        return q_rot, k_rot
+
+    def extra_repr(self) -> str:
+        return f"head_dim={self.head_dim}, max_grid_size={self.max_grid_size}, base={self.base}"
