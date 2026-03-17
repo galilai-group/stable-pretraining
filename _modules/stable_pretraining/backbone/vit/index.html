@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.vit &#8212; stable-pretraining 0.1.dev1+g1deab54eb documentation</title>
+    <title>stable_pretraining.backbone.vit &#8212; stable-pretraining 0.1.dev1+ga24d5c919 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=4c56e232"></script>
+    <script src="../../../../_static/documentation_options.js?v=b7a8bac0"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g1deab54eb documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+ga24d5c919 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -334,6 +334,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Union</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">timm</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">timm.layers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DropPath</span><span class="p">,</span> <span class="n">Mlp</span><span class="p">,</span> <span class="n">trunc_normal_</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.patch_masking</span><span class="w"> </span><span class="kn">import</span> <span class="n">PatchMasking</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.pos_embed</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -620,6 +621,12 @@
 
             <span class="bp">self</span><span class="o">.</span><span class="n">vit</span> <span class="o">=</span> <span class="n">timm</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">model_or_model_name</span><span class="p">,</span> <span class="o">**</span><span class="n">create_kwargs</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;MaskedEncoder received a pre-instantiated nn.Module. &quot;</span>
+                <span class="s2">&quot;Internals assume a timm ViT model with attributes such as &quot;</span>
+                <span class="s2">&quot;patch_embed, pos_embed, cls_token, blocks, norm, etc. &quot;</span>
+                <span class="s2">&quot;If you pass a non-timm module, unexpected errors may occur.&quot;</span>
+            <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">vit</span> <span class="o">=</span> <span class="n">model_or_model_name</span>
             <span class="k">if</span> <span class="n">patch_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_rebuild_patch_embed</span><span class="p">(</span><span class="n">patch_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">)</span>
@@ -635,9 +642,17 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">default_grid_h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_grid_w</span> <span class="o">=</span> <span class="p">(</span>
             <span class="p">(</span><span class="n">gs</span><span class="p">,</span> <span class="n">gs</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gs</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">else</span> <span class="n">gs</span>
         <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_prefix_tokens</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="p">,</span> <span class="s2">&quot;num_prefix_tokens&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">has_class_token</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="p">,</span> <span class="s2">&quot;has_class_token&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_reg_tokens</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="p">,</span> <span class="s2">&quot;num_reg_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">has_class_token</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="p">,</span> <span class="s2">&quot;cls_token&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">cls_token</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="p">,</span> <span class="s2">&quot;reg_token&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">reg_token</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_reg_tokens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">reg_token</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_reg_tokens</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="p">,</span> <span class="s2">&quot;num_reg_tokens&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_prefix_tokens</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="mi">1</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_class_token</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_reg_tokens</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">no_embed_class</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="p">,</span> <span class="s2">&quot;no_embed_class&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_rebuild_patch_embed</span><span class="p">(</span>
@@ -666,6 +681,8 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_resize_pos_embed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_grid_size</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Resize positional embeddings to new grid size.&quot;&quot;&quot;</span>
         <span class="n">old_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">pos_embed</span>
+        <span class="k">if</span> <span class="n">old_pos</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
         <span class="n">num_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_prefix_tokens</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_embed_class</span> <span class="k">else</span> <span class="mi">0</span>
         <span class="n">src_patches</span> <span class="o">=</span> <span class="n">old_pos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">num_prefix</span>
         <span class="n">src_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">src_patches</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span>
@@ -681,9 +698,11 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_pos_embed</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get positional embeddings, interpolating if needed for dynamic size.&quot;&quot;&quot;</span>
         <span class="n">pos_embed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">pos_embed</span>
+        <span class="k">if</span> <span class="n">pos_embed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
         <span class="n">num_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_prefix_tokens</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_embed_class</span> <span class="k">else</span> <span class="mi">0</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dynamic_img_size</span> <span class="ow">and</span> <span class="p">(</span>
             <span class="n">grid_h</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_grid_h</span> <span class="ow">or</span> <span class="n">grid_w</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_grid_w</span>
@@ -725,8 +744,11 @@
 
         <span class="c1"># Patch embed + positional embed</span>
         <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_embed</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
         <span class="n">prefix_pos</span><span class="p">,</span> <span class="n">patch_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_pos_embed</span><span class="p">(</span><span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">)</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">patch_pos</span>
+        <span class="k">if</span> <span class="n">patch_pos</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">patch_pos</span>
 
         <span class="c1"># Apply masking (training only)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">masking</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -747,7 +769,12 @@
             <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">prefix</span><span class="p">,</span> <span class="n">x</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
         <span class="c1"># Transformer blocks</span>
         <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">pos_drop</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">blocks</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="p">,</span> <span class="s2">&quot;blocks&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">layers</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">blocks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">blocks</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="p">,</span> <span class="s2">&quot;blocks&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">layers</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blocks</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">blk</span> <span class="ow">in</span> <span class="n">blocks</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">blk</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">blocks</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">MaskedEncoderOutput</span><span class="p">(</span>
             <span class="n">encoded</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>

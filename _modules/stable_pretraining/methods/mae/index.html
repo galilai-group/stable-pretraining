@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.methods.mae &#8212; stable-pretraining 0.1.dev1+g1deab54eb documentation</title>
+    <title>stable_pretraining.methods.mae &#8212; stable-pretraining 0.1.dev1+ga24d5c919 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=4c56e232"></script>
+    <script src="../../../../_static/documentation_options.js?v=b7a8bac0"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g1deab54eb documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+ga24d5c919 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -358,6 +358,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.backbone</span><span class="w"> </span><span class="kn">import</span> <span class="n">MAEDecoder</span><span class="p">,</span> <span class="n">MaskedEncoder</span><span class="p">,</span> <span class="n">PatchMasking</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">MAELoss</span>
@@ -395,7 +396,7 @@
 <span class="sd">        - **Decoder**: Lightweight transformer reconstructing masked patches</span>
 <span class="sd">        - **Target**: Normalized pixel values of masked patches</span>
 
-<span class="sd">    :param encoder_name: timm model name (e.g., &quot;vit_base_patch16_224&quot;)</span>
+<span class="sd">    :param model_or_model_name: timm model name string or pre-instantiated nn.Module</span>
 <span class="sd">    :param decoder_embed_dim: Decoder hidden dimension (default: 512)</span>
 <span class="sd">    :param decoder_depth: Number of decoder blocks (default: 8)</span>
 <span class="sd">    :param decoder_num_heads: Decoder attention heads (default: 16)</span>
@@ -437,7 +438,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">encoder_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;vit_base_patch16_224&quot;</span><span class="p">,</span>
+        <span class="n">model_or_model_name</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;vit_base_patch16_224&quot;</span><span class="p">,</span>
         <span class="n">decoder_embed_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span>
         <span class="n">decoder_depth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
         <span class="n">decoder_num_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
@@ -456,7 +457,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">masking</span> <span class="o">=</span> <span class="n">PatchMasking</span><span class="p">(</span><span class="n">mask_ratio</span><span class="o">=</span><span class="n">mask_ratio</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="n">block_size</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="n">MaskedEncoder</span><span class="p">(</span>
-            <span class="n">encoder_name</span><span class="p">,</span> <span class="n">masking</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">masking</span><span class="p">,</span> <span class="n">pretrained</span><span class="o">=</span><span class="n">pretrained</span>
+            <span class="n">model_or_model_name</span><span class="p">,</span> <span class="n">masking</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">masking</span><span class="p">,</span> <span class="n">pretrained</span><span class="o">=</span><span class="n">pretrained</span>
         <span class="p">)</span>
 
         <span class="n">embed_dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="o">.</span><span class="n">embed_dim</span>
