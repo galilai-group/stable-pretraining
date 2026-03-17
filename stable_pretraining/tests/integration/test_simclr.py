@@ -14,6 +14,7 @@ from stable_pretraining.data import transforms
 class TestSimCLRIntegration:
     """Integration tests for SimCLR with actual training."""
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     @pytest.mark.download
     @pytest.mark.slow
@@ -133,6 +134,7 @@ class TestSimCLRIntegration:
         manager = spt.Manager(trainer=trainer, module=module, data=data)
         manager()
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     def test_simclr_loss_computation(self):
         """Test SimCLR NT-Xent loss computation."""
@@ -249,6 +251,7 @@ class TestSimCLRIntegration:
             loss = loss_fn(z1, z2)
             assert loss.item() > 0
 
+    @pytest.mark.v1
     @pytest.mark.download
     def test_simclr_augmentations(self):
         """Test SimCLR data augmentations."""
@@ -284,6 +287,7 @@ class TestSimCLRIntegration:
         assert sample1["image"].shape == sample2["image"].shape
         assert not torch.allclose(sample1["image"], sample2["image"])
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     def test_simclr_training_step(self):
         """Test a single SimCLR training step."""

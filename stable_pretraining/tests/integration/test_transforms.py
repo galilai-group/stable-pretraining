@@ -10,6 +10,7 @@ import stable_pretraining as spt
 import stable_pretraining.data.transforms as transforms
 
 
+@pytest.mark.v1
 @pytest.mark.integration
 @pytest.mark.download
 @pytest.mark.parametrize(
@@ -48,6 +49,7 @@ def test_controlled_transforms(our_transform, true_transform):
             assert torch.allclose(ours["image"], truth[0], atol=1e-5)
 
 
+@pytest.mark.v1
 @pytest.mark.integration
 @pytest.mark.slow
 def test_transforms_performance():

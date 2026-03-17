@@ -7,7 +7,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Tuple
 
-__all__ = ["PatchMasking", "MaskingOutput", "IJEPAMasking", "IJEPAMaskOutput"]
+from stable_pretraining.data.masking import multi_block_mask
+
+__all__ = [
+    "PatchMasking",
+    "MaskingOutput",
+    "IJEPAMasking",
+    "IJEPAMaskOutput",
+    "MultiBlockMasking",
+]
 
 
 @dataclass
@@ -629,4 +637,144 @@ class IJEPAMasking(nn.Module):
             f"target_scale={self.target_scale}, "
             f"target_aspect_ratio={self.target_aspect_ratio}, "
             f"context_scale={self.context_scale}"
+        )
+
+
+class MultiBlockMasking(nn.Module):
+    """Multi-block masking for SALT Stage 1 (VPixel).
+
+    Generates one large context block and M target blocks using
+    :func:`multi_block_mask`, then makes context disjoint from targets.
+    Returns :class:`MaskingOutput` compatible with :class:`MaskedEncoder`.
+
+    :param num_targets: Number of target blocks (default: 4)
+    :param context_scale: (min, max) scale for context block (default: (0.85, 1.0))
+    :param target_scale: (min, max) scale for each target block (default: (0.15, 0.2))
+    :param context_aspect_ratio: (min, max) aspect ratio for context (default: (1.0, 1.0))
+    :param target_aspect_ratio: (min, max) aspect ratio for targets (default: (0.75, 1.5))
+
+    Example::
+
+        masking = MultiBlockMasking(num_targets=4)
+        output = masking(patch_embeddings, grid_h=14, grid_w=14)
+
+        visible_patches = output.visible  # (B, N_keep, D)
+        mask = output.mask  # (B, N), 1=masked, 0=visible
+    """
+
+    def __init__(
+        self,
+        num_targets: int = 4,
+        context_scale: Tuple[float, float] = (0.85, 1.0),
+        target_scale: Tuple[float, float] = (0.15, 0.2),
+        context_aspect_ratio: Tuple[float, float] = (1.0, 1.0),
+        target_aspect_ratio: Tuple[float, float] = (0.75, 1.5),
+    ):
+        super().__init__()
+
+        if num_targets < 1:
+            raise ValueError(f"num_targets must be >= 1, got {num_targets}")
+
+        self.num_targets = num_targets
+        self.context_scale = context_scale
+        self.target_scale = target_scale
+        self.context_aspect_ratio = context_aspect_ratio
+        self.target_aspect_ratio = target_aspect_ratio
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        grid_h: int,
+        grid_w: int,
+    ) -> MaskingOutput:
+        """Apply multi-block masking to patch embeddings.
+
+        :param x: Patch embeddings [B, N, D] where N = grid_h * grid_w
+        :param grid_h: Height of patch grid
+        :param grid_w: Width of patch grid
+        :return: MaskingOutput with visible patches and mask info
+        """
+        if x.dim() != 3:
+            raise ValueError(
+                f"Expected 3D input (B, N, D), got {x.dim()}D tensor with shape {x.shape}"
+            )
+
+        B, N, D = x.shape
+        device = x.device
+
+        if N != grid_h * grid_w:
+            raise ValueError(
+                f"Number of patches {N} doesn't match grid size "
+                f"{grid_h} x {grid_w} = {grid_h * grid_w}"
+            )
+
+        if not self.training:
+            return MaskingOutput(
+                visible=x,
+                mask=torch.zeros(B, N, device=device),
+                ids_restore=torch.arange(N, device=device).unsqueeze(0).expand(B, -1),
+                ids_keep=torch.arange(N, device=device).unsqueeze(0).expand(B, -1),
+            )
+
+        # Generate masks: 1 context block + M target blocks
+        block_scales = [self.context_scale] + [self.target_scale] * self.num_targets
+        aspect_ratios = [self.context_aspect_ratio] + [
+            self.target_aspect_ratio
+        ] * self.num_targets
+
+        masks = multi_block_mask(
+            grid_h,
+            grid_w,
+            block_scales=block_scales,
+            aspect_ratios=aspect_ratios,
+        )
+
+        context_mask = masks[0]  # [H, W], 1=in block
+        target_masks = masks[1:]
+
+        # Make context disjoint from targets
+        for t in target_masks:
+            context_mask = context_mask * (1 - t)
+
+        # Context = visible, everything else = masked
+        context_flat = context_mask.flatten().bool().to(device)  # [N]
+
+        # mask: 1 = masked (not in context), 0 = visible (in context)
+        mask = (~context_flat).float()  # [N]
+
+        # Get sorted context indices
+        ids_keep = context_flat.nonzero(as_tuple=True)[0]  # [N_keep]
+        num_keep = ids_keep.shape[0]
+
+        # Build ids_restore: assign low noise to context, high to masked
+        noise = torch.zeros(N, device=device)
+        noise[ids_keep] = torch.arange(num_keep, device=device, dtype=torch.float)
+        noise[~context_flat] = torch.arange(
+            num_keep, N, device=device, dtype=torch.float
+        )
+        ids_shuffle = noise.long()
+        ids_restore = torch.argsort(ids_shuffle)
+
+        # Expand to batch
+        ids_keep = ids_keep.unsqueeze(0).expand(B, -1)
+        ids_restore = ids_restore.unsqueeze(0).expand(B, -1)
+        mask = mask.unsqueeze(0).expand(B, -1)
+
+        # Gather visible patches
+        visible = torch.gather(x, dim=1, index=ids_keep.unsqueeze(-1).expand(-1, -1, D))
+
+        return MaskingOutput(
+            visible=visible,
+            mask=mask,
+            ids_restore=ids_restore,
+            ids_keep=ids_keep,
+        )
+
+    def extra_repr(self) -> str:
+        return (
+            f"num_targets={self.num_targets}, "
+            f"context_scale={self.context_scale}, "
+            f"target_scale={self.target_scale}, "
+            f"context_aspect_ratio={self.context_aspect_ratio}, "
+            f"target_aspect_ratio={self.target_aspect_ratio}"
         )

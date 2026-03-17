@@ -46,6 +46,28 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: ${{ github.repository }}
 
+  Test-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - name: Checking Out Repository
+        uses: actions/checkout@v2
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          python -m pip install --user --upgrade --progress-bar off pip
+      - name: Install 'stable_pretraining' package
+        run: |
+          python -m pip install --user -e .[dev]
+      - name: Run Integration Tests
+        run: pytest stable_pretraining/ -m integration --verbose
+
   Test-minimal:
     runs-on: ubuntu-latest
     strategy:

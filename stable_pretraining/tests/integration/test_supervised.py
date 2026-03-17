@@ -14,6 +14,7 @@ from stable_pretraining.data import transforms
 class TestSupervisedIntegration:
     """Integration tests for supervised training with actual models and data."""
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     @pytest.mark.download
     @pytest.mark.slow
@@ -192,6 +193,7 @@ class TestSupervisedIntegration:
         assert rank_estimate.item() > 0
         assert rank_estimate.item() <= min(features.shape)
 
+    @pytest.mark.v1
     @pytest.mark.download
     def test_imagenette_loading_supervised(self):
         """Test ImageNette dataset loading for supervised training."""
@@ -216,6 +218,7 @@ class TestSupervisedIntegration:
         assert sample["image"].shape == (3, 224, 224)
         assert 0 <= sample["label"] <= 9
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     def test_mixed_precision_supervised(self):
         """Test supervised training with mixed precision."""
@@ -242,6 +245,7 @@ class TestSupervisedIntegration:
         assert features.dtype == torch.float16 or features.dtype == torch.bfloat16
         assert loss.dtype == torch.float32
 
+    @pytest.mark.v1
     def test_data_augmentations_supervised(self):
         """Test data augmentations for supervised training."""
         mean = [0.485, 0.456, 0.406]
@@ -271,6 +275,7 @@ class TestSupervisedIntegration:
         assert aug1.shape == aug2.shape == (3, 224, 224)
         assert not torch.allclose(aug1, aug2)
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     def test_supervised_training_step(self):
         """Test a single supervised training step."""

@@ -27,6 +27,7 @@ class TestWriterIntegration:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
+    @pytest.mark.v1
     @pytest.mark.gpu
     @pytest.mark.download
     @pytest.mark.slow
