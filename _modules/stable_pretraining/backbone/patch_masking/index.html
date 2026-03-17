@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.patch_masking &#8212; stable-pretraining 0.1.dev1+g9fde5a3d9 documentation</title>
+    <title>stable_pretraining.backbone.patch_masking &#8212; stable-pretraining 0.1.dev1+gbd54af719 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=f449dc58"></script>
+    <script src="../../../../_static/documentation_options.js?v=4d870b4f"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9fde5a3d9 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gbd54af719 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -337,7 +337,15 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;PatchMasking&quot;</span><span class="p">,</span> <span class="s2">&quot;MaskingOutput&quot;</span><span class="p">,</span> <span class="s2">&quot;IJEPAMasking&quot;</span><span class="p">,</span> <span class="s2">&quot;IJEPAMaskOutput&quot;</span><span class="p">]</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.data.masking</span><span class="w"> </span><span class="kn">import</span> <span class="n">multi_block_mask</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;PatchMasking&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MaskingOutput&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;IJEPAMasking&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;IJEPAMaskOutput&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MultiBlockMasking&quot;</span><span class="p">,</span>
+<span class="p">]</span>
 
 
 <div class="viewcode-block" id="MaskingOutput">
@@ -981,6 +989,155 @@
             <span class="sa">f</span><span class="s2">&quot;target_scale=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target_scale</span><span class="si">}</span><span class="s2">, &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;target_aspect_ratio=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target_aspect_ratio</span><span class="si">}</span><span class="s2">, &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;context_scale=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">context_scale</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MultiBlockMasking">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MultiBlockMasking">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MultiBlockMasking</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Multi-block masking for SALT Stage 1 (VPixel).</span>
+
+<span class="sd">    Generates one large context block and M target blocks using</span>
+<span class="sd">    :func:`multi_block_mask`, then makes context disjoint from targets.</span>
+<span class="sd">    Returns :class:`MaskingOutput` compatible with :class:`MaskedEncoder`.</span>
+
+<span class="sd">    :param num_targets: Number of target blocks (default: 4)</span>
+<span class="sd">    :param context_scale: (min, max) scale for context block (default: (0.85, 1.0))</span>
+<span class="sd">    :param target_scale: (min, max) scale for each target block (default: (0.15, 0.2))</span>
+<span class="sd">    :param context_aspect_ratio: (min, max) aspect ratio for context (default: (1.0, 1.0))</span>
+<span class="sd">    :param target_aspect_ratio: (min, max) aspect ratio for targets (default: (0.75, 1.5))</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        masking = MultiBlockMasking(num_targets=4)</span>
+<span class="sd">        output = masking(patch_embeddings, grid_h=14, grid_w=14)</span>
+
+<span class="sd">        visible_patches = output.visible  # (B, N_keep, D)</span>
+<span class="sd">        mask = output.mask  # (B, N), 1=masked, 0=visible</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">num_targets</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+        <span class="n">context_scale</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.85</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+        <span class="n">target_scale</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">),</span>
+        <span class="n">context_aspect_ratio</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+        <span class="n">target_aspect_ratio</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">num_targets</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;num_targets must be &gt;= 1, got </span><span class="si">{</span><span class="n">num_targets</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span> <span class="o">=</span> <span class="n">num_targets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context_scale</span> <span class="o">=</span> <span class="n">context_scale</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_scale</span> <span class="o">=</span> <span class="n">target_scale</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context_aspect_ratio</span> <span class="o">=</span> <span class="n">context_aspect_ratio</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_aspect_ratio</span> <span class="o">=</span> <span class="n">target_aspect_ratio</span>
+
+<div class="viewcode-block" id="MultiBlockMasking.forward">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MultiBlockMasking.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">grid_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_w</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MaskingOutput</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply multi-block masking to patch embeddings.</span>
+
+<span class="sd">        :param x: Patch embeddings [B, N, D] where N = grid_h * grid_w</span>
+<span class="sd">        :param grid_h: Height of patch grid</span>
+<span class="sd">        :param grid_w: Width of patch grid</span>
+<span class="sd">        :return: MaskingOutput with visible patches and mask info</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Expected 3D input (B, N, D), got </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span><span class="si">}</span><span class="s2">D tensor with shape </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">D</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">device</span>
+
+        <span class="k">if</span> <span class="n">N</span> <span class="o">!=</span> <span class="n">grid_h</span> <span class="o">*</span> <span class="n">grid_w</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Number of patches </span><span class="si">{</span><span class="n">N</span><span class="si">}</span><span class="s2"> doesn&#39;t match grid size &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">grid_h</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">grid_w</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">grid_h</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">grid_w</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MaskingOutput</span><span class="p">(</span>
+                <span class="n">visible</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+                <span class="n">mask</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">),</span>
+                <span class="n">ids_restore</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                <span class="n">ids_keep</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Generate masks: 1 context block + M target blocks</span>
+        <span class="n">block_scales</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">context_scale</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_scale</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span>
+        <span class="n">aspect_ratios</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">context_aspect_ratio</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">target_aspect_ratio</span>
+        <span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span>
+
+        <span class="n">masks</span> <span class="o">=</span> <span class="n">multi_block_mask</span><span class="p">(</span>
+            <span class="n">grid_h</span><span class="p">,</span>
+            <span class="n">grid_w</span><span class="p">,</span>
+            <span class="n">block_scales</span><span class="o">=</span><span class="n">block_scales</span><span class="p">,</span>
+            <span class="n">aspect_ratios</span><span class="o">=</span><span class="n">aspect_ratios</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">context_mask</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># [H, W], 1=in block</span>
+        <span class="n">target_masks</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="c1"># Make context disjoint from targets</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">target_masks</span><span class="p">:</span>
+            <span class="n">context_mask</span> <span class="o">=</span> <span class="n">context_mask</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">t</span><span class="p">)</span>
+
+        <span class="c1"># Context = visible, everything else = masked</span>
+        <span class="n">context_flat</span> <span class="o">=</span> <span class="n">context_mask</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span><span class="o">.</span><span class="n">bool</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># [N]</span>
+
+        <span class="c1"># mask: 1 = masked (not in context), 0 = visible (in context)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">context_flat</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>  <span class="c1"># [N]</span>
+
+        <span class="c1"># Get sorted context indices</span>
+        <span class="n">ids_keep</span> <span class="o">=</span> <span class="n">context_flat</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">as_tuple</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># [N_keep]</span>
+        <span class="n">num_keep</span> <span class="o">=</span> <span class="n">ids_keep</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Build ids_restore: assign low noise to context, high to masked</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">noise</span><span class="p">[</span><span class="n">ids_keep</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_keep</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+        <span class="n">noise</span><span class="p">[</span><span class="o">~</span><span class="n">context_flat</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+            <span class="n">num_keep</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span>
+        <span class="p">)</span>
+        <span class="n">ids_shuffle</span> <span class="o">=</span> <span class="n">noise</span><span class="o">.</span><span class="n">long</span><span class="p">()</span>
+        <span class="n">ids_restore</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">ids_shuffle</span><span class="p">)</span>
+
+        <span class="c1"># Expand to batch</span>
+        <span class="n">ids_keep</span> <span class="o">=</span> <span class="n">ids_keep</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ids_restore</span> <span class="o">=</span> <span class="n">ids_restore</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Gather visible patches</span>
+        <span class="n">visible</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">ids_keep</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">D</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">MaskingOutput</span><span class="p">(</span>
+            <span class="n">visible</span><span class="o">=</span><span class="n">visible</span><span class="p">,</span>
+            <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">,</span>
+            <span class="n">ids_restore</span><span class="o">=</span><span class="n">ids_restore</span><span class="p">,</span>
+            <span class="n">ids_keep</span><span class="o">=</span><span class="n">ids_keep</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MultiBlockMasking.extra_repr">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MultiBlockMasking.extra_repr">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">extra_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;num_targets=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;context_scale=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">context_scale</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;target_scale=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target_scale</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;context_aspect_ratio=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">context_aspect_ratio</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;target_aspect_ratio=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target_aspect_ratio</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span></div>
 </div>
 

@@ -36,6 +36,14 @@ stable\_pretraining.methods.nepa module
    :show-inheritance:
    :undoc-members:
 
+stable\_pretraining.methods.salt module
+---------------------------------------
+
+.. automodule:: stable_pretraining.methods.salt
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 Module contents
 ---------------
 

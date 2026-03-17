@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.backbone package &#8212; stable-pretraining 0.1.dev1+g9fde5a3d9 documentation</title>
+    <title>stable_pretraining.backbone package &#8212; stable-pretraining 0.1.dev1+gbd54af719 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=f449dc58"></script>
+    <script src="../_static/documentation_options.js?v=4d870b4f"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9fde5a3d9 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gbd54af719 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -432,6 +432,11 @@
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput.ids_restore"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.ids_restore</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput.mask"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.mask</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput.visible"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.visible</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MultiBlockMasking"><code class="docutils literal notranslate"><span class="pre">MultiBlockMasking</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MultiBlockMasking.extra_repr"><code class="docutils literal notranslate"><span class="pre">MultiBlockMasking.extra_repr()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MultiBlockMasking.forward"><code class="docutils literal notranslate"><span class="pre">MultiBlockMasking.forward()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.PatchMasking"><code class="docutils literal notranslate"><span class="pre">PatchMasking</span></code></a><ul class="nav section-nav flex-column">
@@ -1111,6 +1116,62 @@ The combined <cite>target_idx</cite> only includes patches from non-empty blocks
 <dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.MaskingOutput.visible">
 <span class="sig-name descname"><span class="pre">visible</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.MaskingOutput.visible" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.MultiBlockMasking">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.patch_masking.</span></span><span class="sig-name descname"><span class="pre">MultiBlockMasking</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_targets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context_scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(0.85,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(0.15,</span> <span class="pre">0.2)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context_aspect_ratio</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(1.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_aspect_ratio</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(0.75,</span> <span class="pre">1.5)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/patch_masking/#MultiBlockMasking"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.MultiBlockMasking" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
+<p>Multi-block masking for SALT Stage 1 (VPixel).</p>
+<p>Generates one large context block and M target blocks using
+<code class="xref py py-func docutils literal notranslate"><span class="pre">multi_block_mask()</span></code>, then makes context disjoint from targets.
+Returns <a class="reference internal" href="#stable_pretraining.backbone.patch_masking.MaskingOutput" title="stable_pretraining.backbone.patch_masking.MaskingOutput"><code class="xref py py-class docutils literal notranslate"><span class="pre">MaskingOutput</span></code></a> compatible with <code class="xref py py-class docutils literal notranslate"><span class="pre">MaskedEncoder</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_targets</strong> – Number of target blocks (default: 4)</p></li>
+<li><p><strong>context_scale</strong> – (min, max) scale for context block (default: (0.85, 1.0))</p></li>
+<li><p><strong>target_scale</strong> – (min, max) scale for each target block (default: (0.15, 0.2))</p></li>
+<li><p><strong>context_aspect_ratio</strong> – (min, max) aspect ratio for context (default: (1.0, 1.0))</p></li>
+<li><p><strong>target_aspect_ratio</strong> – (min, max) aspect ratio for targets (default: (0.75, 1.5))</p></li>
+</ul>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">masking</span> <span class="o">=</span> <span class="n">MultiBlockMasking</span><span class="p">(</span><span class="n">num_targets</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">output</span> <span class="o">=</span> <span class="n">masking</span><span class="p">(</span><span class="n">patch_embeddings</span><span class="p">,</span> <span class="n">grid_h</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">grid_w</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+
+<span class="n">visible_patches</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">visible</span>  <span class="c1"># (B, N_keep, D)</span>
+<span class="n">mask</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">mask</span>  <span class="c1"># (B, N), 1=masked, 0=visible</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.MultiBlockMasking.extra_repr">
+<span class="sig-name descname"><span class="pre">extra_repr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/patch_masking/#MultiBlockMasking.extra_repr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.MultiBlockMasking.extra_repr" title="Link to this definition">#</a></dt>
+<dd><p>Return the extra representation of the module.</p>
+<p>To print customized extra information, you should re-implement
+this method in your own modules. Both single-line and multi-line
+strings are acceptable.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.patch_masking.MultiBlockMasking.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.10)"><span class="pre">Tensor</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_h</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#stable_pretraining.backbone.patch_masking.MaskingOutput" title="stable_pretraining.backbone.patch_masking.MaskingOutput"><span class="pre">MaskingOutput</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/backbone/patch_masking/#MultiBlockMasking.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.patch_masking.MultiBlockMasking.forward" title="Link to this definition">#</a></dt>
+<dd><p>Apply multi-block masking to patch embeddings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – Patch embeddings [B, N, D] where N = grid_h * grid_w</p></li>
+<li><p><strong>grid_h</strong> – Height of patch grid</p></li>
+<li><p><strong>grid_w</strong> – Width of patch grid</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>MaskingOutput with visible patches and mask info</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
@@ -3629,6 +3690,11 @@ Initialize near zero (e.g., 1e-5) for identity-like initialization.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput.ids_restore"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.ids_restore</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput.mask"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.mask</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MaskingOutput.visible"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.visible</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MultiBlockMasking"><code class="docutils literal notranslate"><span class="pre">MultiBlockMasking</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MultiBlockMasking.extra_repr"><code class="docutils literal notranslate"><span class="pre">MultiBlockMasking.extra_repr()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.MultiBlockMasking.forward"><code class="docutils literal notranslate"><span class="pre">MultiBlockMasking.forward()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.patch_masking.PatchMasking"><code class="docutils literal notranslate"><span class="pre">PatchMasking</span></code></a><ul class="nav section-nav flex-column">

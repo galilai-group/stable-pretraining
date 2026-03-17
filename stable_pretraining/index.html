@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining package &#8212; stable-pretraining 0.1.dev1+g9fde5a3d9 documentation</title>
+    <title>stable_pretraining package &#8212; stable-pretraining 0.1.dev1+gbd54af719 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=f449dc58"></script>
+    <script src="../_static/documentation_options.js?v=4d870b4f"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9fde5a3d9 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gbd54af719 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -648,6 +648,11 @@
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MaskingOutput.ids_restore"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.ids_restore</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MaskingOutput.mask"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.mask</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MaskingOutput.visible"><code class="docutils literal notranslate"><span class="pre">MaskingOutput.visible</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MultiBlockMasking"><code class="docutils literal notranslate"><span class="pre">MultiBlockMasking</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MultiBlockMasking.extra_repr"><code class="docutils literal notranslate"><span class="pre">MultiBlockMasking.extra_repr()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MultiBlockMasking.forward"><code class="docutils literal notranslate"><span class="pre">MultiBlockMasking.forward()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.PatchMasking"><code class="docutils literal notranslate"><span class="pre">PatchMasking</span></code></a><ul>
@@ -1500,6 +1505,23 @@
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.nepa.nepa_large_patch14"><code class="docutils literal notranslate"><span class="pre">nepa_large_patch14()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.methods/#module-stable_pretraining.methods.salt">stable_pretraining.methods.salt module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.salt.SALT"><code class="docutils literal notranslate"><span class="pre">SALT</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.salt.SALT.forward"><code class="docutils literal notranslate"><span class="pre">SALT.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.salt.SALT.from_checkpoint"><code class="docutils literal notranslate"><span class="pre">SALT.from_checkpoint()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.salt.SALTOutput"><code class="docutils literal notranslate"><span class="pre">SALTOutput</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.salt.SALTOutput.embedding"><code class="docutils literal notranslate"><span class="pre">SALTOutput.embedding</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.salt.SALTOutput.loss"><code class="docutils literal notranslate"><span class="pre">SALTOutput.loss</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.salt.SALTOutput.num_context"><code class="docutils literal notranslate"><span class="pre">SALTOutput.num_context</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.salt.SALTOutput.num_targets"><code class="docutils literal notranslate"><span class="pre">SALTOutput.num_targets</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.salt.SALTOutput.predictions"><code class="docutils literal notranslate"><span class="pre">SALTOutput.predictions</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.salt.SALTOutput.targets"><code class="docutils literal notranslate"><span class="pre">SALTOutput.targets</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.methods/#module-stable_pretraining.methods">Module contents</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.IJEPA"><code class="docutils literal notranslate"><span class="pre">IJEPA</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.IJEPA.forward"><code class="docutils literal notranslate"><span class="pre">IJEPA.forward()</span></code></a></li>
@@ -1519,6 +1541,11 @@
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.NEPA.freeze_patch_embed"><code class="docutils literal notranslate"><span class="pre">NEPA.freeze_patch_embed()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.NEPA.get_classifier_features"><code class="docutils literal notranslate"><span class="pre">NEPA.get_classifier_features()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.NEPA.get_dense_features"><code class="docutils literal notranslate"><span class="pre">NEPA.get_dense_features()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.SALT"><code class="docutils literal notranslate"><span class="pre">SALT</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.SALT.forward"><code class="docutils literal notranslate"><span class="pre">SALT.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.methods/#stable_pretraining.methods.SALT.from_checkpoint"><code class="docutils literal notranslate"><span class="pre">SALT.from_checkpoint()</span></code></a></li>
 </ul>
 </li>
 </ul>

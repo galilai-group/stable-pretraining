@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.methods.mae &#8212; stable-pretraining 0.1.dev1+g9fde5a3d9 documentation</title>
+    <title>stable_pretraining.methods.mae &#8212; stable-pretraining 0.1.dev1+gbd54af719 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=f449dc58"></script>
+    <script src="../../../../_static/documentation_options.js?v=4d870b4f"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9fde5a3d9 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gbd54af719 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -354,8 +354,10 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.backbone</span><span class="w"> </span><span class="kn">import</span> <span class="n">MAEDecoder</span><span class="p">,</span> <span class="n">MaskedEncoder</span><span class="p">,</span> <span class="n">PatchMasking</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">MAELoss</span>
@@ -402,6 +404,8 @@
 <span class="sd">    :param norm_pix_loss: Normalize target pixels per patch (default: True)</span>
 <span class="sd">    :param loss_type: Loss type for MAELoss (default: &#39;mse&#39;)</span>
 <span class="sd">    :param pretrained: Load pretrained encoder weights</span>
+<span class="sd">    :param masking: Custom masking module (e.g., MultiBlockMasking).</span>
+<span class="sd">        When provided, overrides mask_ratio and block_size.</span>
 
 <span class="sd">    Example::</span>
 
@@ -442,11 +446,15 @@
         <span class="n">norm_pix_loss</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">loss_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;mse&quot;</span><span class="p">,</span>
         <span class="n">pretrained</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">masking</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
         <span class="c1"># Encoder with masking</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">masking</span> <span class="o">=</span> <span class="n">PatchMasking</span><span class="p">(</span><span class="n">mask_ratio</span><span class="o">=</span><span class="n">mask_ratio</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="n">block_size</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">masking</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">masking</span> <span class="o">=</span> <span class="n">masking</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">masking</span> <span class="o">=</span> <span class="n">PatchMasking</span><span class="p">(</span><span class="n">mask_ratio</span><span class="o">=</span><span class="n">mask_ratio</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="n">block_size</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="n">MaskedEncoder</span><span class="p">(</span>
             <span class="n">encoder_name</span><span class="p">,</span> <span class="n">masking</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">masking</span><span class="p">,</span> <span class="n">pretrained</span><span class="o">=</span><span class="n">pretrained</span>
         <span class="p">)</span>

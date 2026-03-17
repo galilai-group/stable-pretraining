@@ -1,0 +1,770 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>stable_pretraining.methods.salt &#8212; stable-pretraining 0.1.dev1+gbd54af719 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=4d870b4f"></script>
+    <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/stable_pretraining/methods/salt';</script>
+    <link rel="index" title="Index" href="../../../../genindex/" />
+    <link rel="search" title="Search" href="../../../../search/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search/"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gbd54af719 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../../">stable-pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/backbone/">stable_pretraining.backbone</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.MLP/">MLP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.Resnet9/">Resnet9</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.ConvMixer/">ConvMixer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.from_timm/">from_timm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.from_torchvision/">from_torchvision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.set_embedding_dim/">set_embedding_dim</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/">TeacherStudentWrapper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.EvalOnly/">EvalOnly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.mae/">mae</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/data/">stable_pretraining.data</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.DataModule/">DataModule</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.Collator/">Collator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.Dataset/">Dataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.FromTorchDataset/">FromTorchDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.HFDataset/">HFDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.Subset/">Subset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.GMM/">GMM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.MinariStepsDataset/">MinariStepsDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.MinariEpisodeDataset/">MinariEpisodeDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.swiss_roll/">swiss_roll</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.generate_perlin_noise_2d/">generate_perlin_noise_2d</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.perlin_noise_3d/">perlin_noise_3d</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.Categorical/">Categorical</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.ExponentialMixtureNoiseModel/">ExponentialMixtureNoiseModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.ExponentialNormalNoiseModel/">ExponentialNormalNoiseModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.RepeatedRandomSampler/">RepeatedRandomSampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.SupervisedBatchSampler/">SupervisedBatchSampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.RandomBatchSampler/">RandomBatchSampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.fold_views/">fold_views</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.random_split/">random_split</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.download/">download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.bulk_download/">bulk_download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.transforms/">stable_pretraining.data.transforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.dataset_stats/">stable_pretraining.data.dataset_stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.data.synthetic_data/">stable_pretraining.data.synthetic_data</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/forward/">stable_pretraining.forward</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/losses/">stable_pretraining.losses</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.losses.NTXEntLoss/">NTXEntLoss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.losses.NegativeCosineSimilarity/">NegativeCosineSimilarity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.losses.VICRegLoss/">VICRegLoss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.losses.BarlowTwinsLoss/">BarlowTwinsLoss</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/manager/">stable_pretraining.manager</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.manager.Manager/">Manager</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/module/">stable_pretraining.module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.module.Module/">Module</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/monitors/">stable_pretraining.callbacks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.callbacks.OnlineProbe/">OnlineProbe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.callbacks.OnlineKNN/">OnlineKNN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.callbacks.OnlineWriter/">OnlineWriter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.callbacks.RankMe/">RankMe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.callbacks.LiDAR/">LiDAR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.callbacks.EarlyStopping/">EarlyStopping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.callbacks.TrainerInfo/">TrainerInfo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.callbacks.LoggingCallback/">LoggingCallback</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.callbacks.ModuleSummary/">ModuleSummary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.callbacks.SklearnCheckpoint/">SklearnCheckpoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.callbacks.ImageRetrieval/">ImageRetrieval</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/optim/">stable_pretraining.optim</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LARS/">LARS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.CosineDecayer/">CosineDecayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmup/">LinearWarmup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1></h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for stable_pretraining.methods.salt</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;SALT: Static-teacher Asymmetric Latent Training.</span>
+
+<span class="sd">SALT combines ideas from V-JEPA masking with MAE pixel reconstruction</span>
+<span class="sd">(Stage 1) and latent target prediction with a frozen teacher (Stage 2).</span>
+
+<span class="sd">References:</span>
+<span class="sd">    Li, Xianhang, et al. &quot;Rethinking JEPA: Compute-Efficient Video SSL</span>
+<span class="sd">    with Frozen Teachers.&quot; 2025.</span>
+<span class="sd">    https://arxiv.org/pdf/2509.24317</span>
+
+<span class="sd">Example:</span>
+<span class="sd">    from stable_pretraining.methods import SALT, MAE</span>
+<span class="sd">    from stable_pretraining.backbone import MultiBlockMasking</span>
+
+<span class="sd">    # Stage 1: MAE with multi-block masking</span>
+<span class="sd">    stage1 = MAE(&quot;vit_tiny_patch16_224&quot;, masking=MultiBlockMasking())</span>
+
+<span class="sd">    # Stage 2: SALT from Stage 1 checkpoint</span>
+<span class="sd">    stage2 = SALT.from_checkpoint(</span>
+<span class="sd">        &quot;stage1.ckpt&quot;,</span>
+<span class="sd">        encoder_name=&quot;vit_tiny_patch16_224&quot;,</span>
+<span class="sd">        predictor_embed_dim=384,</span>
+<span class="sd">        predictor_depth=12,</span>
+<span class="sd">    )</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.backbone</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">EvalOnly</span><span class="p">,</span>
+    <span class="n">FlexibleTransformer</span><span class="p">,</span>
+    <span class="n">MaskedEncoder</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.data.masking</span><span class="w"> </span><span class="kn">import</span> <span class="n">multi_block_mask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="kn">import</span> <span class="n">Module</span>
+
+
+<div class="viewcode-block" id="SALTOutput">
+<a class="viewcode-back" href="../../../../stable_pretraining.methods/#stable_pretraining.methods.salt.SALTOutput">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SALTOutput</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Output from SALT forward pass.</span>
+
+<span class="sd">    :ivar loss: Prediction loss (L1 between predicted and teacher latents, 0 in eval)</span>
+<span class="sd">    :ivar embedding: CLS token embedding [B, D]</span>
+<span class="sd">    :ivar predictions: Predicted representations [B, N_tgt, D] (or None in eval)</span>
+<span class="sd">    :ivar targets: Teacher target representations [B, N_tgt, D] (or None in eval)</span>
+<span class="sd">    :ivar num_targets: Number of target patches (0 in eval)</span>
+<span class="sd">    :ivar num_context: Number of context patches (all patches in eval)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">loss</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+    <span class="n">embedding</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+    <span class="n">predictions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span>
+    <span class="n">targets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span>
+    <span class="n">num_targets</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">num_context</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="SALT">
+<a class="viewcode-back" href="../../../../stable_pretraining.methods/#stable_pretraining.methods.salt.SALT">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SALT</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;SALT Stage 2: Static-teacher Asymmetric Latent Training.</span>
+
+<span class="sd">    Architecture:</span>
+<span class="sd">        - **Teacher** (frozen): Encodes full unmasked image via EvalOnly(MaskedEncoder)</span>
+<span class="sd">        - **Student** (trainable): Encodes only context (visible) patches</span>
+<span class="sd">        - **Predictor**: Lightweight transformer predicting teacher latents at target positions</span>
+
+<span class="sd">    :param encoder_name: timm model name (e.g., &quot;vit_tiny_patch16_224&quot;)</span>
+<span class="sd">    :param predictor_embed_dim: Predictor hidden dimension (default: 384)</span>
+<span class="sd">    :param predictor_depth: Number of predictor blocks (default: 12)</span>
+<span class="sd">    :param predictor_num_heads: Number of predictor attention heads (default: 16)</span>
+<span class="sd">    :param num_targets: Number of target blocks for masking (default: 4)</span>
+<span class="sd">    :param context_scale: (min, max) scale for context block</span>
+<span class="sd">    :param target_scale: (min, max) scale for each target block</span>
+<span class="sd">    :param context_aspect_ratio: (min, max) aspect ratio for context block</span>
+<span class="sd">    :param target_aspect_ratio: (min, max) aspect ratio for target blocks</span>
+<span class="sd">    :param teacher_state_dict: Optional state dict to load into teacher encoder</span>
+<span class="sd">    :param pretrained: Load pretrained encoder weights</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        model = SALT(&quot;vit_tiny_patch16_224&quot;)</span>
+<span class="sd">        images = torch.randn(4, 3, 224, 224)</span>
+
+<span class="sd">        model.train()</span>
+<span class="sd">        output = model(images)</span>
+<span class="sd">        output.loss.backward()</span>
+
+<span class="sd">        model.eval()</span>
+<span class="sd">        output = model(images)</span>
+<span class="sd">        features = output.embedding  # [B, D]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">encoder_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;vit_tiny_patch16_224&quot;</span><span class="p">,</span>
+        <span class="n">predictor_embed_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">384</span><span class="p">,</span>
+        <span class="n">predictor_depth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span>
+        <span class="n">predictor_num_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
+        <span class="n">num_targets</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+        <span class="n">context_scale</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.85</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+        <span class="n">target_scale</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">),</span>
+        <span class="n">context_aspect_ratio</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+        <span class="n">target_aspect_ratio</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">),</span>
+        <span class="n">teacher_state_dict</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pretrained</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="c1"># Frozen teacher</span>
+        <span class="n">teacher_encoder</span> <span class="o">=</span> <span class="n">MaskedEncoder</span><span class="p">(</span>
+            <span class="n">encoder_name</span><span class="p">,</span> <span class="n">masking</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pretrained</span><span class="o">=</span><span class="n">pretrained</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">teacher_state_dict</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">teacher_encoder</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">teacher_state_dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">teacher</span> <span class="o">=</span> <span class="n">EvalOnly</span><span class="p">(</span><span class="n">teacher_encoder</span><span class="p">)</span>
+
+        <span class="c1"># Trainable student (no masking — we handle it manually)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">student</span> <span class="o">=</span> <span class="n">MaskedEncoder</span><span class="p">(</span><span class="n">encoder_name</span><span class="p">,</span> <span class="n">masking</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pretrained</span><span class="o">=</span><span class="n">pretrained</span><span class="p">)</span>
+
+        <span class="n">embed_dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="o">.</span><span class="n">embed_dim</span>
+        <span class="n">num_patches</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="o">.</span><span class="n">default_grid_h</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="o">.</span><span class="n">default_grid_w</span>
+
+        <span class="c1"># Predictor with mask token for target queries</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">predictor</span> <span class="o">=</span> <span class="n">FlexibleTransformer</span><span class="p">(</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="n">embed_dim</span><span class="p">,</span>
+            <span class="n">hidden_dim</span><span class="o">=</span><span class="n">predictor_embed_dim</span><span class="p">,</span>
+            <span class="n">output_dim</span><span class="o">=</span><span class="n">embed_dim</span><span class="p">,</span>
+            <span class="n">num_patches</span><span class="o">=</span><span class="n">num_patches</span><span class="p">,</span>
+            <span class="n">depth</span><span class="o">=</span><span class="n">predictor_depth</span><span class="p">,</span>
+            <span class="n">num_heads</span><span class="o">=</span><span class="n">predictor_num_heads</span><span class="p">,</span>
+            <span class="n">self_attn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">cross_attn</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">add_mask_token</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">use_adaln</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">num_prefix_tokens</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">zero_init_output</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Masking parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span> <span class="o">=</span> <span class="n">num_targets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context_scale</span> <span class="o">=</span> <span class="n">context_scale</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_scale</span> <span class="o">=</span> <span class="n">target_scale</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context_aspect_ratio</span> <span class="o">=</span> <span class="n">context_aspect_ratio</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_aspect_ratio</span> <span class="o">=</span> <span class="n">target_aspect_ratio</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">embed_dim</span> <span class="o">=</span> <span class="n">embed_dim</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_masks</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">grid_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_w</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate multi-block masks for context and targets.</span>
+
+<span class="sd">        :param grid_h: Patch grid height</span>
+<span class="sd">        :param grid_w: Patch grid width</span>
+<span class="sd">        :param device: Target device</span>
+<span class="sd">        :return: (context_idx [N_ctx], target_idx [N_tgt]) — 1D index tensors</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">block_scales</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">context_scale</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">target_scale</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span>
+        <span class="n">aspect_ratios</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">context_aspect_ratio</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">target_aspect_ratio</span>
+        <span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_targets</span>
+
+        <span class="n">masks</span> <span class="o">=</span> <span class="n">multi_block_mask</span><span class="p">(</span>
+            <span class="n">grid_h</span><span class="p">,</span>
+            <span class="n">grid_w</span><span class="p">,</span>
+            <span class="n">block_scales</span><span class="o">=</span><span class="n">block_scales</span><span class="p">,</span>
+            <span class="n">aspect_ratios</span><span class="o">=</span><span class="n">aspect_ratios</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">context_mask</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># [H, W], 1=in block</span>
+        <span class="n">target_masks</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="c1"># Make context disjoint from targets</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">target_masks</span><span class="p">:</span>
+            <span class="n">context_mask</span> <span class="o">=</span> <span class="n">context_mask</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">t</span><span class="p">)</span>
+
+        <span class="c1"># Flatten and compute indices</span>
+        <span class="n">context_flat</span> <span class="o">=</span> <span class="n">context_mask</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span><span class="o">.</span><span class="n">bool</span><span class="p">()</span>
+        <span class="n">target_flat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">grid_h</span> <span class="o">*</span> <span class="n">grid_w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">target_masks</span><span class="p">:</span>
+            <span class="n">target_flat</span> <span class="o">=</span> <span class="n">target_flat</span> <span class="o">|</span> <span class="n">t</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span><span class="o">.</span><span class="n">bool</span><span class="p">()</span>
+
+        <span class="n">context_idx</span> <span class="o">=</span> <span class="n">context_flat</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">as_tuple</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">target_idx</span> <span class="o">=</span> <span class="n">target_flat</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">as_tuple</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">context_idx</span><span class="p">,</span> <span class="n">target_idx</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_encode</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">patches</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">indices</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">grid_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_w</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">encoder</span><span class="p">:</span> <span class="n">MaskedEncoder</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Encode patches at specified indices through an encoder.</span>
+
+<span class="sd">        Handles positional embeddings and prefix tokens (CLS).</span>
+
+<span class="sd">        :param patches: All patch embeddings [B, N, D]</span>
+<span class="sd">        :param indices: Indices to encode [B, K] or [K] (will be expanded)</span>
+<span class="sd">        :param grid_h: Patch grid height</span>
+<span class="sd">        :param grid_w: Patch grid width</span>
+<span class="sd">        :param encoder: MaskedEncoder instance</span>
+<span class="sd">        :return: Encoded representations [B, num_prefix + K, D]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">B</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">D</span> <span class="o">=</span> <span class="n">patches</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Expand 1D indices to batch dimension</span>
+        <span class="k">if</span> <span class="n">indices</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="n">indices</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Add positional embeddings to patches</span>
+        <span class="n">prefix_pos</span><span class="p">,</span> <span class="n">patch_pos</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">_get_pos_embed</span><span class="p">(</span><span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">patches</span> <span class="o">+</span> <span class="n">patch_pos</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Gather visible patches</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">indices</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">D</span><span class="p">))</span>
+
+        <span class="c1"># Prepend prefix tokens (CLS, registers)</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">_get_prefix_tokens</span><span class="p">(</span><span class="n">B</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">prefix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">prefix_pos</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">encoder</span><span class="o">.</span><span class="n">no_embed_class</span><span class="p">:</span>
+                <span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span> <span class="o">+</span> <span class="n">prefix_pos</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">prefix</span><span class="p">,</span> <span class="n">x</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">pos_drop</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">blocks</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span>
+
+<div class="viewcode-block" id="SALT.forward">
+<a class="viewcode-back" href="../../../../stable_pretraining.methods/#stable_pretraining.methods.salt.SALT.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SALTOutput</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass.</span>
+
+<span class="sd">        Training: teacher encodes full image, student encodes context only,</span>
+<span class="sd">        predictor predicts teacher latents at target positions, L1 loss.</span>
+
+<span class="sd">        Eval: student encodes full image, returns CLS token embedding, zero loss.</span>
+
+<span class="sd">        :param images: Input images [B, C, H, W]</span>
+<span class="sd">        :return: SALTOutput</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                <span class="n">student_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+            <span class="n">embedding</span> <span class="o">=</span> <span class="n">student_out</span><span class="o">.</span><span class="n">encoded</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">SALTOutput</span><span class="p">(</span>
+                <span class="n">loss</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">images</span><span class="o">.</span><span class="n">device</span><span class="p">),</span>
+                <span class="n">embedding</span><span class="o">=</span><span class="n">embedding</span><span class="p">,</span>
+                <span class="n">predictions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">targets</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">num_targets</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">num_context</span><span class="o">=</span><span class="n">student_out</span><span class="o">.</span><span class="n">encoded</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="o">.</span><span class="n">num_prefix_tokens</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="o">.</span><span class="n">_get_grid_size</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+        <span class="n">context_idx</span><span class="p">,</span> <span class="n">target_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_masks</span><span class="p">(</span><span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="n">images</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="n">N_tgt</span> <span class="o">=</span> <span class="n">target_idx</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># === Teacher forward (frozen, full image) ===</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="n">teacher_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">teacher</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+            <span class="n">teacher_patches</span> <span class="o">=</span> <span class="n">teacher_out</span><span class="o">.</span><span class="n">encoded</span><span class="p">[</span>
+                <span class="p">:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">teacher</span><span class="o">.</span><span class="n">num_prefix_tokens</span> <span class="p">:,</span> <span class="p">:</span>
+            <span class="p">]</span>
+            <span class="c1"># Gather target latents</span>
+            <span class="n">tgt_expand</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">target_idx</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">teacher_patches</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="n">teacher_targets</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">teacher_patches</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">tgt_expand</span><span class="p">)</span>
+
+        <span class="c1"># === Student forward (context patches only) ===</span>
+        <span class="n">student_patches</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="o">.</span><span class="n">patch_embed</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+        <span class="n">encoded</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_encode</span><span class="p">(</span>
+            <span class="n">student_patches</span><span class="p">,</span> <span class="n">context_idx</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span>
+        <span class="p">)</span>
+        <span class="n">student_context</span> <span class="o">=</span> <span class="n">encoded</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="o">.</span><span class="n">num_prefix_tokens</span> <span class="p">:,</span> <span class="p">:]</span>
+
+        <span class="c1"># === Predictor forward ===</span>
+        <span class="c1"># Zero queries at target positions, mask_token replaces them</span>
+        <span class="n">queries</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+            <span class="n">B</span><span class="p">,</span> <span class="n">N_tgt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">embed_dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">images</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">student_context</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="p">)</span>
+        <span class="n">query_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">N_tgt</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">images</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+
+        <span class="n">ctx_idx_batch</span> <span class="o">=</span> <span class="n">context_idx</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">tgt_idx_batch</span> <span class="o">=</span> <span class="n">target_idx</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">predictions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">predictor</span><span class="p">(</span>
+            <span class="n">context</span><span class="o">=</span><span class="n">student_context</span><span class="p">,</span>
+            <span class="n">queries</span><span class="o">=</span><span class="n">queries</span><span class="p">,</span>
+            <span class="n">context_idx</span><span class="o">=</span><span class="n">ctx_idx_batch</span><span class="p">,</span>
+            <span class="n">query_idx</span><span class="o">=</span><span class="n">tgt_idx_batch</span><span class="p">,</span>
+            <span class="n">query_mask</span><span class="o">=</span><span class="n">query_mask</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># === Loss ===</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">l1_loss</span><span class="p">(</span><span class="n">predictions</span><span class="p">,</span> <span class="n">teacher_targets</span><span class="p">)</span>
+
+        <span class="n">embedding</span> <span class="o">=</span> <span class="n">encoded</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">SALTOutput</span><span class="p">(</span>
+            <span class="n">loss</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span>
+            <span class="n">embedding</span><span class="o">=</span><span class="n">embedding</span><span class="p">,</span>
+            <span class="n">predictions</span><span class="o">=</span><span class="n">predictions</span><span class="p">,</span>
+            <span class="n">targets</span><span class="o">=</span><span class="n">teacher_targets</span><span class="p">,</span>
+            <span class="n">num_targets</span><span class="o">=</span><span class="n">N_tgt</span><span class="p">,</span>
+            <span class="n">num_context</span><span class="o">=</span><span class="n">context_idx</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SALT.from_checkpoint">
+<a class="viewcode-back" href="../../../../stable_pretraining.methods/#stable_pretraining.methods.salt.SALT.from_checkpoint">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_checkpoint</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">ckpt_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">encoder_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;vit_tiny_patch16_224&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SALT&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create SALT Stage 2 from a Stage 1 (MAE/VPixel) checkpoint.</span>
+
+<span class="sd">        Loads the encoder weights from Stage 1 as the frozen teacher.</span>
+
+<span class="sd">        :param ckpt_path: Path to Stage 1 checkpoint</span>
+<span class="sd">        :param encoder_name: timm model name matching Stage 1</span>
+<span class="sd">        :param kwargs: Additional arguments for SALT.__init__</span>
+<span class="sd">        :return: SALT instance with teacher initialized from checkpoint</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">state_dict</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ckpt_path</span><span class="p">,</span> <span class="n">map_location</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="n">weights_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;state_dict&quot;</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="p">:</span>
+            <span class="n">state_dict</span> <span class="o">=</span> <span class="n">state_dict</span><span class="p">[</span><span class="s2">&quot;state_dict&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Extract encoder weights (handles both &quot;encoder.&quot; prefix from MAE</span>
+        <span class="c1"># and direct state dict)</span>
+        <span class="n">encoder_state</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;encoder.&quot;</span><span class="p">):</span>
+                <span class="n">encoder_state</span><span class="p">[</span><span class="n">k</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">&quot;encoder.&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">encoder_state</span><span class="p">:</span>
+            <span class="c1"># Try using the state dict directly (e.g., if saved without prefix)</span>
+            <span class="n">encoder_state</span> <span class="o">=</span> <span class="n">state_dict</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">encoder_name</span><span class="o">=</span><span class="n">encoder_name</span><span class="p">,</span>
+            <span class="n">teacher_state_dict</span><span class="o">=</span><span class="n">encoder_state</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By stable-pretraining team
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, stable-pretraining team.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
