@@ -149,6 +149,62 @@ class TestUnsortedQueue:
         expected2 = torch.tensor([20, 30, 40], dtype=torch.float32)
         assert torch.allclose(result2, expected2)
 
+    def test_state_dict_roundtrip_lazy_scalar(self):
+        """Test state_dict save/load with lazy init and scalar labels."""
+        q = UnsortedQueue(8, shape=None)
+        # Append scalar data (B,) to trigger lazy init to (max_length,)
+        q.append(torch.tensor([1.0, 2.0, 3.0]))
+        q.append(torch.tensor([4.0, 5.0]))
+        state = q.state_dict()
+
+        # Fresh queue with lazy init — placeholder is (8, 1)
+        q2 = UnsortedQueue(8, shape=None)
+        q2.load_state_dict(state)
+
+        assert torch.equal(q2.out, q.out)
+        assert torch.equal(q2.pointer, q.pointer)
+        assert torch.equal(q2.filled, q.filled)
+
+    def test_state_dict_roundtrip_lazy_2d(self):
+        """Test state_dict save/load with lazy init and 2D data."""
+        q = UnsortedQueue(6, shape=None)
+        q.append(torch.randn(2, 4))
+        q.append(torch.randn(3, 4))
+        state = q.state_dict()
+
+        q2 = UnsortedQueue(6, shape=None)
+        q2.load_state_dict(state)
+
+        assert torch.equal(q2.out, q.out)
+        assert torch.equal(q2.pointer, q.pointer)
+
+    def test_state_dict_roundtrip_eager(self):
+        """Test state_dict save/load with explicit shape (no lazy init)."""
+        q = UnsortedQueue(5, shape=3)
+        q.append(torch.randn(2, 3))
+        state = q.state_dict()
+
+        q2 = UnsortedQueue(5, shape=3)
+        q2.load_state_dict(state)
+
+        assert torch.equal(q2.out, q.out)
+        assert torch.equal(q2.pointer, q.pointer)
+
+    def test_state_dict_roundtrip_lazy_scalar_recursive(self):
+        """Test that _load_from_state_dict works during recursive nn.Module loading."""
+        # Simulate Lightning's recursive load by wrapping in a parent module
+        parent = torch.nn.Module()
+        parent.queue = UnsortedQueue(8, shape=None)
+        parent.queue.append(torch.tensor([1.0, 2.0, 3.0]))
+        state = parent.state_dict()
+
+        parent2 = torch.nn.Module()
+        parent2.queue = UnsortedQueue(8, shape=None)
+        parent2.load_state_dict(state)
+
+        assert torch.equal(parent2.queue.out, parent.queue.out)
+        assert torch.equal(parent2.queue.pointer, parent.queue.pointer)
+
 
 @pytest.mark.unit
 class TestOrderedQueue:
@@ -319,6 +375,63 @@ class TestOrderedQueue:
         expected2 = torch.tensor([20, 30, 40], dtype=torch.float32)
         assert torch.allclose(result2, expected2)
         assert q.global_counter.item() == 9
+
+    def test_state_dict_roundtrip_lazy_scalar(self):
+        """Test state_dict save/load with lazy init and scalar labels."""
+        q = OrderedQueue(8, shape=None)
+        q.append(torch.tensor([1.0, 2.0, 3.0]))
+        q.append(torch.tensor([4.0, 5.0]))
+        state = q.state_dict()
+
+        q2 = OrderedQueue(8, shape=None)
+        q2.load_state_dict(state)
+
+        assert torch.equal(q2.out, q.out)
+        assert torch.equal(q2.pointer, q.pointer)
+        assert torch.equal(q2.filled, q.filled)
+        assert torch.equal(q2.global_counter, q.global_counter)
+
+    def test_state_dict_roundtrip_lazy_2d(self):
+        """Test state_dict save/load with lazy init and 2D data."""
+        q = OrderedQueue(6, shape=None)
+        q.append(torch.randn(2, 4))
+        q.append(torch.randn(3, 4))
+        state = q.state_dict()
+
+        q2 = OrderedQueue(6, shape=None)
+        q2.load_state_dict(state)
+
+        assert torch.equal(q2.out, q.out)
+        assert torch.equal(q2.pointer, q.pointer)
+        assert torch.equal(q2.global_counter, q.global_counter)
+
+    def test_state_dict_roundtrip_eager(self):
+        """Test state_dict save/load with explicit shape (no lazy init)."""
+        q = OrderedQueue(5, shape=3)
+        q.append(torch.randn(2, 3))
+        state = q.state_dict()
+
+        q2 = OrderedQueue(5, shape=3)
+        q2.load_state_dict(state)
+
+        assert torch.equal(q2.out, q.out)
+        assert torch.equal(q2.pointer, q.pointer)
+        assert torch.equal(q2.global_counter, q.global_counter)
+
+    def test_state_dict_roundtrip_lazy_scalar_recursive(self):
+        """Test that _load_from_state_dict works during recursive nn.Module loading."""
+        parent = torch.nn.Module()
+        parent.queue = OrderedQueue(8, shape=None)
+        parent.queue.append(torch.tensor([1.0, 2.0, 3.0]))
+        state = parent.state_dict()
+
+        parent2 = torch.nn.Module()
+        parent2.queue = OrderedQueue(8, shape=None)
+        parent2.load_state_dict(state)
+
+        assert torch.equal(parent2.queue.out, parent.queue.out)
+        assert torch.equal(parent2.queue.pointer, parent.queue.pointer)
+        assert torch.equal(parent2.queue.global_counter, parent.queue.global_counter)
 
 
 @pytest.mark.unit

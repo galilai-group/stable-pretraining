@@ -15,3 +15,4 @@ Version 0.1
 - RankMe, LiDAR metrics to monitor training.
 - Examples of extracting run data from WandB and utilizing it to create figures.
 - Fixed a bug in the logging functionality.
+- Fixed ``OrderedQueue`` and ``UnsortedQueue`` checkpoint resume failing on scalar-label buffers when using lazy initialization (``shape=None``).
