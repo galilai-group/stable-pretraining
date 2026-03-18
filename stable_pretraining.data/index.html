@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.data package &#8212; stable-pretraining 0.1.dev1+g399bd8437 documentation</title>
+    <title>stable_pretraining.data package &#8212; stable-pretraining 0.1.dev1+gbdf03ee1b documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=10695a17"></script>
+    <script src="../_static/documentation_options.js?v=63b5c0cd"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g399bd8437 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gbdf03ee1b documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -394,7 +394,6 @@
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset"><code class="docutils literal notranslate"><span class="pre">Subset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset.column_names"><code class="docutils literal notranslate"><span class="pre">Subset.column_names</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset.dataset"><code class="docutils literal notranslate"><span class="pre">Subset.dataset</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset.indices"><code class="docutils literal notranslate"><span class="pre">Subset.indices</span></code></a></li>
 </ul>
@@ -598,7 +597,6 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.RandomBatchSampler"><code class="docutils literal notranslate"><span class="pre">RandomBatchSampler</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.RepeatedRandomSampler"><code class="docutils literal notranslate"><span class="pre">RepeatedRandomSampler</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Subset"><code class="docutils literal notranslate"><span class="pre">Subset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Subset.column_names"><code class="docutils literal notranslate"><span class="pre">Subset.column_names</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Subset.dataset"><code class="docutils literal notranslate"><span class="pre">Subset.dataset</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Subset.indices"><code class="docutils literal notranslate"><span class="pre">Subset.indices</span></code></a></li>
 </ul>
@@ -711,6 +709,10 @@ including PyTorch datasets, HuggingFace datasets, and dataset subsets.</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.datasets.</span></span><span class="sig-name descname"><span class="pre">Subset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><span class="pre">Dataset</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#Subset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.Subset" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
 <p>Subset of a dataset at specified indices.</p>
+<p>All attributes and methods of the wrapped dataset are accessible directly
+on the subset via attribute proxying. For example, if the underlying dataset
+has a <code class="docutils literal notranslate"><span class="pre">column_names</span></code> property or a <code class="docutils literal notranslate"><span class="pre">custom_method()</span></code>, they can be called
+as <code class="docutils literal notranslate"><span class="pre">subset.column_names</span></code> or <code class="docutils literal notranslate"><span class="pre">subset.custom_method()</span></code> respectively.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -719,11 +721,6 @@ including PyTorch datasets, HuggingFace datasets, and dataset subsets.</p>
 </ul>
 </dd>
 </dl>
-<dl class="py property">
-<dt class="sig sig-object py" id="stable_pretraining.data.datasets.Subset.column_names">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">column_names</span></span><a class="headerlink" href="#stable_pretraining.data.datasets.Subset.column_names" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
 <dl class="py attribute">
 <dt class="sig sig-object py" id="stable_pretraining.data.datasets.Subset.dataset">
 <span class="sig-name descname"><span class="pre">dataset</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><span class="pre">Dataset</span></a></span><a class="headerlink" href="#stable_pretraining.data.datasets.Subset.dataset" title="Link to this definition">#</a></dt>
@@ -2418,6 +2415,10 @@ MultiViewTransform with a standard sampler.</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">Subset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><span class="pre">Dataset</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#Subset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.Subset" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
 <p>Subset of a dataset at specified indices.</p>
+<p>All attributes and methods of the wrapped dataset are accessible directly
+on the subset via attribute proxying. For example, if the underlying dataset
+has a <code class="docutils literal notranslate"><span class="pre">column_names</span></code> property or a <code class="docutils literal notranslate"><span class="pre">custom_method()</span></code>, they can be called
+as <code class="docutils literal notranslate"><span class="pre">subset.column_names</span></code> or <code class="docutils literal notranslate"><span class="pre">subset.custom_method()</span></code> respectively.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -2426,11 +2427,6 @@ MultiViewTransform with a standard sampler.</p>
 </ul>
 </dd>
 </dl>
-<dl class="py property">
-<dt class="sig sig-object py" id="stable_pretraining.data.Subset.column_names">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">column_names</span></span><a class="headerlink" href="#stable_pretraining.data.Subset.column_names" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
 <dl class="py attribute">
 <dt class="sig sig-object py" id="stable_pretraining.data.Subset.dataset">
 <span class="sig-name descname"><span class="pre">dataset</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><span class="pre">Dataset</span></a></span><a class="headerlink" href="#stable_pretraining.data.Subset.dataset" title="Link to this definition">#</a></dt>
@@ -2677,7 +2673,6 @@ until there are no remainders left.</p>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset"><code class="docutils literal notranslate"><span class="pre">Subset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset.column_names"><code class="docutils literal notranslate"><span class="pre">Subset.column_names</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset.dataset"><code class="docutils literal notranslate"><span class="pre">Subset.dataset</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset.indices"><code class="docutils literal notranslate"><span class="pre">Subset.indices</span></code></a></li>
 </ul>
@@ -2881,7 +2876,6 @@ until there are no remainders left.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.RandomBatchSampler"><code class="docutils literal notranslate"><span class="pre">RandomBatchSampler</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.RepeatedRandomSampler"><code class="docutils literal notranslate"><span class="pre">RepeatedRandomSampler</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Subset"><code class="docutils literal notranslate"><span class="pre">Subset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Subset.column_names"><code class="docutils literal notranslate"><span class="pre">Subset.column_names</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Subset.dataset"><code class="docutils literal notranslate"><span class="pre">Subset.dataset</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Subset.indices"><code class="docutils literal notranslate"><span class="pre">Subset.indices</span></code></a></li>
 </ul>

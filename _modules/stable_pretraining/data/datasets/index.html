@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.data.datasets &#8212; stable-pretraining 0.1.dev1+g399bd8437 documentation</title>
+    <title>stable_pretraining.data.datasets &#8212; stable-pretraining 0.1.dev1+gbdf03ee1b documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=10695a17"></script>
+    <script src="../../../../_static/documentation_options.js?v=63b5c0cd"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g399bd8437 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gbdf03ee1b documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -390,6 +390,11 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">Subset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Subset of a dataset at specified indices.</span>
 
+<span class="sd">    All attributes and methods of the wrapped dataset are accessible directly</span>
+<span class="sd">    on the subset via attribute proxying. For example, if the underlying dataset</span>
+<span class="sd">    has a ``column_names`` property or a ``custom_method()``, they can be called</span>
+<span class="sd">    as ``subset.column_names`` or ``subset.custom_method()`` respectively.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        dataset (Dataset): The whole Dataset</span>
 <span class="sd">        indices (sequence): Indices in the whole set selected for subset</span>
@@ -419,9 +424,12 @@
     <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span>
 
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">column_names</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;dataset&quot;</span>
+        <span class="p">):</span>  <span class="c1"># avoid infinite recursion when dataset attribute is not set</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;dataset&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
 
 
 
