@@ -364,3 +364,96 @@ class TestDatasetUnit:
                 # Verify custom storage_options was used
                 call_kwargs = mock_load_dataset.call_args[1]
                 assert call_kwargs["storage_options"] == custom_storage
+
+    def test_subset_proxies_attribute_to_dataset(self):
+        """Test that Subset.__getattr__ delegates unknown attributes to the wrapped dataset."""
+        from stable_pretraining.data.datasets import Dataset, Subset
+
+        class CustomDataset(Dataset):
+            column_names = ["a", "b"]
+            custom_attr = 42
+
+            def __getitem__(self, idx):
+                return {"a": idx, "b": idx * 2}
+
+            def __len__(self):
+                return 10
+
+        ds = CustomDataset()
+        subset = Subset(ds, [0, 1, 2])
+
+        assert subset.column_names == ["a", "b"]
+        assert subset.custom_attr == 42
+
+    def test_subset_proxies_method_to_dataset(self):
+        """Test that Subset.__getattr__ delegates method calls to the wrapped dataset."""
+        from stable_pretraining.data.datasets import Dataset, Subset
+
+        class CustomDataset(Dataset):
+            def __getitem__(self, idx):
+                return {"x": idx}
+
+            def __len__(self):
+                return 5
+
+            def custom_method(self, val):
+                return val * 3
+
+        ds = CustomDataset()
+        subset = Subset(ds, [0, 1])
+
+        assert subset.custom_method(4) == 12
+
+    def test_subset_own_attributes_not_proxied(self):
+        """Test that Subset's own attributes (dataset, indices, transform) are not proxied."""
+        from stable_pretraining.data.datasets import Dataset, Subset
+
+        class CustomDataset(Dataset):
+            indices = "should_not_see_this"
+
+            def __getitem__(self, idx):
+                return {"x": idx}
+
+            def __len__(self):
+                return 5
+
+        ds = CustomDataset()
+        indices = [0, 1, 2]
+        subset = Subset(ds, indices)
+
+        # subset.indices should be the actual indices list, not the dataset's attribute
+        assert subset.indices is indices
+
+    def test_subset_missing_attribute_raises(self):
+        """Test that accessing a truly missing attribute raises AttributeError."""
+        from stable_pretraining.data.datasets import Dataset, Subset
+
+        class CustomDataset(Dataset):
+            def __getitem__(self, idx):
+                return {"x": idx}
+
+            def __len__(self):
+                return 5
+
+        ds = CustomDataset()
+        subset = Subset(ds, [0, 1])
+
+        with pytest.raises(AttributeError):
+            _ = subset.does_not_exist_anywhere
+
+    def test_subset_getattr_before_dataset_set(self):
+        """Test that __getattr__ does not recurse infinitely when self.dataset has not yet been set.
+
+        As happens during unpickling in DataLoader workers.
+        """
+        from stable_pretraining.data.datasets import Subset
+
+        # Simulate the state right after __new__ but before __init__ restores
+        # instance attributes (i.e. an empty __dict__).
+        subset = object.__new__(Subset)
+        # self.dataset is not in __dict__ yet — accessing it must raise
+        # AttributeError cleanly rather than infinite recursion.
+        with pytest.raises(AttributeError):
+            _ = subset.dataset
+        with pytest.raises(AttributeError):
+            _ = subset.column_names

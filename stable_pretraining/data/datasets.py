@@ -49,6 +49,11 @@ class Dataset(torch.utils.data.Dataset):
 class Subset(Dataset):
     r"""Subset of a dataset at specified indices.
 
+    All attributes and methods of the wrapped dataset are accessible directly
+    on the subset via attribute proxying. For example, if the underlying dataset
+    has a ``column_names`` property or a ``custom_method()``, they can be called
+    as ``subset.column_names`` or ``subset.custom_method()`` respectively.
+
     Args:
         dataset (Dataset): The whole Dataset
         indices (sequence): Indices in the whole set selected for subset
@@ -78,9 +83,12 @@ class Subset(Dataset):
     def __len__(self):
         return len(self.indices)
 
-    @property
-    def column_names(self):
-        return self.dataset.column_names
+    def __getattr__(self, name):
+        if (
+            name == "dataset"
+        ):  # avoid infinite recursion when dataset attribute is not set
+            raise AttributeError("dataset")
+        return getattr(self.dataset, name)
 
 
 class FromTorchDataset(Dataset):
