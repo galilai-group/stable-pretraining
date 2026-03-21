@@ -103,16 +103,20 @@ class OnlineQueue(Callback):
         # Create or update the shared queue
         max_length = self._queue_info[self.key]["max_length"]
 
+        # Resolve target device from the module's parameters
+        device = next(pl_module.parameters()).device
+
         if self.key not in self._shared_queues:
             # Create new shared queue with maximum requested size
             self._shared_queues[self.key] = OrderedQueue(
                 max_length, self.dim, self.dtype
-            )
+            ).to(device)
             # Register in callbacks_modules for consistency
             queue_key = f"ordered_queue_{self.key}"
             pl_module.callbacks_modules[queue_key] = self._shared_queues[self.key]
             logging.info(
                 f"OnlineQueue: Created shared queue for '{self.key}' with size {max_length}"
+                f" on {device}"
             )
         elif self._shared_queues[self.key].max_length < max_length:
             # Need to resize the existing queue
@@ -122,7 +126,7 @@ class OnlineQueue(Callback):
             )
 
             # Create new larger queue
-            new_queue = OrderedQueue(max_length, self.dim, self.dtype)
+            new_queue = OrderedQueue(max_length, self.dim, self.dtype).to(device)
 
             # Copy old data if exists
             if old_data is not None and len(old_data) > 0:
@@ -206,6 +210,15 @@ class OnlineQueue(Callback):
     ) -> None:
         """Clean up snapshot after validation."""
         self._snapshot = None
+
+    def teardown(
+        self, trainer: Trainer, pl_module: LightningModule, stage: str = None
+    ) -> None:
+        """Clean up class-level shared state when training ends."""
+        if self.key in self._shared_queues:
+            del self._shared_queues[self.key]
+        if self.key in self._queue_info:
+            del self._queue_info[self.key]
 
     @property
     def data(self) -> Optional[torch.Tensor]:

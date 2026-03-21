@@ -460,7 +460,7 @@ def swav_forward(self, batch, stage):
                     and len(queue.get()) > 0
                     and self.trainer.current_epoch >= self.start_queue_at_epoch
                 ):
-                    queue_feats = queue.get().clone().detach().to(proj1.device)
+                    queue_feats = queue.get().clone().detach()
 
                 out["swav_queue"] = torch.cat(projections).detach()
 
