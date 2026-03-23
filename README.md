@@ -126,7 +126,7 @@ linear_probe = spt.callbacks.OnlineProbe(
     input="embedding",  # Which output from forward to monitor
     target="label",      # Ground truth from batch
     probe=torch.nn.Linear(512, 10),
-    loss_fn=torch.nn.CrossEntropyLoss(),
+    loss=torch.nn.CrossEntropyLoss(),
     metrics={
         "top1": torchmetrics.classification.MulticlassAccuracy(10),
         "top5": torchmetrics.classification.MulticlassAccuracy(10, top_k=5),
@@ -143,6 +143,7 @@ knn_probe = spt.callbacks.OnlineKNN(
     input="embedding",
     target="label",
     queue_length=20000,
+    metrics={"accuracy": torchmetrics.classification.MulticlassAccuracy(10)},
     k=10,
 )
 ```
@@ -282,7 +283,7 @@ linear_probe = spt.callbacks.OnlineProbe(
     input="embedding",
     target="label",
     probe=torch.nn.Linear(512, 10),
-    loss_fn=torch.nn.CrossEntropyLoss(),
+    loss=torch.nn.CrossEntropyLoss(),
     metrics={
         "top1": torchmetrics.classification.MulticlassAccuracy(10),
         "top5": torchmetrics.classification.MulticlassAccuracy(10, top_k=5),
@@ -378,12 +379,10 @@ The library is not yet available on PyPI. You can install it from the source cod
     uv pip install -e .  # Core dependencies only
     ```
 
-    For optional features (vision models, experiment tracking, cluster support, etc.):
+    For development (tests, linting, docs):
     ```bash
-    uv pip install -e ".[vision,tracking]"  # Example: add vision models and wandb
-    uv pip install -e ".[all]"  # Or install all optional dependencies
+    uv pip install -e ".[dev]"
     ```
-    See `pyproject.toml` for available dependency groups (`vision`, `tracking`, `cluster`, `visualization`, `datasets`, `extras`, `dev`, `doc`).
 
     If you do not want to use uv, simply remove it from the above commands.
 
