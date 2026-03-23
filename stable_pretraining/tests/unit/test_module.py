@@ -28,6 +28,30 @@ def test_module_initialization():
     assert module is not None
 
 
+@pytest.mark.unit
+def test_named_parameters_accepts_remove_duplicate():
+    """Module.named_parameters should preserve the modern nn.Module API."""
+    shared = nn.Linear(1, 1)
+
+    module = Module(
+        backbone=shared,
+        projector=shared,
+        forward=forward.simclr_forward,
+        simclr_loss=NTXEntLoss(temperature=0.5),
+        optim={
+            "optimizer": {"type": "Adam", "lr": 0.001},
+            "scheduler": {"type": "CosineAnnealing"},
+            "interval": "epoch",
+        },
+    )
+
+    deduped = list(module.named_parameters(remove_duplicate=True))
+    duplicated = list(module.named_parameters(remove_duplicate=False))
+
+    assert deduped
+    assert len(duplicated) > len(deduped)
+
+
 @pytest.mark.integration
 def test_module_integration():
     """Integration test for the Module class with multiple optimizers.
