@@ -326,14 +326,14 @@ The `spt` command launches training from YAML configuration files using Hydra.
 
 ```bash
 # Run with a config file
-spt examples/simclr_cifar10_config.yaml
+spt run examples/simclr_cifar10_config.yaml
 
 # With parameter overrides
-spt examples/simclr_cifar10_config.yaml trainer.max_epochs=50 module.optim.lr=0.01
+spt run examples/simclr_cifar10_config.yaml trainer.max_epochs=50 module.optim.lr=0.01
 
 # Run from any directory - supports absolute and relative paths
-spt ../configs/my_config.yaml
-spt /path/to/config.yaml
+spt run ../configs/my_config.yaml
+spt run /path/to/config.yaml
 ```
 
 ### SLURM Cluster Training
@@ -342,10 +342,10 @@ For training on SLURM clusters, use the `-m` flag to enable multirun mode:
 
 ```bash
 # Use the provided SLURM template (customize partition/QOS in the file)
-spt examples/simclr_cifar10_slurm.yaml -m
+spt run examples/simclr_cifar10_slurm.yaml -m
 
 # Override SLURM parameters via command line
-spt examples/simclr_cifar10_slurm.yaml -m \
+spt run examples/simclr_cifar10_slurm.yaml -m \
     hydra.launcher.partition=gpu \
     hydra.launcher.qos=normal \
     hydra.launcher.timeout_min=720
