@@ -487,6 +487,19 @@ The library is not yet available on PyPI. You can install it from the source cod
 
 - You can also contribute by adding new methods, datasets, or configurations that improve the current performance of a method in the [benchmark section](https://github.com/galilai-group/stable-pretraining/tree/main/benchmarks).
 
+## Citation
+
+If you use `stable-pretraining` in your research, please cite:
+
+```bibtex
+@article{balestriero2025stable,
+  title={stable-pretraining-v1: Foundation Model Research Made Simple},
+  author={Balestriero, Randall and Van Assel, Hugues and BuGhanem, Sami and Maes, Lucas},
+  journal={arXiv preprint arXiv:2511.19484},
+  year={2025}
+}
+```
+
 ## Contributors
 
 Core contributors (in order of joining the project):
