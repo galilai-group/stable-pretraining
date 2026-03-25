@@ -10,7 +10,7 @@ References:
 
 Example::
 
-    from stable_pretraining.backbone import IJEPA
+    from stable_pretraining.methods import IJEPA
     from stable_pretraining.callbacks import TeacherStudentCallback
     import lightning as pl
 
