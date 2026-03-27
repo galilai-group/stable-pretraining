@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.factories &#8212; stable-pretraining 0.1.dev1+gbdf03ee1b documentation</title>
+    <title>stable_pretraining.callbacks.factories &#8212; stable-pretraining 0.1.dev1+gcba47bb9c documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=63b5c0cd"></script>
+    <script src="../../../../_static/documentation_options.js?v=fd649b6a"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gbdf03ee1b documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gcba47bb9c documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -334,7 +334,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModuleRegistryCallback</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.unused_parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">LogUnusedParametersOnce</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.cpu_offload</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPUOffloadCallback</span>
-
+<span class="kn">from</span><span class="w"> </span><span class="nn">.hf_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">HuggingFaceCheckpointCallback</span>
 
 <div class="viewcode-block" id="default">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.factories.default">[docs]</a>
@@ -352,6 +352,7 @@
         <span class="n">SLURMInfo</span><span class="p">(),</span>
         <span class="n">LogUnusedParametersOnce</span><span class="p">(),</span>
         <span class="n">CPUOffloadCallback</span><span class="p">(),</span>
+        <span class="n">HuggingFaceCheckpointCallback</span><span class="p">()</span>
     <span class="p">]</span>
 
     <span class="k">return</span> <span class="n">callbacks</span></div>

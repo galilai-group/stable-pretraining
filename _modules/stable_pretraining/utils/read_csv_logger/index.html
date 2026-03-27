@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.utils.read_csv_logger &#8212; stable-pretraining 0.1.dev1+gbdf03ee1b documentation</title>
+    <title>stable_pretraining.utils.read_csv_logger &#8212; stable-pretraining 0.1.dev1+gcba47bb9c documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=63b5c0cd"></script>
+    <script src="../../../../_static/documentation_options.js?v=fd649b6a"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gbdf03ee1b documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gcba47bb9c documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -340,67 +340,40 @@
 
 <span class="c1"># ========== Internal Functions ==========</span>
 
-
 <span class="k">def</span><span class="w"> </span><span class="nf">_optimize_dataframe</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optimize DataFrame memory usage by downcasting numeric types and converting to categories.</span>
-
-<span class="sd">    This function reduces DataFrame memory footprint through several strategies:</span>
-<span class="sd">    - Downcast float columns to the smallest float dtype that can represent the values</span>
-<span class="sd">    - Downcast integer columns to the smallest integer dtype that can represent the values</span>
-<span class="sd">    - Convert Path objects to strings for serialization compatibility</span>
-<span class="sd">    - Convert low-cardinality object columns (&lt; 50% unique values) to categorical dtype</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        df: Input DataFrame to optimize.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Optimized copy of the DataFrame with reduced memory usage.</span>
-
-<span class="sd">    Notes:</span>
-<span class="sd">        - Creates a copy of the input DataFrame; original is not modified</span>
-<span class="sd">        - Path object conversion is logged as a warning</span>
-<span class="sd">        - Categorical conversion threshold is 50% unique values ratio</span>
-<span class="sd">        - Optimization progress is logged at INFO level</span>
-<span class="sd">        - Handles empty DataFrames gracefully</span>
-
-<span class="sd">    Example:</span>
-<span class="sd">        &gt;&gt;&gt; df = pd.DataFrame(</span>
-<span class="sd">        ...     {</span>
-<span class="sd">        ...         &quot;float_col&quot;: [1.0, 2.0, 3.0],</span>
-<span class="sd">        ...         &quot;int_col&quot;: [1, 2, 3],</span>
-<span class="sd">        ...         &quot;category_col&quot;: [&quot;a&quot;, &quot;b&quot;, &quot;a&quot;, &quot;b&quot;, &quot;a&quot;],</span>
-<span class="sd">        ...     }</span>
-<span class="sd">        ... )</span>
-<span class="sd">        &gt;&gt;&gt; df_optimized = _optimize_dataframe(df)</span>
-<span class="sd">        &gt;&gt;&gt; df_optimized.memory_usage(deep=True).sum() &lt; df.memory_usage(</span>
-<span class="sd">        ...     deep=True</span>
-<span class="sd">        ... ).sum()</span>
-<span class="sd">        True</span>
-<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Optimizing DataFrame dtypes...&quot;</span><span class="p">)</span>
     <span class="n">df_opt</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-    <span class="c1"># Handle empty DataFrames early</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df_opt</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;DataFrame is empty, skipping optimization.&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">df_opt</span>
 
-    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df_opt</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;float&quot;</span><span class="p">]):</span>
+    <span class="c1"># 1. Downcast Numerics</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df_opt</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;float&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">],</span> <span class="n">downcast</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df_opt</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;integer&quot;</span><span class="p">]):</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df_opt</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;integer&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">],</span> <span class="n">downcast</span><span class="o">=</span><span class="s2">&quot;integer&quot;</span><span class="p">)</span>
+
+    <span class="c1"># 2. Handle Objects, Strings, and Paths</span>
     <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df_opt</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="c1"># Convert PosixPath or WindowsPath to str</span>
-        <span class="k">if</span> <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Path</span><span class="p">))</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="c1"># Use a more efficient check for Path objects</span>
+        <span class="n">sample_val</span> <span class="o">=</span> <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">empty</span> <span class="k">else</span> <span class="kc">None</span>
+        
+        <span class="c1"># Check for Path objects (PosixPath/WindowsPath)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sample_val</span><span class="p">,</span> <span class="n">Path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Path</span><span class="p">))</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; contains Path objects, converting to str.&quot;</span><span class="p">)</span>
             <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
-        <span class="c1"># Now handle categoricals</span>
-        <span class="k">if</span> <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="s2">&quot;object&quot;</span><span class="p">:</span>
+
+        <span class="c1"># Handle Categorical conversion for low-cardinality strings/objects</span>
+        <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_object_dtype</span><span class="p">(</span><span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">])</span> <span class="ow">or</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_string_dtype</span><span class="p">(</span><span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]):</span>
+            <span class="c1"># Skip if it&#39;s already a category</span>
+            <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_categorical_dtype</span><span class="p">(</span><span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]):</span>
+                <span class="k">continue</span>
+                
             <span class="n">num_unique</span> <span class="o">=</span> <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
-            <span class="n">num_total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">])</span>
-            <span class="c1"># FIXED: Check for zero length before dividing</span>
-            <span class="k">if</span> <span class="n">num_total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">num_unique</span> <span class="o">/</span> <span class="n">num_total</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">:</span>
+            <span class="n">num_total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">df_opt</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">num_total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="n">num_unique</span> <span class="o">/</span> <span class="n">num_total</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">:</span>
                 <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_opt</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;category&quot;</span><span class="p">)</span>
+
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Optimization complete.&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">df_opt</span>
 

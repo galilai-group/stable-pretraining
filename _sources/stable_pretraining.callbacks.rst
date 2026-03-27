@@ -68,6 +68,14 @@ stable\_pretraining.callbacks.factories module
    :show-inheritance:
    :undoc-members:
 
+stable\_pretraining.callbacks.hf\_models module
+-----------------------------------------------
+
+.. automodule:: stable_pretraining.callbacks.hf_models
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 stable\_pretraining.callbacks.image\_retrieval module
 -----------------------------------------------------
 
