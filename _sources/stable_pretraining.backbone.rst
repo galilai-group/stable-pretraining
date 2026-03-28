@@ -20,14 +20,6 @@ stable\_pretraining.backbone.convmixer module
    :show-inheritance:
    :undoc-members:
 
-stable\_pretraining.backbone.mae module
----------------------------------------
-
-.. automodule:: stable_pretraining.backbone.mae
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 stable\_pretraining.backbone.mlp module
 ---------------------------------------
 

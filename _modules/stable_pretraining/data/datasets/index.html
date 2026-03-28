@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.data.datasets &#8212; stable-pretraining 0.1.dev1+gcba47bb9c documentation</title>
+    <title>stable_pretraining.data.datasets &#8212; stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=fd649b6a"></script>
+    <script src="../../../../_static/documentation_options.js?v=91dfb847"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gcba47bb9c documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -158,7 +158,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.set_embedding_dim/">set_embedding_dim</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/">TeacherStudentWrapper</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.EvalOnly/">EvalOnly</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.backbone.mae/">mae</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/data/">stable_pretraining.data</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -331,7 +330,24 @@
 <span></span><span class="sd">&quot;&quot;&quot;Dataset classes for real data sources.</span>
 
 <span class="sd">This module provides dataset wrappers and utilities for working with real data sources</span>
-<span class="sd">including PyTorch datasets, HuggingFace datasets, and dataset subsets.</span>
+<span class="sd">including PyTorch datasets, HuggingFace datasets (both map-style and streaming),</span>
+<span class="sd">and dataset subsets. All wrappers produce dict-based samples with support for</span>
+<span class="sd">transforms, automatic ``sample_idx`` injection, and PyTorch Lightning trainer</span>
+<span class="sd">integration (``global_step``, ``current_epoch``).</span>
+
+<span class="sd">Typical usage::</span>
+
+<span class="sd">    from stable_pretraining.data.datasets import HFDataset</span>
+
+<span class="sd">    # Map-style (downloads / caches locally)</span>
+<span class="sd">    ds = HFDataset(&quot;imagenet-1k&quot;, split=&quot;train&quot;, transform=my_transform)</span>
+
+<span class="sd">    # Streaming (no disk usage)</span>
+<span class="sd">    ds = HFDataset(&quot;imagenet-1k&quot;, split=&quot;train&quot;, streaming=True, transform=my_transform)</span>
+<span class="sd">    ds.shuffle(seed=42, buffer_size=10_000)</span>
+
+<span class="sd">Both return objects that PyTorch ``DataLoader`` and Lightning ``Trainer`` handle</span>
+<span class="sd">correctly without any special flags.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -345,37 +361,68 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">with_hf_retry_ratelimit</span>
 
 
-<div class="viewcode-block" id="Dataset">
-<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.Dataset">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base dataset class with transform support and PyTorch Lightning integration.&quot;&quot;&quot;</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Base classes</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="DatasetMixin">
+<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.DatasetMixin">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DatasetMixin</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shared logic for all dataset types.</span>
+
+<span class="sd">    Provides transform application, PyTorch Lightning trainer integration</span>
+<span class="sd">    (injecting ``global_step`` and ``current_epoch`` into every sample), and</span>
+<span class="sd">    a unified ``process_sample`` pipeline.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">transform</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span> <span class="o">=</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="Dataset.set_pl_trainer">
-<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.Dataset.set_pl_trainer">[docs]</a>
+<div class="viewcode-block" id="DatasetMixin.set_pl_trainer">
+<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.DatasetMixin.set_pl_trainer">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">set_pl_trainer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attach a Lightning trainer so its state is injected into samples.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span> <span class="o">=</span> <span class="n">trainer</span></div>
 
 
-<div class="viewcode-block" id="Dataset.process_sample">
-<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.Dataset.process_sample">[docs]</a>
+<div class="viewcode-block" id="DatasetMixin.process_sample">
+<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.DatasetMixin.process_sample">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">process_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run a raw sample dict through trainer-injection and transforms.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sample: Dict-like sample from the underlying dataset.</span>
+<span class="sd">            **kwargs: Extra key/value pairs merged into *sample* before</span>
+<span class="sd">                transforms (e.g. ``view_idx``).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The (possibly transformed) sample dict.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">sample</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="s2">&quot;global_step&quot;</span> <span class="ow">in</span> <span class="n">sample</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Can&#39;t use that keywords&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;&#39;global_step&#39; is a reserved key&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="s2">&quot;current_epoch&quot;</span> <span class="ow">in</span> <span class="n">sample</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Can&#39;t use that keywords&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;&#39;current_epoch&#39; is a reserved key&quot;</span><span class="p">)</span>
             <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;global_step&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">global_step</span>
             <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;current_epoch&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">current_epoch</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">:</span>
             <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">sample</span></div>
+</div>
 
+
+
+<div class="viewcode-block" id="Dataset">
+<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.Dataset">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">(</span><span class="n">DatasetMixin</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base map-style dataset with transform and trainer support.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">DatasetMixin</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
@@ -385,10 +432,28 @@
 
 
 
+<div class="viewcode-block" id="IterableDataset">
+<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.IterableDataset">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IterableDataset</span><span class="p">(</span><span class="n">DatasetMixin</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">IterableDataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base iterable (streaming) dataset with transform and trainer support.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">DatasetMixin</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Subset</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
 <div class="viewcode-block" id="Subset">
 <a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.Subset">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Subset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
-<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Subset of a dataset at specified indices.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Subset of a dataset at specified indices.</span>
 
 <span class="sd">    All attributes and methods of the wrapped dataset are accessible directly</span>
 <span class="sd">    on the subset via attribute proxying. For example, if the underlying dataset</span>
@@ -396,8 +461,8 @@
 <span class="sd">    as ``subset.column_names`` or ``subset.custom_method()`` respectively.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        dataset (Dataset): The whole Dataset</span>
-<span class="sd">        indices (sequence): Indices in the whole set selected for subset</span>
+<span class="sd">        dataset: The whole dataset.</span>
+<span class="sd">        indices: Indices in the whole set selected for the subset.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span>
@@ -414,10 +479,9 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">__getitems__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indices</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-        <span class="c1"># add batched sampling support when parent dataset supports it.</span>
-        <span class="c1"># see torch.utils.data._utils.fetch._MapDatasetFetcher</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Batched sampling support (see ``torch.utils.data._utils.fetch``).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span> <span class="s2">&quot;__getitems__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">__getitems__</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">])</span>  <span class="c1"># type: ignore[attr-defined]</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">__getitems__</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">])</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">[</span><span class="n">idx</span><span class="p">]]</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">]</span>
 
@@ -425,24 +489,27 @@
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="k">if</span> <span class="p">(</span>
-            <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;dataset&quot;</span>
-        <span class="p">):</span>  <span class="c1"># avoid infinite recursion when dataset attribute is not set</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;dataset&quot;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;dataset&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
 
 
 
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># PyTorch dataset wrapper</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
 <div class="viewcode-block" id="FromTorchDataset">
 <a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.FromTorchDataset">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FromTorchDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrapper for PyTorch datasets with custom column naming and transforms.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrapper that converts a positional-return PyTorch dataset into dict samples.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        dataset: PyTorch dataset to wrap</span>
-<span class="sd">        names: List of names for each element returned by the dataset</span>
-<span class="sd">        transform: Optional transform to apply to samples</span>
-<span class="sd">        add_sample_idx: If True, automatically adds &#39;sample_idx&#39; field to each sample</span>
+<span class="sd">        dataset: PyTorch dataset to wrap.</span>
+<span class="sd">        names: List of names for each element returned by the dataset.</span>
+<span class="sd">        transform: Optional transform applied to the dict sample.</span>
+<span class="sd">        add_sample_idx: If ``True``, adds a ``sample_idx`` field to each sample.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add_sample_idx</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
@@ -453,7 +520,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
         <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="n">sample</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sample</span><span class="p">)}</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">names</span><span class="p">,</span> <span class="n">sample</span><span class="p">))</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_sample_idx</span><span class="p">:</span>
             <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;sample_idx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">idx</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_sample</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
@@ -470,77 +537,196 @@
 
 
 
-<div class="viewcode-block" id="HFDataset">
-<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.HFDataset">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">HFDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hugging Face dataset wrapper with transform and column manipulation support.&quot;&quot;&quot;</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># HuggingFace dataset wrappers</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
-    <span class="p">):</span>
+
+<div class="viewcode-block" id="HFMapDataset">
+<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.HFMapDataset">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HFMapDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map-style wrapper around a HuggingFace ``datasets.Dataset``.</span>
+
+<span class="sd">    Supports random access, ``len()``, and sampler-based shuffling.</span>
+<span class="sd">    A ``sample_idx`` column is added automatically.</span>
+
+<span class="sd">    This class is not intended to be instantiated directly; use the</span>
+<span class="sd">    :func:`HFDataset` factory instead.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">datasets</span>
-
-        <span class="k">if</span> <span class="p">(</span>
-            <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">()</span>
-            <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">get_world_size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span>
-        <span class="p">):</span>
-            <span class="n">s</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">get_rank</span><span class="p">())</span> <span class="o">*</span> <span class="mi">2</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Sleeping for </span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">s to avoid race condition of dataset cache&quot;</span>
-                <span class="s2">&quot; see https://github.com/huggingface/transformers/issues/15976)&quot;</span>
-            <span class="p">)</span>
-            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
-        <span class="k">if</span> <span class="s2">&quot;storage_options&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;You didn&#39;t pass a storage optionwe are adding one to avoid timeout&quot;</span>
-            <span class="p">)</span>
-            <span class="kn">from</span><span class="w"> </span><span class="nn">aiohttp</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClientTimeout</span>
-
-            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;storage_options&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;client_kwargs&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;timeout&quot;</span><span class="p">:</span> <span class="n">ClientTimeout</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="mi">3600</span><span class="p">)}</span>
-            <span class="p">}</span>
-
-        <span class="n">hf_path</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">,</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">hf_path</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Only string dataset path/name is supported&quot;</span><span class="p">)</span>
-
-        <span class="n">load_dataset_fn</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_dataset</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_saved_with_save_to_disk</span><span class="p">(</span><span class="n">hf_path</span><span class="p">):</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading dataset with load_from_disk </span><span class="si">{</span><span class="n">hf_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">load_dataset_fn</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_from_disk</span>
-
-        <span class="n">dataset</span> <span class="o">=</span> <span class="n">with_hf_retry_ratelimit</span><span class="p">(</span><span class="n">load_dataset_fn</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="s2">&quot;sample_idx&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">num_rows</span><span class="p">)))</span>
-
-        <span class="k">if</span> <span class="n">rename_columns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">rename_columns</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rename_columns</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">remove_columns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">remove_columns</span><span class="p">:</span>
             <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">remove_columns</span><span class="p">(</span><span class="n">remove_columns</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
-
-<div class="viewcode-block" id="HFDataset.is_saved_with_save_to_disk">
-<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.HFDataset.is_saved_with_save_to_disk">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">is_saved_with_save_to_disk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">hf_config</span><span class="o">.</span><span class="n">DATASET_STATE_JSON_FILENAME</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span></div>
-
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
         <span class="n">extra</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">tuple</span><span class="p">:</span>
             <span class="n">extra</span><span class="p">[</span><span class="s2">&quot;view_idx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">idx</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
             <span class="n">idx</span> <span class="o">=</span> <span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_sample</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="o">**</span><span class="n">extra</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_sample</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="o">**</span><span class="n">extra</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">num_rows</span>
 
+<div class="viewcode-block" id="HFMapDataset.shuffle">
+<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.HFMapDataset.shuffle">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shuffle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Shuffle the dataset in-place.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            seed: Random seed for reproducibility.</span>
+<span class="sd">            **kwargs: Ignored (accepted for API compatibility with the</span>
+<span class="sd">                iterable variant).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``self`` for chaining.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">column_names</span></div>
+
+
+
+<div class="viewcode-block" id="HFIterableDataset">
+<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.HFIterableDataset">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HFIterableDataset</span><span class="p">(</span><span class="n">IterableDataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Streaming wrapper around a HuggingFace ``datasets.IterableDataset``.</span>
+
+<span class="sd">    Supports lazy iteration with buffer-based shuffling. Because it inherits</span>
+<span class="sd">    from :class:`torch.utils.data.IterableDataset`, PyTorch ``DataLoader`` and</span>
+<span class="sd">    Lightning ``Trainer`` handle it correctly without a ``DistributedSampler``</span>
+<span class="sd">    or ``__len__``.</span>
+
+<span class="sd">    A ``sample_idx`` field is injected via ``.map(with_indices=True)``.</span>
+
+<span class="sd">    This class is not intended to be instantiated directly; use the</span>
+<span class="sd">    :func:`HFDataset` factory instead.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">sample</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="p">{</span><span class="o">**</span><span class="n">sample</span><span class="p">,</span> <span class="s2">&quot;sample_idx&quot;</span><span class="p">:</span> <span class="n">idx</span><span class="p">},</span> <span class="n">with_indices</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">rename_columns</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rename_columns</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">remove_columns</span><span class="p">:</span>
+            <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">remove_columns</span><span class="p">(</span><span class="n">remove_columns</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_sample</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+
+<div class="viewcode-block" id="HFIterableDataset.shuffle">
+<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.HFIterableDataset.shuffle">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shuffle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">buffer_size</span><span class="o">=</span><span class="mi">10_000</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Buffer-shuffle the streaming dataset in-place.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            seed: Random seed for reproducibility.</span>
+<span class="sd">            buffer_size: Number of samples to buffer for shuffling. Larger</span>
+<span class="sd">                values give better randomness at the cost of memory.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``self`` for chaining.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span> <span class="n">buffer_size</span><span class="o">=</span><span class="n">buffer_size</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">column_names</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Factory</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="HFDataset">
+<a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.HFDataset">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">HFDataset</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a HuggingFace dataset wrapper, automatically choosing map-style</span>
+<span class="sd">    or streaming based on ``streaming=True/False`` in *kwargs*.</span>
+
+<span class="sd">    The returned object is either an :class:`HFMapDataset` (subclass of</span>
+<span class="sd">    :class:`torch.utils.data.Dataset`) or an :class:`HFIterableDataset`</span>
+<span class="sd">    (subclass of :class:`torch.utils.data.IterableDataset`), so PyTorch</span>
+<span class="sd">    ``DataLoader`` and Lightning ``Trainer`` handle both correctly out of</span>
+<span class="sd">    the box.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        *args: Positional arguments forwarded to ``datasets.load_dataset``</span>
+<span class="sd">            (typically the dataset name/path).</span>
+<span class="sd">        transform: Optional transform applied to every sample dict.</span>
+<span class="sd">        rename_columns: Optional ``{old: new}`` mapping of columns to rename.</span>
+<span class="sd">        remove_columns: Optional list of column names to drop.</span>
+<span class="sd">        **kwargs: Keyword arguments forwarded to ``datasets.load_dataset``</span>
+<span class="sd">            (e.g. ``split``, ``streaming``, ``data_dir``).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        An :class:`HFMapDataset` or :class:`HFIterableDataset` instance.</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        # Map-style</span>
+<span class="sd">        ds = HFDataset(&quot;imagenet-1k&quot;, split=&quot;train&quot;)</span>
+<span class="sd">        print(len(ds))  # works</span>
+
+<span class="sd">        # Streaming</span>
+<span class="sd">        ds = HFDataset(&quot;imagenet-1k&quot;, split=&quot;train&quot;, streaming=True)</span>
+<span class="sd">        ds.shuffle(seed=42, buffer_size=10_000)</span>
+<span class="sd">        for sample in ds:</span>
+<span class="sd">            ...</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">datasets</span>
+
+    <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">()</span> <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">get_world_size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">get_rank</span><span class="p">())</span> <span class="o">*</span> <span class="mi">2</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Sleeping for </span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">s to avoid race condition of dataset cache&quot;</span>
+            <span class="s2">&quot; (see https://github.com/huggingface/transformers/issues/15976)&quot;</span>
+        <span class="p">)</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">&quot;storage_options&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;No storage_options provided — adding a default timeout to avoid hanging&quot;</span>
+        <span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">aiohttp</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClientTimeout</span>
+
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;storage_options&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;client_kwargs&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;timeout&quot;</span><span class="p">:</span> <span class="n">ClientTimeout</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="mi">3600</span><span class="p">)}</span>
+        <span class="p">}</span>
+
+    <span class="n">hf_path</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">,</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">hf_path</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Only string dataset path/name is supported&quot;</span><span class="p">)</span>
+
+    <span class="n">load_dataset_fn</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_dataset</span>
+    <span class="k">if</span> <span class="n">Path</span><span class="p">(</span><span class="n">hf_path</span><span class="p">,</span> <span class="n">hf_config</span><span class="o">.</span><span class="n">DATASET_STATE_JSON_FILENAME</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading dataset with load_from_disk: </span><span class="si">{</span><span class="n">hf_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">load_dataset_fn</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_from_disk</span>
+
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">with_hf_retry_ratelimit</span><span class="p">(</span><span class="n">load_dataset_fn</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">datasets</span><span class="o">.</span><span class="n">IterableDataset</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">HFIterableDataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="p">,</span> <span class="n">rename_columns</span><span class="p">,</span> <span class="n">remove_columns</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">HFMapDataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="p">,</span> <span class="n">rename_columns</span><span class="p">,</span> <span class="n">remove_columns</span><span class="p">)</span></div>
 
 </pre></div>
 

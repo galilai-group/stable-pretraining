@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.backbone package &#8212; stable-pretraining 0.1.dev1+gcba47bb9c documentation</title>
+    <title>stable_pretraining.backbone package &#8212; stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=fd649b6a"></script>
+    <script src="../_static/documentation_options.js?v=91dfb847"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gcba47bb9c documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -157,7 +157,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.set_embedding_dim/">set_embedding_dim</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/">TeacherStudentWrapper</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.EvalOnly/">EvalOnly</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.mae/">mae</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/data/">stable_pretraining.data</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -388,28 +387,6 @@
 </li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.backbone.mae">stable_pretraining.backbone.mae module</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.forward()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward_decoder"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.forward_decoder()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward_encoder"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.forward_encoder()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.initialize_weights"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.initialize_weights()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.patchify"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.patchify()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.random_masking"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.random_masking()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.unpatchify"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.unpatchify()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.get_1d_sincos_pos_embed_from_grid"><code class="docutils literal notranslate"><span class="pre">get_1d_sincos_pos_embed_from_grid()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.get_2d_sincos_pos_embed"><code class="docutils literal notranslate"><span class="pre">get_2d_sincos_pos_embed()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.get_2d_sincos_pos_embed_from_grid"><code class="docutils literal notranslate"><span class="pre">get_2d_sincos_pos_embed_from_grid()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_base_patch16"><code class="docutils literal notranslate"><span class="pre">vit_base_patch16()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_base_patch16_dec512d8b"><code class="docutils literal notranslate"><span class="pre">vit_base_patch16_dec512d8b()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_huge_patch14"><code class="docutils literal notranslate"><span class="pre">vit_huge_patch14()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_huge_patch14_dec512d8b"><code class="docutils literal notranslate"><span class="pre">vit_huge_patch14_dec512d8b()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_large_patch16"><code class="docutils literal notranslate"><span class="pre">vit_large_patch16()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_large_patch16_dec512d8b"><code class="docutils literal notranslate"><span class="pre">vit_large_patch16_dec512d8b()</span></code></a></li>
-</ul>
-</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.backbone.mlp">stable_pretraining.backbone.mlp module</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mlp.MLP"><code class="docutils literal notranslate"><span class="pre">MLP</span></code></a></li>
 </ul>
@@ -507,7 +484,7 @@
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EmbeddingOutput.hidden_states"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.hidden_states</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.hidden_states</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EmbeddingOutput.keys"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.keys()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id8"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.last_hidden_state</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id4"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.last_hidden_state</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EvalOnly"><code class="docutils literal notranslate"><span class="pre">EvalOnly</span></code></a><ul class="nav section-nav flex-column">
@@ -757,178 +734,6 @@ Handles various input formats and aggregation strategies.</p>
 </dd></dl>
 
 </section>
-<section id="module-stable_pretraining.backbone.mae">
-<span id="stable-pretraining-backbone-mae-module"></span><h2>stable_pretraining.backbone.mae module<a class="headerlink" href="#module-stable_pretraining.backbone.mae" title="Link to this heading">#</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.MaskedAutoencoderViT">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.mae.</span></span><span class="sig-name descname"><span class="pre">MaskedAutoencoderViT</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">224</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_chans</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">embed_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">24</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_heads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoder_embed_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">512</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoder_depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoder_num_heads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm_layer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;class</span> <span class="pre">'torch.nn.modules.normalization.LayerNorm'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm_pix_loss</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#MaskedAutoencoderViT"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
-<p>Masked Autoencoder with VisionTransformer backbone.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imgs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.75</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#MaskedAutoencoderViT.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward" title="Link to this definition">#</a></dt>
-<dd><p>Define the computation performed at every call.</p>
-<p>Should be overridden by all subclasses.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Although the recipe for forward pass needs to be defined within
-this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
-instead of this since the former takes care of running the
-registered hooks while the latter silently ignores them.</p>
-</div>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward_decoder">
-<span class="sig-name descname"><span class="pre">forward_decoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ids_restore</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#MaskedAutoencoderViT.forward_decoder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward_decoder" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward_encoder">
-<span class="sig-name descname"><span class="pre">forward_encoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_ratio</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#MaskedAutoencoderViT.forward_encoder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward_encoder" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.MaskedAutoencoderViT.initialize_weights">
-<span class="sig-name descname"><span class="pre">initialize_weights</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#MaskedAutoencoderViT.initialize_weights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.initialize_weights" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.MaskedAutoencoderViT.patchify">
-<span class="sig-name descname"><span class="pre">patchify</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imgs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#MaskedAutoencoderViT.patchify"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.patchify" title="Link to this definition">#</a></dt>
-<dd><p>Convert images to patches.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>imgs</strong> – (N, 3, H, W)</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>(N, L, patch_size**2 <a href="#id2"><span class="problematic" id="id3">*</span></a>3)</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>x</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.MaskedAutoencoderViT.random_masking">
-<span class="sig-name descname"><span class="pre">random_masking</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_ratio</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#MaskedAutoencoderViT.random_masking"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.random_masking" title="Link to this definition">#</a></dt>
-<dd><p>Perform per-sample random masking by per-sample shuffling.</p>
-<p>Per-sample shuffling is done by argsort random noise.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> – [N, L, D], sequence</p></li>
-<li><p><strong>mask_ratio</strong> – ratio of patches to mask</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>masked sequence
-mask: binary mask
-ids_restore: indices to restore original order</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>x_masked</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.MaskedAutoencoderViT.unpatchify">
-<span class="sig-name descname"><span class="pre">unpatchify</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#MaskedAutoencoderViT.unpatchify"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.unpatchify" title="Link to this definition">#</a></dt>
-<dd><p>Convert patches back to images.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>x</strong> – (N, L, patch_size**2 <a href="#id4"><span class="problematic" id="id5">*</span></a>3)</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>(N, 3, H, W)</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>imgs</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.get_1d_sincos_pos_embed_from_grid">
-<span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.mae.</span></span><span class="sig-name descname"><span class="pre">get_1d_sincos_pos_embed_from_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">embed_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#get_1d_sincos_pos_embed_from_grid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.get_1d_sincos_pos_embed_from_grid" title="Link to this definition">#</a></dt>
-<dd><p>Get 1D sinusoidal positional embedding from grid.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>embed_dim</strong> – output dimension for each position</p></li>
-<li><p><strong>pos</strong> – a list of positions to be encoded: size (M,)</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>(M, D)</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>out</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.get_2d_sincos_pos_embed">
-<span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.mae.</span></span><span class="sig-name descname"><span class="pre">get_2d_sincos_pos_embed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">embed_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cls_token</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#get_2d_sincos_pos_embed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.get_2d_sincos_pos_embed" title="Link to this definition">#</a></dt>
-<dd><p>Get 2D sinusoidal positional embedding.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>embed_dim</strong> – embedding dimension</p></li>
-<li><p><strong>grid_size</strong> – int of the grid height and width</p></li>
-<li><p><strong>cls_token</strong> – whether to include class token</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>[grid_size*grid_size, embed_dim] or [1+grid_size*grid_size, embed_dim] (w/ or w/o cls_token)</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>pos_embed</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.get_2d_sincos_pos_embed_from_grid">
-<span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.mae.</span></span><span class="sig-name descname"><span class="pre">get_2d_sincos_pos_embed_from_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">embed_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#get_2d_sincos_pos_embed_from_grid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.get_2d_sincos_pos_embed_from_grid" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.vit_base_patch16">
-<span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.mae.</span></span><span class="sig-name descname"><span class="pre">vit_base_patch16</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#stable_pretraining.backbone.mae.vit_base_patch16" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.vit_base_patch16_dec512d8b">
-<span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.mae.</span></span><span class="sig-name descname"><span class="pre">vit_base_patch16_dec512d8b</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#vit_base_patch16_dec512d8b"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.vit_base_patch16_dec512d8b" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.vit_huge_patch14">
-<span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.mae.</span></span><span class="sig-name descname"><span class="pre">vit_huge_patch14</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#stable_pretraining.backbone.mae.vit_huge_patch14" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.vit_huge_patch14_dec512d8b">
-<span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.mae.</span></span><span class="sig-name descname"><span class="pre">vit_huge_patch14_dec512d8b</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#vit_huge_patch14_dec512d8b"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.vit_huge_patch14_dec512d8b" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.vit_large_patch16">
-<span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.mae.</span></span><span class="sig-name descname"><span class="pre">vit_large_patch16</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#stable_pretraining.backbone.mae.vit_large_patch16" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="stable_pretraining.backbone.mae.vit_large_patch16_dec512d8b">
-<span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.mae.</span></span><span class="sig-name descname"><span class="pre">vit_large_patch16_dec512d8b</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/mae/#vit_large_patch16_dec512d8b"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.mae.vit_large_patch16_dec512d8b" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-</section>
 <section id="module-stable_pretraining.backbone.mlp">
 <span id="stable-pretraining-backbone-mlp-module"></span><h2>stable_pretraining.backbone.mlp module<a class="headerlink" href="#module-stable_pretraining.backbone.mlp" title="Link to this heading">#</a></h2>
 <dl class="py class">
@@ -999,7 +804,7 @@ Default is <code class="docutils literal notranslate"><span class="pre">None</sp
 <dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
 <p>I-JEPA multi-block masking for joint-embedding predictive architecture.</p>
 <p>Samples M non-overlapping target blocks and a context region that excludes
-all targets. This is the key masking strategy from I-JEPA <a class="footnote-reference brackets" href="#id7" id="id6" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.
+all targets. This is the key masking strategy from I-JEPA <a class="footnote-reference brackets" href="#id3" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.
 Strategy:</p>
 <blockquote>
 <div><ol class="arabic simple">
@@ -1040,9 +845,9 @@ target_patches = x.gather(1, output.target_idx.unsqueeze(-1).expand(-1, -1, D))<
 </dl>
 <p class="rubric">References</p>
 <aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id7" role="doc-footnote">
+<aside class="footnote brackets" id="id3" role="doc-footnote">
 <span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
-<span class="backrefs">(<a role="doc-backlink" href="#id6">1</a>,<a role="doc-backlink" href="#id9">2</a>)</span>
+<span class="backrefs">(<a role="doc-backlink" href="#id2">1</a>,<a role="doc-backlink" href="#id5">2</a>)</span>
 <p>Assran et al. “Self-Supervised Learning from Images with a
 Joint-Embedding Predictive Architecture.” CVPR 2023.</p>
 </aside>
@@ -1943,8 +1748,8 @@ The cache will be rebuilt as needed during forward passes.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id8">
-<span class="sig-name descname"><span class="pre">last_hidden_state</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><a class="headerlink" href="#id8" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">last_hidden_state</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><a class="headerlink" href="#id4" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -2869,7 +2674,7 @@ registers is [B, num_registers, output_dim].</p>
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.backbone.vit.</span></span><span class="sig-name descname"><span class="pre">MAEDecoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">embed_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">768</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoder_embed_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">512</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">768</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_patches</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">196</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_heads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp_ratio</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos_embed_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'sincos_1d'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'sincos_2d'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'learned'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'sincos_2d'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_path_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/backbone/vit/#MAEDecoder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.vit.MAEDecoder" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a></p>
 <p>MAE-style Vision Transformer Decoder using FlexibleTransformer.</p>
-<p>Implements the decoder component of Masked Autoencoders (MAE) <a class="footnote-reference brackets" href="#id7" id="id9" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> for
+<p>Implements the decoder component of Masked Autoencoders (MAE) <a class="footnote-reference brackets" href="#id3" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> for
 self-supervised visual representation learning. The decoder reconstructs
 masked patches from visible patch embeddings using joint self-attention,
 where visible tokens and learnable mask tokens attend to each other.
@@ -3646,28 +3451,6 @@ Initialize near zero (e.g., 1e-5) for identity-like initialization.</p>
 </li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.backbone.mae">stable_pretraining.backbone.mae module</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.forward()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward_decoder"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.forward_decoder()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.forward_encoder"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.forward_encoder()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.initialize_weights"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.initialize_weights()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.patchify"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.patchify()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.random_masking"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.random_masking()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.MaskedAutoencoderViT.unpatchify"><code class="docutils literal notranslate"><span class="pre">MaskedAutoencoderViT.unpatchify()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.get_1d_sincos_pos_embed_from_grid"><code class="docutils literal notranslate"><span class="pre">get_1d_sincos_pos_embed_from_grid()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.get_2d_sincos_pos_embed"><code class="docutils literal notranslate"><span class="pre">get_2d_sincos_pos_embed()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.get_2d_sincos_pos_embed_from_grid"><code class="docutils literal notranslate"><span class="pre">get_2d_sincos_pos_embed_from_grid()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_base_patch16"><code class="docutils literal notranslate"><span class="pre">vit_base_patch16()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_base_patch16_dec512d8b"><code class="docutils literal notranslate"><span class="pre">vit_base_patch16_dec512d8b()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_huge_patch14"><code class="docutils literal notranslate"><span class="pre">vit_huge_patch14()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_huge_patch14_dec512d8b"><code class="docutils literal notranslate"><span class="pre">vit_huge_patch14_dec512d8b()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_large_patch16"><code class="docutils literal notranslate"><span class="pre">vit_large_patch16()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mae.vit_large_patch16_dec512d8b"><code class="docutils literal notranslate"><span class="pre">vit_large_patch16_dec512d8b()</span></code></a></li>
-</ul>
-</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.backbone.mlp">stable_pretraining.backbone.mlp module</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.mlp.MLP"><code class="docutils literal notranslate"><span class="pre">MLP</span></code></a></li>
 </ul>
@@ -3765,7 +3548,7 @@ Initialize near zero (e.g., 1e-5) for identity-like initialization.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EmbeddingOutput.hidden_states"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.hidden_states</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.hidden_states</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EmbeddingOutput.keys"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.keys()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id8"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.last_hidden_state</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id4"><code class="docutils literal notranslate"><span class="pre">EmbeddingOutput.last_hidden_state</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.utils.EvalOnly"><code class="docutils literal notranslate"><span class="pre">EvalOnly</span></code></a><ul class="nav section-nav flex-column">

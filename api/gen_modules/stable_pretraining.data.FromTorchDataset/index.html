@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>FromTorchDataset &#8212; stable-pretraining 0.1.dev1+gcba47bb9c documentation</title>
+    <title>FromTorchDataset &#8212; stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=fd649b6a"></script>
+    <script src="../../../_static/documentation_options.js?v=91dfb847"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gcba47bb9c documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -159,7 +159,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.backbone.set_embedding_dim/">set_embedding_dim</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.backbone.TeacherStudentWrapper/">TeacherStudentWrapper</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.backbone.EvalOnly/">EvalOnly</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.backbone.mae/">mae</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="../../data/">stable_pretraining.data</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
@@ -392,14 +391,14 @@
 <dt class="sig sig-object py" id="stable_pretraining.data.FromTorchDataset">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">FromTorchDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_sample_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/data/datasets/#FromTorchDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.FromTorchDataset" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
-<p>Wrapper for PyTorch datasets with custom column naming and transforms.</p>
+<p>Wrapper that converts a positional-return PyTorch dataset into dict samples.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dataset</strong> – PyTorch dataset to wrap</p></li>
-<li><p><strong>names</strong> – List of names for each element returned by the dataset</p></li>
-<li><p><strong>transform</strong> – Optional transform to apply to samples</p></li>
-<li><p><strong>add_sample_idx</strong> – If True, automatically adds ‘sample_idx’ field to each sample</p></li>
+<li><p><strong>dataset</strong> – PyTorch dataset to wrap.</p></li>
+<li><p><strong>names</strong> – List of names for each element returned by the dataset.</p></li>
+<li><p><strong>transform</strong> – Optional transform applied to the dict sample.</p></li>
+<li><p><strong>add_sample_idx</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, adds a <code class="docutils literal notranslate"><span class="pre">sample_idx</span></code> field to each sample.</p></li>
 </ul>
 </dd>
 </dl>

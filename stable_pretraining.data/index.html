@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.data package &#8212; stable-pretraining 0.1.dev1+gcba47bb9c documentation</title>
+    <title>stable_pretraining.data package &#8212; stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=fd649b6a"></script>
+    <script src="../_static/documentation_options.js?v=91dfb847"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gcba47bb9c documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -157,7 +157,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.set_embedding_dim/">set_embedding_dim</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/">TeacherStudentWrapper</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.EvalOnly/">EvalOnly</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.mae/">mae</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/data/">stable_pretraining.data</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -379,20 +378,28 @@
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.data.dataset_stats">stable_pretraining.data.dataset_stats module</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.data.datasets">stable_pretraining.data.datasets module</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Dataset"><code class="docutils literal notranslate"><span class="pre">Dataset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Dataset.process_sample"><code class="docutils literal notranslate"><span class="pre">Dataset.process_sample()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Dataset.set_pl_trainer"><code class="docutils literal notranslate"><span class="pre">Dataset.set_pl_trainer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Dataset"><code class="docutils literal notranslate"><span class="pre">Dataset</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.DatasetMixin"><code class="docutils literal notranslate"><span class="pre">DatasetMixin</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.DatasetMixin.process_sample"><code class="docutils literal notranslate"><span class="pre">DatasetMixin.process_sample()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.DatasetMixin.set_pl_trainer"><code class="docutils literal notranslate"><span class="pre">DatasetMixin.set_pl_trainer()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.FromTorchDataset"><code class="docutils literal notranslate"><span class="pre">FromTorchDataset</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.FromTorchDataset.column_names"><code class="docutils literal notranslate"><span class="pre">FromTorchDataset.column_names</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFDataset"><code class="docutils literal notranslate"><span class="pre">HFDataset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFDataset.column_names"><code class="docutils literal notranslate"><span class="pre">HFDataset.column_names</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFDataset.is_saved_with_save_to_disk"><code class="docutils literal notranslate"><span class="pre">HFDataset.is_saved_with_save_to_disk()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFDataset"><code class="docutils literal notranslate"><span class="pre">HFDataset()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFIterableDataset"><code class="docutils literal notranslate"><span class="pre">HFIterableDataset</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFIterableDataset.column_names"><code class="docutils literal notranslate"><span class="pre">HFIterableDataset.column_names</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFIterableDataset.shuffle"><code class="docutils literal notranslate"><span class="pre">HFIterableDataset.shuffle()</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFMapDataset"><code class="docutils literal notranslate"><span class="pre">HFMapDataset</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFMapDataset.column_names"><code class="docutils literal notranslate"><span class="pre">HFMapDataset.column_names</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFMapDataset.shuffle"><code class="docutils literal notranslate"><span class="pre">HFMapDataset.shuffle()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.IterableDataset"><code class="docutils literal notranslate"><span class="pre">IterableDataset</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset"><code class="docutils literal notranslate"><span class="pre">Subset</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset.dataset"><code class="docutils literal notranslate"><span class="pre">Subset.dataset</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset.indices"><code class="docutils literal notranslate"><span class="pre">Subset.indices</span></code></a></li>
@@ -555,11 +562,7 @@
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.DataModule.val_dataloader"><code class="docutils literal notranslate"><span class="pre">DataModule.val_dataloader()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Dataset"><code class="docutils literal notranslate"><span class="pre">Dataset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Dataset.process_sample"><code class="docutils literal notranslate"><span class="pre">Dataset.process_sample()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Dataset.set_pl_trainer"><code class="docutils literal notranslate"><span class="pre">Dataset.set_pl_trainer()</span></code></a></li>
-</ul>
-</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Dataset"><code class="docutils literal notranslate"><span class="pre">Dataset</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.ExponentialMixtureNoiseModel"><code class="docutils literal notranslate"><span class="pre">ExponentialMixtureNoiseModel</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.ExponentialMixtureNoiseModel.sample"><code class="docutils literal notranslate"><span class="pre">ExponentialMixtureNoiseModel.sample()</span></code></a></li>
 </ul>
@@ -576,11 +579,7 @@
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.GMM.score"><code class="docutils literal notranslate"><span class="pre">GMM.score()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.HFDataset"><code class="docutils literal notranslate"><span class="pre">HFDataset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.HFDataset.column_names"><code class="docutils literal notranslate"><span class="pre">HFDataset.column_names</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.HFDataset.is_saved_with_save_to_disk"><code class="docutils literal notranslate"><span class="pre">HFDataset.is_saved_with_save_to_disk()</span></code></a></li>
-</ul>
-</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.HFDataset"><code class="docutils literal notranslate"><span class="pre">HFDataset()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset.NAMES"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset.NAMES</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset.column_names"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset.column_names</span></code></a></li>
@@ -647,21 +646,61 @@ common datasets, used for data normalization during preprocessing.</p>
 <span id="stable-pretraining-data-datasets-module"></span><h2>stable_pretraining.data.datasets module<a class="headerlink" href="#module-stable_pretraining.data.datasets" title="Link to this heading">#</a></h2>
 <p>Dataset classes for real data sources.</p>
 <p>This module provides dataset wrappers and utilities for working with real data sources
-including PyTorch datasets, HuggingFace datasets, and dataset subsets.</p>
+including PyTorch datasets, HuggingFace datasets (both map-style and streaming),
+and dataset subsets. All wrappers produce dict-based samples with support for
+transforms, automatic <code class="docutils literal notranslate"><span class="pre">sample_idx</span></code> injection, and PyTorch Lightning trainer
+integration (<code class="docutils literal notranslate"><span class="pre">global_step</span></code>, <code class="docutils literal notranslate"><span class="pre">current_epoch</span></code>).</p>
+<p>Typical usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.data.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">HFDataset</span>
+
+<span class="c1"># Map-style (downloads / caches locally)</span>
+<span class="n">ds</span> <span class="o">=</span> <span class="n">HFDataset</span><span class="p">(</span><span class="s2">&quot;imagenet-1k&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">my_transform</span><span class="p">)</span>
+
+<span class="c1"># Streaming (no disk usage)</span>
+<span class="n">ds</span> <span class="o">=</span> <span class="n">HFDataset</span><span class="p">(</span><span class="s2">&quot;imagenet-1k&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">streaming</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">my_transform</span><span class="p">)</span>
+<span class="n">ds</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">buffer_size</span><span class="o">=</span><span class="mi">10_000</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Both return objects that PyTorch <code class="docutils literal notranslate"><span class="pre">DataLoader</span></code> and Lightning <code class="docutils literal notranslate"><span class="pre">Trainer</span></code> handle
+correctly without any special flags.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="stable_pretraining.data.datasets.Dataset">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.datasets.</span></span><span class="sig-name descname"><span class="pre">Dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#Dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.Dataset" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
-<p>Base dataset class with transform support and PyTorch Lightning integration.</p>
+<dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.DatasetMixin" title="stable_pretraining.data.datasets.DatasetMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">DatasetMixin</span></code></a>, <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
+<p>Base map-style dataset with transform and trainer support.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.data.datasets.DatasetMixin">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.datasets.</span></span><span class="sig-name descname"><span class="pre">DatasetMixin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#DatasetMixin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.DatasetMixin" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Shared logic for all dataset types.</p>
+<p>Provides transform application, PyTorch Lightning trainer integration
+(injecting <code class="docutils literal notranslate"><span class="pre">global_step</span></code> and <code class="docutils literal notranslate"><span class="pre">current_epoch</span></code> into every sample), and
+a unified <code class="docutils literal notranslate"><span class="pre">process_sample</span></code> pipeline.</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.data.datasets.Dataset.process_sample">
-<span class="sig-name descname"><span class="pre">process_sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#Dataset.process_sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.Dataset.process_sample" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="stable_pretraining.data.datasets.DatasetMixin.process_sample">
+<span class="sig-name descname"><span class="pre">process_sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#DatasetMixin.process_sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.DatasetMixin.process_sample" title="Link to this definition">#</a></dt>
+<dd><p>Run a raw sample dict through trainer-injection and transforms.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sample</strong> – Dict-like sample from the underlying dataset.</p></li>
+<li><p><strong>**kwargs</strong> – Extra key/value pairs merged into <em>sample</em> before
+transforms (e.g. <code class="docutils literal notranslate"><span class="pre">view_idx</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The (possibly transformed) sample dict.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.data.datasets.Dataset.set_pl_trainer">
-<span class="sig-name descname"><span class="pre">set_pl_trainer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#Dataset.set_pl_trainer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.Dataset.set_pl_trainer" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="stable_pretraining.data.datasets.DatasetMixin.set_pl_trainer">
+<span class="sig-name descname"><span class="pre">set_pl_trainer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#DatasetMixin.set_pl_trainer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.DatasetMixin.set_pl_trainer" title="Link to this definition">#</a></dt>
+<dd><p>Attach a Lightning trainer so its state is injected into samples.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -669,14 +708,14 @@ including PyTorch datasets, HuggingFace datasets, and dataset subsets.</p>
 <dt class="sig sig-object py" id="stable_pretraining.data.datasets.FromTorchDataset">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.datasets.</span></span><span class="sig-name descname"><span class="pre">FromTorchDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_sample_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#FromTorchDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.FromTorchDataset" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
-<p>Wrapper for PyTorch datasets with custom column naming and transforms.</p>
+<p>Wrapper that converts a positional-return PyTorch dataset into dict samples.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dataset</strong> – PyTorch dataset to wrap</p></li>
-<li><p><strong>names</strong> – List of names for each element returned by the dataset</p></li>
-<li><p><strong>transform</strong> – Optional transform to apply to samples</p></li>
-<li><p><strong>add_sample_idx</strong> – If True, automatically adds ‘sample_idx’ field to each sample</p></li>
+<li><p><strong>dataset</strong> – PyTorch dataset to wrap.</p></li>
+<li><p><strong>names</strong> – List of names for each element returned by the dataset.</p></li>
+<li><p><strong>transform</strong> – Optional transform applied to the dict sample.</p></li>
+<li><p><strong>add_sample_idx</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, adds a <code class="docutils literal notranslate"><span class="pre">sample_idx</span></code> field to each sample.</p></li>
 </ul>
 </dd>
 </dl>
@@ -687,21 +726,122 @@ including PyTorch datasets, HuggingFace datasets, and dataset subsets.</p>
 
 </dd></dl>
 
-<dl class="py class">
+<dl class="py function">
 <dt class="sig sig-object py" id="stable_pretraining.data.datasets.HFDataset">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.datasets.</span></span><span class="sig-name descname"><span class="pre">HFDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rename_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#HFDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.HFDataset" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
-<p>Hugging Face dataset wrapper with transform and column manipulation support.</p>
+<span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.datasets.</span></span><span class="sig-name descname"><span class="pre">HFDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rename_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#HFDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.HFDataset" title="Link to this definition">#</a></dt>
+<dd><p>Create a HuggingFace dataset wrapper, automatically choosing map-style
+or streaming based on <code class="docutils literal notranslate"><span class="pre">streaming=True/False</span></code> in <em>kwargs</em>.</p>
+<p>The returned object is either an <a class="reference internal" href="#stable_pretraining.data.datasets.HFMapDataset" title="stable_pretraining.data.datasets.HFMapDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">HFMapDataset</span></code></a> (subclass of
+<a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.Dataset</span></code></a>) or an <a class="reference internal" href="#stable_pretraining.data.datasets.HFIterableDataset" title="stable_pretraining.data.datasets.HFIterableDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">HFIterableDataset</span></code></a>
+(subclass of <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.IterableDataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.IterableDataset</span></code></a>), so PyTorch
+<code class="docutils literal notranslate"><span class="pre">DataLoader</span></code> and Lightning <code class="docutils literal notranslate"><span class="pre">Trainer</span></code> handle both correctly out of
+the box.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – Positional arguments forwarded to <code class="docutils literal notranslate"><span class="pre">datasets.load_dataset</span></code>
+(typically the dataset name/path).</p></li>
+<li><p><strong>transform</strong> – Optional transform applied to every sample dict.</p></li>
+<li><p><strong>rename_columns</strong> – Optional <code class="docutils literal notranslate"><span class="pre">{old:</span> <span class="pre">new}</span></code> mapping of columns to rename.</p></li>
+<li><p><strong>remove_columns</strong> – Optional list of column names to drop.</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments forwarded to <code class="docutils literal notranslate"><span class="pre">datasets.load_dataset</span></code>
+(e.g. <code class="docutils literal notranslate"><span class="pre">split</span></code>, <code class="docutils literal notranslate"><span class="pre">streaming</span></code>, <code class="docutils literal notranslate"><span class="pre">data_dir</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An <a class="reference internal" href="#stable_pretraining.data.datasets.HFMapDataset" title="stable_pretraining.data.datasets.HFMapDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">HFMapDataset</span></code></a> or <a class="reference internal" href="#stable_pretraining.data.datasets.HFIterableDataset" title="stable_pretraining.data.datasets.HFIterableDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">HFIterableDataset</span></code></a> instance.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Map-style</span>
+<span class="n">ds</span> <span class="o">=</span> <span class="n">HFDataset</span><span class="p">(</span><span class="s2">&quot;imagenet-1k&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="p">))</span>  <span class="c1"># works</span>
+
+<span class="c1"># Streaming</span>
+<span class="n">ds</span> <span class="o">=</span> <span class="n">HFDataset</span><span class="p">(</span><span class="s2">&quot;imagenet-1k&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">streaming</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">ds</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">buffer_size</span><span class="o">=</span><span class="mi">10_000</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.data.datasets.HFIterableDataset">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.datasets.</span></span><span class="sig-name descname"><span class="pre">HFIterableDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rename_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#HFIterableDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.HFIterableDataset" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.IterableDataset" title="stable_pretraining.data.datasets.IterableDataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">IterableDataset</span></code></a></p>
+<p>Streaming wrapper around a HuggingFace <code class="docutils literal notranslate"><span class="pre">datasets.IterableDataset</span></code>.</p>
+<p>Supports lazy iteration with buffer-based shuffling. Because it inherits
+from <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.IterableDataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.IterableDataset</span></code></a>, PyTorch <code class="docutils literal notranslate"><span class="pre">DataLoader</span></code> and
+Lightning <code class="docutils literal notranslate"><span class="pre">Trainer</span></code> handle it correctly without a <code class="docutils literal notranslate"><span class="pre">DistributedSampler</span></code>
+or <code class="docutils literal notranslate"><span class="pre">__len__</span></code>.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">sample_idx</span></code> field is injected via <code class="docutils literal notranslate"><span class="pre">.map(with_indices=True)</span></code>.</p>
+<p>This class is not intended to be instantiated directly; use the
+<a class="reference internal" href="#stable_pretraining.data.datasets.HFDataset" title="stable_pretraining.data.datasets.HFDataset"><code class="xref py py-func docutils literal notranslate"><span class="pre">HFDataset()</span></code></a> factory instead.</p>
 <dl class="py property">
-<dt class="sig sig-object py" id="stable_pretraining.data.datasets.HFDataset.column_names">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">column_names</span></span><a class="headerlink" href="#stable_pretraining.data.datasets.HFDataset.column_names" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="stable_pretraining.data.datasets.HFIterableDataset.column_names">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">column_names</span></span><a class="headerlink" href="#stable_pretraining.data.datasets.HFIterableDataset.column_names" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.data.datasets.HFDataset.is_saved_with_save_to_disk">
-<span class="sig-name descname"><span class="pre">is_saved_with_save_to_disk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#HFDataset.is_saved_with_save_to_disk"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.HFDataset.is_saved_with_save_to_disk" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="stable_pretraining.data.datasets.HFIterableDataset.shuffle">
+<span class="sig-name descname"><span class="pre">shuffle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#HFIterableDataset.shuffle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.HFIterableDataset.shuffle" title="Link to this definition">#</a></dt>
+<dd><p>Buffer-shuffle the streaming dataset in-place.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>seed</strong> – Random seed for reproducibility.</p></li>
+<li><p><strong>buffer_size</strong> – Number of samples to buffer for shuffling. Larger
+values give better randomness at the cost of memory.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">self</span></code> for chaining.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.data.datasets.HFMapDataset">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.datasets.</span></span><span class="sig-name descname"><span class="pre">HFMapDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rename_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#HFMapDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.HFMapDataset" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
+<p>Map-style wrapper around a HuggingFace <code class="docutils literal notranslate"><span class="pre">datasets.Dataset</span></code>.</p>
+<p>Supports random access, <code class="docutils literal notranslate"><span class="pre">len()</span></code>, and sampler-based shuffling.
+A <code class="docutils literal notranslate"><span class="pre">sample_idx</span></code> column is added automatically.</p>
+<p>This class is not intended to be instantiated directly; use the
+<a class="reference internal" href="#stable_pretraining.data.datasets.HFDataset" title="stable_pretraining.data.datasets.HFDataset"><code class="xref py py-func docutils literal notranslate"><span class="pre">HFDataset()</span></code></a> factory instead.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="stable_pretraining.data.datasets.HFMapDataset.column_names">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">column_names</span></span><a class="headerlink" href="#stable_pretraining.data.datasets.HFMapDataset.column_names" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.data.datasets.HFMapDataset.shuffle">
+<span class="sig-name descname"><span class="pre">shuffle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#HFMapDataset.shuffle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.HFMapDataset.shuffle" title="Link to this definition">#</a></dt>
+<dd><p>Shuffle the dataset in-place.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>seed</strong> – Random seed for reproducibility.</p></li>
+<li><p><strong>**kwargs</strong> – Ignored (accepted for API compatibility with the
+iterable variant).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">self</span></code> for chaining.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.data.datasets.IterableDataset">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.datasets.</span></span><span class="sig-name descname"><span class="pre">IterableDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#IterableDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.datasets.IterableDataset" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.DatasetMixin" title="stable_pretraining.data.datasets.DatasetMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">DatasetMixin</span></code></a>, <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.IterableDataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">IterableDataset</span></code></a></p>
+<p>Base iterable (streaming) dataset with transform and trainer support.</p>
 </dd></dl>
 
 <dl class="py class">
@@ -716,8 +856,8 @@ as <code class="docutils literal notranslate"><span class="pre">subset.column_na
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dataset</strong> (<a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><em>Dataset</em></a>) – The whole Dataset</p></li>
-<li><p><strong>indices</strong> (<em>sequence</em>) – Indices in the whole set selected for subset</p></li>
+<li><p><strong>dataset</strong> – The whole dataset.</p></li>
+<li><p><strong>indices</strong> – Indices in the whole set selected for the subset.</p></li>
 </ul>
 </dd>
 </dl>
@@ -2206,18 +2346,8 @@ implement this method.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="stable_pretraining.data.Dataset">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">Dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#Dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.Dataset" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
-<p>Base dataset class with transform support and PyTorch Lightning integration.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.data.Dataset.process_sample">
-<span class="sig-name descname"><span class="pre">process_sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#Dataset.process_sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.Dataset.process_sample" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.data.Dataset.set_pl_trainer">
-<span class="sig-name descname"><span class="pre">set_pl_trainer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#Dataset.set_pl_trainer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.Dataset.set_pl_trainer" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
+<dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.DatasetMixin" title="stable_pretraining.data.datasets.DatasetMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">DatasetMixin</span></code></a>, <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
+<p>Base map-style dataset with transform and trainer support.</p>
 </dd></dl>
 
 <dl class="py class">
@@ -2248,14 +2378,14 @@ implement this method.</p>
 <dt class="sig sig-object py" id="stable_pretraining.data.FromTorchDataset">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">FromTorchDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_sample_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#FromTorchDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.FromTorchDataset" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
-<p>Wrapper for PyTorch datasets with custom column naming and transforms.</p>
+<p>Wrapper that converts a positional-return PyTorch dataset into dict samples.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dataset</strong> – PyTorch dataset to wrap</p></li>
-<li><p><strong>names</strong> – List of names for each element returned by the dataset</p></li>
-<li><p><strong>transform</strong> – Optional transform to apply to samples</p></li>
-<li><p><strong>add_sample_idx</strong> – If True, automatically adds ‘sample_idx’ field to each sample</p></li>
+<li><p><strong>dataset</strong> – PyTorch dataset to wrap.</p></li>
+<li><p><strong>names</strong> – List of names for each element returned by the dataset.</p></li>
+<li><p><strong>transform</strong> – Optional transform applied to the dict sample.</p></li>
+<li><p><strong>add_sample_idx</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, adds a <code class="docutils literal notranslate"><span class="pre">sample_idx</span></code> field to each sample.</p></li>
 </ul>
 </dd>
 </dl>
@@ -2278,21 +2408,44 @@ implement this method.</p>
 
 </dd></dl>
 
-<dl class="py class">
+<dl class="py function">
 <dt class="sig sig-object py" id="stable_pretraining.data.HFDataset">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">HFDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rename_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#HFDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.HFDataset" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
-<p>Hugging Face dataset wrapper with transform and column manipulation support.</p>
-<dl class="py property">
-<dt class="sig sig-object py" id="stable_pretraining.data.HFDataset.column_names">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">column_names</span></span><a class="headerlink" href="#stable_pretraining.data.HFDataset.column_names" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">HFDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rename_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#HFDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.HFDataset" title="Link to this definition">#</a></dt>
+<dd><p>Create a HuggingFace dataset wrapper, automatically choosing map-style
+or streaming based on <code class="docutils literal notranslate"><span class="pre">streaming=True/False</span></code> in <em>kwargs</em>.</p>
+<p>The returned object is either an <code class="xref py py-class docutils literal notranslate"><span class="pre">HFMapDataset</span></code> (subclass of
+<a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.Dataset</span></code></a>) or an <code class="xref py py-class docutils literal notranslate"><span class="pre">HFIterableDataset</span></code>
+(subclass of <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.IterableDataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.IterableDataset</span></code></a>), so PyTorch
+<code class="docutils literal notranslate"><span class="pre">DataLoader</span></code> and Lightning <code class="docutils literal notranslate"><span class="pre">Trainer</span></code> handle both correctly out of
+the box.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – Positional arguments forwarded to <code class="docutils literal notranslate"><span class="pre">datasets.load_dataset</span></code>
+(typically the dataset name/path).</p></li>
+<li><p><strong>transform</strong> – Optional transform applied to every sample dict.</p></li>
+<li><p><strong>rename_columns</strong> – Optional <code class="docutils literal notranslate"><span class="pre">{old:</span> <span class="pre">new}</span></code> mapping of columns to rename.</p></li>
+<li><p><strong>remove_columns</strong> – Optional list of column names to drop.</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments forwarded to <code class="docutils literal notranslate"><span class="pre">datasets.load_dataset</span></code>
+(e.g. <code class="docutils literal notranslate"><span class="pre">split</span></code>, <code class="docutils literal notranslate"><span class="pre">streaming</span></code>, <code class="docutils literal notranslate"><span class="pre">data_dir</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An <code class="xref py py-class docutils literal notranslate"><span class="pre">HFMapDataset</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">HFIterableDataset</span></code> instance.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Map-style</span>
+<span class="n">ds</span> <span class="o">=</span> <span class="n">HFDataset</span><span class="p">(</span><span class="s2">&quot;imagenet-1k&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="p">))</span>  <span class="c1"># works</span>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.data.HFDataset.is_saved_with_save_to_disk">
-<span class="sig-name descname"><span class="pre">is_saved_with_save_to_disk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/datasets/#HFDataset.is_saved_with_save_to_disk"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.HFDataset.is_saved_with_save_to_disk" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
+<span class="c1"># Streaming</span>
+<span class="n">ds</span> <span class="o">=</span> <span class="n">HFDataset</span><span class="p">(</span><span class="s2">&quot;imagenet-1k&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">streaming</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">ds</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">buffer_size</span><span class="o">=</span><span class="mi">10_000</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py class">
@@ -2422,8 +2575,8 @@ as <code class="docutils literal notranslate"><span class="pre">subset.column_na
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dataset</strong> (<a class="reference internal" href="#stable_pretraining.data.Dataset" title="stable_pretraining.data.Dataset"><em>Dataset</em></a>) – The whole Dataset</p></li>
-<li><p><strong>indices</strong> (<em>sequence</em>) – Indices in the whole set selected for subset</p></li>
+<li><p><strong>dataset</strong> – The whole dataset.</p></li>
+<li><p><strong>indices</strong> – Indices in the whole set selected for the subset.</p></li>
 </ul>
 </dd>
 </dl>
@@ -2658,20 +2811,28 @@ until there are no remainders left.</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.data.dataset_stats">stable_pretraining.data.dataset_stats module</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.data.datasets">stable_pretraining.data.datasets module</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Dataset"><code class="docutils literal notranslate"><span class="pre">Dataset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Dataset.process_sample"><code class="docutils literal notranslate"><span class="pre">Dataset.process_sample()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Dataset.set_pl_trainer"><code class="docutils literal notranslate"><span class="pre">Dataset.set_pl_trainer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Dataset"><code class="docutils literal notranslate"><span class="pre">Dataset</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.DatasetMixin"><code class="docutils literal notranslate"><span class="pre">DatasetMixin</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.DatasetMixin.process_sample"><code class="docutils literal notranslate"><span class="pre">DatasetMixin.process_sample()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.DatasetMixin.set_pl_trainer"><code class="docutils literal notranslate"><span class="pre">DatasetMixin.set_pl_trainer()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.FromTorchDataset"><code class="docutils literal notranslate"><span class="pre">FromTorchDataset</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.FromTorchDataset.column_names"><code class="docutils literal notranslate"><span class="pre">FromTorchDataset.column_names</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFDataset"><code class="docutils literal notranslate"><span class="pre">HFDataset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFDataset.column_names"><code class="docutils literal notranslate"><span class="pre">HFDataset.column_names</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFDataset.is_saved_with_save_to_disk"><code class="docutils literal notranslate"><span class="pre">HFDataset.is_saved_with_save_to_disk()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFDataset"><code class="docutils literal notranslate"><span class="pre">HFDataset()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFIterableDataset"><code class="docutils literal notranslate"><span class="pre">HFIterableDataset</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFIterableDataset.column_names"><code class="docutils literal notranslate"><span class="pre">HFIterableDataset.column_names</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFIterableDataset.shuffle"><code class="docutils literal notranslate"><span class="pre">HFIterableDataset.shuffle()</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFMapDataset"><code class="docutils literal notranslate"><span class="pre">HFMapDataset</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFMapDataset.column_names"><code class="docutils literal notranslate"><span class="pre">HFMapDataset.column_names</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.HFMapDataset.shuffle"><code class="docutils literal notranslate"><span class="pre">HFMapDataset.shuffle()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.IterableDataset"><code class="docutils literal notranslate"><span class="pre">IterableDataset</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset"><code class="docutils literal notranslate"><span class="pre">Subset</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset.dataset"><code class="docutils literal notranslate"><span class="pre">Subset.dataset</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.datasets.Subset.indices"><code class="docutils literal notranslate"><span class="pre">Subset.indices</span></code></a></li>
@@ -2834,11 +2995,7 @@ until there are no remainders left.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.DataModule.val_dataloader"><code class="docutils literal notranslate"><span class="pre">DataModule.val_dataloader()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Dataset"><code class="docutils literal notranslate"><span class="pre">Dataset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Dataset.process_sample"><code class="docutils literal notranslate"><span class="pre">Dataset.process_sample()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Dataset.set_pl_trainer"><code class="docutils literal notranslate"><span class="pre">Dataset.set_pl_trainer()</span></code></a></li>
-</ul>
-</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Dataset"><code class="docutils literal notranslate"><span class="pre">Dataset</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.ExponentialMixtureNoiseModel"><code class="docutils literal notranslate"><span class="pre">ExponentialMixtureNoiseModel</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.ExponentialMixtureNoiseModel.sample"><code class="docutils literal notranslate"><span class="pre">ExponentialMixtureNoiseModel.sample()</span></code></a></li>
 </ul>
@@ -2855,11 +3012,7 @@ until there are no remainders left.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.GMM.score"><code class="docutils literal notranslate"><span class="pre">GMM.score()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.HFDataset"><code class="docutils literal notranslate"><span class="pre">HFDataset</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.HFDataset.column_names"><code class="docutils literal notranslate"><span class="pre">HFDataset.column_names</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.HFDataset.is_saved_with_save_to_disk"><code class="docutils literal notranslate"><span class="pre">HFDataset.is_saved_with_save_to_disk()</span></code></a></li>
-</ul>
-</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.HFDataset"><code class="docutils literal notranslate"><span class="pre">HFDataset()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset.NAMES"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset.NAMES</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset.column_names"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset.column_names</span></code></a></li>
