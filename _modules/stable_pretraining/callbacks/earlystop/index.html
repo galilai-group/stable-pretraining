@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.earlystop &#8212; stable-pretraining 0.1.dev1+g1879d1db7 documentation</title>
+    <title>stable_pretraining.callbacks.earlystop &#8212; stable-pretraining 0.1.dev1+g016447dd2 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=811c8a41"></script>
+    <script src="../../../../_static/documentation_options.js?v=a4ffb39b"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g1879d1db7 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g016447dd2 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -449,12 +449,16 @@
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;EpochMilestones: Maximum value is </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
                 <span class="n">_spt_log</span><span class="p">(</span>
-                    <span class="s2">&quot;epoch_milestones/value&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">final</span><span class="p">),</span>
-                    <span class="n">on_step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="s2">&quot;epoch_milestones/value&quot;</span><span class="p">,</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">final</span><span class="p">),</span>
+                    <span class="n">on_step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="n">_spt_log</span><span class="p">(</span>
-                    <span class="s2">&quot;epoch_milestones/threshold&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]),</span>
-                    <span class="n">on_step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="s2">&quot;epoch_milestones/threshold&quot;</span><span class="p">,</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]),</span>
+                    <span class="n">on_step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="k">if</span> <span class="n">final</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
@@ -472,12 +476,16 @@
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;EpochMilestones: Minimum value is </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
                 <span class="n">_spt_log</span><span class="p">(</span>
-                    <span class="s2">&quot;epoch_milestones/value&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">final</span><span class="p">),</span>
-                    <span class="n">on_step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="s2">&quot;epoch_milestones/value&quot;</span><span class="p">,</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">final</span><span class="p">),</span>
+                    <span class="n">on_step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="n">_spt_log</span><span class="p">(</span>
-                    <span class="s2">&quot;epoch_milestones/threshold&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]),</span>
-                    <span class="n">on_step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="s2">&quot;epoch_milestones/threshold&quot;</span><span class="p">,</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]),</span>
+                    <span class="n">on_step</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="k">if</span> <span class="n">final</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
