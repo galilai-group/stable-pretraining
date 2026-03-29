@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.cleanup &#8212; stable-pretraining 0.1.dev1+g6fd33c268 documentation</title>
+    <title>stable_pretraining.callbacks.cleanup &#8212; stable-pretraining 0.1.dev1+g5e19e78bc documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=0667dc8e"></script>
+    <script src="../../../../_static/documentation_options.js?v=691de2e0"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g6fd33c268 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g5e19e78bc documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -327,14 +327,37 @@
                 <article class="bd-article">
                   
   <h1>Source code for stable_pretraining.callbacks.cleanup</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span></span><span class="sd">&quot;&quot;&quot;Callback to clean up local training artifacts after successful training.</span>
+
+<span class="sd">Add this callback explicitly to your Trainer when you want automatic cleanup</span>
+<span class="sd">of logs, checkpoints, and other artifacts after training completes successfully.</span>
+<span class="sd">On failure, everything is kept for debugging.</span>
+
+<span class="sd">Example::</span>
+
+<span class="sd">    trainer = pl.Trainer(</span>
+<span class="sd">        callbacks=[</span>
+<span class="sd">            CleanUpCallback(</span>
+<span class="sd">                keep_checkpoints=False,  # delete checkpoint files</span>
+<span class="sd">                keep_logs=False,  # delete CSV/wandb local logs</span>
+<span class="sd">                keep_hydra=False,  # delete .hydra/ and hydra.log</span>
+<span class="sd">                keep_slurm=False,  # delete slurm-*.out/err</span>
+<span class="sd">                keep_env_dump=False,  # delete environment.json etc.</span>
+<span class="sd">                keep_callback_artifacts=False,  # delete LatentViz, Writer, HF export dirs</span>
+<span class="sd">            )</span>
+<span class="sd">        ]</span>
+<span class="sd">    )</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Tuple</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callback</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.trainer.trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Trainer</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.core.module</span><span class="w"> </span><span class="kn">import</span> <span class="n">LightningModule</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.utilities.rank_zero</span><span class="w"> </span><span class="kn">import</span> <span class="n">rank_zero_only</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">hydra.core.hydra_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">HydraConfig</span>
@@ -342,195 +365,220 @@
     <span class="n">HydraConfig</span> <span class="o">=</span> <span class="kc">None</span>
 
 
-<div class="viewcode-block" id="human_size">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.cleanup.human_size">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">human_size</span><span class="p">(</span><span class="n">nbytes</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a file size in bytes to a human-readable string.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        nbytes (int): File size in bytes.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        str: Human-readable file size (e.g., &#39;1.2 MB&#39;).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_human_size</span><span class="p">(</span><span class="n">nbytes</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="k">for</span> <span class="n">unit</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;KB&quot;</span><span class="p">,</span> <span class="s2">&quot;MB&quot;</span><span class="p">,</span> <span class="s2">&quot;GB&quot;</span><span class="p">,</span> <span class="s2">&quot;TB&quot;</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">nbytes</span> <span class="o">&lt;</span> <span class="mi">1024</span><span class="p">:</span>
             <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">nbytes</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="n">nbytes</span> <span class="o">/=</span> <span class="mi">1024</span>
-    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">nbytes</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> PB&quot;</span></div>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">nbytes</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> PB&quot;</span>
 
 
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_hydra_output_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the Hydra output directory if available, else fallback to current working directory.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        str: Path to the Hydra output directory or current working directory.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_hydra_output_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
     <span class="k">if</span> <span class="n">HydraConfig</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">HydraConfig</span><span class="o">.</span><span class="n">get</span><span class="p">()</span><span class="o">.</span><span class="n">runtime</span><span class="o">.</span><span class="n">output_dir</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="k">pass</span>
-    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dir_size</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">root</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">files</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">total</span> <span class="o">+=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">f</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">total</span>
 
 
 <div class="viewcode-block" id="CleanUpCallback">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.cleanup.CleanUpCallback">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CleanUpCallback</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;PyTorch Lightning callback to monitor and clean up SLURM and Hydra files during and after training.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Clean up local training artifacts after successful training.</span>
 
-<span class="sd">    At each epoch, prints the names and sizes of SLURM and Hydra files. At the end of successful training,</span>
-<span class="sd">    deletes those files and prints a summary. Safe for DDP (only rank 0 prints/deletes).</span>
+<span class="sd">    This callback should be added **explicitly** by the user — it is NOT</span>
+<span class="sd">    included in the default callback set.  On successful training completion</span>
+<span class="sd">    it removes the selected artifact categories.  If training fails (exception),</span>
+<span class="sd">    nothing is deleted so you can debug.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        slurm_patterns (Optional[Sequence[str]]): Glob patterns for SLURM files to monitor/delete.</span>
-<span class="sd">            Defaults to [&quot;slurm-*.out&quot;, &quot;slurm-*.err&quot;].</span>
-<span class="sd">        search_paths (Optional[Sequence[str]]): Directories to search for SLURM files.</span>
-<span class="sd">            Defaults to [os.getcwd(), $SLURM_SUBMIT_DIR if set].</span>
-<span class="sd">        delete_hydra (bool): Whether to delete Hydra artifacts (.hydra directory and hydra.log).</span>
-<span class="sd">            Defaults to True.</span>
-<span class="sd">        dry_run (bool): If True, only print what would be deleted, do not actually delete.</span>
-<span class="sd">            Defaults to False.</span>
-
-<span class="sd">    Example:</span>
-<span class="sd">        ```python</span>
-<span class="sd">        from pytorch_lightning import Trainer</span>
-
-<span class="sd">        cleanup_cb = CleanUpCallback()</span>
-<span class="sd">        trainer = Trainer(callbacks=[cleanup_cb])</span>
-<span class="sd">        ```</span>
-
-<span class="sd">    Example (custom patterns, dry run):</span>
-<span class="sd">        ```python</span>
-<span class="sd">        cleanup_cb = CleanUpCallback(</span>
-<span class="sd">            slurm_patterns=[&quot;slurm-*.out&quot;, &quot;myjob-*.log&quot;],</span>
-<span class="sd">            search_paths=[&quot;/scratch/logs&quot;, &quot;/tmp&quot;],</span>
-<span class="sd">            delete_hydra=False,</span>
-<span class="sd">            dry_run=True,</span>
-<span class="sd">        )</span>
-<span class="sd">        ```</span>
+<span class="sd">        keep_checkpoints: Keep checkpoint files. Default ``True``.</span>
+<span class="sd">        keep_logs: Keep logger output dirs (CSV logs, wandb local, tensorboard).</span>
+<span class="sd">            Default ``True``.</span>
+<span class="sd">        keep_hydra: Keep Hydra artifacts (``.hydra/`` dir and ``hydra.log``).</span>
+<span class="sd">            Default ``False``.</span>
+<span class="sd">        keep_slurm: Keep SLURM log files (``slurm-*.out/err``).</span>
+<span class="sd">            Default ``False``.</span>
+<span class="sd">        keep_env_dump: Keep environment dump files (``environment.json``,</span>
+<span class="sd">            ``requirements_frozen.txt``). Default ``False``.</span>
+<span class="sd">        keep_callback_artifacts: Keep dirs produced by other callbacks</span>
+<span class="sd">            (``LatentViz`` plots, ``OnlineWriter`` output, ``hf_exports/``).</span>
+<span class="sd">            Default ``True``.</span>
+<span class="sd">        slurm_patterns: Glob patterns for SLURM files.</span>
+<span class="sd">        extra_patterns: Additional glob patterns to delete (relative to cwd).</span>
+<span class="sd">        dry_run: If ``True``, only log what would be deleted.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
+        <span class="n">keep_checkpoints</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">keep_logs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">keep_hydra</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">keep_slurm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">keep_env_dump</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">keep_callback_artifacts</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">slurm_patterns</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">search_paths</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">delete_hydra</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">extra_patterns</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">slurm_patterns</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_patterns</span> <span class="ow">or</span> <span class="p">[</span>
-            <span class="s2">&quot;slurm-*.out&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;slurm-*.err&quot;</span><span class="p">,</span>
-        <span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">search_paths</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="nb">list</span><span class="p">(</span><span class="n">search_paths</span><span class="p">)</span> <span class="k">if</span> <span class="n">search_paths</span> <span class="k">else</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()]</span>
-        <span class="p">)</span>
-        <span class="n">slurm_submit_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_SUBMIT_DIR&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">slurm_submit_dir</span> <span class="ow">and</span> <span class="n">slurm_submit_dir</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_paths</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">search_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">slurm_submit_dir</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">delete_hydra</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">delete_hydra</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">dry_run</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_files_to_delete</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_checkpoints</span> <span class="o">=</span> <span class="n">keep_checkpoints</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_logs</span> <span class="o">=</span> <span class="n">keep_logs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_hydra</span> <span class="o">=</span> <span class="n">keep_hydra</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_slurm</span> <span class="o">=</span> <span class="n">keep_slurm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_env_dump</span> <span class="o">=</span> <span class="n">keep_env_dump</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_callback_artifacts</span> <span class="o">=</span> <span class="n">keep_callback_artifacts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slurm_patterns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">slurm_patterns</span> <span class="ow">or</span> <span class="p">[</span><span class="s2">&quot;slurm-*.out&quot;</span><span class="p">,</span> <span class="s2">&quot;slurm-*.err&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extra_patterns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">extra_patterns</span> <span class="ow">or</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dry_run</span> <span class="o">=</span> <span class="n">dry_run</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="kc">False</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_find_files</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Find SLURM and Hydra files to monitor/delete.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_collect_targets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Collect (category, path) pairs of artifacts to delete.&quot;&quot;&quot;</span>
+        <span class="n">targets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
 
-<span class="sd">        Returns:</span>
-<span class="sd">            List[Tuple[str, str, int]]: List of (type, path, size) tuples.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="c1"># SLURM files</span>
-        <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_paths</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">slurm_patterns</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">pattern</span><span class="p">)):</span>
+        <span class="c1"># --- SLURM logs ---</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_slurm</span><span class="p">:</span>
+            <span class="n">search_dirs</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()]</span>
+            <span class="n">slurm_submit</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_SUBMIT_DIR&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">slurm_submit</span> <span class="ow">and</span> <span class="n">slurm_submit</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">search_dirs</span><span class="p">:</span>
+                <span class="n">search_dirs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">slurm_submit</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">search_dirs</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">slurm_patterns</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">pattern</span><span class="p">)):</span>
+                        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+                            <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;slurm&quot;</span><span class="p">,</span> <span class="n">f</span><span class="p">))</span>
+
+        <span class="c1"># --- Hydra artifacts ---</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_hydra</span><span class="p">:</span>
+            <span class="n">hydra_dir</span> <span class="o">=</span> <span class="n">_resolve_hydra_output_dir</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">hydra_dir</span><span class="p">:</span>
+                <span class="n">hydra_log</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">hydra_dir</span><span class="p">,</span> <span class="s2">&quot;hydra.log&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">hydra_log</span><span class="p">):</span>
+                    <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;hydra&quot;</span><span class="p">,</span> <span class="n">hydra_log</span><span class="p">))</span>
+                <span class="n">hydra_dot</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">hydra_dir</span><span class="p">,</span> <span class="s2">&quot;.hydra&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">hydra_dot</span><span class="p">):</span>
+                    <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;hydra&quot;</span><span class="p">,</span> <span class="n">hydra_dot</span><span class="p">))</span>
+
+        <span class="c1"># --- Checkpoints ---</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_checkpoints</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">trainer</span><span class="o">.</span><span class="n">checkpoint_callbacks</span><span class="p">:</span>
+                <span class="n">ckpt_dir</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="s2">&quot;dirpath&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">ckpt_dir</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">ckpt_dir</span><span class="p">):</span>
+                    <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;checkpoint&quot;</span><span class="p">,</span> <span class="n">ckpt_dir</span><span class="p">))</span>
+
+        <span class="c1"># --- Logger output dirs ---</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_logs</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">lg</span> <span class="ow">in</span> <span class="n">trainer</span><span class="o">.</span><span class="n">loggers</span><span class="p">:</span>
+                <span class="n">log_dir</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">lg</span><span class="p">,</span> <span class="s2">&quot;log_dir&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">lg</span><span class="p">,</span> <span class="s2">&quot;save_dir&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">log_dir</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">log_dir</span><span class="p">):</span>
+                    <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;logs&quot;</span><span class="p">,</span> <span class="n">log_dir</span><span class="p">))</span>
+
+        <span class="c1"># --- Environment dump files ---</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_env_dump</span><span class="p">:</span>
+            <span class="n">root</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">default_root_dir</span>
+            <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;environment*.json&quot;</span><span class="p">,</span> <span class="s2">&quot;requirements_frozen*.txt&quot;</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">pattern</span><span class="p">)):</span>
                     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
-                        <span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;SLURM&quot;</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">f</span><span class="p">)))</span>
-        <span class="c1"># Hydra files</span>
-        <span class="n">hydra_dir</span> <span class="o">=</span> <span class="n">_resolve_hydra_output_dir</span><span class="p">()</span>
-        <span class="n">hydra_log</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">hydra_dir</span><span class="p">,</span> <span class="s2">&quot;hydra.log&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">hydra_log</span><span class="p">):</span>
-            <span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;Hydra&quot;</span><span class="p">,</span> <span class="n">hydra_log</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">hydra_log</span><span class="p">)))</span>
-        <span class="n">hydra_dot_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">hydra_dir</span><span class="p">,</span> <span class="s2">&quot;.hydra&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">hydra_dot_dir</span><span class="p">):</span>
-            <span class="n">total_size</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">for</span> <span class="n">root</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">fs</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">hydra_dot_dir</span><span class="p">):</span>
-                <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fs</span><span class="p">:</span>
-                    <span class="n">fp</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="n">total_size</span> <span class="o">+=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
-                    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                        <span class="k">pass</span>
-            <span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;Hydra&quot;</span><span class="p">,</span> <span class="n">hydra_dot_dir</span><span class="p">,</span> <span class="n">total_size</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">files</span>
+                        <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;env_dump&quot;</span><span class="p">,</span> <span class="n">f</span><span class="p">))</span>
 
-<div class="viewcode-block" id="CleanUpCallback.on_train_epoch_end">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_train_epoch_end">[docs]</a>
-    <span class="nd">@rank_zero_only</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">on_train_epoch_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Print SLURM and Hydra file info at the end of each epoch.</span>
+        <span class="c1"># --- Callback-produced artifact dirs ---</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_callback_artifacts</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="p">:</span>
+                <span class="c1"># LatentViz: saves to save_dir or latent_viz_{name}</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="s2">&quot;save_dir&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">):</span>
+                    <span class="n">d</span> <span class="o">=</span> <span class="n">cb</span><span class="o">.</span><span class="n">save_dir</span> <span class="k">if</span> <span class="n">cb</span><span class="o">.</span><span class="n">save_dir</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;latent_viz_</span><span class="si">{</span><span class="n">cb</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
+                        <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;callback&quot;</span><span class="p">,</span> <span class="n">d</span><span class="p">))</span>
+                <span class="c1"># OnlineWriter: saves to cb.path</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="s2">&quot;path&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="s2">&quot;key&quot;</span><span class="p">):</span>
+                    <span class="n">p</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="s2">&quot;path&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">p</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+                        <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;callback&quot;</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
+                <span class="c1"># HuggingFaceCheckpointCallback: saves to cb.save_dir</span>
+                <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;HuggingFaceCheckpointCallback&quot;</span><span class="p">:</span>
+                    <span class="n">d</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="s2">&quot;save_dir&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">d</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
+                        <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;callback&quot;</span><span class="p">,</span> <span class="n">d</span><span class="p">))</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            trainer (Trainer): The PyTorch Lightning Trainer.</span>
-<span class="sd">            pl_module (LightningModule): The LightningModule being trained.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">files</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_files</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_files_to_delete</span> <span class="o">=</span> <span class="n">files</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[CleanUpCallback] Epoch </span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">current_epoch</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">files</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  No SLURM/Hydra files found.&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">typ</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">sz</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  [</span><span class="si">{</span><span class="n">typ</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">human_size</span><span class="p">(</span><span class="n">sz</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span></div>
+        <span class="c1"># --- Extra patterns ---</span>
+        <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">extra_patterns</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">):</span>
+                <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;extra&quot;</span><span class="p">,</span> <span class="n">f</span><span class="p">))</span>
 
+        <span class="k">return</span> <span class="n">targets</span>
 
 <div class="viewcode-block" id="CleanUpCallback.on_exception">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_exception">[docs]</a>
     <span class="nd">@rank_zero_only</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">on_exception</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">,</span> <span class="n">exception</span><span class="p">:</span> <span class="ne">BaseException</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mark that an exception occurred, so files will not be deleted at the end.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            trainer (Trainer): The PyTorch Lightning Trainer.</span>
-<span class="sd">            pl_module (LightningModule): The LightningModule being trained.</span>
-<span class="sd">            exception (BaseException): The exception that was raised.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="kc">True</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_exception</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">exception</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;CleanUpCallback: training failed — skipping cleanup&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="CleanUpCallback.on_fit_end">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_fit_end">[docs]</a>
     <span class="nd">@rank_zero_only</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">on_fit_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Delete SLURM and Hydra files at the end of training if no exception occurred.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            trainer (Trainer): The PyTorch Lightning Trainer.</span>
-<span class="sd">            pl_module (LightningModule): The LightningModule being trained.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_fit_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[CleanUpCallback] Training failed, skipping file deletion.&quot;</span><span class="p">)</span>
             <span class="k">return</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[CleanUpCallback] Cleaning up files after successful training:&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">typ</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">sz</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_files_to_delete</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">typ</span> <span class="o">==</span> <span class="s2">&quot;Hydra&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">delete_hydra</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Skipping Hydra artifact: </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">continue</span>
+
+        <span class="n">targets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collect_targets</span><span class="p">(</span><span class="n">trainer</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">targets</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;CleanUpCallback: no artifacts to clean up&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">total_bytes</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">deleted</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">category</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">_dir_size</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+                <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+                <span class="k">else</span> <span class="mi">0</span>
+            <span class="p">)</span>
+            <span class="n">total_bytes</span> <span class="o">+=</span> <span class="n">size</span>
+
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dry_run</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Dry run: would delete </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">human_size</span><span class="p">(</span><span class="n">sz</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;  [dry-run] would delete [</span><span class="si">{</span><span class="n">category</span><span class="si">}</span><span class="s2">] &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">_human_size</span><span class="p">(</span><span class="n">size</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="p">)</span>
                 <span class="k">continue</span>
+
             <span class="k">try</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
-                    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Deleted directory: </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Deleted file: </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+                <span class="n">deleted</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  deleted [</span><span class="si">{</span><span class="n">category</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">_human_size</span><span class="p">(</span><span class="n">size</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Failed to delete </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[CleanUpCallback] Cleanup complete.&quot;</span><span class="p">)</span></div>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  failed to delete </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dry_run</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;CleanUpCallback: dry-run — would free </span><span class="si">{</span><span class="n">_human_size</span><span class="p">(</span><span class="n">total_bytes</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;across </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span><span class="si">}</span><span class="s2"> item(s)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;CleanUpCallback: deleted </span><span class="si">{</span><span class="n">deleted</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span><span class="si">}</span><span class="s2"> item(s), &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;freed </span><span class="si">{</span><span class="n">_human_size</span><span class="p">(</span><span class="n">total_bytes</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span></div>
 </div>
 
 </pre></div>

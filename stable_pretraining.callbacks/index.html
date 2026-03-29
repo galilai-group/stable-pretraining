@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+g6fd33c268 documentation</title>
+    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+g5e19e78bc documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=0667dc8e"></script>
+    <script src="../_static/documentation_options.js?v=691de2e0"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g6fd33c268 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g5e19e78bc documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -395,10 +395,8 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback"><code class="docutils literal notranslate"><span class="pre">CleanUpCallback</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_exception"><code class="docutils literal notranslate"><span class="pre">CleanUpCallback.on_exception()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_fit_end"><code class="docutils literal notranslate"><span class="pre">CleanUpCallback.on_fit_end()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_train_epoch_end"><code class="docutils literal notranslate"><span class="pre">CleanUpCallback.on_train_epoch_end()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cleanup.human_size"><code class="docutils literal notranslate"><span class="pre">human_size()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.clip_zero_shot">stable_pretraining.callbacks.clip_zero_shot module</a><ul class="nav section-nav flex-column">
@@ -521,7 +519,7 @@
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.data"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.actual_queue_length"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.actual_queue_length</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.actual_queue_length</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id13"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id1"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_train_batch_end"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_train_batch_end()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_validation_epoch_end"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_validation_epoch_end()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_validation_epoch_start"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_validation_epoch_start()</span></code></a></li>
@@ -794,104 +792,67 @@ are not natively supported by PyTorch’s checkpoint system.</p>
 </section>
 <section id="module-stable_pretraining.callbacks.cleanup">
 <span id="stable-pretraining-callbacks-cleanup-module"></span><h2>stable_pretraining.callbacks.cleanup module<a class="headerlink" href="#module-stable_pretraining.callbacks.cleanup" title="Link to this heading">#</a></h2>
+<p>Callback to clean up local training artifacts after successful training.</p>
+<p>Add this callback explicitly to your Trainer when you want automatic cleanup
+of logs, checkpoints, and other artifacts after training completes successfully.
+On failure, everything is kept for debugging.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span>
+    <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">CleanUpCallback</span><span class="p">(</span>
+            <span class="n">keep_checkpoints</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># delete checkpoint files</span>
+            <span class="n">keep_logs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># delete CSV/wandb local logs</span>
+            <span class="n">keep_hydra</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># delete .hydra/ and hydra.log</span>
+            <span class="n">keep_slurm</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># delete slurm-*.out/err</span>
+            <span class="n">keep_env_dump</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># delete environment.json etc.</span>
+            <span class="n">keep_callback_artifacts</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># delete LatentViz, Writer, HF export dirs</span>
+        <span class="p">)</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 <dl class="py class">
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.cleanup.CleanUpCallback">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.cleanup.</span></span><span class="sig-name descname"><span class="pre">CleanUpCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slurm_patterns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_paths</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delete_hydra</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cleanup/#CleanUpCallback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.cleanup.</span></span><span class="sig-name descname"><span class="pre">CleanUpCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">keep_checkpoints</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_logs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_hydra</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_slurm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_env_dump</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_callback_artifacts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slurm_patterns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_patterns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cleanup/#CleanUpCallback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Callback</span></code></p>
-<p>PyTorch Lightning callback to monitor and clean up SLURM and Hydra files during and after training.</p>
-<p>At each epoch, prints the names and sizes of SLURM and Hydra files. At the end of successful training,
-deletes those files and prints a summary. Safe for DDP (only rank 0 prints/deletes).</p>
+<p>Clean up local training artifacts after successful training.</p>
+<p>This callback should be added <strong>explicitly</strong> by the user — it is NOT
+included in the default callback set.  On successful training completion
+it removes the selected artifact categories.  If training fails (exception),
+nothing is deleted so you can debug.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>slurm_patterns</strong> (<em>Optional</em><em>[</em><em>Sequence</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>]</em>) – Glob patterns for SLURM files to monitor/delete.
-Defaults to [“slurm-<em>.out”, “slurm-</em>.err”].</p></li>
-<li><p><strong>search_paths</strong> (<em>Optional</em><em>[</em><em>Sequence</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>]</em>) – Directories to search for SLURM files.
-Defaults to [os.getcwd(), $SLURM_SUBMIT_DIR if set].</p></li>
-<li><p><strong>delete_hydra</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to delete Hydra artifacts (.hydra directory and hydra.log).
-Defaults to True.</p></li>
-<li><p><strong>dry_run</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, only print what would be deleted, do not actually delete.
-Defaults to False.</p></li>
+<li><p><strong>keep_checkpoints</strong> – Keep checkpoint files. Default <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p><strong>keep_logs</strong> – Keep logger output dirs (CSV logs, wandb local, tensorboard).
+Default <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p><strong>keep_hydra</strong> – Keep Hydra artifacts (<code class="docutils literal notranslate"><span class="pre">.hydra/</span></code> dir and <code class="docutils literal notranslate"><span class="pre">hydra.log</span></code>).
+Default <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><strong>keep_slurm</strong> – Keep SLURM log files (<code class="docutils literal notranslate"><span class="pre">slurm-*.out/err</span></code>).
+Default <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><strong>keep_env_dump</strong> – Keep environment dump files (<code class="docutils literal notranslate"><span class="pre">environment.json</span></code>,
+<code class="docutils literal notranslate"><span class="pre">requirements_frozen.txt</span></code>). Default <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><strong>keep_callback_artifacts</strong> – Keep dirs produced by other callbacks
+(<code class="docutils literal notranslate"><span class="pre">LatentViz</span></code> plots, <code class="docutils literal notranslate"><span class="pre">OnlineWriter</span></code> output, <code class="docutils literal notranslate"><span class="pre">hf_exports/</span></code>).
+Default <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p><strong>slurm_patterns</strong> – Glob patterns for SLURM files.</p></li>
+<li><p><strong>extra_patterns</strong> – Additional glob patterns to delete (relative to cwd).</p></li>
+<li><p><strong>dry_run</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, only log what would be deleted.</p></li>
 </ul>
-</dd>
-</dl>
-<p class="rubric">Example</p>
-<p><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
-from pytorch_lightning import Trainer</p>
-<p>cleanup_cb = CleanUpCallback()
-trainer = Trainer(callbacks=[cleanup_cb])
-<a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
-<dl>
-<dt>Example (custom patterns, dry run):</dt><dd><p><a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a>python
-cleanup_cb = CleanUpCallback(</p>
-<blockquote>
-<div><p>slurm_patterns=[“slurm-<em>.out”, “myjob-</em>.log”],
-search_paths=[“/scratch/logs”, “/tmp”],
-delete_hydra=False,
-dry_run=True,</p>
-</div></blockquote>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.cleanup.CleanUpCallback.on_exception">
-<span class="sig-name descname"><span class="pre">on_exception</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exception</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#BaseException" title="(in Python v3.14)"><span class="pre">BaseException</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cleanup/#CleanUpCallback.on_exception"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_exception" title="Link to this definition">#</a></dt>
-<dd><p>Mark that an exception occurred, so files will not be deleted at the end.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>trainer</strong> (<em>Trainer</em>) – The PyTorch Lightning Trainer.</p></li>
-<li><p><strong>pl_module</strong> (<em>LightningModule</em>) – The LightningModule being trained.</p></li>
-<li><p><strong>exception</strong> (<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#BaseException" title="(in Python v3.14)"><em>BaseException</em></a>) – The exception that was raised.</p></li>
-</ul>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">on_exception</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exception</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cleanup/#CleanUpCallback.on_exception"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_exception" title="Link to this definition">#</a></dt>
+<dd><p>Called when any trainer execution is interrupted by an exception.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.cleanup.CleanUpCallback.on_fit_end">
-<span class="sig-name descname"><span class="pre">on_fit_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cleanup/#CleanUpCallback.on_fit_end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_fit_end" title="Link to this definition">#</a></dt>
-<dd><p>Delete SLURM and Hydra files at the end of training if no exception occurred.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>trainer</strong> (<em>Trainer</em>) – The PyTorch Lightning Trainer.</p></li>
-<li><p><strong>pl_module</strong> (<em>LightningModule</em>) – The LightningModule being trained.</p></li>
-</ul>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">on_fit_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cleanup/#CleanUpCallback.on_fit_end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_fit_end" title="Link to this definition">#</a></dt>
+<dd><p>Called when fit ends.</p>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.callbacks.cleanup.CleanUpCallback.on_train_epoch_end">
-<span class="sig-name descname"><span class="pre">on_train_epoch_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cleanup/#CleanUpCallback.on_train_epoch_end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_train_epoch_end" title="Link to this definition">#</a></dt>
-<dd><p>Print SLURM and Hydra file info at the end of each epoch.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>trainer</strong> (<em>Trainer</em>) – The PyTorch Lightning Trainer.</p></li>
-<li><p><strong>pl_module</strong> (<em>LightningModule</em>) – The LightningModule being trained.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="stable_pretraining.callbacks.cleanup.human_size">
-<span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.cleanup.</span></span><span class="sig-name descname"><span class="pre">human_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nbytes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cleanup/#human_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cleanup.human_size" title="Link to this definition">#</a></dt>
-<dd><p>Convert a file size in bytes to a human-readable string.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>nbytes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – File size in bytes.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Human-readable file size (e.g., ‘1.2 MB’).</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-</dl>
 </dd></dl>
 
 </section>
@@ -1677,8 +1638,8 @@ it uses a single queue with the maximum size and serves appropriate subsets.</p>
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="id13">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.11)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#id13" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="id1">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.11)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#id1" title="Link to this definition">#</a></dt>
 <dd><p>Get snapshot data during validation.</p>
 </dd></dl>
 
@@ -2401,10 +2362,8 @@ loss returned from <code class="docutils literal notranslate"><span class="pre">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback"><code class="docutils literal notranslate"><span class="pre">CleanUpCallback</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_exception"><code class="docutils literal notranslate"><span class="pre">CleanUpCallback.on_exception()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_fit_end"><code class="docutils literal notranslate"><span class="pre">CleanUpCallback.on_fit_end()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_train_epoch_end"><code class="docutils literal notranslate"><span class="pre">CleanUpCallback.on_train_epoch_end()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cleanup.human_size"><code class="docutils literal notranslate"><span class="pre">human_size()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.clip_zero_shot">stable_pretraining.callbacks.clip_zero_shot module</a><ul class="nav section-nav flex-column">
@@ -2527,7 +2486,7 @@ loss returned from <code class="docutils literal notranslate"><span class="pre">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.data"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.actual_queue_length"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.actual_queue_length</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.actual_queue_length</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id13"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id1"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_train_batch_end"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_train_batch_end()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_validation_epoch_end"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_validation_epoch_end()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_validation_epoch_start"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_validation_epoch_start()</span></code></a></li>
