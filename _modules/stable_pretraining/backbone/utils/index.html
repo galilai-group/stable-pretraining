@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.utils &#8212; stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</title>
+    <title>stable_pretraining.backbone.utils &#8212; stable-pretraining 0.1.dev1+g5f2e0240f documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=91dfb847"></script>
+    <script src="../../../../_static/documentation_options.js?v=db2a238f"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g5f2e0240f documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -336,6 +336,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">transformers.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelOutput</span>
 
 <span class="c1"># Try to import optional dependencies</span>
 <span class="k">try</span><span class="p">:</span>
@@ -597,7 +598,7 @@
 <div class="viewcode-block" id="EmbeddingOutput">
 <a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.EmbeddingOutput">[docs]</a>
 <span class="nd">@dataclass</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">EmbeddingOutput</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EmbeddingOutput</span><span class="p">(</span><span class="n">ModelOutput</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;HuggingFace-style output container for model embeddings.</span>
 
 <span class="sd">    Attributes:</span>
@@ -605,18 +606,8 @@
 <span class="sd">        hidden_states: Dictionary mapping layer names to their intermediate outputs.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">last_hidden_state</span><span class="p">:</span> <span class="n">Any</span>
-    <span class="n">hidden_states</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Allow dict-like access for backward compatibility.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
-
-<div class="viewcode-block" id="EmbeddingOutput.keys">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.EmbeddingOutput.keys">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;last_hidden_state&quot;</span><span class="p">,</span> <span class="s2">&quot;hidden_states&quot;</span><span class="p">]</span></div>
-</div>
+    <span class="n">last_hidden_state</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">hidden_states</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
 

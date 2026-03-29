@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.vit &#8212; stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</title>
+    <title>stable_pretraining.backbone.vit &#8212; stable-pretraining 0.1.dev1+g5f2e0240f documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=91dfb847"></script>
+    <script src="../../../../_static/documentation_options.js?v=db2a238f"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g5f2e0240f documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -336,6 +336,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.patch_masking</span><span class="w"> </span><span class="kn">import</span> <span class="n">PatchMasking</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">transformers.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelOutput</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.pos_embed</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">get_sincos_pos_embed</span><span class="p">,</span>
     <span class="n">get_timestep_embed</span><span class="p">,</span>
@@ -540,7 +541,7 @@
 <div class="viewcode-block" id="MaskedEncoderOutput">
 <a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.vit.MaskedEncoderOutput">[docs]</a>
 <span class="nd">@dataclass</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">MaskedEncoderOutput</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MaskedEncoderOutput</span><span class="p">(</span><span class="n">ModelOutput</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Output from MaskedEncoder forward pass.</span>
 
 <span class="sd">    :ivar encoded: Encoded token representations (B, num_prefix + N_visible, D)</span>
@@ -549,10 +550,10 @@
 <span class="sd">    :ivar grid_size: Patch grid dimensions (height, width)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">encoded</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-    <span class="n">mask</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-    <span class="n">ids_keep</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-    <span class="n">grid_size</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span></div>
+    <span class="n">encoded</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">mask</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">ids_keep</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">grid_size</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
 

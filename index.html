@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</title>
+    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+g5f2e0240f documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=91dfb847"></script>
+    <script src="_static/documentation_options.js?v=db2a238f"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g5f2e0240f documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -786,105 +786,46 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 </pre></div>
 </div>
 </li>
-<li><p>LATEX support in Matplotlib (optional)</p>
-<ol class="arabic">
-<li><details>
-<summary>Install the LaTex font (Computer Modern)</summary>
-<ul>
-<li><p>we provide the ttf files <a class="reference internal" href="#assets/cm-unicode-0.7.0%202/"><span class="xref myst">in the repo</span></a> to make things simple</p></li>
-<li><p>create your local folder (if not present) and copy the ttf files there</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">mkdir</span> <span class="pre">-p</span> <span class="pre">~/.local/share/fonts</span> </code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">cp</span> <span class="pre">assets/cm-unicode-0.7.0\</span> <span class="pre">2/*ttf</span> <span class="pre">~/.local/share/fonts/</span></code></p></li>
-</ul>
-</li>
-<li><p>refresh the font cache with <code class="docutils literal notranslate"><span class="pre">fc-cache</span> <span class="pre">-f</span> <span class="pre">-v</span></code></p></li>
-<li><p>validate that the fonts are listed in your system with <code class="docutils literal notranslate"><span class="pre">fc-list</span> <span class="pre">|</span> <span class="pre">grep</span> <span class="pre">cmu</span></code></p></li>
-<li><p>refresh matplotlib cache</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span>
-
-<span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">matplotlib</span><span class="o">.</span><span class="n">get_cachedir</span><span class="p">())</span>
+<li><p><strong>LaTeX support in Matplotlib</strong> (optional)</p>
+ <details>
+ <summary>Click to expand setup instructions</summary>
+<p><strong>Install Computer Modern fonts:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.local/share/fonts
+cp<span class="w"> </span>assets/cm-unicode-0.7.0<span class="se">\ </span><span class="m">2</span>/*.ttf<span class="w"> </span>~/.local/share/fonts/
+fc-cache<span class="w"> </span>-f<span class="w"> </span>-v
+<span class="c1"># verify: fc-list | grep cmu</span>
 </pre></div>
 </div>
-</li>
-</ul>
-</details>
-</li>
-<li><details>
- <summary>Install the Tex compiler (optional, if not available on your system)</summary>
-<ul class="simple">
-<li><p>install texlive locally following https://tug.org/texlive/quickinstall.html#running where you can use <code class="docutils literal notranslate"><span class="pre">-texdir</span> <span class="pre">your_path</span></code> to install to a local path (so you don’t need sudo privileges)</p></li>
-<li><p>follow the instructions at the end of the installation to edit the PATH variables. If in the above step you used <code class="docutils literal notranslate"><span class="pre">-texdir</span> <span class="pre">~/texdir</span></code> then the path to add should be like <code class="docutils literal notranslate"><span class="pre">TEXDIR_PATH=/private/home/$USER/texdir/bin/x86_64-linux</span></code>. You can use your favorite method such as</p>
-<ul>
-<li><p><code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">PATH=&quot;$TEXDIR_PATH:$PATH&quot;</span></code> for local session</p></li>
-<li><p>adding <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">PATH=&quot;$TEXDIR_PATH:$PATH&quot;</span></code> to your <code class="docutils literal notranslate"><span class="pre">.bashrc</span></code></p></li>
-<li><p>run <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">env</span> <span class="pre">config</span> <span class="pre">vars</span> <span class="pre">set</span> <span class="pre">PATH=&quot;$TEXDIR_PATH:$PATH&quot;</span></code> once for it to be set within your conda env</p></li>
-<li><p>IMPORTANT: if the above is not done you will see an error akin to <code class="docutils literal notranslate"><span class="pre">!</span> <span class="pre">LaTeX</span> <span class="pre">Error:</span> <span class="pre">File</span> <span class="pre">type1ec.sty</span> <span class="pre">not</span> <span class="pre">found.</span></code></p></li>
-</ul>
-</li>
-<li><p>make sure inside the conde environment that you point to the right binaries e.g. <code class="docutils literal notranslate"><span class="pre">whereis</span> <span class="pre">latex</span></code> and <code class="docutils literal notranslate"><span class="pre">whereis</span> <span class="pre">mktexfmt</span></code></p></li>
-<li><p>If at some point there is an error that the file <code class="docutils literal notranslate"><span class="pre">latex.fmt</span></code> is not found. You can generate it with</p>
-<ul>
-<li><p><code class="docutils literal notranslate"><span class="pre">pdftex</span> <span class="pre">-ini</span>&#160;&#160; <span class="pre">-jobname=latex</span> <span class="pre">-progname=latex</span> <span class="pre">-translate-file=cp227.tcx</span> <span class="pre">*latex.ini</span></code></p></li>
-<li><p>or (unsure) <code class="docutils literal notranslate"><span class="pre">fmtutil-sys</span> <span class="pre">--all</span></code></p></li>
-</ul>
-</li>
-</ul>
+<p><strong>Clear matplotlib font cache:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import shutil, matplotlib; shutil.rmtree(matplotlib.get_cachedir())&quot;</span>
+</pre></div>
+</div>
+<p><strong>Install TeX Live (minimal, no sudo):</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/tmp
+wget<span class="w"> </span>https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+tar<span class="w"> </span>xzf<span class="w"> </span>install-tl-unx.tar.gz
+<span class="nb">cd</span><span class="w"> </span>install-tl-*/
+./install-tl<span class="w"> </span>--texdir<span class="w"> </span>~/texlive<span class="w"> </span>--no-interaction<span class="w"> </span>--scheme<span class="o">=</span>scheme-basic
+~/texlive/bin/x86_64-linux/tlmgr<span class="w"> </span>install<span class="w"> </span>type1cm<span class="w"> </span>cm-super<span class="w"> </span>dvipng<span class="w"> </span>collection-fontsrecommended<span class="w"> </span>amsmath<span class="w"> </span>amssymb<span class="w"> </span>bm<span class="w"> </span>underscore
+</pre></div>
+</div>
+<p>Add to your <code class="docutils literal notranslate"><span class="pre">~/.bashrc</span></code> (or equivalent):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/texlive/bin/x86_64-linux:</span><span class="nv">$PATH</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p><strong>Verify:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import matplotlib; matplotlib.use(&#39;Agg&#39;)</span>
+<span class="s2">import matplotlib.pyplot as plt</span>
+<span class="s2">plt.rc(&#39;text&#39;, usetex=True)</span>
+<span class="s2">plt.rc(&#39;font&#39;, family=&#39;serif&#39;)</span>
+<span class="s2">plt.figure(); plt.title(r&#39;\$\sum_{i=1}^n x_i\$&#39;)</span>
+<span class="s2">plt.savefig(&#39;/tmp/tex_test.png&#39;)</span>
+<span class="s2">print(&#39;Success!&#39;)</span>
+<span class="s2">&quot;</span>
+</pre></div>
+</div>
  </details>
-</li>
-<li><details>
- <summary>rc config (optional)</summary>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">font</span><span class="o">.</span><span class="n">family</span><span class="p">:</span> <span class="n">serif</span>
-<span class="n">font</span><span class="o">.</span><span class="n">serif</span><span class="p">:</span> <span class="n">cmr10</span>
-<span class="n">font</span><span class="o">.</span><span class="n">sans</span><span class="o">-</span><span class="n">serif</span><span class="p">:</span> <span class="n">cmss10</span>
-<span class="n">font</span><span class="o">.</span><span class="n">monospace</span><span class="p">:</span> <span class="n">cmtt10</span>
-
-<span class="n">text</span><span class="o">.</span><span class="n">usetex</span><span class="p">:</span> <span class="kc">True</span>
-<span class="n">text</span><span class="o">.</span><span class="n">latex</span><span class="o">.</span><span class="n">preamble</span><span class="p">:</span> \<span class="n">usepackage</span><span class="p">{</span><span class="n">amssymb</span><span class="p">}</span> \<span class="n">usepackage</span><span class="p">{</span><span class="n">amsmath</span><span class="p">}</span> \<span class="n">usepackage</span><span class="p">{</span><span class="n">bm</span><span class="p">}</span>
-
-<span class="n">xtick</span><span class="o">.</span><span class="n">labelsize</span><span class="p">:</span> <span class="mi">14</span>
-<span class="n">ytick</span><span class="o">.</span><span class="n">labelsize</span><span class="p">:</span> <span class="mi">14</span>
-<span class="n">legend</span><span class="o">.</span><span class="n">fontsize</span><span class="p">:</span> <span class="mi">14</span>
-<span class="n">axes</span><span class="o">.</span><span class="n">labelsize</span><span class="p">:</span> <span class="mi">16</span>
-<span class="n">axes</span><span class="o">.</span><span class="n">titlesize</span><span class="p">:</span> <span class="mi">16</span>
-<span class="n">axes</span><span class="o">.</span><span class="n">formatter</span><span class="o">.</span><span class="n">use_mathtext</span><span class="p">:</span> <span class="kc">True</span>
-</pre></div>
-</div>
-<p>which can be written to a file, e.g., <code class="docutils literal notranslate"><span class="pre">~/.config/matplotlib/matplotlibrc</span></code> or set via <code class="docutils literal notranslate"><span class="pre">rc</span></code> in your script directly. See here for more details.</p>
- </details>
-</li>
-<li><details>
- <summary>Example of matplotlib script to run for a quick test (optional)</summary>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">rc</span>
-<span class="n">rc</span><span class="p">(</span><span class="s1">&#39;font&#39;</span><span class="p">,</span><span class="o">**</span><span class="p">{</span><span class="s1">&#39;family&#39;</span><span class="p">:</span><span class="s1">&#39;sans-serif&#39;</span><span class="p">,</span><span class="s1">&#39;sans-serif&#39;</span><span class="p">:[</span><span class="s1">&#39;Helvetica&#39;</span><span class="p">]})</span>
-<span class="n">rc</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="n">usetex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-
-
-<span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
-<span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">t</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">rc</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="n">usetex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">rc</span><span class="p">(</span><span class="s1">&#39;font&#39;</span><span class="p">,</span> <span class="n">family</span><span class="o">=</span><span class="s1">&#39;serif&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\textbf</span><span class="si">{time}</span><span class="s1"> (s)&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\textit</span><span class="si">{voltage}</span><span class="s1"> (mV)&#39;</span><span class="p">,</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\TeX\ is Number &quot;</span>
-          <span class="sa">r</span><span class="s2">&quot;$\displaystyle\sum_{n=1}^\infty\frac{-e^{i\pi}}{2^n}$!&quot;</span><span class="p">,</span>
-          <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
-<span class="c1"># Make room for the ridiculously large title.</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">top</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;tex_demo&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-</div>
-</li>
-</ol>
-   </details>
 </li>
 </ol>
 </section>

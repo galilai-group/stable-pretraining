@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.patch_masking &#8212; stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</title>
+    <title>stable_pretraining.backbone.patch_masking &#8212; stable-pretraining 0.1.dev1+g5f2e0240f documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=91dfb847"></script>
+    <script src="../../../../_static/documentation_options.js?v=db2a238f"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g38f5ca3a1 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g5f2e0240f documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -330,6 +330,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Patch masking strategies for masked image modeling.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">transformers.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelOutput</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
@@ -350,7 +351,7 @@
 <div class="viewcode-block" id="MaskingOutput">
 <a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MaskingOutput">[docs]</a>
 <span class="nd">@dataclass</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">MaskingOutput</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MaskingOutput</span><span class="p">(</span><span class="n">ModelOutput</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Output from patch masking operation.</span>
 
 <span class="sd">    :ivar visible: Visible patch embeddings (B, N_keep, D)</span>
@@ -359,10 +360,10 @@
 <span class="sd">    :ivar ids_keep: Indices of kept (visible) patches (B, N_keep)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">visible</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-    <span class="n">mask</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-    <span class="n">ids_restore</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-    <span class="n">ids_keep</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span></div>
+    <span class="n">visible</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">mask</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">ids_restore</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">ids_keep</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
 
@@ -718,7 +719,7 @@
 <div class="viewcode-block" id="IJEPAMaskOutput">
 <a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.IJEPAMaskOutput">[docs]</a>
 <span class="nd">@dataclass</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">IJEPAMaskOutput</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">IJEPAMaskOutput</span><span class="p">(</span><span class="n">ModelOutput</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Output from I-JEPA masking operation.</span>
 
 <span class="sd">    :ivar context_idx: Indices of context (visible) patches [B, N_ctx]</span>
@@ -727,10 +728,10 @@
 <span class="sd">    :ivar mask: Full mask where 1 = target, 0 = context [B, N]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">context_idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-    <span class="n">target_idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
-    <span class="n">target_block_masks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span>
-    <span class="n">mask</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span></div>
+    <span class="n">context_idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">target_idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">target_block_masks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">mask</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
 
