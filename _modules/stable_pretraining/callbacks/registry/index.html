@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.registry &#8212; stable-pretraining 0.1.dev1+g916fb73a3 documentation</title>
+    <title>stable_pretraining.callbacks.registry &#8212; stable-pretraining 0.1.dev1+g1879d1db7 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=d5240f41"></script>
+    <script src="../../../../_static/documentation_options.js?v=811c8a41"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g916fb73a3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1879d1db7 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -327,11 +327,18 @@
                 <article class="bd-article">
                   
   <h1>Source code for stable_pretraining.callbacks.registry</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch</span><span class="w"> </span><span class="kn">import</span> <span class="n">LightningModule</span><span class="p">,</span> <span class="n">Trainer</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callback</span>
 
+<span class="n">_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
 <span class="n">_MODULE_REGISTRY</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">LightningModule</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">_METRIC_BUFFER</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">_DICT_BUFFER</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">_IN_STEP</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
 
 
 <div class="viewcode-block" id="get_module">
@@ -342,39 +349,120 @@
 
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_flush_buffer</span><span class="p">(</span><span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Flush buffered metrics into the module&#39;s logger.</span>
+
+<span class="sd">    Called at the start of each batch (train/val/test/predict) when the module</span>
+<span class="sd">    is in a valid logging context.  Metrics that were logged outside of a step</span>
+<span class="sd">    are replayed here so they are not lost.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">module</span> <span class="o">=</span> <span class="n">_MODULE_REGISTRY</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">module_name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">module</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span>
+
+    <span class="k">with</span> <span class="n">_lock</span><span class="p">:</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="n">_METRIC_BUFFER</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">dict_metrics</span> <span class="o">=</span> <span class="n">_DICT_BUFFER</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">kwargs</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">module</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Failed to flush buffered metric &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; — metric dropped&quot;</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="ow">in</span> <span class="n">dict_metrics</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">module</span><span class="o">.</span><span class="n">log_dict</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Failed to flush buffered dict metrics — metrics dropped&quot;</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+
+
 <div class="viewcode-block" id="log">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.log">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">log</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Log a metric using the registered module.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Log a metric using the registered module.</span>
+
+<span class="sd">    Safe to call from anywhere.  If no module is registered or the call happens</span>
+<span class="sd">    outside a training/validation/test step, the metric is buffered and will be</span>
+<span class="sd">    flushed at the start of the next step.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">module</span> <span class="o">=</span> <span class="n">_MODULE_REGISTRY</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">module_name</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">module</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">module</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+    <span class="k">if</span> <span class="n">module</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;log(&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;) called but no module registered — metric dropped&quot;</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="k">if</span> <span class="n">_IN_STEP</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="n">module</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">_lock</span><span class="p">:</span>
+            <span class="n">_METRIC_BUFFER</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;log(&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;) called outside a training/validation step&quot;</span>
+            <span class="s2">&quot; — metric buffered for next step&quot;</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="log_dict">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.log_dict">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">log_dict</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Log a metric using the registered module.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Log a dict of metrics using the registered module.</span>
+
+<span class="sd">    Same safety guarantees as :func:`log` — buffered when called outside a step.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">module</span> <span class="o">=</span> <span class="n">_MODULE_REGISTRY</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">module_name</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">module</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">module</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+    <span class="k">if</span> <span class="n">module</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;log_dict() called but no module registered — metrics dropped&quot;</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="k">if</span> <span class="n">_IN_STEP</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="n">module</span><span class="o">.</span><span class="n">log_dict</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">_lock</span><span class="p">:</span>
+            <span class="n">_DICT_BUFFER</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;log_dict() called outside a training/validation step&quot;</span>
+            <span class="s2">&quot; — metrics buffered for next step&quot;</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="ModuleRegistryCallback">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.ModuleRegistryCallback">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ModuleRegistryCallback</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Callback that automatically registers the module for global logging access.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Callback that automatically registers the module for global logging access.</span>
+
+<span class="sd">    Manages the lifecycle of the global module registry: registers the module</span>
+<span class="sd">    on ``setup``, tracks valid-logging-step windows via batch hooks, flushes</span>
+<span class="sd">    any buffered metrics at the start of each batch, and cleans everything up</span>
+<span class="sd">    on ``teardown``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+    <span class="c1"># -- lifecycle ------------------------------------------------------------</span>
 
 <div class="viewcode-block" id="ModuleRegistryCallback.setup">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.ModuleRegistryCallback.setup">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Register module at the start of any stage (fit, validate, test, predict).&quot;&quot;&quot;</span>
-        <span class="n">_MODULE_REGISTRY</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">pl_module</span></div>
+        <span class="k">with</span> <span class="n">_lock</span><span class="p">:</span>
+            <span class="n">_MODULE_REGISTRY</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">pl_module</span></div>
 
 
 <div class="viewcode-block" id="ModuleRegistryCallback.teardown">
@@ -383,7 +471,92 @@
         <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up registry when done.&quot;&quot;&quot;</span>
-        <span class="n">_MODULE_REGISTRY</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+        <span class="k">with</span> <span class="n">_lock</span><span class="p">:</span>
+            <span class="n">dropped</span> <span class="o">=</span> <span class="n">_METRIC_BUFFER</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">dropped_dict</span> <span class="o">=</span> <span class="n">_DICT_BUFFER</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">_MODULE_REGISTRY</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">_IN_STEP</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dropped</span> <span class="ow">or</span> <span class="n">dropped_dict</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dropped</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">dropped_dict</span><span class="p">)</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> buffered metric(s) were dropped at teardown&quot;</span>
+                <span class="s2">&quot; because no valid logging step occurred after they were buffered&quot;</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+    <span class="c1"># -- step tracking --------------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_enter_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">):</span>
+        <span class="n">_IN_STEP</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">_flush_buffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_exit_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">):</span>
+        <span class="n">_IN_STEP</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># Training</span>
+<div class="viewcode-block" id="ModuleRegistryCallback.on_train_batch_start">
+<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.ModuleRegistryCallback.on_train_batch_start">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_train_batch_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_enter_step</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ModuleRegistryCallback.on_train_batch_end">
+<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.ModuleRegistryCallback.on_train_batch_end">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_train_batch_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exit_step</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span></div>
+
+
+    <span class="c1"># Validation</span>
+<div class="viewcode-block" id="ModuleRegistryCallback.on_validation_batch_start">
+<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.ModuleRegistryCallback.on_validation_batch_start">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_validation_batch_start</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="o">=</span><span class="mi">0</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_enter_step</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ModuleRegistryCallback.on_validation_batch_end">
+<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.ModuleRegistryCallback.on_validation_batch_end">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_validation_batch_end</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="o">=</span><span class="mi">0</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exit_step</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span></div>
+
+
+    <span class="c1"># Test</span>
+<div class="viewcode-block" id="ModuleRegistryCallback.on_test_batch_start">
+<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.ModuleRegistryCallback.on_test_batch_start">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_test_batch_start</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="o">=</span><span class="mi">0</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_enter_step</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ModuleRegistryCallback.on_test_batch_end">
+<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.ModuleRegistryCallback.on_test_batch_end">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_test_batch_end</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="o">=</span><span class="mi">0</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exit_step</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span></div>
+
+
+    <span class="c1"># Predict</span>
+<div class="viewcode-block" id="ModuleRegistryCallback.on_predict_batch_start">
+<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.ModuleRegistryCallback.on_predict_batch_start">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_predict_batch_start</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="o">=</span><span class="mi">0</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_enter_step</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ModuleRegistryCallback.on_predict_batch_end">
+<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.ModuleRegistryCallback.on_predict_batch_end">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_predict_batch_end</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="o">=</span><span class="mi">0</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exit_step</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

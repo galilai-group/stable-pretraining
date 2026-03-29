@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.teacher_student &#8212; stable-pretraining 0.1.dev1+g916fb73a3 documentation</title>
+    <title>stable_pretraining.callbacks.teacher_student &#8212; stable-pretraining 0.1.dev1+g1879d1db7 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=d5240f41"></script>
+    <script src="../../../../_static/documentation_options.js?v=811c8a41"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g916fb73a3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1879d1db7 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -333,6 +333,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callback</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span> <span class="k">as</span> <span class="n">_spt_log</span>
+
 
 <div class="viewcode-block" id="TeacherStudentCallback">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.TeacherStudentCallback">[docs]</a>
@@ -359,10 +361,16 @@
 <span class="sd">        &gt;&gt;&gt; trainer = pl.Trainer(callbacks=[TeacherStudentCallback()])</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">update_frequency</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">update_after_backward</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">update_frequency</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">update_after_backward</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update_frequency</span> <span class="o">=</span> <span class="n">update_frequency</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update_after_backward</span> <span class="o">=</span> <span class="n">update_after_backward</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_wrapper_found</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="c1"># Track optimizer-step progress and accumulation steps</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_global_step</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
@@ -447,6 +455,15 @@
                         <span class="n">trainer</span><span class="o">.</span><span class="n">current_epoch</span><span class="p">,</span> <span class="n">trainer</span><span class="o">.</span><span class="n">max_epochs</span>
                     <span class="p">)</span>
                 <span class="n">module</span><span class="o">.</span><span class="n">update_teacher</span><span class="p">()</span>
+
+                <span class="c1"># Log EMA coefficient if available</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="s2">&quot;ema_coefficient&quot;</span><span class="p">):</span>
+                    <span class="n">_spt_log</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;teacher_student/</span><span class="si">{</span><span class="nb">getattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;name&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ema&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">_coefficient&quot;</span><span class="p">,</span>
+                        <span class="nb">float</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">ema_coefficient</span><span class="p">),</span>
+                        <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">on_epoch</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="p">)</span>
 
                 <span class="c1"># Mark that updates are happening (for warning system)</span>
                 <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="s2">&quot;_mark_updated&quot;</span><span class="p">):</span>

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.latent_viz &#8212; stable-pretraining 0.1.dev1+g916fb73a3 documentation</title>
+    <title>stable_pretraining.callbacks.latent_viz &#8212; stable-pretraining 0.1.dev1+g1879d1db7 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=d5240f41"></script>
+    <script src="../../../../_static/documentation_options.js?v=811c8a41"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g916fb73a3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1879d1db7 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -343,6 +343,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tensor</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span> <span class="k">as</span> <span class="n">_spt_log</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">..utils.distance_metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_pairwise_distances_chunked</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.queue</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_or_create_queue_callback</span>
@@ -410,6 +412,7 @@
         <span class="n">plot_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
         <span class="n">save_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">input_dim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
@@ -437,6 +440,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">input_dim</span> <span class="o">=</span> <span class="n">input_dim</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_projection_config</span> <span class="o">=</span> <span class="n">projection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
 
         <span class="c1"># Will be initialized in setup</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span> <span class="o">=</span> <span class="kc">None</span>
@@ -584,6 +588,21 @@
             <span class="n">prog_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">sync_dist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="n">_spt_log</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;train/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_attraction_loss&quot;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_last_attraction_loss</span><span class="p">,</span>
+                <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">sync_dist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">_spt_log</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;train/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_repulsion_loss&quot;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_last_repulsion_loss</span><span class="p">,</span>
+                <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">sync_dist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">optimizer_step</span><span class="p">(</span><span class="n">batch_idx</span><span class="p">,</span> <span class="n">trainer</span><span class="p">)</span></div>
 
@@ -649,6 +668,10 @@
         <span class="n">repulsion_loss</span> <span class="o">=</span> <span class="o">-</span><span class="p">((</span><span class="mi">1</span> <span class="o">-</span> <span class="n">q_negatives</span><span class="p">)</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="nb">min</span><span class="o">=</span><span class="mf">1e-10</span><span class="p">)</span><span class="o">.</span><span class="n">log</span><span class="p">())</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
 
         <span class="n">total_loss</span> <span class="o">=</span> <span class="n">attraction_loss</span> <span class="o">+</span> <span class="n">repulsion_loss</span>
+
+        <span class="c1"># Store components for verbose logging</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_attraction_loss</span> <span class="o">=</span> <span class="n">attraction_loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_repulsion_loss</span> <span class="o">=</span> <span class="n">repulsion_loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
 
         <span class="k">return</span> <span class="n">total_loss</span>
 

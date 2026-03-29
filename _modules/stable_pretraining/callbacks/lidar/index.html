@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.lidar &#8212; stable-pretraining 0.1.dev1+g916fb73a3 documentation</title>
+    <title>stable_pretraining.callbacks.lidar &#8212; stable-pretraining 0.1.dev1+g1879d1db7 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=d5240f41"></script>
+    <script src="../../../../_static/documentation_options.js?v=811c8a41"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g916fb73a3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1879d1db7 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -340,6 +340,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callback</span><span class="p">,</span> <span class="n">LightningModule</span><span class="p">,</span> <span class="n">Trainer</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span> <span class="k">as</span> <span class="n">_spt_log</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">.queue</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_or_create_queue_callback</span>
 
 
@@ -393,6 +395,7 @@
         <span class="n">samples_per_class</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
         <span class="n">delta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span><span class="p">,</span>
         <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-8</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
@@ -411,6 +414,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">samples_per_class</span> <span class="o">=</span> <span class="n">samples_per_class</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">delta</span> <span class="o">=</span> <span class="n">delta</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span> <span class="o">=</span> <span class="n">epsilon</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_target_queue</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -487,22 +491,35 @@
         <span class="k">if</span> <span class="n">lidar_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">pl_module</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-                <span class="n">lidar_value</span><span class="p">,</span>
+                <span class="n">lidar_value</span><span class="p">[</span><span class="s2">&quot;lidar&quot;</span><span class="p">],</span>
                 <span class="n">rank_zero_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Only log from rank 0 to avoid duplicates</span>
                 <span class="n">sync_dist</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># No need to sync since we compute same value on all ranks</span>
             <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                <span class="n">_spt_log</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">/entropy&quot;</span><span class="p">,</span>
+                    <span class="n">lidar_value</span><span class="p">[</span><span class="s2">&quot;entropy&quot;</span><span class="p">],</span>
+                    <span class="n">rank_zero_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">sync_dist</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">_spt_log</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">/top_eigenvalue&quot;</span><span class="p">,</span>
+                    <span class="n">lidar_value</span><span class="p">[</span><span class="s2">&quot;top_eigenvalue&quot;</span><span class="p">],</span>
+                    <span class="n">rank_zero_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">sync_dist</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="p">)</span>
             <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: LiDAR = </span><span class="si">{</span><span class="n">lidar_value</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: LiDAR = </span><span class="si">{</span><span class="n">lidar_value</span><span class="p">[</span><span class="s1">&#39;lidar&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_lidar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">embeddings</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_lidar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">embeddings</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the LiDAR metric from embeddings.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            embeddings: Tensor of shape (n_samples, feature_dim)</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            LiDAR value or None if computation fails</span>
+<span class="sd">            Dict with &#39;lidar&#39;, &#39;entropy&#39;, and &#39;top_eigenvalue&#39; keys, or None if computation fails.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">n_samples</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">embeddings</span><span class="o">.</span><span class="n">shape</span>
 
@@ -576,7 +593,7 @@
             <span class="n">eigvals_sum</span> <span class="o">=</span> <span class="n">eigvals_with_eps</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">eigvals_sum</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: All eigenvalues are zero or negative&quot;</span><span class="p">)</span>
-                <span class="k">return</span> <span class="mf">1.0</span>  <span class="c1"># Return minimum rank</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;lidar&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;entropy&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;top_eigenvalue&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
 
             <span class="n">p</span> <span class="o">=</span> <span class="n">eigvals_with_eps</span> <span class="o">/</span> <span class="n">eigvals_sum</span>
 
@@ -584,7 +601,11 @@
             <span class="n">entropy</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">p</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">p</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
             <span class="n">lidar</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">entropy</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
 
-            <span class="k">return</span> <span class="n">lidar</span></div>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;lidar&quot;</span><span class="p">:</span> <span class="n">lidar</span><span class="p">,</span>
+                <span class="s2">&quot;entropy&quot;</span><span class="p">:</span> <span class="n">entropy</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+                <span class="s2">&quot;top_eigenvalue&quot;</span><span class="p">:</span> <span class="n">eigvals_lidar</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+            <span class="p">}</span></div>
 
 </pre></div>
 

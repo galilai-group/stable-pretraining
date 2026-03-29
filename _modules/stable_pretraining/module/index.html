@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g916fb73a3 documentation</title>
+    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g1879d1db7 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=d5240f41"></script>
+    <script src="../../../_static/documentation_options.js?v=811c8a41"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g916fb73a3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1879d1db7 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -342,6 +342,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.core.optimizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">LightningOptimizer</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.optim</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_optimizer</span><span class="p">,</span> <span class="n">create_scheduler</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.utils.error_handling</span><span class="w"> </span><span class="kn">import</span> <span class="n">catch_errors_class</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.callbacks.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span> <span class="k">as</span> <span class="n">_spt_log</span>
 
 
 <div class="viewcode-block" id="Module">
@@ -620,6 +621,10 @@
             <span class="c1"># Step its scheduler if it exists</span>
             <span class="k">if</span> <span class="n">schedulers</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">schedulers</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+            <span class="c1"># Log learning rate for each optimizer</span>
+            <span class="n">lr</span> <span class="o">=</span> <span class="n">opt</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">param_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;lr&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="n">LightningOptimizer</span><span class="p">)</span> <span class="k">else</span> <span class="n">opt</span><span class="o">.</span><span class="n">param_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;lr&quot;</span><span class="p">]</span>
+            <span class="n">_spt_log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;hparams/lr_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">lr</span><span class="p">,</span> <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_epoch</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
         <span class="c1"># zero grad what&#39;s needed</span>
         <span class="k">for</span> <span class="n">opt</span> <span class="ow">in</span> <span class="n">zero_grad_opts</span><span class="p">:</span>
