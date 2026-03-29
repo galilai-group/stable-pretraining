@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+g016447dd2 documentation</title>
+    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+g6fd33c268 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=a4ffb39b"></script>
+    <script src="../_static/documentation_options.js?v=0667dc8e"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g016447dd2 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g6fd33c268 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -414,11 +414,8 @@
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.load_state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.load_state_dict()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_exception"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_exception()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_save_checkpoint()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_train_end"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_train_end()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_train_start"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_train_start()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.setup"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.setup()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.state_dict()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.teardown"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.teardown()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -453,6 +450,13 @@
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.factories">stable_pretraining.callbacks.factories module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.PrintProgressBar"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_batch_end"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar.on_train_batch_end()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_epoch_end"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar.on_train_epoch_end()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_epoch_start"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar.on_train_epoch_start()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.RichProgressBar"><code class="docutils literal notranslate"><span class="pre">RichProgressBar</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.default"><code class="docutils literal notranslate"><span class="pre">default()</span></code></a></li>
 </ul>
 </li>
@@ -517,7 +521,7 @@
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.data"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.actual_queue_length"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.actual_queue_length</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.actual_queue_length</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id21"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id13"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_train_batch_end"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_train_batch_end()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_validation_epoch_end"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_validation_epoch_end()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_validation_epoch_start"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_validation_epoch_start()</span></code></a></li>
@@ -933,7 +937,7 @@ dry_run=True,</p>
 <span id="stable-pretraining-callbacks-cpu-offload-module"></span><h2>stable_pretraining.callbacks.cpu_offload module<a class="headerlink" href="#module-stable_pretraining.callbacks.cpu_offload" title="Link to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.cpu_offload.</span></span><span class="sig-name descname"><span class="pre">CPUOffloadCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offload_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_skipped</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.cpu_offload.</span></span><span class="sig-name descname"><span class="pre">CPUOffloadCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offload_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Callback</span></code></p>
 <p>Offload checkpoint tensors to CPU during save to reduce GPU memory usage.</p>
 <p>This callback intercepts checkpoint saving and moves all PyTorch tensors
@@ -944,106 +948,60 @@ writing to disk. Prevents GPU OOM for large models (2B+ parameters).</p>
 - Single GPU training</p>
 <p><strong>Incompatible Strategies (auto-disabled):</strong>
 - FSDP (uses sharded checkpointing)
-- DeepSpeed (has custom checkpoint mechanism)
-- Other sharding strategies</p>
+- DeepSpeed (has custom checkpoint mechanism)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>offload_keys</strong> – Keys to offload. Defaults to [‘state_dict’, ‘optimizer_states’, ‘lr_schedulers’]</p></li>
-<li><p><strong>log_skipped</strong> – If False, only logs first/last 10 skipped objects (default: False).
-If True, logs all skipped objects.</p></li>
-</ul>
+<dd class="field-odd"><p><strong>offload_keys</strong> – Keys to offload. Defaults to
+<code class="docutils literal notranslate"><span class="pre">['state_dict',</span> <span class="pre">'optimizer_states',</span> <span class="pre">'lr_schedulers']</span></code>.</p>
 </dd>
 </dl>
-<p class="rubric">Example</p>
-<p><a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a>python
-from lightning.pytorch import Trainer</p>
-<p># Just add to callbacks!
-trainer = Trainer(</p>
-<blockquote>
-<div><p>strategy=”ddp”,  # Compatible
-callbacks=[</p>
-<blockquote>
-<div><p>CPUOffloadCallback(),  # Auto-enables
-ModelCheckpoint(…),</p>
-</div></blockquote>
-<p>],</p>
-</div></blockquote>
-<p>)</p>
-<p>trainer.fit(model)
-<a href="#id17"><span class="problematic" id="id18">``</span></a><a href="#id19"><span class="problematic" id="id20">`</span></a></p>
-<dl class="simple">
-<dt>Benefits:</dt><dd><ul class="simple">
-<li><p>2B model + optimizer: ~12GB GPU memory freed on rank 0</p></li>
-<li><p>No code changes needed in LightningModule</p></li>
-<li><p>Safe resumption - tensors auto-loaded to correct device</p></li>
-<li><p>Adds ~2-5s to checkpoint save time</p></li>
-<li><p>Auto-detects incompatible strategies and disables itself</p></li>
-</ul>
-</dd>
-</dl>
-<p class="rubric">Notes</p>
-<ul class="simple">
-<li><p>Only affects rank 0 in DDP (only rank that saves)</p></li>
-<li><p>Custom objects in checkpoint are safely skipped</p></li>
-<li><p>Does not affect checkpoint contents or resumption</p></li>
-<li><p>Compatible with all PyTorch Lightning versions &gt;= 2.0</p></li>
-</ul>
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.load_state_dict">
 <span class="sig-name descname"><span class="pre">load_state_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state_dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.load_state_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.load_state_dict" title="Link to this definition">#</a></dt>
-<dd><p>Load callback state from checkpoint.</p>
+<dd><p>Called when loading a checkpoint, implement to reload callback state given callback’s <code class="docutils literal notranslate"><span class="pre">state_dict</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>state_dict</strong> – the callback state returned by <code class="docutils literal notranslate"><span class="pre">state_dict</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_exception">
 <span class="sig-name descname"><span class="pre">on_exception</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exception</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.on_exception"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_exception" title="Link to this definition">#</a></dt>
-<dd><p>Called when an exception occurs during training.</p>
+<dd><p>Called when any trainer execution is interrupted by an exception.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_save_checkpoint">
 <span class="sig-name descname"><span class="pre">on_save_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">checkpoint</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.on_save_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_save_checkpoint" title="Link to this definition">#</a></dt>
-<dd><p>Hook called when checkpoint is being saved.</p>
+<dd><p>Called when saving a checkpoint to give you a chance to store anything else you might want to save.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>trainer</strong> – PyTorch Lightning Trainer instance</p></li>
-<li><p><strong>pl_module</strong> – LightningModule being trained</p></li>
-<li><p><strong>checkpoint</strong> – Checkpoint dict to be saved (modified in-place)</p></li>
+<li><p><strong>trainer</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">Trainer</span></code> instance.</p></li>
+<li><p><strong>pl_module</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">LightningModule</span></code> instance.</p></li>
+<li><p><strong>checkpoint</strong> – the checkpoint dictionary that will be saved.</p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_train_end">
-<span class="sig-name descname"><span class="pre">on_train_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.on_train_end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_train_end" title="Link to this definition">#</a></dt>
-<dd><p>Called when training ends.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_train_start">
-<span class="sig-name descname"><span class="pre">on_train_start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.on_train_start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_train_start" title="Link to this definition">#</a></dt>
-<dd><p>Called when training begins.</p>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.setup">
 <span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.setup" title="Link to this definition">#</a></dt>
-<dd><p>Called when fit, validate, test, or predict begins.</p>
+<dd><p>Called when fit, validate, test, predict, or tune begins.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.state_dict">
 <span class="sig-name descname"><span class="pre">state_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.state_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.state_dict" title="Link to this definition">#</a></dt>
-<dd><p>Return callback state for checkpointing.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.teardown">
-<span class="sig-name descname"><span class="pre">teardown</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.teardown"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.teardown" title="Link to this definition">#</a></dt>
-<dd><p>Called when fit, validate, test, or predict ends.</p>
+<dd><p>Called when saving a checkpoint, implement to generate callback’s <code class="docutils literal notranslate"><span class="pre">state_dict</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A dictionary containing callback state.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -1184,6 +1142,70 @@ async_dump: If True, runs the dump in a background thread (non-blocking)</p>
 </section>
 <section id="module-stable_pretraining.callbacks.factories">
 <span id="stable-pretraining-callbacks-factories-module"></span><h2>stable_pretraining.callbacks.factories module<a class="headerlink" href="#module-stable_pretraining.callbacks.factories" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.factories.PrintProgressBar">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.factories.</span></span><span class="sig-name descname"><span class="pre">PrintProgressBar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_every_n_steps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/factories/#PrintProgressBar"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.factories.PrintProgressBar" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Callback</span></code></p>
+<p>Plain-text progress logger for non-interactive environments (SLURM, CI).</p>
+<p>Prints a one-liner every <code class="docutils literal notranslate"><span class="pre">log_every_n_steps</span></code> training batches so that
+progress shows up in slurm .out files and the wandb Logs tab.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.factories.PrintProgressBar.on_train_batch_end">
+<span class="sig-name descname"><span class="pre">on_train_batch_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_idx</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/factories/#PrintProgressBar.on_train_batch_end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_batch_end" title="Link to this definition">#</a></dt>
+<dd><p>Called when the train batch ends.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The value <code class="docutils literal notranslate"><span class="pre">outputs[&quot;loss&quot;]</span></code> here will be the normalized value w.r.t <code class="docutils literal notranslate"><span class="pre">accumulate_grad_batches</span></code> of the
+loss returned from <code class="docutils literal notranslate"><span class="pre">training_step</span></code>.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.factories.PrintProgressBar.on_train_epoch_end">
+<span class="sig-name descname"><span class="pre">on_train_epoch_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/factories/#PrintProgressBar.on_train_epoch_end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_epoch_end" title="Link to this definition">#</a></dt>
+<dd><p>Called when the train epoch ends.</p>
+<p>To access all batch outputs at the end of the epoch, you can cache step outputs as an attribute of the
+<code class="xref py py-class docutils literal notranslate"><span class="pre">lightning.pytorch.core.LightningModule</span></code> and access them in this hook:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MyLightningModule</span><span class="p">(</span><span class="n">L</span><span class="o">.</span><span class="n">LightningModule</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_step_outputs</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="o">...</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_step_outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">loss</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyCallback</span><span class="p">(</span><span class="n">L</span><span class="o">.</span><span class="n">Callback</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_train_epoch_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">):</span>
+        <span class="c1"># do something with all training_step outputs, for example:</span>
+        <span class="n">epoch_mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">pl_module</span><span class="o">.</span><span class="n">training_step_outputs</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">pl_module</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;training_epoch_mean&quot;</span><span class="p">,</span> <span class="n">epoch_mean</span><span class="p">)</span>
+        <span class="c1"># free up the memory</span>
+        <span class="n">pl_module</span><span class="o">.</span><span class="n">training_step_outputs</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.factories.PrintProgressBar.on_train_epoch_start">
+<span class="sig-name descname"><span class="pre">on_train_epoch_start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/factories/#PrintProgressBar.on_train_epoch_start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_epoch_start" title="Link to this definition">#</a></dt>
+<dd><p>Called when the train epoch begins.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.factories.RichProgressBar">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.factories.</span></span><span class="sig-name descname"><span class="pre">RichProgressBar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">refresh_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leave</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theme</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">RichProgressBarTheme</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">RichProgressBarTheme(description='',</span> <span class="pre">progress_bar='#6206E0',</span> <span class="pre">progress_bar_finished='#6206E0',</span> <span class="pre">progress_bar_pulse='#6206E0',</span> <span class="pre">batch_progress='',</span> <span class="pre">time='dim',</span> <span class="pre">processing_speed='dim</span> <span class="pre">underline',</span> <span class="pre">metrics='italic',</span> <span class="pre">metrics_text_delimiter='</span> <span class="pre">',</span> <span class="pre">metrics_format='.3f')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">console_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/factories/#RichProgressBar"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.factories.RichProgressBar" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">RichProgressBar</span></code></p>
+<p>RichProgressBar with a workaround for a known Rich/Lightning bug.</p>
+<p>Lightning’s <code class="docutils literal notranslate"><span class="pre">_stop_progress</span></code> can call <code class="docutils literal notranslate"><span class="pre">Live.stop()</span></code> when the live stack
+is already empty, raising <code class="docutils literal notranslate"><span class="pre">IndexError:</span> <span class="pre">pop</span> <span class="pre">from</span> <span class="pre">empty</span> <span class="pre">list</span></code>.  This
+subclass catches that error so teardown completes cleanly.</p>
+</dd></dl>
+
 <dl class="py function">
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.factories.default">
 <span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.factories.</span></span><span class="sig-name descname"><span class="pre">default</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/factories/#default"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.factories.default" title="Link to this definition">#</a></dt>
@@ -1655,8 +1677,8 @@ it uses a single queue with the maximum size and serves appropriate subsets.</p>
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="id21">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.11)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#id21" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="id13">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.11)"><span class="pre">Tensor</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#id13" title="Link to this definition">#</a></dt>
 <dd><p>Get snapshot data during validation.</p>
 </dd></dl>
 
@@ -2398,11 +2420,8 @@ loss returned from <code class="docutils literal notranslate"><span class="pre">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.load_state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.load_state_dict()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_exception"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_exception()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_save_checkpoint()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_train_end"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_train_end()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_train_start"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_train_start()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.setup"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.setup()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.state_dict()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.teardown"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.teardown()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -2437,6 +2456,13 @@ loss returned from <code class="docutils literal notranslate"><span class="pre">
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.factories">stable_pretraining.callbacks.factories module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.PrintProgressBar"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_batch_end"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar.on_train_batch_end()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_epoch_end"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar.on_train_epoch_end()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_epoch_start"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar.on_train_epoch_start()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.RichProgressBar"><code class="docutils literal notranslate"><span class="pre">RichProgressBar</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.factories.default"><code class="docutils literal notranslate"><span class="pre">default()</span></code></a></li>
 </ul>
 </li>
@@ -2501,7 +2527,7 @@ loss returned from <code class="docutils literal notranslate"><span class="pre">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.data"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.actual_queue_length"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.actual_queue_length</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.actual_queue_length</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id21"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id13"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_train_batch_end"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_train_batch_end()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_validation_epoch_end"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_validation_epoch_end()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.queue.OnlineQueue.on_validation_epoch_start"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_validation_epoch_start()</span></code></a></li>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining package &#8212; stable-pretraining 0.1.dev1+g016447dd2 documentation</title>
+    <title>stable_pretraining package &#8212; stable-pretraining 0.1.dev1+g6fd33c268 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=a4ffb39b"></script>
+    <script src="../_static/documentation_options.js?v=0667dc8e"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g016447dd2 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g6fd33c268 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -834,11 +834,8 @@
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.load_state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.load_state_dict()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_exception"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_exception()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_save_checkpoint()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_train_end"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_train_end()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_train_start"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_train_start()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.setup"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.setup()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.state_dict()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.teardown"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.teardown()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -873,6 +870,13 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.factories">stable_pretraining.callbacks.factories module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.factories.PrintProgressBar"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_batch_end"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar.on_train_batch_end()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_epoch_end"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar.on_train_epoch_end()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.factories.PrintProgressBar.on_train_epoch_start"><code class="docutils literal notranslate"><span class="pre">PrintProgressBar.on_train_epoch_start()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.factories.RichProgressBar"><code class="docutils literal notranslate"><span class="pre">RichProgressBar</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.factories.default"><code class="docutils literal notranslate"><span class="pre">default()</span></code></a></li>
 </ul>
 </li>
@@ -937,7 +941,7 @@
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.queue.OnlineQueue.data"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.queue.OnlineQueue.actual_queue_length"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.actual_queue_length</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#id0"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.actual_queue_length</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#id21"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#id13"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.data</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.queue.OnlineQueue.on_train_batch_end"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_train_batch_end()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.queue.OnlineQueue.on_validation_epoch_end"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_validation_epoch_end()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.queue.OnlineQueue.on_validation_epoch_start"><code class="docutils literal notranslate"><span class="pre">OnlineQueue.on_validation_epoch_start()</span></code></a></li>

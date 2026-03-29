@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.forward &#8212; stable-pretraining 0.1.dev1+g016447dd2 documentation</title>
+    <title>stable_pretraining.forward &#8212; stable-pretraining 0.1.dev1+g6fd33c268 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=a4ffb39b"></script>
+    <script src="../../../_static/documentation_options.js?v=0667dc8e"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g016447dd2 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g6fd33c268 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -465,7 +465,12 @@
             <span class="p">)</span>
         <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">supervised_loss</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s2">&quot;logits&quot;</span><span class="p">],</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">/loss&quot;</span><span class="p">,</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span> <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sync_dist</span><span class="o">=</span><span class="kc">True</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">/loss&quot;</span><span class="p">,</span>
+            <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span>
+            <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">sync_dist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">prog_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">out</span></div>
@@ -616,7 +621,12 @@
         <span class="n">out</span><span class="p">[</span><span class="s2">&quot;embedding&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">target_features</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
         <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">loss</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">/loss&quot;</span><span class="p">,</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span> <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sync_dist</span><span class="o">=</span><span class="kc">True</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">/loss&quot;</span><span class="p">,</span>
+            <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span>
+            <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">sync_dist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">prog_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="k">else</span><span class="p">:</span>
@@ -1115,7 +1125,14 @@
 
     <span class="n">out</span><span class="p">[</span><span class="s2">&quot;embedding&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">teacher_cls_features</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
     <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">loss</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">/loss&quot;</span><span class="p">,</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span> <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sync_dist</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">/loss&quot;</span><span class="p">,</span>
+        <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span>
+        <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">sync_dist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">prog_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">out</span></div>
 
@@ -1402,7 +1419,14 @@
     <span class="c1"># Return flattened CLS features for callbacks (probes expect [n_global * batch_size, dim])</span>
     <span class="n">out</span><span class="p">[</span><span class="s2">&quot;embedding&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">teacher_cls_features</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">n_global</span> <span class="o">*</span> <span class="n">batch_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
     <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">loss</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">/loss&quot;</span><span class="p">,</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span> <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sync_dist</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2">/loss&quot;</span><span class="p">,</span>
+        <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span>
+        <span class="n">on_step</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">sync_dist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">prog_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">out</span></div>
 
