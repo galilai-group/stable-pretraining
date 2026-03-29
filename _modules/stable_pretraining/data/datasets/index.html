@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.data.datasets &#8212; stable-pretraining 0.1.dev1+g9483058fa documentation</title>
+    <title>stable_pretraining.data.datasets &#8212; stable-pretraining 0.1.dev1+g916fb73a3 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=5f3d4436"></script>
+    <script src="../../../../_static/documentation_options.js?v=d5240f41"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9483058fa documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g916fb73a3 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -554,7 +554,9 @@
 <span class="sd">    :func:`HFDataset` factory instead.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
         <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="s2">&quot;sample_idx&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">num_rows</span><span class="p">)))</span>
         <span class="k">if</span> <span class="n">rename_columns</span><span class="p">:</span>
@@ -613,7 +615,9 @@
 <span class="sd">    :func:`HFDataset` factory instead.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
         <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
             <span class="k">lambda</span> <span class="n">sample</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="p">{</span><span class="o">**</span><span class="n">sample</span><span class="p">,</span> <span class="s2">&quot;sample_idx&quot;</span><span class="p">:</span> <span class="n">idx</span><span class="p">},</span> <span class="n">with_indices</span><span class="o">=</span><span class="kc">True</span>
@@ -659,9 +663,13 @@
 
 <div class="viewcode-block" id="HFDataset">
 <a class="viewcode-back" href="../../../../stable_pretraining.data/#stable_pretraining.data.HFDataset">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">HFDataset</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a HuggingFace dataset wrapper, automatically choosing map-style</span>
-<span class="sd">    or streaming based on ``streaming=True/False`` in *kwargs*.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">HFDataset</span><span class="p">(</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a HuggingFace dataset wrapper.</span>
+
+<span class="sd">    Automatically chooses map-style or streaming based on</span>
+<span class="sd">    ``streaming=True/False`` in *kwargs*.</span>
 
 <span class="sd">    The returned object is either an :class:`HFMapDataset` (subclass of</span>
 <span class="sd">    :class:`torch.utils.data.Dataset`) or an :class:`HFIterableDataset`</span>

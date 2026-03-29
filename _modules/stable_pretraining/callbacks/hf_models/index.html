@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.hf_models &#8212; stable-pretraining 0.1.dev1+g9483058fa documentation</title>
+    <title>stable_pretraining.callbacks.hf_models &#8212; stable-pretraining 0.1.dev1+g916fb73a3 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=5f3d4436"></script>
+    <script src="../../../../_static/documentation_options.js?v=d5240f41"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9483058fa documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g916fb73a3 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -336,22 +336,23 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callback</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">PreTrainedModel</span>
 
+
 <div class="viewcode-block" id="HuggingFaceCheckpointCallback">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">HuggingFaceCheckpointCallback</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    A PyTorch Lightning callback that identifies submodules inheriting from </span>
-<span class="sd">    Hugging Face&#39;s `PreTrainedModel` and exports them into standalone, </span>
-<span class="sd">    &quot;zero-knowledge&quot; loadable HF directories.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Export HF-compatible checkpoints for PreTrainedModel submodules.</span>
 
-<span class="sd">    This callback automates the synchronization between Lightning training </span>
-<span class="sd">    and the Hugging Face ecosystem, handling weight stripping (removing </span>
+<span class="sd">    Identifies submodules inheriting from Hugging Face&#39;s `PreTrainedModel`</span>
+<span class="sd">    and exports them into standalone, &quot;zero-knowledge&quot; loadable HF directories.</span>
+
+<span class="sd">    This callback automates the synchronization between Lightning training</span>
+<span class="sd">    and the Hugging Face ecosystem, handling weight stripping (removing</span>
 <span class="sd">    DDP/Lightning prefixes) and dependency copying.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        save_dir (str): Root directory where HF models will be exported. </span>
+<span class="sd">        save_dir (str): Root directory where HF models will be exported.</span>
 <span class="sd">            Default is &quot;hf_exports&quot;.</span>
-<span class="sd">        verbose (bool): If True, logs a discovery table at the start of </span>
+<span class="sd">        verbose (bool): If True, logs a discovery table at the start of</span>
 <span class="sd">            training. Default is True.</span>
 
 <span class="sd">    Example:</span>
@@ -359,8 +360,7 @@
 <span class="sd">        &gt;&gt;&gt; class MySystem(pl.LightningModule):</span>
 <span class="sd">        ...     def __init__(self, config):</span>
 <span class="sd">        ...         super().__init__()</span>
-<span class="sd">        ...         self.backbone = MyCustomHFModel(config) # Inherits PreTrainedModel</span>
-<span class="sd">        ...</span>
+<span class="sd">        ...         self.backbone = MyCustomHFModel(config)  # Inherits PreTrainedModel</span>
 <span class="sd">        &gt;&gt;&gt; # Add callback to trainer</span>
 <span class="sd">        &gt;&gt;&gt; hf_cb = HuggingFaceCheckpointCallback(save_dir=&quot;checkpoints/hf_models&quot;)</span>
 <span class="sd">        &gt;&gt;&gt; trainer = pl.Trainer(callbacks=[hf_cb])</span>
@@ -369,8 +369,7 @@
 <span class="sd">        &gt;&gt;&gt; # Later, load without your source code library:</span>
 <span class="sd">        &gt;&gt;&gt; from transformers import AutoModel</span>
 <span class="sd">        &gt;&gt;&gt; model = AutoModel.from_pretrained(</span>
-<span class="sd">        ...     &quot;checkpoints/hf_models/step_5000/backbone&quot;, </span>
-<span class="sd">        ...     trust_remote_code=True</span>
+<span class="sd">        ...     &quot;checkpoints/hf_models/step_5000/backbone&quot;, trust_remote_code=True</span>
 <span class="sd">        ... )</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -378,31 +377,40 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">save_dir</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Initialized HF Checkpoint Callback. Target: &lt;cyan&gt;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span><span class="si">}</span><span class="s2">&lt;/cyan&gt;&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Initialized HF Checkpoint Callback. Target: &lt;cyan&gt;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span><span class="si">}</span><span class="s2">&lt;/cyan&gt;&quot;</span>
+        <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_get_hf_submodules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">LightningModule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">PreTrainedModel</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_hf_submodules</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">LightningModule</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">PreTrainedModel</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Identifies top-level children that are instances of PreTrainedModel.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span>
-            <span class="n">name</span><span class="p">:</span> <span class="n">module</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">named_children</span><span class="p">()</span> 
+            <span class="n">name</span><span class="p">:</span> <span class="n">module</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">named_children</span><span class="p">()</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">PreTrainedModel</span><span class="p">)</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_log_discovery_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">submodules</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">PreTrainedModel</span><span class="p">]):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Renders a diagnostic table of discovered HF submodules using Loguru.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">submodules</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No Hugging Face (PreTrainedModel) submodules found in LightningModule.&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;No Hugging Face (PreTrainedModel) submodules found in LightningModule.&quot;</span>
+            <span class="p">)</span>
             <span class="k">return</span>
 
         <span class="c1"># Formatting a manual Markdown table for the console</span>
         <span class="n">header</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;| </span><span class="si">{</span><span class="s1">&#39;Module Name&#39;</span><span class="si">:</span><span class="s2">&lt;18</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="s1">&#39;Class Type&#39;</span><span class="si">:</span><span class="s2">&lt;22</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="s1">&#39;Config Type&#39;</span><span class="si">:</span><span class="s2">&lt;22</span><span class="si">}</span><span class="s2"> |&quot;</span>
-        <span class="n">sep</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;|</span><span class="si">{</span><span class="s1">&#39;-&#39;</span><span class="o">*</span><span class="mi">20</span><span class="si">}</span><span class="s2">|</span><span class="si">{</span><span class="s1">&#39;-&#39;</span><span class="o">*</span><span class="mi">24</span><span class="si">}</span><span class="s2">|</span><span class="si">{</span><span class="s1">&#39;-&#39;</span><span class="o">*</span><span class="mi">24</span><span class="si">}</span><span class="s2">|&quot;</span>
-        
+        <span class="n">sep</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;|</span><span class="si">{</span><span class="s1">&#39;-&#39;</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">20</span><span class="si">}</span><span class="s2">|</span><span class="si">{</span><span class="s1">&#39;-&#39;</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">24</span><span class="si">}</span><span class="s2">|</span><span class="si">{</span><span class="s1">&#39;-&#39;</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">24</span><span class="si">}</span><span class="s2">|&quot;</span>
+
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;HF Submodule Discovery Summary:&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">sep</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">sep</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">mod</span> <span class="ow">in</span> <span class="n">submodules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;| </span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">&lt;18</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">mod</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">:</span><span class="s2">&lt;22</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">mod</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">:</span><span class="s2">&lt;22</span><span class="si">}</span><span class="s2"> |&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;| </span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">&lt;18</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">mod</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">:</span><span class="s2">&lt;22</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">mod</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">:</span><span class="s2">&lt;22</span><span class="si">}</span><span class="s2"> |&quot;</span>
+            <span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">sep</span><span class="p">)</span>
 
 <div class="viewcode-block" id="HuggingFaceCheckpointCallback.on_train_start">
@@ -415,13 +423,14 @@
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_copy_dependency_tree</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">PreTrainedModel</span><span class="p">,</span> <span class="n">save_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Locates the source files for the model and its immediate neighbors </span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy source files so relative imports resolve in the export dir.</span>
+
+<span class="sd">        Locates the source files for the model and its immediate neighbors</span>
 <span class="sd">        to ensure relative imports (e.g. from .layers import X) resolve.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">model_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">getfile</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="vm">__class__</span><span class="p">))</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
         <span class="n">package_root</span> <span class="o">=</span> <span class="n">model_file</span><span class="o">.</span><span class="n">parent</span>
-        
+
         <span class="c1"># Capture all python scripts in the model&#39;s directory</span>
         <span class="c1"># This handles siblings like &#39;pos_embed.py&#39; or &#39;swiglu.py&#39;</span>
         <span class="k">for</span> <span class="n">py_file</span> <span class="ow">in</span> <span class="n">package_root</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.py&quot;</span><span class="p">):</span>
@@ -429,10 +438,15 @@
 
 <div class="viewcode-block" id="HuggingFaceCheckpointCallback.on_save_checkpoint">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback.on_save_checkpoint">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">on_save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">LightningModule</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Triggered by Lightning&#39;s checkpointing logic. Creates an atomic </span>
-<span class="sd">        HF-compatible export for every found submodule.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_save_checkpoint</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">trainer</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">,</span>
+        <span class="n">pl_module</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">LightningModule</span><span class="p">,</span>
+        <span class="n">checkpoint</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an atomic HF-compatible export for every found submodule.</span>
+
+<span class="sd">        Triggered by Lightning&#39;s checkpointing logic.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">step</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span>
         <span class="n">hf_step_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;step_</span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -452,22 +466,24 @@
             <span class="c1"># Extract module/config filenames for the AutoModel map</span>
             <span class="n">module_fn</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">getfile</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="vm">__class__</span><span class="p">))</span><span class="o">.</span><span class="n">stem</span>
             <span class="n">config_fn</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">getfile</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="vm">__class__</span><span class="p">))</span><span class="o">.</span><span class="n">stem</span>
-            
+
             <span class="c1"># Update auto_map so AutoModel knows which .py file contains the classes</span>
             <span class="n">model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">auto_map</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s2">&quot;AutoConfig&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">config_fn</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;AutoModel&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">module_fn</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;AutoModel&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">module_fn</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
             <span class="p">}</span>
 
             <span class="c1"># 1. Save Weights &amp; Config.json</span>
-            <span class="c1"># Note: Using the model instance (not pl_module) strips all </span>
+            <span class="c1"># Note: Using the model instance (not pl_module) strips all</span>
             <span class="c1"># lightning/DDP prefixes automatically.</span>
             <span class="n">model</span><span class="o">.</span><span class="n">save_pretrained</span><span class="p">(</span><span class="n">model_save_path</span><span class="p">)</span>
-            
+
             <span class="c1"># 2. Copy code dependencies</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_copy_dependency_tree</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">model_save_path</span><span class="p">)</span>
-            
-            <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Step </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">: Exported HF submodule &#39;&lt;green&gt;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&lt;/green&gt;&#39; -&gt; </span><span class="si">{</span><span class="n">model_save_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Step </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">: Exported HF submodule &#39;&lt;green&gt;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&lt;/green&gt;&#39; -&gt; </span><span class="si">{</span><span class="n">model_save_path</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span></div>
 </div>
 
 </pre></div>

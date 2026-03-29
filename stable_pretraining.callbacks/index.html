@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+g9483058fa documentation</title>
+    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+g916fb73a3 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=5f3d4436"></script>
+    <script src="../_static/documentation_options.js?v=d5240f41"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9483058fa documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g916fb73a3 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -1189,9 +1189,9 @@ async_dump: If True, runs the dump in a background thread (non-blocking)</p>
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.hf_models.</span></span><span class="sig-name descname"><span class="pre">HuggingFaceCheckpointCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'hf_exports'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/hf_models/#HuggingFaceCheckpointCallback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Callback</span></code></p>
-<p>A PyTorch Lightning callback that identifies submodules inheriting from
-Hugging Face’s <cite>PreTrainedModel</cite> and exports them into standalone,
-“zero-knowledge” loadable HF directories.</p>
+<p>Export HF-compatible checkpoints for PreTrainedModel submodules.</p>
+<p>Identifies submodules inheriting from Hugging Face’s <cite>PreTrainedModel</cite>
+and exports them into standalone, “zero-knowledge” loadable HF directories.</p>
 <p>This callback automates the synchronization between Lightning training
 and the Hugging Face ecosystem, handling weight stripping (removing
 DDP/Lightning prefixes) and dependency copying.</p>
@@ -1210,8 +1210,7 @@ training. Default is True.</p></li>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">MySystem</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">LightningModule</span><span class="p">):</span>
 <span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
 <span class="gp">... </span>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">backbone</span> <span class="o">=</span> <span class="n">MyCustomHFModel</span><span class="p">(</span><span class="n">config</span><span class="p">)</span> <span class="c1"># Inherits PreTrainedModel</span>
-<span class="gp">...</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">backbone</span> <span class="o">=</span> <span class="n">MyCustomHFModel</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>  <span class="c1"># Inherits PreTrainedModel</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Add callback to trainer</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">hf_cb</span> <span class="o">=</span> <span class="n">HuggingFaceCheckpointCallback</span><span class="p">(</span><span class="n">save_dir</span><span class="o">=</span><span class="s2">&quot;checkpoints/hf_models&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span><span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">hf_cb</span><span class="p">])</span>
@@ -1221,16 +1220,15 @@ training. Default is True.</p></li>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Later, load without your source code library:</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoModel</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">AutoModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
-<span class="gp">... </span>    <span class="s2">&quot;checkpoints/hf_models/step_5000/backbone&quot;</span><span class="p">,</span>
-<span class="gp">... </span>    <span class="n">trust_remote_code</span><span class="o">=</span><span class="kc">True</span>
+<span class="gp">... </span>    <span class="s2">&quot;checkpoints/hf_models/step_5000/backbone&quot;</span><span class="p">,</span> <span class="n">trust_remote_code</span><span class="o">=</span><span class="kc">True</span>
 <span class="gp">... </span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback.on_save_checkpoint">
 <span class="sig-name descname"><span class="pre">on_save_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">checkpoint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/hf_models/#HuggingFaceCheckpointCallback.on_save_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback.on_save_checkpoint" title="Link to this definition">#</a></dt>
-<dd><p>Triggered by Lightning’s checkpointing logic. Creates an atomic
-HF-compatible export for every found submodule.</p>
+<dd><p>Create an atomic HF-compatible export for every found submodule.</p>
+<p>Triggered by Lightning’s checkpointing logic.</p>
 </dd></dl>
 
 <dl class="py method">

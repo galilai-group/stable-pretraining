@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>HFDataset &#8212; stable-pretraining 0.1.dev1+g9483058fa documentation</title>
+    <title>HFDataset &#8212; stable-pretraining 0.1.dev1+g916fb73a3 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=5f3d4436"></script>
+    <script src="../../../_static/documentation_options.js?v=d5240f41"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9483058fa documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g916fb73a3 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -392,8 +392,9 @@
 <dt class="sig sig-object py" id="stable_pretraining.data.HFDataset">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">HFDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rename_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/data/datasets/#HFDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.HFDataset" title="Link to this definition">#</a></dt>
 <dd><p>Bases:</p>
-<p>Create a HuggingFace dataset wrapper, automatically choosing map-style
-or streaming based on <code class="docutils literal notranslate"><span class="pre">streaming=True/False</span></code> in <em>kwargs</em>.</p>
+<p>Create a HuggingFace dataset wrapper.</p>
+<p>Automatically chooses map-style or streaming based on
+<code class="docutils literal notranslate"><span class="pre">streaming=True/False</span></code> in <em>kwargs</em>.</p>
 <p>The returned object is either an <code class="xref py py-class docutils literal notranslate"><span class="pre">HFMapDataset</span></code> (subclass of
 <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.Dataset</span></code></a>) or an <code class="xref py py-class docutils literal notranslate"><span class="pre">HFIterableDataset</span></code>
 (subclass of <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.IterableDataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.IterableDataset</span></code></a>), so PyTorch
