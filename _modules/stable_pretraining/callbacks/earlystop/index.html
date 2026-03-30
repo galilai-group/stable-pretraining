@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.earlystop &#8212; stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</title>
+    <title>stable_pretraining.callbacks.earlystop &#8212; stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=05a22e44"></script>
+    <script src="../../../../_static/documentation_options.js?v=7bd5d350"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -334,6 +334,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">torchmetrics</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span> <span class="k">as</span> <span class="n">_spt_log</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_header</span>
 
 
 <div class="viewcode-block" id="to_scalar">
@@ -425,28 +426,27 @@
             <span class="p">}</span>
         <span class="c1"># Sanity check: verify presence</span>
         <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">sanity_checking</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Sanity checking EpochMilstones...&quot;</span><span class="p">)</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;We matched </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">matched</span><span class="p">)</span><span class="si">}</span><span class="s2"> metrics!&quot;</span><span class="p">)</span>
+            <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;EpochMilestones&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  sanity checking...&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  matched </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">matched</span><span class="p">)</span><span class="si">}</span><span class="s2"> metrics&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">matched</span><span class="p">:</span>
                 <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;No metrics found for monitor=&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="si">}</span><span class="s2">&#39; contains=&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">contains</span><span class="si">}</span><span class="s2">&#39; in callback_metrics: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">strict</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Sanity check passed, congrats! We will use </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="si">}</span><span class="s2">...&quot;</span>
-            <span class="p">)</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ sanity check passed, milestones: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="n">epoch</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;EpochMilestones: </span><span class="si">{</span><span class="n">epoch</span><span class="si">=}</span><span class="s2"> is not in milestones, skipping...&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s2"> is not in milestones, skipping&quot;</span><span class="p">)</span>
             <span class="k">return</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;EpochMilestones: </span><span class="si">{</span><span class="n">epoch</span><span class="si">=}</span><span class="s2"> is in milestones, checking condition!&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s2"> is in milestones, checking condition&quot;</span><span class="p">)</span>
         <span class="c1"># Retrieve the metric from the logged metrics</span>
         <span class="n">values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">matched</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
         <span class="c1"># Stop training if the metric is not greater than min_value</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction</span> <span class="o">==</span> <span class="s2">&quot;max&quot;</span><span class="p">:</span>
             <span class="n">final</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">to_scalar</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">values</span><span class="p">])</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;EpochMilestones: Maximum value is </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  maximum value: </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
                 <span class="n">_spt_log</span><span class="p">(</span>
                     <span class="s2">&quot;epoch_milestones/value&quot;</span><span class="p">,</span>
@@ -462,18 +462,17 @@
                 <span class="p">)</span>
             <span class="k">if</span> <span class="n">final</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;EpochMilestones: Value </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2"> below threshold&quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]</span><span class="si">}</span><span class="s2">... stopping!&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;! value </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2"> below threshold&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]</span><span class="si">}</span><span class="s2">, stopping&quot;</span>
                 <span class="p">)</span>
                 <span class="n">trainer</span><span class="o">.</span><span class="n">should_stop</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;EpochMilestones: Value </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2"> above threshold&quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]</span><span class="si">}</span><span class="s2">... Yayy!&quot;</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;✓ value </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2"> above threshold </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">final</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">([</span><span class="n">to_scalar</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">values</span><span class="p">])</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;EpochMilestones: Minimum value is </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  minimum value: </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
                 <span class="n">_spt_log</span><span class="p">(</span>
                     <span class="s2">&quot;epoch_milestones/value&quot;</span><span class="p">,</span>
@@ -489,14 +488,13 @@
                 <span class="p">)</span>
             <span class="k">if</span> <span class="n">final</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;EpochMilestones: Value </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2"> above threshold&quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]</span><span class="si">}</span><span class="s2">... stopping!&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;! value </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2"> above threshold&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]</span><span class="si">}</span><span class="s2">, stopping&quot;</span>
                 <span class="p">)</span>
                 <span class="n">trainer</span><span class="o">.</span><span class="n">should_stop</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;EpochMilestones: Value </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2"> below threshold&quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]</span><span class="si">}</span><span class="s2">... Yayy!&quot;</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;✓ value </span><span class="si">{</span><span class="n">final</span><span class="si">}</span><span class="s2"> below threshold </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">epoch</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
 
 <div class="viewcode-block" id="EpochMilestones.on_training_epoch_end">

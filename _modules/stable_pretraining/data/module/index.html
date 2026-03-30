@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.data.module &#8212; stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</title>
+    <title>stable_pretraining.data.module &#8212; stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=05a22e44"></script>
+    <script src="../../../../_static/documentation_options.js?v=7bd5d350"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -387,15 +387,15 @@
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Setting up DataModule&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">train</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;⚠️⚠️⚠️ train was not passed to DataModule, it is required&quot;</span>
-                <span class="s2">&quot;unless you only validate ⚠️⚠️⚠️&quot;</span>
+                <span class="s2">&quot;! train was not passed to DataModule, it is required &quot;</span>
+                <span class="s2">&quot;unless you only validate&quot;</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">train</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_data_conf</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_data_conf</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="s2">&quot;test&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;⚠️⚠️⚠️ val was not passed to DataModule, it is required&quot;</span>
-                <span class="s2">&quot;unless you set `num_sanity_val_steps=0` and `val_check_interval=0` ⚠️⚠️⚠️&quot;</span>
+                <span class="s2">&quot;! val was not passed to DataModule, it is required &quot;</span>
+                <span class="s2">&quot;unless you set `num_sanity_val_steps=0` and `val_check_interval=0`&quot;</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_data_conf</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">predict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_data_conf</span><span class="p">(</span><span class="n">predict</span><span class="p">,</span> <span class="s2">&quot;predict&quot;</span><span class="p">)</span>
@@ -410,11 +410,11 @@
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">conf</span><span class="p">,</span> <span class="n">DataLoader</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">conf</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;dataset&quot;</span><span class="p">],</span> <span class="p">(</span><span class="n">HFMapDataset</span><span class="p">,</span> <span class="n">HFIterableDataset</span><span class="p">)):</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">● </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2"> already has an instantiated dataset! ✅&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2"> already has an instantiated dataset&quot;</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">dict</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">● </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2"> has `dict` type and no instantiated dataset!&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2"> has `dict` type and no instantiated dataset&quot;</span><span class="p">)</span>
             <span class="n">conf</span> <span class="o">=</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">● </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2"> created `DictConfig`! ✅&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2"> created DictConfig&quot;</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">DictConfig</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;`</span><span class="si">{</span><span class="n">conf</span><span class="si">}</span><span class="s2">` must be a dict of DictConfig&quot;</span><span class="p">)</span>
         <span class="n">sign</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">DataLoader</span><span class="p">)</span>
@@ -427,7 +427,7 @@
             <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sign</span><span class="o">.</span><span class="n">parameters</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2"> given in conf is not a DataLoader kwarg&quot;</span><span class="p">)</span>
         <span class="n">conf</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">● </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2"> conf is valid and saved! ✅&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2"> conf is valid and saved&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">conf</span>
 
 <div class="viewcode-block" id="DataModule.setup">
@@ -456,12 +456,12 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">predict_dataset</span> <span class="o">=</span> <span class="n">d</span> <span class="o">=</span> <span class="n">hydra</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">instantiate</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">predict</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span> <span class="n">_convert_</span><span class="o">=</span><span class="s2">&quot;object&quot;</span><span class="p">,</span> <span class="n">_recursive_</span><span class="o">=</span><span class="kc">True</span>
             <span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;dataset for </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2"> loaded!  ✅&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ dataset for </span><span class="si">{</span><span class="n">stage</span><span class="si">}</span><span class="s2"> loaded&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">d</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">● length: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">● columns: </span><span class="si">{</span><span class="n">d</span><span class="o">.</span><span class="n">column_names</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  length: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  columns: </span><span class="si">{</span><span class="n">d</span><span class="o">.</span><span class="n">column_names</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">● setup was done by user&quot;</span><span class="p">)</span></div>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  setup was done by user&quot;</span><span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_loader_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>

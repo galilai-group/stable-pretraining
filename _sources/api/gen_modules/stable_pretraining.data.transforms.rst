@@ -8,8 +8,6 @@
 
    .. autosummary::
    
-      random_seed
-      set_seed
       to_image
    
    .. rubric:: Classes
@@ -24,20 +22,30 @@
       ContextTargetsMultiBlockMask
       ControlledTransform
       GaussianBlur
+      GaussianNoise
       Lambda
       MultiViewTransform
       PILGaussianBlur
       PatchMasking
       RGB
+      RandomAdjustSharpness
+      RandomAffine
+      RandomAutocontrast
       RandomChannelPermutation
       RandomContiguousTemporalSampler
       RandomCrop
+      RandomEqualize
+      RandomErasing
       RandomGrayscale
       RandomHorizontalFlip
+      RandomInvert
       RandomMask
+      RandomPerspective
+      RandomPosterize
       RandomResizedCrop
       RandomRotation
       RandomSolarize
+      RandomVerticalFlip
       Resize
       RoundRobinMultiViewTransform
       RoutingTransform
@@ -45,4 +53,5 @@
       Transform
       UniformTemporalSubsample
       WrapTorchTransform
+      random_seed
    

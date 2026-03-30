@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.data.transforms &#8212; stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</title>
+    <title>stable_pretraining.data.transforms &#8212; stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=05a22e44"></script>
+    <script src="../../../_static/documentation_options.js?v=7bd5d350"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -380,12 +380,6 @@
 <p class="rubric">Functions</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.random_seed" title="stable_pretraining.data.transforms.random_seed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">random_seed</span></code></a>(seed)</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.set_seed" title="stable_pretraining.data.transforms.set_seed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_seed</span></code></a>(seeds)</p></td>
-<td><p></p></td>
-</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.to_image" title="stable_pretraining.data.transforms.to_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_image</span></code></a>(input)</p></td>
 <td><p>See <code class="xref py py-class docutils literal notranslate"><span class="pre">ToImage</span></code> for details.</p></td>
 </tr>
@@ -419,20 +413,32 @@
 <tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.GaussianBlur" title="stable_pretraining.data.transforms.GaussianBlur"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GaussianBlur</span></code></a>(kernel_size[, sigma, p, ...])</p></td>
 <td><p>Apply Gaussian blur to image with random sigma values.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.Lambda" title="stable_pretraining.data.transforms.Lambda"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Lambda</span></code></a>(lambd[, source, target])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.GaussianNoise" title="stable_pretraining.data.transforms.GaussianNoise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GaussianNoise</span></code></a>([mean, sigma, p, source, target])</p></td>
+<td><p>Add Gaussian noise to the image (torchvision implementation).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.Lambda" title="stable_pretraining.data.transforms.Lambda"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Lambda</span></code></a>(lambd[, source, target])</p></td>
 <td><p>Applies a lambda callable to target key and store it in source.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.MultiViewTransform" title="stable_pretraining.data.transforms.MultiViewTransform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MultiViewTransform</span></code></a>(transforms)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.MultiViewTransform" title="stable_pretraining.data.transforms.MultiViewTransform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MultiViewTransform</span></code></a>(transforms)</p></td>
 <td><p>Creates multiple views from one sample by applying different transforms.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.PILGaussianBlur" title="stable_pretraining.data.transforms.PILGaussianBlur"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PILGaussianBlur</span></code></a>([sigma, p, source, target])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.PILGaussianBlur" title="stable_pretraining.data.transforms.PILGaussianBlur"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PILGaussianBlur</span></code></a>([sigma, p, source, target])</p></td>
 <td><p>PIL-based Gaussian blur transform with random sigma sampling.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.PatchMasking" title="stable_pretraining.data.transforms.PatchMasking"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PatchMasking</span></code></a>([patch_size, drop_ratio, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.PatchMasking" title="stable_pretraining.data.transforms.PatchMasking"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PatchMasking</span></code></a>([patch_size, drop_ratio, ...])</p></td>
 <td><p>Randomly masks square patches in an image, similar to patch masking used in Masked Signal Encoding (MSE) tasks.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RGB" title="stable_pretraining.data.transforms.RGB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RGB</span></code></a>([source, target])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RGB" title="stable_pretraining.data.transforms.RGB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RGB</span></code></a>([source, target])</p></td>
 <td><p>Convert image to RGB format.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAdjustSharpness" title="stable_pretraining.data.transforms.RandomAdjustSharpness"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomAdjustSharpness</span></code></a>(sharpness_factor[, p, ...])</p></td>
+<td><p>Randomly adjust the sharpness of the image.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAffine" title="stable_pretraining.data.transforms.RandomAffine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomAffine</span></code></a>(degrees[, translate, scale, ...])</p></td>
+<td><p>Randomly apply affine transformation to the image.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAutocontrast" title="stable_pretraining.data.transforms.RandomAutocontrast"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomAutocontrast</span></code></a>([p, source, target])</p></td>
+<td><p>Randomly apply autocontrast to the image.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomChannelPermutation" title="stable_pretraining.data.transforms.RandomChannelPermutation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomChannelPermutation</span></code></a>([source, target])</p></td>
 <td><p>Randomly permute the channels of an image.</p></td>
@@ -443,23 +449,41 @@
 <tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomCrop" title="stable_pretraining.data.transforms.RandomCrop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomCrop</span></code></a>(size[, padding, pad_if_needed, ...])</p></td>
 <td><p>Crop a random portion of image and resize it to given size.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomEqualize" title="stable_pretraining.data.transforms.RandomEqualize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomEqualize</span></code></a>([p, source, target])</p></td>
+<td><p>Randomly equalize the histogram of the image.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomErasing" title="stable_pretraining.data.transforms.RandomErasing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomErasing</span></code></a>([p, scale, ratio, value, ...])</p></td>
+<td><p>Randomly erase a rectangular region in the image.</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomGrayscale" title="stable_pretraining.data.transforms.RandomGrayscale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomGrayscale</span></code></a>([p, source, target])</p></td>
 <td><p>Randomly convert image to grayscale with given probability.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomHorizontalFlip" title="stable_pretraining.data.transforms.RandomHorizontalFlip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomHorizontalFlip</span></code></a>([p, source, target])</p></td>
 <td><p>Horizontally flip the given image randomly with a given probability.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomMask" title="stable_pretraining.data.transforms.RandomMask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomMask</span></code></a>([patch_size, mask_ratio, source, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomInvert" title="stable_pretraining.data.transforms.RandomInvert"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomInvert</span></code></a>([p, source, target])</p></td>
+<td><p>Randomly invert the colors of the image.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomMask" title="stable_pretraining.data.transforms.RandomMask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomMask</span></code></a>([patch_size, mask_ratio, source, ...])</p></td>
 <td><p>Creates a random MAE-style mask for an image.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomResizedCrop" title="stable_pretraining.data.transforms.RandomResizedCrop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomResizedCrop</span></code></a>(size[, scale, ratio, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomPerspective" title="stable_pretraining.data.transforms.RandomPerspective"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomPerspective</span></code></a>([distortion_scale, p, ...])</p></td>
+<td><p>Randomly apply perspective transformation to the image.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomPosterize" title="stable_pretraining.data.transforms.RandomPosterize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomPosterize</span></code></a>(bits[, p, source, target])</p></td>
+<td><p>Randomly posterize the image by reducing bits per channel.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomResizedCrop" title="stable_pretraining.data.transforms.RandomResizedCrop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomResizedCrop</span></code></a>(size[, scale, ratio, ...])</p></td>
 <td><p>Crop a random portion of image and resize it to given size.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomRotation" title="stable_pretraining.data.transforms.RandomRotation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomRotation</span></code></a>(degrees[, interpolation, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomRotation" title="stable_pretraining.data.transforms.RandomRotation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomRotation</span></code></a>(degrees[, interpolation, ...])</p></td>
 <td><p>Rotate image by random angle within specified degrees range.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomSolarize" title="stable_pretraining.data.transforms.RandomSolarize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomSolarize</span></code></a>(threshold[, p, source, target])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomSolarize" title="stable_pretraining.data.transforms.RandomSolarize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomSolarize</span></code></a>(threshold[, p, source, target])</p></td>
 <td><p>Randomly solarize image by inverting pixel values above threshold.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomVerticalFlip" title="stable_pretraining.data.transforms.RandomVerticalFlip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomVerticalFlip</span></code></a>([p, source, target])</p></td>
+<td><p>Vertically flip the given image randomly with a given probability.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.Resize" title="stable_pretraining.data.transforms.Resize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Resize</span></code></a>(size[, interpolation, max_size, ...])</p></td>
 <td><p>Resize image to specified size.</p></td>
@@ -481,6 +505,9 @@
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.WrapTorchTransform" title="stable_pretraining.data.transforms.WrapTorchTransform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WrapTorchTransform</span></code></a>(transform[, source, target])</p></td>
 <td><p>Applies a lambda callable to target key and store it in source.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.random_seed" title="stable_pretraining.data.transforms.random_seed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">random_seed</span></code></a>(seed)</p></td>
+<td><p>Context manager that forks the torch RNG, seeds it, and restores on exit.</p></td>
 </tr>
 </tbody>
 </table>

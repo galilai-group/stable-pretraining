@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.data.utils &#8212; stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</title>
+    <title>stable_pretraining.data.utils &#8212; stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=05a22e44"></script>
+    <script src="../../../../_static/documentation_options.js?v=7bd5d350"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -396,13 +396,13 @@
 <span class="sd">        - PyTorch DataLoader: https://pytorch.org/docs/stable/data.html</span>
 <span class="sd">        - CPU affinity: https://man7.org/linux/man-pages/man2/sched_setaffinity.2.html</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;🔍 Starting automatic num_workers detection&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Starting automatic num_workers detection&quot;</span><span class="p">)</span>
 
     <span class="c1"># Step 1: Detect available CPUs</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">num_cpus</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">sched_getaffinity</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;✓ Detected </span><span class="si">{</span><span class="n">num_cpus</span><span class="si">}</span><span class="s2"> CPUs via sched_getaffinity (respects affinity mask)&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  Detected </span><span class="si">{</span><span class="n">num_cpus</span><span class="si">}</span><span class="s2"> CPUs via sched_getaffinity (respects affinity mask)&quot;</span>
         <span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
             <span class="s2">&quot;Using sched_getaffinity ensures we respect SLURM/Docker/cgroup limits&quot;</span>
@@ -411,11 +411,11 @@
         <span class="c1"># Fallback for systems without sched_getaffinity (macOS, Windows)</span>
         <span class="n">num_cpus</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">num_cpus</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;⚠️  os.cpu_count() returned None, defaulting to 1 CPU&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! os.cpu_count() returned None, defaulting to 1 CPU&quot;</span><span class="p">)</span>
             <span class="n">num_cpus</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;✓ Detected </span><span class="si">{</span><span class="n">num_cpus</span><span class="si">}</span><span class="s2"> CPUs via os.cpu_count() (fallback for non-Linux)&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  Detected </span><span class="si">{</span><span class="n">num_cpus</span><span class="si">}</span><span class="s2"> CPUs via os.cpu_count() (fallback for non-Linux)&quot;</span>
             <span class="p">)</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total CPUs available to this process: </span><span class="si">{</span><span class="n">num_cpus</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -435,7 +435,7 @@
             <span class="n">world_size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">get_world_size</span><span class="p">()</span>
             <span class="n">rank</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">get_rank</span><span class="p">()</span>
 
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🌐 DDP detected: world_size=</span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2">, rank=</span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  DDP detected: world_size=</span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2">, rank=</span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Each of </span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2"> processes will spawn its own DataLoader workers&quot;</span>
             <span class="p">)</span>
@@ -450,12 +450,12 @@
     <span class="k">if</span> <span class="n">is_distributed</span> <span class="ow">and</span> <span class="n">world_size</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">num_workers</span> <span class="o">=</span> <span class="n">num_cpus</span> <span class="o">//</span> <span class="n">world_size</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;📊 DDP mode: </span><span class="si">{</span><span class="n">num_cpus</span><span class="si">}</span><span class="s2"> CPUs ÷ </span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2"> ranks = </span><span class="si">{</span><span class="n">num_workers</span><span class="si">}</span><span class="s2"> workers per rank&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  DDP mode: </span><span class="si">{</span><span class="n">num_cpus</span><span class="si">}</span><span class="s2"> CPUs / </span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2"> ranks = </span><span class="si">{</span><span class="n">num_workers</span><span class="si">}</span><span class="s2"> workers per rank&quot;</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">num_workers</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;⚠️  Only </span><span class="si">{</span><span class="n">num_cpus</span><span class="si">}</span><span class="s2"> CPUs for </span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2"> ranks results in 0 workers/rank. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;! Only </span><span class="si">{</span><span class="n">num_cpus</span><span class="si">}</span><span class="s2"> CPUs for </span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2"> ranks results in 0 workers/rank. &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;Setting to 1 worker minimum.&quot;</span>
             <span class="p">)</span>
             <span class="n">num_workers</span> <span class="o">=</span> <span class="mi">1</span>
@@ -472,13 +472,13 @@
     <span class="k">if</span> <span class="n">is_distributed</span><span class="p">:</span>
         <span class="n">total_workers</span> <span class="o">=</span> <span class="n">num_workers</span> <span class="o">*</span> <span class="n">world_size</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;✅ Final configuration: </span><span class="si">{</span><span class="n">num_workers</span><span class="si">}</span><span class="s2"> workers/rank × </span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2"> ranks = </span><span class="si">{</span><span class="n">total_workers</span><span class="si">}</span><span class="s2"> total workers&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;✓ Final configuration: </span><span class="si">{</span><span class="n">num_workers</span><span class="si">}</span><span class="s2"> workers/rank x </span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2"> ranks = </span><span class="si">{</span><span class="n">total_workers</span><span class="si">}</span><span class="s2"> total workers&quot;</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Final configuration: </span><span class="si">{</span><span class="n">num_workers</span><span class="si">}</span><span class="s2"> DataLoader workers&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Final configuration: </span><span class="si">{</span><span class="n">num_workers</span><span class="si">}</span><span class="s2"> DataLoader workers&quot;</span><span class="p">)</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning num_workers=</span><span class="si">{</span><span class="n">num_workers</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;🏁 num_workers detection complete</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;num_workers detection complete</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">num_workers</span></div>
 

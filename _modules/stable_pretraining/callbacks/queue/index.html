@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.queue &#8212; stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</title>
+    <title>stable_pretraining.callbacks.queue &#8212; stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=05a22e44"></script>
+    <script src="../../../../_static/documentation_options.js?v=7bd5d350"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -343,6 +343,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span> <span class="k">as</span> <span class="n">_spt_log</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrderedQueue</span><span class="p">,</span> <span class="n">get_data_from_batch_or_outputs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_header</span>
 
 
 <div class="viewcode-block" id="OnlineQueue">
@@ -396,10 +397,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_snapshot</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;OnlineQueue initialized for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">- requested_length: </span><span class="si">{</span><span class="n">queue_length</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">- dim: </span><span class="si">{</span><span class="n">dim</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">- dtype: </span><span class="si">{</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;OnlineQueue&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  key: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  requested_length: </span><span class="si">{</span><span class="n">queue_length</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  dim: </span><span class="si">{</span><span class="n">dim</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  dtype: </span><span class="si">{</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">actual_queue_length</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
@@ -421,7 +423,7 @@
                 <span class="s2">&quot;callbacks&quot;</span><span class="p">:</span> <span class="p">[</span><span class="bp">self</span><span class="p">],</span>
             <span class="p">}</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;OnlineQueue: New key &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; with initial size </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  new key &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; with initial size </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Update max length if this callback needs more</span>
@@ -429,7 +431,7 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span> <span class="o">&gt;</span> <span class="n">old_max</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_queue_info</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">][</span><span class="s2">&quot;max_length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;OnlineQueue: Increased max size for key &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;  increased max size for key &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;from </span><span class="si">{</span><span class="n">old_max</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
 
@@ -449,7 +451,7 @@
             <span class="n">queue_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;ordered_queue_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="n">pl_module</span><span class="o">.</span><span class="n">callbacks_modules</span><span class="p">[</span><span class="n">queue_key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_queues</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">]</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;OnlineQueue: Created shared queue for &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; with size </span><span class="si">{</span><span class="n">max_length</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  created shared queue for &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; with size </span><span class="si">{</span><span class="n">max_length</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_queues</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">max_length</span> <span class="o">&lt;</span> <span class="n">max_length</span><span class="p">:</span>
             <span class="c1"># Need to resize the existing queue</span>
@@ -465,7 +467,7 @@
             <span class="k">if</span> <span class="n">old_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">old_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">new_queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">old_data</span><span class="p">)</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;OnlineQueue: Resized queue for &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; from &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;  resized queue for &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; from &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">old_queue</span><span class="o">.</span><span class="n">max_length</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">max_length</span><span class="si">}</span><span class="s2">, preserved </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">old_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> items&quot;</span>
                 <span class="p">)</span>
 
@@ -526,7 +528,7 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create snapshot of the requested portion of queue contents.&quot;&quot;&quot;</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;OnlineQueue: Creating snapshot for key &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  creating snapshot for key &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;(requesting </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span><span class="si">}</span><span class="s2"> from queue of size </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">actual_queue_length</span><span class="si">}</span><span class="s2">)&quot;</span>
         <span class="p">)</span>
 
@@ -538,24 +540,22 @@
             <span class="c1"># Get the last N items (most recent)</span>
             <span class="n">tensor</span> <span class="o">=</span> <span class="n">full_queue_data</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span> <span class="p">:]</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">- Extracted last </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span><span class="si">}</span><span class="s2"> items from </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">full_queue_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> available&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  extracted last </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span><span class="si">}</span><span class="s2"> items from </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">full_queue_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> available&quot;</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">tensor</span> <span class="o">=</span> <span class="n">full_queue_data</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span><span class="p">:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">- Queue not full yet: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span><span class="si">}</span><span class="s2"> items&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;  queue not full yet: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">requested_length</span><span class="si">}</span><span class="s2"> items&quot;</span>
                 <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_distributed</span> <span class="ow">and</span> <span class="n">trainer</span><span class="o">.</span><span class="n">world_size</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">gathered</span> <span class="o">=</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">all_gather</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_snapshot</span> <span class="o">=</span> <span class="n">gathered</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">- </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">tensor</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">gathered</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> (gathered)&quot;</span>
-            <span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">tensor</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">gathered</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> (gathered)&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_snapshot</span> <span class="o">=</span> <span class="n">tensor</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">- </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">tensor</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">tensor</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="OnlineQueue.on_validation_epoch_end">
@@ -571,7 +571,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get snapshot data during validation.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snapshot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No queue snapshot available. Called outside validation?&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! no queue snapshot available, called outside validation?&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snapshot</span></div>
 
@@ -636,7 +636,7 @@
         <span class="k">if</span> <span class="n">create_if_missing</span><span class="p">:</span>
             <span class="c1"># Create a new queue callback</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;No queue found for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39;, creating new OnlineQueue with &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  no queue found for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39;, creating new OnlineQueue with &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;length=</span><span class="si">{</span><span class="n">queue_length</span><span class="si">}</span><span class="s2">, dim=</span><span class="si">{</span><span class="n">dim</span><span class="si">}</span><span class="s2">, dtype=</span><span class="si">{</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
             <span class="n">new_queue</span> <span class="o">=</span> <span class="n">OnlineQueue</span><span class="p">(</span>
@@ -682,7 +682,7 @@
     <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">matching_queues</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">callback</span><span class="o">.</span><span class="n">requested_length</span> <span class="o">==</span> <span class="n">queue_length</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Found existing OnlineQueue for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; with &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  found existing OnlineQueue for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; with &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;requested_length=</span><span class="si">{</span><span class="n">queue_length</span><span class="si">}</span><span class="s2"> (actual queue size: </span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">actual_queue_length</span><span class="si">}</span><span class="s2">)&quot;</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="n">callback</span>
@@ -691,7 +691,7 @@
     <span class="c1"># Create a new callback that will share the underlying queue</span>
     <span class="k">if</span> <span class="n">create_if_missing</span><span class="p">:</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Creating new OnlineQueue callback for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; with &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  creating new OnlineQueue callback for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; with &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;requested_length=</span><span class="si">{</span><span class="n">queue_length</span><span class="si">}</span><span class="s2"> (will share underlying queue)&quot;</span>
         <span class="p">)</span>
         <span class="n">new_queue</span> <span class="o">=</span> <span class="n">OnlineQueue</span><span class="p">(</span>
@@ -708,7 +708,7 @@
             <span class="k">if</span> <span class="n">queue_length</span> <span class="o">&gt;</span> <span class="n">old_max</span><span class="p">:</span>
                 <span class="n">OnlineQueue</span><span class="o">.</span><span class="n">_queue_info</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s2">&quot;max_length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">queue_length</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;OnlineQueue: Updated max size for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;  updated max size for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;from </span><span class="si">{</span><span class="n">old_max</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">queue_length</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
             <span class="c1"># Add the new callback to the list</span>
@@ -729,7 +729,7 @@
         <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">matching_queues</span>
     <span class="p">]</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;Found OnlineQueue callbacks for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; but none with &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;! found OnlineQueue callbacks for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; but none with &quot;</span>
         <span class="sa">f</span><span class="s2">&quot;requested_length=</span><span class="si">{</span><span class="n">queue_length</span><span class="si">}</span><span class="s2">. Existing queues: </span><span class="si">{</span><span class="n">queue_details</span><span class="si">}</span><span class="s2">. &quot;</span>
         <span class="sa">f</span><span class="s2">&quot;Using the first one.&quot;</span>
     <span class="p">)</span>

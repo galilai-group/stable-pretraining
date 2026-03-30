@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining package &#8212; stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</title>
+    <title>stable_pretraining package &#8212; stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=05a22e44"></script>
+    <script src="../_static/documentation_options.js?v=7bd5d350"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -827,17 +827,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.cpu_offload">stable_pretraining.callbacks.cpu_offload module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.load_state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.load_state_dict()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_exception"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_exception()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_save_checkpoint()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.setup"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.setup()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.state_dict()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.earlystop">stable_pretraining.callbacks.earlystop module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.earlystop.EpochMilestones"><code class="docutils literal notranslate"><span class="pre">EpochMilestones</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.earlystop.EpochMilestones.on_training_epoch_end"><code class="docutils literal notranslate"><span class="pre">EpochMilestones.on_training_epoch_end()</span></code></a></li>
@@ -1030,6 +1019,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.utils.format_metrics_as_dict"><code class="docutils literal notranslate"><span class="pre">format_metrics_as_dict()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.utils.log_header"><code class="docutils literal notranslate"><span class="pre">log_header()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.wd_schedule">stable_pretraining.callbacks.wd_schedule module</a><ul>
@@ -1181,20 +1171,38 @@
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.GaussianBlur.get_params"><code class="docutils literal notranslate"><span class="pre">GaussianBlur.get_params()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.GaussianNoise"><code class="docutils literal notranslate"><span class="pre">GaussianNoise</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.Lambda"><code class="docutils literal notranslate"><span class="pre">Lambda</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.MultiViewTransform"><code class="docutils literal notranslate"><span class="pre">MultiViewTransform</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.PILGaussianBlur"><code class="docutils literal notranslate"><span class="pre">PILGaussianBlur</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.PatchMasking"><code class="docutils literal notranslate"><span class="pre">PatchMasking</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RGB"><code class="docutils literal notranslate"><span class="pre">RGB</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAdjustSharpness"><code class="docutils literal notranslate"><span class="pre">RandomAdjustSharpness</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAffine"><code class="docutils literal notranslate"><span class="pre">RandomAffine</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAffine.get_params"><code class="docutils literal notranslate"><span class="pre">RandomAffine.get_params()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAutocontrast"><code class="docutils literal notranslate"><span class="pre">RandomAutocontrast</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomChannelPermutation"><code class="docutils literal notranslate"><span class="pre">RandomChannelPermutation</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomContiguousTemporalSampler"><code class="docutils literal notranslate"><span class="pre">RandomContiguousTemporalSampler</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomCrop"><code class="docutils literal notranslate"><span class="pre">RandomCrop</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomCrop.get_params"><code class="docutils literal notranslate"><span class="pre">RandomCrop.get_params()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomEqualize"><code class="docutils literal notranslate"><span class="pre">RandomEqualize</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomErasing"><code class="docutils literal notranslate"><span class="pre">RandomErasing</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomErasing.get_params"><code class="docutils literal notranslate"><span class="pre">RandomErasing.get_params()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomGrayscale"><code class="docutils literal notranslate"><span class="pre">RandomGrayscale</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomHorizontalFlip"><code class="docutils literal notranslate"><span class="pre">RandomHorizontalFlip</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomInvert"><code class="docutils literal notranslate"><span class="pre">RandomInvert</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomMask"><code class="docutils literal notranslate"><span class="pre">RandomMask</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomPerspective"><code class="docutils literal notranslate"><span class="pre">RandomPerspective</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomPerspective.get_params"><code class="docutils literal notranslate"><span class="pre">RandomPerspective.get_params()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomPosterize"><code class="docutils literal notranslate"><span class="pre">RandomPosterize</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomResizedCrop"><code class="docutils literal notranslate"><span class="pre">RandomResizedCrop</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomResizedCrop.get_params"><code class="docutils literal notranslate"><span class="pre">RandomResizedCrop.get_params()</span></code></a></li>
 </ul>
@@ -1204,6 +1212,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomSolarize"><code class="docutils literal notranslate"><span class="pre">RandomSolarize</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomVerticalFlip"><code class="docutils literal notranslate"><span class="pre">RandomVerticalFlip</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.Resize"><code class="docutils literal notranslate"><span class="pre">Resize</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RoundRobinMultiViewTransform"><code class="docutils literal notranslate"><span class="pre">RoundRobinMultiViewTransform</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.RoutingTransform"><code class="docutils literal notranslate"><span class="pre">RoutingTransform</span></code></a></li>
@@ -1222,8 +1231,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.WrapTorchTransform"><code class="docutils literal notranslate"><span class="pre">WrapTorchTransform</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.random_seed"><code class="docutils literal notranslate"><span class="pre">random_seed()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.set_seed"><code class="docutils literal notranslate"><span class="pre">set_seed()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.random_seed"><code class="docutils literal notranslate"><span class="pre">random_seed</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.data/#stable_pretraining.data.transforms.to_image"><code class="docutils literal notranslate"><span class="pre">to_image()</span></code></a></li>
 </ul>
 </li>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</title>
+    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=05a22e44"></script>
+    <script src="../_static/documentation_options.js?v=7bd5d350"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -407,17 +407,6 @@
 </li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.cpu_offload">stable_pretraining.callbacks.cpu_offload module</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.load_state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.load_state_dict()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_exception"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_exception()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_save_checkpoint()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.setup"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.setup()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.state_dict()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.earlystop">stable_pretraining.callbacks.earlystop module</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.earlystop.EpochMilestones"><code class="docutils literal notranslate"><span class="pre">EpochMilestones</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.earlystop.EpochMilestones.on_training_epoch_end"><code class="docutils literal notranslate"><span class="pre">EpochMilestones.on_training_epoch_end()</span></code></a></li>
@@ -610,6 +599,7 @@
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.utils.format_metrics_as_dict"><code class="docutils literal notranslate"><span class="pre">format_metrics_as_dict()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.utils.log_header"><code class="docutils literal notranslate"><span class="pre">log_header()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.wd_schedule">stable_pretraining.callbacks.wd_schedule module</a><ul class="nav section-nav flex-column">
@@ -889,80 +879,6 @@ Default <code class="docutils literal notranslate"><span class="pre">True</span>
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.clip_zero_shot.CLIPZeroShot.setup">
 <span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/clip_zero_shot/#CLIPZeroShot.setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.clip_zero_shot.CLIPZeroShot.setup" title="Link to this definition">#</a></dt>
 <dd><p>Initialize optimizer, scheduler, and metrics.</p>
-</dd></dl>
-
-</dd></dl>
-
-</section>
-<section id="module-stable_pretraining.callbacks.cpu_offload">
-<span id="stable-pretraining-callbacks-cpu-offload-module"></span><h2>stable_pretraining.callbacks.cpu_offload module<a class="headerlink" href="#module-stable_pretraining.callbacks.cpu_offload" title="Link to this heading">#</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.cpu_offload.</span></span><span class="sig-name descname"><span class="pre">CPUOffloadCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offload_keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Callback</span></code></p>
-<p>Offload checkpoint tensors to CPU during save to reduce GPU memory usage.</p>
-<p>This callback intercepts checkpoint saving and moves all PyTorch tensors
-(model weights, optimizer states, scheduler states) from GPU to CPU before
-writing to disk. Prevents GPU OOM for large models (2B+ parameters).</p>
-<p><strong>Compatible Strategies:</strong>
-- DDP (DistributedDataParallel)
-- Single GPU training</p>
-<p><strong>Incompatible Strategies (auto-disabled):</strong>
-- FSDP (uses sharded checkpointing)
-- DeepSpeed (has custom checkpoint mechanism)</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>offload_keys</strong> – Keys to offload. Defaults to
-<code class="docutils literal notranslate"><span class="pre">['state_dict',</span> <span class="pre">'optimizer_states',</span> <span class="pre">'lr_schedulers']</span></code>.</p>
-</dd>
-</dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.load_state_dict">
-<span class="sig-name descname"><span class="pre">load_state_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state_dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.load_state_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.load_state_dict" title="Link to this definition">#</a></dt>
-<dd><p>Called when loading a checkpoint, implement to reload callback state given callback’s <code class="docutils literal notranslate"><span class="pre">state_dict</span></code>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>state_dict</strong> – the callback state returned by <code class="docutils literal notranslate"><span class="pre">state_dict</span></code>.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_exception">
-<span class="sig-name descname"><span class="pre">on_exception</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exception</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.on_exception"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_exception" title="Link to this definition">#</a></dt>
-<dd><p>Called when any trainer execution is interrupted by an exception.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_save_checkpoint">
-<span class="sig-name descname"><span class="pre">on_save_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">checkpoint</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.on_save_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_save_checkpoint" title="Link to this definition">#</a></dt>
-<dd><p>Called when saving a checkpoint to give you a chance to store anything else you might want to save.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>trainer</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">Trainer</span></code> instance.</p></li>
-<li><p><strong>pl_module</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">LightningModule</span></code> instance.</p></li>
-<li><p><strong>checkpoint</strong> – the checkpoint dictionary that will be saved.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.setup">
-<span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.setup" title="Link to this definition">#</a></dt>
-<dd><p>Called when fit, validate, test, predict, or tune begins.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.state_dict">
-<span class="sig-name descname"><span class="pre">state_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/cpu_offload/#CPUOffloadCallback.state_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.state_dict" title="Link to this definition">#</a></dt>
-<dd><p>Called when saving a checkpoint, implement to generate callback’s <code class="docutils literal notranslate"><span class="pre">state_dict</span></code>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>A dictionary containing callback state.</p>
-</dd>
-</dl>
 </dd></dl>
 
 </dd></dl>
@@ -2154,6 +2070,12 @@ metrics. This standardization simplifies metric handling across callbacks.</p>
 </dl>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.utils.log_header">
+<span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.utils.</span></span><span class="sig-name descname"><span class="pre">log_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/utils/#log_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.utils.log_header" title="Link to this definition">#</a></dt>
+<dd><p>Log a unified section header: <code class="docutils literal notranslate"><span class="pre">──</span> <span class="pre">Name</span> <span class="pre">────────────</span></code>.</p>
+</dd></dl>
+
 </section>
 <section id="module-stable_pretraining.callbacks.wd_schedule">
 <span id="stable-pretraining-callbacks-wd-schedule-module"></span><h2>stable_pretraining.callbacks.wd_schedule module<a class="headerlink" href="#module-stable_pretraining.callbacks.wd_schedule" title="Link to this heading">#</a></h2>
@@ -2374,17 +2296,6 @@ loss returned from <code class="docutils literal notranslate"><span class="pre">
 </li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.cpu_offload">stable_pretraining.callbacks.cpu_offload module</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.load_state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.load_state_dict()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_exception"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_exception()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.on_save_checkpoint()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.setup"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.setup()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.state_dict"><code class="docutils literal notranslate"><span class="pre">CPUOffloadCallback.state_dict()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.earlystop">stable_pretraining.callbacks.earlystop module</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.earlystop.EpochMilestones"><code class="docutils literal notranslate"><span class="pre">EpochMilestones</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.earlystop.EpochMilestones.on_training_epoch_end"><code class="docutils literal notranslate"><span class="pre">EpochMilestones.on_training_epoch_end()</span></code></a></li>
@@ -2577,6 +2488,7 @@ loss returned from <code class="docutils literal notranslate"><span class="pre">
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.utils.format_metrics_as_dict"><code class="docutils literal notranslate"><span class="pre">format_metrics_as_dict()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.utils.log_header"><code class="docutils literal notranslate"><span class="pre">log_header()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.wd_schedule">stable_pretraining.callbacks.wd_schedule module</a><ul class="nav section-nav flex-column">

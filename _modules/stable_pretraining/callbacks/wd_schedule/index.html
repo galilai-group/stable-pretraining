@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.wd_schedule &#8212; stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</title>
+    <title>stable_pretraining.callbacks.wd_schedule &#8212; stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=05a22e44"></script>
+    <script src="../../../../_static/documentation_options.js?v=7bd5d350"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -332,6 +332,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callback</span><span class="p">,</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">LightningModule</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span> <span class="k">as</span> <span class="n">_spt_log</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_header</span>
 
 
 <div class="viewcode-block" id="WeightDecayUpdater">
@@ -376,7 +377,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">trainer</span><span class="o">.</span><span class="n">estimated_stepping_batches</span> <span class="o">*</span> <span class="n">trainer</span><span class="o">.</span><span class="n">accumulate_grad_batches</span>
         <span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[WeightDecayUpdater] Using total_steps=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;WeightDecayUpdater&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  total_steps: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="WeightDecayUpdater.on_before_optimizer_step">
@@ -390,9 +392,7 @@
         <span class="n">step</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span> <span class="o">//</span> <span class="nb">len</span><span class="p">(</span><span class="n">optis</span><span class="p">)</span>
         <span class="n">accumulate_grad_batches</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">accumulate_grad_batches</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">accumulate_grad_batches</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                <span class="s2">&quot;[WeightDecayUpdater] Step but accumulating grad, skipping step&quot;</span>
-            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;  step but accumulating grad, skipping step&quot;</span><span class="p">)</span>
             <span class="k">return</span>
         <span class="n">new_weight_decay</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_weight_decay</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
         <span class="n">indices</span> <span class="o">=</span> <span class="p">(</span>
@@ -405,7 +405,7 @@
             <span class="n">old_wd</span> <span class="o">=</span> <span class="n">param_group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;weight_decay&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="n">param_group</span><span class="p">[</span><span class="s2">&quot;weight_decay&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_weight_decay</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;[WeightDecayUpdater] Step </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">: param_group </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> weight_decay </span><span class="si">{</span><span class="n">old_wd</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new_weight_decay</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  step </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">: param_group </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> weight_decay </span><span class="si">{</span><span class="n">old_wd</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new_weight_decay</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
             <span class="n">_spt_log</span><span class="p">(</span>
@@ -431,9 +431,7 @@
             <span class="n">gamma</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">end_value</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_value</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_value</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">gamma</span> <span class="o">*</span> <span class="n">step</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;[WeightDecayUpdater] Unknown schedule_type: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">schedule_type</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  unknown schedule_type: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">schedule_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown schedule_type: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">schedule_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="WeightDecayUpdater.state_dict">
@@ -460,9 +458,7 @@
             <span class="s2">&quot;param_group_indices&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">param_group_indices</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">=</span> <span class="n">state_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_steps&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;[WeightDecayUpdater] State restored from checkpoint: </span><span class="si">{</span><span class="n">state_dict</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="p">)</span></div>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  state restored from checkpoint: </span><span class="si">{</span><span class="n">state_dict</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

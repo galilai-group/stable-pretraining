@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</title>
+    <title>Index &#8212; stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=05a22e44"></script>
+    <script src="../_static/documentation_options.js?v=7bd5d350"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g2d0a41ef7 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g1ad20bbb2 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -545,14 +545,14 @@
 </li>
       <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.aggregator.TensorAggregator.compute_output_dim">compute_output_dim() (stable_pretraining.backbone.aggregator.TensorAggregator method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.compute_pairwise_distances">compute_pairwise_distances() (in module stable_pretraining.utils)</a>
 
       <ul>
         <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.distance_metrics.compute_pairwise_distances">(in module stable_pretraining.utils.distance_metrics)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.compute_pairwise_distances_chunked">compute_pairwise_distances_chunked() (in module stable_pretraining.utils)</a>
 
       <ul>
@@ -596,8 +596,6 @@
 </li>
       </ul></li>
       <li><a href="../stable_pretraining/#stable_pretraining.static.count_parameters">count_parameters() (in module stable_pretraining.static)</a>
-</li>
-      <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback">CPUOffloadCallback (class in stable_pretraining.callbacks.cpu_offload)</a>
 </li>
       <li><a href="../stable_pretraining.optim/#stable_pretraining.optim.utils.create_optimizer">create_optimizer() (in module stable_pretraining.optim.utils)</a>
 </li>
@@ -1097,6 +1095,8 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.GaussianBlur">GaussianBlur (class in stable_pretraining.data.transforms)</a>
 </li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.GaussianNoise">GaussianNoise (class in stable_pretraining.data.transforms)</a>
+</li>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.GDriveUploader">GDriveUploader (class in stable_pretraining.utils)</a>
 
       <ul>
@@ -1171,14 +1171,14 @@
         <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.nepa.NEPA.get_dense_features">(stable_pretraining.methods.nepa.NEPA method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.gdrive_utils.GDriveUploader.get_folder_id">get_folder_id() (stable_pretraining.utils.gdrive_utils.GDriveUploader method)</a>
 
       <ul>
         <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.GDriveUploader.get_folder_id">(stable_pretraining.utils.GDriveUploader method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.gdrive_utils.GDriveUploader.get_folder_url">get_folder_url() (stable_pretraining.utils.gdrive_utils.GDriveUploader method)</a>
 
       <ul>
@@ -1204,7 +1204,13 @@
       <ul>
         <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.GaussianBlur.get_params">(stable_pretraining.data.transforms.GaussianBlur static method)</a>
 </li>
+        <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAffine.get_params">(stable_pretraining.data.transforms.RandomAffine static method)</a>
+</li>
         <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomCrop.get_params">(stable_pretraining.data.transforms.RandomCrop static method)</a>
+</li>
+        <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomErasing.get_params">(stable_pretraining.data.transforms.RandomErasing static method)</a>
+</li>
+        <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomPerspective.get_params">(stable_pretraining.data.transforms.RandomPerspective static method)</a>
 </li>
         <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomResizedCrop.get_params">(stable_pretraining.data.transforms.RandomResizedCrop static method)</a>
 </li>
@@ -1471,11 +1477,9 @@
         <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.config.load_hparams_from_ckpt">(in module stable_pretraining.utils.config)</a>
 </li>
       </ul></li>
-      <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.load_state_dict">load_state_dict() (stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback method)</a>
+      <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.wd_schedule.WeightDecayUpdater.load_state_dict">load_state_dict() (stable_pretraining.callbacks.wd_schedule.WeightDecayUpdater method)</a>
 
       <ul>
-        <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.wd_schedule.WeightDecayUpdater.load_state_dict">(stable_pretraining.callbacks.wd_schedule.WeightDecayUpdater method)</a>
-</li>
         <li><a href="../api/gen_modules/stable_pretraining.data.DataModule/#stable_pretraining.data.DataModule.load_state_dict">(stable_pretraining.data.DataModule method)</a>, <a href="../stable_pretraining.data/#stable_pretraining.data.DataModule.load_state_dict">[1]</a>
 </li>
         <li><a href="../stable_pretraining.data/#stable_pretraining.data.module.DataModule.load_state_dict">(stable_pretraining.data.module.DataModule method)</a>
@@ -1499,6 +1503,8 @@
         <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.registry.log_dict">(in module stable_pretraining.callbacks.registry)</a>
 </li>
       </ul></li>
+      <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.utils.log_header">log_header() (in module stable_pretraining.callbacks.utils)</a>
+</li>
       <li><a href="../stable_pretraining/#stable_pretraining.LoggingCallback">LoggingCallback (class in stable_pretraining)</a>
 
       <ul>
@@ -1658,8 +1664,6 @@
         <li><a href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.cleanup">stable_pretraining.callbacks.cleanup</a>
 </li>
         <li><a href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.clip_zero_shot">stable_pretraining.callbacks.clip_zero_shot</a>
-</li>
-        <li><a href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.cpu_offload">stable_pretraining.callbacks.cpu_offload</a>
 </li>
         <li><a href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.earlystop">stable_pretraining.callbacks.earlystop</a>
 </li>
@@ -1961,11 +1965,7 @@
       <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.wd_schedule.WeightDecayUpdater.on_before_optimizer_step">on_before_optimizer_step() (stable_pretraining.callbacks.wd_schedule.WeightDecayUpdater method)</a>
 </li>
       <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_exception">on_exception() (stable_pretraining.callbacks.cleanup.CleanUpCallback method)</a>
-
-      <ul>
-        <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_exception">(stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback method)</a>
 </li>
-      </ul></li>
       <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cleanup.CleanUpCallback.on_fit_end">on_fit_end() (stable_pretraining.callbacks.cleanup.CleanUpCallback method)</a>
 </li>
       <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.teacher_student.TeacherStudentCallback.on_fit_start">on_fit_start() (stable_pretraining.callbacks.teacher_student.TeacherStudentCallback method)</a>
@@ -2020,8 +2020,6 @@
 
       <ul>
         <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.checkpoint_sklearn.WandbCheckpoint.on_save_checkpoint">(stable_pretraining.callbacks.checkpoint_sklearn.WandbCheckpoint method)</a>
-</li>
-        <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.on_save_checkpoint">(stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback method)</a>
 </li>
         <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback.on_save_checkpoint">(stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback method)</a>
 </li>
@@ -2290,7 +2288,7 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.random_seed">random_seed() (in module stable_pretraining.data.transforms)</a>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.random_seed">random_seed (class in stable_pretraining.data.transforms)</a>
 </li>
       <li><a href="../api/gen_modules/stable_pretraining.data.random_split/#stable_pretraining.data.random_split">random_split() (in module stable_pretraining.data)</a>, <a href="../stable_pretraining.data/#stable_pretraining.data.random_split">[1]</a>
 
@@ -2298,6 +2296,12 @@
         <li><a href="../stable_pretraining.data/#stable_pretraining.data.utils.random_split">(in module stable_pretraining.data.utils)</a>
 </li>
       </ul></li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAdjustSharpness">RandomAdjustSharpness (class in stable_pretraining.data.transforms)</a>
+</li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAffine">RandomAffine (class in stable_pretraining.data.transforms)</a>
+</li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAutocontrast">RandomAutocontrast (class in stable_pretraining.data.transforms)</a>
+</li>
       <li><a href="../api/gen_modules/stable_pretraining.data.RandomBatchSampler/#stable_pretraining.data.RandomBatchSampler">RandomBatchSampler (class in stable_pretraining.data)</a>, <a href="../stable_pretraining.data/#stable_pretraining.data.RandomBatchSampler">[1]</a>
 
       <ul>
@@ -2310,17 +2314,29 @@
 </li>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomCrop">RandomCrop (class in stable_pretraining.data.transforms)</a>
 </li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomEqualize">RandomEqualize (class in stable_pretraining.data.transforms)</a>
+</li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomErasing">RandomErasing (class in stable_pretraining.data.transforms)</a>
+</li>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomGrayscale">RandomGrayscale (class in stable_pretraining.data.transforms)</a>
 </li>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomHorizontalFlip">RandomHorizontalFlip (class in stable_pretraining.data.transforms)</a>
 </li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomInvert">RandomInvert (class in stable_pretraining.data.transforms)</a>
+</li>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomMask">RandomMask (class in stable_pretraining.data.transforms)</a>
+</li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomPerspective">RandomPerspective (class in stable_pretraining.data.transforms)</a>
+</li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomPosterize">RandomPosterize (class in stable_pretraining.data.transforms)</a>
 </li>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomResizedCrop">RandomResizedCrop (class in stable_pretraining.data.transforms)</a>
 </li>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomRotation">RandomRotation (class in stable_pretraining.data.transforms)</a>
 </li>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomSolarize">RandomSolarize (class in stable_pretraining.data.transforms)</a>
+</li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RandomVerticalFlip">RandomVerticalFlip (class in stable_pretraining.data.transforms)</a>
 </li>
       <li><a href="../stable_pretraining/#stable_pretraining.RankMe">RankMe (class in stable_pretraining)</a>
 
@@ -2344,6 +2360,8 @@
 </li>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.log_reader.read_local_project">read_local_project() (in module stable_pretraining.utils.log_reader)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.log_reader.LocalLogReader.read_project">read_project() (stable_pretraining.utils.log_reader.LocalLogReader method)</a>
 
       <ul>
@@ -2354,8 +2372,6 @@
 </li>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.log_reader.read_wandb_run">read_wandb_run() (in module stable_pretraining.utils.log_reader)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.online_topk.StreamingTopKEigen.reconstruct">reconstruct() (stable_pretraining.utils.online_topk.StreamingTopKEigen method)</a>
 
       <ul>
@@ -2488,16 +2504,12 @@
         <li><a href="../stable_pretraining.data/#stable_pretraining.data.synthetic_data.MinariEpisodeDataset.set_pl_trainer">(stable_pretraining.data.synthetic_data.MinariEpisodeDataset method)</a>
 </li>
       </ul></li>
-      <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.set_seed">set_seed() (in module stable_pretraining.data.transforms)</a>
-</li>
       <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.checkpoint_sklearn.SklearnCheckpoint.setup">setup() (stable_pretraining.callbacks.checkpoint_sklearn.SklearnCheckpoint method)</a>
 
       <ul>
         <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.checkpoint_sklearn.WandbCheckpoint.setup">(stable_pretraining.callbacks.checkpoint_sklearn.WandbCheckpoint method)</a>
 </li>
         <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.clip_zero_shot.CLIPZeroShot.setup">(stable_pretraining.callbacks.clip_zero_shot.CLIPZeroShot method)</a>
-</li>
-        <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.setup">(stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback method)</a>
 </li>
         <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.embedding_cache.EmbeddingCache.setup">(stable_pretraining.callbacks.embedding_cache.EmbeddingCache method)</a>
 </li>
@@ -2722,13 +2734,6 @@
 </li>
       </ul></li>
       <li>
-    stable_pretraining.callbacks.cpu_offload
-
-      <ul>
-        <li><a href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.cpu_offload">module</a>
-</li>
-      </ul></li>
-      <li>
     stable_pretraining.callbacks.earlystop
 
       <ul>
@@ -2847,8 +2852,6 @@
         <li><a href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.utils">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     stable_pretraining.callbacks.wd_schedule
 
@@ -2856,6 +2859,8 @@
         <li><a href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.wd_schedule">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     stable_pretraining.callbacks.writer
 
@@ -3234,11 +3239,9 @@
         <li><a href="../stable_pretraining.utils/#module-stable_pretraining.utils.visualization">module</a>
 </li>
       </ul></li>
-      <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback.state_dict">state_dict() (stable_pretraining.callbacks.cpu_offload.CPUOffloadCallback method)</a>
+      <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.wd_schedule.WeightDecayUpdater.state_dict">state_dict() (stable_pretraining.callbacks.wd_schedule.WeightDecayUpdater method)</a>
 
       <ul>
-        <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.wd_schedule.WeightDecayUpdater.state_dict">(stable_pretraining.callbacks.wd_schedule.WeightDecayUpdater method)</a>
-</li>
         <li><a href="../api/gen_modules/stable_pretraining.data.DataModule/#stable_pretraining.data.DataModule.state_dict">(stable_pretraining.data.DataModule method)</a>, <a href="../stable_pretraining.data/#stable_pretraining.data.DataModule.state_dict">[1]</a>
 </li>
         <li><a href="../stable_pretraining.data/#stable_pretraining.data.module.DataModule.state_dict">(stable_pretraining.data.module.DataModule method)</a>

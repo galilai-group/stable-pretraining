@@ -28,14 +28,6 @@ stable\_pretraining.callbacks.clip\_zero\_shot module
    :show-inheritance:
    :undoc-members:
 
-stable\_pretraining.callbacks.cpu\_offload module
--------------------------------------------------
-
-.. automodule:: stable_pretraining.callbacks.cpu_offload
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 stable\_pretraining.callbacks.earlystop module
 ----------------------------------------------
 
