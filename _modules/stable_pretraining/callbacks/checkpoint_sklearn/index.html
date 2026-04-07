@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.checkpoint_sklearn &#8212; stable-pretraining 0.1.dev1+gfec0d8cf3 documentation</title>
+    <title>stable_pretraining.callbacks.checkpoint_sklearn &#8212; stable-pretraining 0.1.dev1+gca00f1284 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=c1d29c9d"></script>
+    <script src="../../../../_static/documentation_options.js?v=b7a57559"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gfec0d8cf3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gca00f1284 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -574,26 +574,45 @@
 
 
 
+<span class="n">_WANDB_RESUME_FILENAME</span> <span class="o">=</span> <span class="s2">&quot;wandb_resume.json&quot;</span>
+
+
+<div class="viewcode-block" id="find_wandb_logger">
+<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.find_wandb_logger">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_wandb_logger</span><span class="p">(</span><span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">WandbLogger</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find the unique WandbLogger among all trainer loggers.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The WandbLogger instance, or ``None`` if no WandbLogger is configured.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If more than one WandbLogger is attached (ambiguous resume target).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="p">[</span><span class="n">lg</span> <span class="k">for</span> <span class="n">lg</span> <span class="ow">in</span> <span class="n">trainer</span><span class="o">.</span><span class="n">loggers</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lg</span><span class="p">,</span> <span class="n">WandbLogger</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">found</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">found</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">found</span><span class="p">)</span><span class="si">}</span><span class="s2"> WandbLoggers attached to the Trainer. &quot;</span>
+            <span class="s2">&quot;Only one is supported for run resume across requeues.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">found</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+
 <div class="viewcode-block" id="WandbCheckpoint">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.WandbCheckpoint">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">WandbCheckpoint</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Callback for saving and loading sklearn models in PyTorch Lightning checkpoints.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Persist the wandb run ID across checkpoint save/load for seamless requeue resume.</span>
 
-<span class="sd">    This callback automatically detects sklearn models (Regressors and Classifiers)</span>
-<span class="sd">    attached to the Lightning module and handles their serialization/deserialization</span>
-<span class="sd">    during checkpoint save/load operations. This is necessary because sklearn models</span>
-<span class="sd">    are not natively supported by PyTorch&#39;s checkpoint system.</span>
+<span class="sd">    On save:</span>
+<span class="sd">        - Stores ``{&quot;id&quot;: ..., &quot;project&quot;: ..., &quot;entity&quot;: ...}`` in the checkpoint dict.</span>
+<span class="sd">        - Writes a small ``wandb_resume.json`` sidecar in CWD so the Manager can</span>
+<span class="sd">          inject the run ID *before* ``wandb.init()`` fires on the next job.</span>
 
-<span class="sd">    The callback will:</span>
-<span class="sd">    1. Automatically discover sklearn models attached to the Lightning module</span>
-<span class="sd">    2. Save them to the checkpoint dictionary during checkpoint saving</span>
-<span class="sd">    3. Restore them from the checkpoint during checkpoint loading</span>
-<span class="sd">    4. Log information about discovered sklearn modules during setup</span>
-
-<span class="sd">    Note:</span>
-<span class="sd">        - Only attributes that are sklearn RegressorMixin or ClassifierMixin instances are saved</span>
-<span class="sd">        - Private attributes (starting with &#39;_&#39;) are ignored</span>
-<span class="sd">        - The callback will raise an error if a sklearn model name conflicts with existing checkpoint keys</span>
+<span class="sd">    On load:</span>
+<span class="sd">        - Verifies the active wandb run matches the checkpoint (early injection in</span>
+<span class="sd">          the Manager should have already set the correct ID).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="WandbCheckpoint.setup">
@@ -607,71 +626,60 @@
 <div class="viewcode-block" id="WandbCheckpoint.on_save_checkpoint">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.WandbCheckpoint.on_save_checkpoint">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">on_save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">):</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Checking for Wandb params to save&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span> <span class="n">WandbLogger</span><span class="p">):</span>
-            <span class="n">checkpoint</span><span class="p">[</span><span class="s2">&quot;wandb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">trainer</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">version</span><span class="p">}</span>
-            <span class="c1"># checkpoint[&quot;wandb_checkpoint_name&quot;] = trainer.logger._checkpoint_name</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Saving Wandb params </span><span class="si">{</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;wandb&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">&quot;✓ Wandb params save check complete&quot;</span><span class="p">)</span></div>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+        <span class="n">wandb_logger</span> <span class="o">=</span> <span class="n">find_wandb_logger</span><span class="p">(</span><span class="n">trainer</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">wandb_logger</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">run_id</span> <span class="o">=</span> <span class="n">wandb_logger</span><span class="o">.</span><span class="n">version</span>
+        <span class="n">project</span> <span class="o">=</span> <span class="n">wandb_logger</span><span class="o">.</span><span class="n">_wandb_init</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project&quot;</span><span class="p">)</span>
+        <span class="n">entity</span> <span class="o">=</span> <span class="n">wandb_logger</span><span class="o">.</span><span class="n">_wandb_init</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;entity&quot;</span><span class="p">)</span>
+
+        <span class="n">resume_info</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">run_id</span><span class="p">,</span> <span class="s2">&quot;project&quot;</span><span class="p">:</span> <span class="n">project</span><span class="p">,</span> <span class="s2">&quot;entity&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="p">}</span>
+        <span class="n">checkpoint</span><span class="p">[</span><span class="s2">&quot;wandb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">resume_info</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Saved wandb resume info to checkpoint: </span><span class="si">{</span><span class="n">resume_info</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Write sidecar so the Manager can inject the ID before wandb.init()</span>
+        <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">is_global_zero</span><span class="p">:</span>
+            <span class="n">sidecar</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">_WANDB_RESUME_FILENAME</span><span class="p">)</span>
+            <span class="n">sidecar</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">resume_info</span><span class="p">))</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Wrote </span><span class="si">{</span><span class="n">sidecar</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="WandbCheckpoint.on_load_checkpoint">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.WandbCheckpoint.on_load_checkpoint">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">on_load_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">):</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Checking for Wandb init params&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="s2">&quot;wandb&quot;</span> <span class="ow">in</span> <span class="n">checkpoint</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Wandb info in checkpoint, restoring same run&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="s2">&quot;logger&quot;</span><span class="p">):</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! Expected Trainer to have a logger, leaving&quot;</span><span class="p">)</span>
-                <span class="k">return</span>
-            <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span> <span class="n">WandbLogger</span><span class="p">):</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;! Expected WandbLogger, got </span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">logger</span><span class="si">}</span><span class="s2">, leaving&quot;</span>
-                <span class="p">)</span>
-                <span class="k">return</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Trainer has a WandbLogger&quot;</span><span class="p">)</span>
-            <span class="kn">import</span><span class="w"> </span><span class="nn">wandb</span>
+        <span class="k">if</span> <span class="s2">&quot;wandb&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">checkpoint</span><span class="p">:</span>
+            <span class="k">return</span>
 
-            <span class="k">if</span> <span class="n">wandb</span><span class="o">.</span><span class="n">run</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_rank</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="s2">&quot;  Run not initialized yet, skipping since this is a slave process&quot;</span>
-                <span class="p">)</span>
-                <span class="k">return</span>
-            <span class="k">if</span> <span class="n">wandb</span><span class="o">.</span><span class="n">run</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">checkpoint</span><span class="p">[</span><span class="s2">&quot;wandb&quot;</span><span class="p">][</span><span class="s2">&quot;id&quot;</span><span class="p">]:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="s2">&quot;  Run already properly initialized, skipping deletion and setup&quot;</span>
-                <span class="p">)</span>
-                <span class="k">return</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;  Deleting current run </span><span class="si">{</span><span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">entity</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">project</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">expected_id</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="p">[</span><span class="s2">&quot;wandb&quot;</span><span class="p">][</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
+        <span class="n">wandb_logger</span> <span class="o">=</span> <span class="n">find_wandb_logger</span><span class="p">(</span><span class="n">trainer</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">wandb_logger</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;! Checkpoint contains wandb run ID &#39;</span><span class="si">{</span><span class="n">expected_id</span><span class="si">}</span><span class="s2">&#39; but no &quot;</span>
+                <span class="s2">&quot;WandbLogger is configured — wandb resume will not happen.&quot;</span>
             <span class="p">)</span>
-            <span class="n">api</span> <span class="o">=</span> <span class="n">wandb</span><span class="o">.</span><span class="n">Api</span><span class="p">()</span>
-            <span class="n">run</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">entity</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">project</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">wandb</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
-            <span class="n">run</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
-            <span class="n">trainer</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">_experiment</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="n">wandb_id</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="p">[</span><span class="s2">&quot;wandb&quot;</span><span class="p">][</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
-            <span class="n">trainer</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">_wandb_init</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">wandb_id</span>
-            <span class="n">trainer</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">_id</span> <span class="o">=</span> <span class="n">wandb_id</span>
-            <span class="c1"># to reset the run</span>
-            <span class="n">trainer</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">experiment</span>
+            <span class="k">return</span>
+
+        <span class="c1"># At this point the Manager should have already injected the ID via</span>
+        <span class="c1"># _maybe_restore_wandb_run_id, so the logger&#39;s _wandb_init[&quot;id&quot;]</span>
+        <span class="c1"># should match.  We verify here as a safety net.</span>
+        <span class="n">configured_id</span> <span class="o">=</span> <span class="n">wandb_logger</span><span class="o">.</span><span class="n">_wandb_init</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">configured_id</span> <span class="o">==</span> <span class="n">expected_id</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;  New run </span><span class="si">{</span><span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">entity</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">project</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;  Wandb run ID &#39;</span><span class="si">{</span><span class="n">expected_id</span><span class="si">}</span><span class="s2">&#39; matches — resume is set up correctly.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;! Wandb run ID mismatch: checkpoint expects &#39;</span><span class="si">{</span><span class="n">expected_id</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;but the logger is configured with &#39;</span><span class="si">{</span><span class="n">configured_id</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+                <span class="s2">&quot;The run may not resume correctly. This can happen if wandb.init() &quot;</span>
+                <span class="s2">&quot;was called before the Manager had a chance to inject the ID.&quot;</span>
             <span class="p">)</span></div>
 </div>
 
-
-            <span class="c1"># trainer.logger._wandb_init = wandb_init</span>
-            <span class="c1"># trainer.logger._project = trainer.logger._wandb_init.get(&quot;project&quot;)</span>
-            <span class="c1"># trainer.logger._save_dir = trainer.logger._wandb_init.get(&quot;dir&quot;)</span>
-            <span class="c1"># trainer.logger._name = trainer.logger._wandb_init.get(&quot;name&quot;)</span>
-            <span class="c1"># trainer.logger._checkpoint_name = checkpoint[&quot;wandb_checkpoint_name&quot;]</span>
-            <span class="c1"># logging.info(&quot;Updated Wandb parameters: &quot;)</span>
-            <span class="c1"># logging.info(f&quot;\t- project={trainer.logger._project}&quot;)</span>
-            <span class="c1"># logging.info(f&quot;\t- _save_dir={trainer.logger._save_dir}&quot;)</span>
-            <span class="c1"># logging.info(f&quot;\t- name={trainer.logger._name}&quot;)</span>
-            <span class="c1"># logging.info(f&quot;\t- id={trainer.logger._id}&quot;)</span>
 </pre></div>
 
                 </article>

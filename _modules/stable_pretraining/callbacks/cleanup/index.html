@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.cleanup &#8212; stable-pretraining 0.1.dev1+gfec0d8cf3 documentation</title>
+    <title>stable_pretraining.callbacks.cleanup &#8212; stable-pretraining 0.1.dev1+gca00f1284 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=c1d29c9d"></script>
+    <script src="../../../../_static/documentation_options.js?v=b7a57559"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gfec0d8cf3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gca00f1284 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -423,25 +423,49 @@
 <span class="sd">        dry_run: If ``True``, only log what would be deleted.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="c1"># Sentinel to distinguish &quot;not passed&quot; from an explicit ``True``/``False``.</span>
+    <span class="n">_UNSET</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">keep_checkpoints</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">keep_logs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">keep_hydra</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">keep_slurm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">keep_env_dump</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">keep_callback_artifacts</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">keep_checkpoints</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
+        <span class="n">keep_logs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
+        <span class="n">keep_hydra</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
+        <span class="n">keep_slurm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
+        <span class="n">keep_env_dump</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
+        <span class="n">keep_callback_artifacts</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
         <span class="n">slurm_patterns</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">extra_patterns</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">keep_checkpoints</span> <span class="o">=</span> <span class="n">keep_checkpoints</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">keep_logs</span> <span class="o">=</span> <span class="n">keep_logs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">keep_hydra</span> <span class="o">=</span> <span class="n">keep_hydra</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">keep_slurm</span> <span class="o">=</span> <span class="n">keep_slurm</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">keep_env_dump</span> <span class="o">=</span> <span class="n">keep_env_dump</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">keep_callback_artifacts</span> <span class="o">=</span> <span class="n">keep_callback_artifacts</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span>
+
+        <span class="n">cfg_cleanup</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span><span class="o">.</span><span class="n">cleanup</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_checkpoints</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">keep_checkpoints</span>
+            <span class="k">if</span> <span class="n">keep_checkpoints</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_UNSET</span>
+            <span class="k">else</span> <span class="n">cfg_cleanup</span><span class="p">[</span><span class="s2">&quot;checkpoints&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_logs</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">keep_logs</span> <span class="k">if</span> <span class="n">keep_logs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_UNSET</span> <span class="k">else</span> <span class="n">cfg_cleanup</span><span class="p">[</span><span class="s2">&quot;logs&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_hydra</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">keep_hydra</span> <span class="k">if</span> <span class="n">keep_hydra</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_UNSET</span> <span class="k">else</span> <span class="n">cfg_cleanup</span><span class="p">[</span><span class="s2">&quot;hydra&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_slurm</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">keep_slurm</span> <span class="k">if</span> <span class="n">keep_slurm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_UNSET</span> <span class="k">else</span> <span class="n">cfg_cleanup</span><span class="p">[</span><span class="s2">&quot;slurm&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_env_dump</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">keep_env_dump</span>
+            <span class="k">if</span> <span class="n">keep_env_dump</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_UNSET</span>
+            <span class="k">else</span> <span class="n">cfg_cleanup</span><span class="p">[</span><span class="s2">&quot;env_dump&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_callback_artifacts</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">keep_callback_artifacts</span>
+            <span class="k">if</span> <span class="n">keep_callback_artifacts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_UNSET</span>
+            <span class="k">else</span> <span class="n">cfg_cleanup</span><span class="p">[</span><span class="s2">&quot;callback_artifacts&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">slurm_patterns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">slurm_patterns</span> <span class="ow">or</span> <span class="p">[</span><span class="s2">&quot;slurm-*.out&quot;</span><span class="p">,</span> <span class="s2">&quot;slurm-*.err&quot;</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">extra_patterns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">extra_patterns</span> <span class="ow">or</span> <span class="p">[])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dry_run</span> <span class="o">=</span> <span class="n">dry_run</span>

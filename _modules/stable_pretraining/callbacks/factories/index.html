@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.factories &#8212; stable-pretraining 0.1.dev1+gfec0d8cf3 documentation</title>
+    <title>stable_pretraining.callbacks.factories &#8212; stable-pretraining 0.1.dev1+gca00f1284 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=c1d29c9d"></script>
+    <script src="../../../../_static/documentation_options.js?v=b7a57559"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gfec0d8cf3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gca00f1284 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -425,36 +425,64 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_make_progress_bar</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a progress bar callback.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a progress bar callback respecting ``spt.set(progress_bar=...)``.</span>
 
-<span class="sd">    If stdout is a tty (local shell, interactive srun, etc.), uses Rich for</span>
-<span class="sd">    a nice live display.  Otherwise (sbatch, Hydra multirun, piped output),</span>
-<span class="sd">    falls back to a plain-text line printer that shows up in slurm .out</span>
-<span class="sd">    files and the wandb Logs tab.</span>
+<span class="sd">    Resolution order:</span>
+
+<span class="sd">    1. ``get_config().progress_bar`` if explicitly set (``&quot;rich&quot;``, ``&quot;simple&quot;``,</span>
+<span class="sd">       ``&quot;none&quot;``).</span>
+<span class="sd">    2. ``&quot;auto&quot;`` (default): ``&quot;rich&quot;`` for TTYs, ``&quot;simple&quot;`` otherwise.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span>
+
+    <span class="n">style</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span><span class="o">.</span><span class="n">progress_bar</span>
+
+    <span class="k">if</span> <span class="n">style</span> <span class="o">==</span> <span class="s2">&quot;none&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">style</span> <span class="o">==</span> <span class="s2">&quot;rich&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RichProgressBar</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">style</span> <span class="o">==</span> <span class="s2">&quot;simple&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">PrintProgressBar</span><span class="p">()</span>
+    <span class="c1"># &quot;auto&quot;</span>
     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">isatty</span><span class="p">(</span><span class="mi">1</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">RichProgressBar</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">PrintProgressBar</span><span class="p">()</span>
 
 
+<span class="c1"># Maps default_callbacks keys → (factory callable, kwargs)</span>
+<span class="n">_DEFAULT_CALLBACK_REGISTRY</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;progress_bar&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">_make_progress_bar</span><span class="p">,</span> <span class="p">{}),</span>
+    <span class="s2">&quot;registry&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">ModuleRegistryCallback</span><span class="p">,</span> <span class="p">{}),</span>
+    <span class="s2">&quot;logging&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">LoggingCallback</span><span class="p">,</span> <span class="p">{}),</span>
+    <span class="s2">&quot;env_dump&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">EnvironmentDumpCallback</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;async_dump&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span>
+    <span class="s2">&quot;trainer_info&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">TrainerInfo</span><span class="p">,</span> <span class="p">{}),</span>
+    <span class="s2">&quot;sklearn_checkpoint&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">SklearnCheckpoint</span><span class="p">,</span> <span class="p">{}),</span>
+    <span class="s2">&quot;wandb_checkpoint&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">WandbCheckpoint</span><span class="p">,</span> <span class="p">{}),</span>
+    <span class="s2">&quot;module_summary&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">ModuleSummary</span><span class="p">,</span> <span class="p">{}),</span>
+    <span class="s2">&quot;slurm_info&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">SLURMInfo</span><span class="p">,</span> <span class="p">{}),</span>
+    <span class="s2">&quot;unused_params&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">LogUnusedParametersOnce</span><span class="p">,</span> <span class="p">{}),</span>
+    <span class="s2">&quot;hf_checkpoint&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">HuggingFaceCheckpointCallback</span><span class="p">,</span> <span class="p">{}),</span>
+<span class="p">}</span>
+
+
 <div class="viewcode-block" id="default">
 <a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.factories.default">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">default</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Factory function that returns default callbacks.&quot;&quot;&quot;</span>
-    <span class="n">callbacks</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">_make_progress_bar</span><span class="p">(),</span>
-        <span class="n">ModuleRegistryCallback</span><span class="p">(),</span>
-        <span class="n">LoggingCallback</span><span class="p">(),</span>
-        <span class="n">EnvironmentDumpCallback</span><span class="p">(</span><span class="n">async_dump</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
-        <span class="n">TrainerInfo</span><span class="p">(),</span>
-        <span class="n">SklearnCheckpoint</span><span class="p">(),</span>
-        <span class="n">WandbCheckpoint</span><span class="p">(),</span>
-        <span class="n">ModuleSummary</span><span class="p">(),</span>
-        <span class="n">SLURMInfo</span><span class="p">(),</span>
-        <span class="n">LogUnusedParametersOnce</span><span class="p">(),</span>
-        <span class="n">HuggingFaceCheckpointCallback</span><span class="p">(),</span>
-    <span class="p">]</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Factory function that returns default callbacks.</span>
 
+<span class="sd">    Respects ``spt.set(default_callbacks={...})`` to toggle individual</span>
+<span class="sd">    callbacks on/off.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span>
+
+    <span class="n">overrides</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span><span class="o">.</span><span class="n">default_callbacks</span>
+    <span class="n">callbacks</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="p">(</span><span class="n">factory</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_DEFAULT_CALLBACK_REGISTRY</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">overrides</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">cb</span> <span class="o">=</span> <span class="n">factory</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">if</span> <span class="n">kwargs</span> <span class="k">else</span> <span class="n">factory</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">cb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">callbacks</span></div>
 
 </pre></div>

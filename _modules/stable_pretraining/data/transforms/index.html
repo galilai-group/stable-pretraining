@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.data.transforms &#8212; stable-pretraining 0.1.dev1+gfec0d8cf3 documentation</title>
+    <title>stable_pretraining.data.transforms &#8212; stable-pretraining 0.1.dev1+gca00f1284 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=c1d29c9d"></script>
+    <script src="../../../../_static/documentation_options.js?v=b7a57559"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gfec0d8cf3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gca00f1284 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -579,9 +579,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">:</span>
             <span class="n">x</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">x</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">return</span> <span class="n">x</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nested_set</span><span class="p">(</span>
-            <span class="n">x</span><span class="p">,</span> <span class="n">F</span><span class="o">.</span><span class="n">autocontrast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nested_get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span>
-        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nested_set</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">F</span><span class="o">.</span><span class="n">autocontrast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nested_get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
         <span class="n">x</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">x</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="n">x</span></div>
 
@@ -601,9 +599,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">:</span>
             <span class="n">x</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">x</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">return</span> <span class="n">x</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nested_set</span><span class="p">(</span>
-            <span class="n">x</span><span class="p">,</span> <span class="n">F</span><span class="o">.</span><span class="n">equalize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nested_get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span>
-        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nested_set</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">F</span><span class="o">.</span><span class="n">equalize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nested_get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
         <span class="n">x</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">x</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="n">x</span></div>
 
@@ -623,9 +619,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">:</span>
             <span class="n">x</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">x</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">return</span> <span class="n">x</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nested_set</span><span class="p">(</span>
-            <span class="n">x</span><span class="p">,</span> <span class="n">F</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nested_get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span>
-        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nested_set</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">F</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nested_get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
         <span class="n">x</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">x</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="n">x</span></div>
 
@@ -671,9 +665,7 @@
             <span class="k">return</span> <span class="n">x</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nested_set</span><span class="p">(</span>
             <span class="n">x</span><span class="p">,</span>
-            <span class="n">F</span><span class="o">.</span><span class="n">adjust_sharpness</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">nested_get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">sharpness_factor</span>
-            <span class="p">),</span>
+            <span class="n">F</span><span class="o">.</span><span class="n">adjust_sharpness</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nested_get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">sharpness_factor</span><span class="p">),</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">x</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">x</span><span class="p">)]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">sharpness_factor</span><span class="p">])</span>
@@ -1288,7 +1280,9 @@
 
         <span class="c1"># Determine fill value</span>
         <span class="n">fill_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fill_value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fill_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">0.0</span>
-        <span class="n">fill</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">fill_value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">img_tensor</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">img_tensor</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">fill</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span>
+            <span class="n">fill_value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">img_tensor</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">img_tensor</span><span class="o">.</span><span class="n">device</span>
+        <span class="p">)</span>
 
         <span class="c1"># Efficient masking via reshape + broadcast (no full-resolution mask needed)</span>
         <span class="n">ps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_size</span>

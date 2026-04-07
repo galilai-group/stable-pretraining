@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+gfec0d8cf3 documentation</title>
+    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+gca00f1284 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=c1d29c9d"></script>
+    <script src="_static/documentation_options.js?v=b7a57559"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gfec0d8cf3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gca00f1284 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -379,12 +379,23 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#core-structure">Core Structure</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data">1 - Data</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#module">2 - Module</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#callbacks">3 - Callbacks</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#callbacks">3 - Callbacks</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#evaluation-monitoring">Evaluation &amp; Monitoring</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#training-utilities">Training Utilities</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#checkpointing-export">Checkpointing &amp; Export</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#system-logging">System &amp; Logging</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#intelligent-queue-system">Intelligent Queue System</a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trainer">4 - Trainer</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#global-configuration">Global Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#built-in-methods">Built-in Methods</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#backbones">Backbones</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#optimizers-schedulers">Optimizers &amp; Schedulers</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#complete-example">Complete Example</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start-with-spt-cli">🚀 Quick Start with <code class="docutils literal notranslate"><span class="pre">spt</span></code> CLI</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start-with-spt-cli">Quick Start with <code class="docutils literal notranslate"><span class="pre">spt</span></code> CLI</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#local-training">Local Training</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#slurm-cluster-training">SLURM Cluster Training</a></li>
 </ul>
@@ -415,7 +426,7 @@
 <a class="reference external" href="https://opensource.org/licenses/MIT"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
 <a class="reference external" href="https://wandb.ai/site"><img alt="WandB" src="https://raw.githubusercontent.com/wandb/assets/main/wandb-github-badge-gradient.svg" /></a></p>
 <p>AI is moving beyond labels. Today’s models learn through <strong>self-supervision</strong> and <strong>multimodal alignment</strong>, extracting knowledge from raw data to build general-purpose representations that work across tasks. These foundation models are then deployed at scale, often after finetuning, to solve tasks in zero or few shot.</p>
-<p><code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code> is a PyTorch framework built on top of Lightning for this new paradigm. What sets us apart is <strong>real-time visibility into training quality</strong> through extensive logging and monitoring. Our callback ecosystem (<code class="docutils literal notranslate"><span class="pre">OnlineProbe</span></code>, <code class="docutils literal notranslate"><span class="pre">OnlineKNN</span></code>, <code class="docutils literal notranslate"><span class="pre">RankMe</span></code>, and many more) provides insights into feature collapse, training dynamics, and downstream performance. Data flow as dictionaries through model components, metrics, and callbacks, making any intermediate value accessible and debuggable. With <code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code>: track everything, debug faster, iterate sooner.</p>
+<p><code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code> is a PyTorch framework built on top of Lightning for this new paradigm. What sets us apart is <strong>real-time visibility into training quality</strong> through extensive logging and monitoring. Our callback ecosystem (<code class="docutils literal notranslate"><span class="pre">OnlineProbe</span></code>, <code class="docutils literal notranslate"><span class="pre">OnlineKNN</span></code>, <code class="docutils literal notranslate"><span class="pre">RankMe</span></code>, and many more) provides insights into feature collapse, training dynamics, and downstream performance. Data flows as dictionaries through model components, metrics, and callbacks, making any intermediate value accessible and debuggable. With <code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code>: track everything, debug faster, iterate sooner.</p>
 <p>Join our Discord: <a class="reference external" href="https://discord.gg/adzpqWKM25">https://discord.gg/8M6hT39X</a></p>
 <section id="how">
 <h2>How?<a class="headerlink" href="#how" title="Link to this heading">#</a></h2>
@@ -518,13 +529,138 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 <section id="callbacks">
 <h3>3 - Callbacks<a class="headerlink" href="#callbacks" title="Link to this heading">#</a></h3>
 <p>Monitor and evaluate your models in real-time during training. Callbacks are key ingredients of <code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code>, providing rich insights without interrupting your training flow.</p>
-<p>For example, OnlineProbe allows to jointly optimize a lightweight model (e.g. a single linear layer) on top of the current backbone model representations.</p>
+<section id="evaluation-monitoring">
+<h4>Evaluation &amp; Monitoring<a class="headerlink" href="#evaluation-monitoring" title="Link to this heading">#</a></h4>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Callback</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">OnlineProbe</span></code></p></td>
+<td><p>Trains a lightweight linear probe on frozen representations to track downstream task accuracy in real-time. Maintains its own optimizer and training loop.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">OnlineKNN</span></code></p></td>
+<td><p>Non-parametric k-nearest neighbors evaluator using a rolling queue of cached embeddings. Zero training cost.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RankMe</span></code></p></td>
+<td><p>Tracks effective rank of feature representations via singular values. A rank drop signals dimensional collapse.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LiDAR</span></code></p></td>
+<td><p>Linear Discriminant Analysis Rank over surrogate classes of augmented views.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CLIPZeroShot</span></code></p></td>
+<td><p>Zero-shot classification for CLIP-style models. Compares image embeddings against text-encoded class names.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ImageRetrieval</span></code></p></td>
+<td><p>Image retrieval evaluator following the DINO protocol with query/gallery splits.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LatentViz</span></code></p></td>
+<td><p>Online 2D visualization of the latent space. Learns a neighborhood-preserving projection and periodically plots it.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">EpochMilestones</span></code></p></td>
+<td><p>Early-stops training if a metric fails to reach a threshold by a given epoch.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="training-utilities">
+<h4>Training Utilities<a class="headerlink" href="#training-utilities" title="Link to this heading">#</a></h4>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Callback</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TeacherStudentCallback</span></code></p></td>
+<td><p>Auto-discovers <code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper</span></code> instances and performs EMA teacher updates at configurable frequency.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">WeightDecayUpdater</span></code></p></td>
+<td><p>Updates weight decay on a per-batch schedule (constant, linear, cosine, or exponential).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">EmbeddingCache</span></code></p></td>
+<td><p>Hooks into named submodules to cache intermediate embeddings for downstream use.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="checkpointing-export">
+<h4>Checkpointing &amp; Export<a class="headerlink" href="#checkpointing-export" title="Link to this heading">#</a></h4>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Callback</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SklearnCheckpoint</span></code></p></td>
+<td><p>Saves and restores scikit-learn models (probes, classifiers) inside Lightning checkpoints.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">WandbCheckpoint</span></code></p></td>
+<td><p>Uploads checkpoints to Weights &amp; Biases as artifacts with run-resume support.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">StrictCheckpointCallback</span></code></p></td>
+<td><p>Controls strict/non-strict checkpoint loading with detailed mismatch reporting.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HuggingFaceCheckpointCallback</span></code></p></td>
+<td><p>Exports HuggingFace-compatible checkpoints for any <code class="docutils literal notranslate"><span class="pre">PreTrainedModel</span></code> submodule (zero-knowledge reload).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="system-logging">
+<h4>System &amp; Logging<a class="headerlink" href="#system-logging" title="Link to this heading">#</a></h4>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Callback</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LoggingCallback</span></code></p></td>
+<td><p>Displays validation metrics in a color-coded formatted table after each epoch.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ModuleSummary</span></code></p></td>
+<td><p>Logs detailed parameter statistics (trainable, frozen, per-layer) at the start of training.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TrainerInfo</span></code></p></td>
+<td><p>Links trainer to DataModule and logs trainer configuration.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SLURMInfo</span></code></p></td>
+<td><p>Extracts and logs SLURM environment information (job ID, partition, resources).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">EnvironmentDumpCallback</span></code></p></td>
+<td><p>Dumps Python version, CUDA info, installed packages, git state, and env vars to <code class="docutils literal notranslate"><span class="pre">environment.json</span></code> for exact reproducibility.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LogUnusedParametersOnce</span></code></p></td>
+<td><p>Reports parameters that receive no gradient after the first backward pass. Useful for catching wiring bugs.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CleanUpCallback</span></code></p></td>
+<td><p>Removes selected training artifacts (SLURM logs, Hydra files, checkpoints, etc.) after successful training. Keeps everything on failure for debugging.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ModuleRegistryCallback</span></code></p></td>
+<td><p>Registers the module for global logging access. Enables <code class="docutils literal notranslate"><span class="pre">spt.log()</span></code> and <code class="docutils literal notranslate"><span class="pre">spt.log_dict()</span></code> from anywhere.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="intelligent-queue-system">
+<h4>Intelligent Queue System<a class="headerlink" href="#intelligent-queue-system" title="Link to this heading">#</a></h4>
+<p>Callbacks that need rolling feature stores (<code class="docutils literal notranslate"><span class="pre">OnlineKNN</span></code>, <code class="docutils literal notranslate"><span class="pre">RankMe</span></code>, <code class="docutils literal notranslate"><span class="pre">LiDAR</span></code>, <code class="docutils literal notranslate"><span class="pre">LatentViz</span></code>) share memory through an automatic queue management system. If two callbacks monitor the same key with different queue lengths, a single queue is allocated at the maximum length and shared, eliminating redundant computation.</p>
+<p><strong>Why callbacks matter:</strong> Get real-time feedback on representation quality, catch issues like collapse early, and track multiple metrics simultaneously. For detailed usage and practical considerations, see the <a class="reference internal" href="#stable_pretraining/callbacks/README.md"><span class="xref myst">Callback guide</span></a>.</p>
+<p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Monitor SSL representations with a linear classifier</span>
 <span class="n">linear_probe</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">OnlineProbe</span><span class="p">(</span>
-    <span class="n">module</span><span class="p">,</span>  <span class="c1"># Pass the spt.Module instance</span>
-    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;linear_probe&quot;</span><span class="p">,</span>  <span class="c1"># Useful for retrieving metrics and values in logging</span>
-    <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;embedding&quot;</span><span class="p">,</span>  <span class="c1"># Which output from forward to monitor</span>
-    <span class="n">target</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span>      <span class="c1"># Ground truth from batch</span>
+    <span class="n">module</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;linear_probe&quot;</span><span class="p">,</span>
+    <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;embedding&quot;</span><span class="p">,</span>
+    <span class="n">target</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span>
     <span class="n">probe</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
     <span class="n">loss_fn</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span><span class="p">(),</span>
     <span class="n">metrics</span><span class="o">=</span><span class="p">{</span>
@@ -532,10 +668,8 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
         <span class="s2">&quot;top5&quot;</span><span class="p">:</span> <span class="n">torchmetrics</span><span class="o">.</span><span class="n">classification</span><span class="o">.</span><span class="n">MulticlassAccuracy</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span>
     <span class="p">},</span>
 <span class="p">)</span>
-</pre></div>
-</div>
-<p>OnlineKNN is a non-parametric probe that constructs predictions based on the k nearest neighbors in the representation space.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Track representation quality with KNN evaluation</span>
+
+<span class="c1"># Track representation quality with KNN evaluation</span>
 <span class="n">knn_probe</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">OnlineKNN</span><span class="p">(</span>
     <span class="n">name</span><span class="o">=</span><span class="s2">&quot;knn_probe&quot;</span><span class="p">,</span>
     <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;embedding&quot;</span><span class="p">,</span>
@@ -545,8 +679,7 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>Callbacks are powered by an intelligent queue management system that automatically shares memory between callbacks monitoring the same data thus eliminating redundant computations.</p>
-<p><strong>Why callbacks matter:</strong> Get real-time feedback on representation quality, catch issues like collapse early, and track multiple metrics simultaneously for deeper insights. For more details and an overview of useful callbacks, refer to the <a class="reference internal" href="#stable_pretraining/callbacks/README.md"><span class="xref myst">Callback guide</span></a>.</p>
+</section>
 </section>
 <section id="trainer">
 <h3>4 - Trainer<a class="headerlink" href="#trainer" title="Link to this heading">#</a></h3>
@@ -565,6 +698,176 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 </div>
 <p>Once configured, the <code class="docutils literal notranslate"><span class="pre">Manager</span></code> connects all components and handles the training loop with precise logging and monitoring (optional).</p>
 </section>
+</section>
+<section id="global-configuration">
+<h2>Global Configuration<a class="headerlink" href="#global-configuration" title="Link to this heading">#</a></h2>
+<p>Instead of scattering options across environment variables, callback constructors, and factory functions, <code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code> provides a single entry-point to configure library-wide behavior:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span>
+
+<span class="n">spt</span><span class="o">.</span><span class="n">set</span><span class="p">(</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="s2">&quot;WARNING&quot;</span><span class="p">,</span>                          <span class="c1"># Global log level (also controls callback verbosity)</span>
+    <span class="n">progress_bar</span><span class="o">=</span><span class="s2">&quot;rich&quot;</span><span class="p">,</span>                        <span class="c1"># &quot;auto&quot;, &quot;rich&quot;, &quot;simple&quot;, or &quot;none&quot;</span>
+    <span class="n">cleanup</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;checkpoints&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;slurm&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span>  <span class="c1"># What CleanUpCallback removes</span>
+    <span class="n">log_rank</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span>                             <span class="c1"># Which distributed rank(s) may log (default: 0)</span>
+    <span class="n">default_callbacks</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;env_dump&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span>       <span class="c1"># Toggle individual default callbacks on/off</span>
+<span class="p">)</span>
+
+<span class="c1"># Inspect the current configuration</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">spt</span><span class="o">.</span><span class="n">get_config</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">verbose</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code> or <code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;INFO&quot;</span></code></p></td>
+<td><p>Loguru log level. Accepts <code class="docutils literal notranslate"><span class="pre">&quot;DEBUG&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;INFO&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;WARNING&quot;</span></code>, etc., or Python logging ints (<code class="docutils literal notranslate"><span class="pre">10</span></code>, <code class="docutils literal notranslate"><span class="pre">20</span></code>, <code class="docutils literal notranslate"><span class="pre">30</span></code>). Also controls the <code class="docutils literal notranslate"><span class="pre">verbose</span></code> flag on all callbacks when left at their default.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">progress_bar</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code></p></td>
+<td><p>Progress bar style. <code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code> picks <code class="docutils literal notranslate"><span class="pre">&quot;rich&quot;</span></code> for TTYs and <code class="docutils literal notranslate"><span class="pre">&quot;simple&quot;</span></code> for non-interactive environments. <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code> disables it.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cleanup</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p>keeps checkpoints &amp; logs</p></td>
+<td><p>Controls which artifact categories <code class="docutils literal notranslate"><span class="pre">CleanUpCallback</span></code> removes after training. Keys: <code class="docutils literal notranslate"><span class="pre">&quot;checkpoints&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;logs&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;hydra&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;slurm&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;env_dump&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;callback_artifacts&quot;</span></code>. Values are bools (<code class="docutils literal notranslate"><span class="pre">True</span></code> = keep, <code class="docutils literal notranslate"><span class="pre">False</span></code> = delete).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">log_rank</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Which distributed rank(s) may produce log output.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">default_callbacks</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p>all enabled</p></td>
+<td><p>Toggle individual default callbacks: <code class="docutils literal notranslate"><span class="pre">&quot;progress_bar&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;registry&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;logging&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;env_dump&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;trainer_info&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;sklearn_checkpoint&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;wandb_checkpoint&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;module_summary&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;slurm_info&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;unused_params&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;hf_checkpoint&quot;</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Settings apply immediately and persist for the process lifetime. <code class="docutils literal notranslate"><span class="pre">spt.set()</span></code> can be called multiple times; only the settings you pass are updated.</p>
+</section>
+<section id="built-in-methods">
+<h2>Built-in Methods<a class="headerlink" href="#built-in-methods" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code> ships with ready-to-use forward functions and matching loss functions for popular self-supervised learning methods:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Forward</p></th>
+<th class="head"><p>Loss</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Supervised</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.supervised_forward</span></code></p></td>
+<td><p>any</p></td>
+<td><p>Standard supervised training with labels</p></td>
+</tr>
+<tr class="row-odd"><td><p>SimCLR</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.simclr_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NTXEntLoss</span></code></p></td>
+<td><p>Contrastive learning with 2 augmented views</p></td>
+</tr>
+<tr class="row-even"><td><p>BYOL</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.byol_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BYOLLoss</span></code></p></td>
+<td><p>Momentum-based self-distillation without negatives</p></td>
+</tr>
+<tr class="row-odd"><td><p>VICReg</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.vicreg_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">VICRegLoss</span></code></p></td>
+<td><p>Variance-invariance-covariance regularization</p></td>
+</tr>
+<tr class="row-even"><td><p>Barlow Twins</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.barlow_twins_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BarlowTwinsLoss</span></code></p></td>
+<td><p>Cross-correlation matrix alignment to identity</p></td>
+</tr>
+<tr class="row-odd"><td><p>SwAV</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.swav_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sinkhorn_knopp</span></code></p></td>
+<td><p>Online clustering with Sinkhorn-Knopp normalization</p></td>
+</tr>
+<tr class="row-even"><td><p>NNCLR</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.nnclr_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NTXEntLoss</span></code></p></td>
+<td><p>Nearest-neighbor contrastive learning</p></td>
+</tr>
+<tr class="row-odd"><td><p>DINO</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.dino_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DINOv1Loss</span></code></p></td>
+<td><p>Self-distillation with multi-crop and centering</p></td>
+</tr>
+<tr class="row-even"><td><p>DINOv2</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.dinov2_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DINOv2Loss</span></code></p></td>
+<td><p>DINO + iBOT masked patch prediction</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="backbones">
+<h2>Backbones<a class="headerlink" href="#backbones" title="Link to this heading">#</a></h2>
+<p>Load architectures from popular libraries or use built-in components:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># From torchvision</span>
+<span class="n">backbone</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">backbone</span><span class="o">.</span><span class="n">from_torchvision</span><span class="p">(</span><span class="s2">&quot;resnet50&quot;</span><span class="p">)</span>
+
+<span class="c1"># From timm (thousands of pretrained models)</span>
+<span class="n">backbone</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">backbone</span><span class="o">.</span><span class="n">from_timm</span><span class="p">(</span><span class="s2">&quot;vit_base_patch16_224&quot;</span><span class="p">)</span>
+
+<span class="c1"># From HuggingFace</span>
+<span class="n">backbone</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">backbone</span><span class="o">.</span><span class="n">vit_hf</span><span class="p">(</span><span class="s2">&quot;google/vit-base-patch16-224&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Additional building blocks: <code class="docutils literal notranslate"><span class="pre">MLP</span></code>, <code class="docutils literal notranslate"><span class="pre">ConvMixer</span></code>, <code class="docutils literal notranslate"><span class="pre">Resnet9</span></code>, <code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper</span></code> (EMA), <code class="docutils literal notranslate"><span class="pre">MAEDecoder</span></code>, <code class="docutils literal notranslate"><span class="pre">MaskedEncoder</span></code>, <code class="docutils literal notranslate"><span class="pre">FlexibleTransformer</span></code>, <code class="docutils literal notranslate"><span class="pre">PatchMasking</span></code>, <code class="docutils literal notranslate"><span class="pre">IJEPAMasking</span></code>, <code class="docutils literal notranslate"><span class="pre">MultiBlockMasking</span></code>, <code class="docutils literal notranslate"><span class="pre">LinearProbe</span></code>, <code class="docutils literal notranslate"><span class="pre">AutoLinearClassifier</span></code>, <code class="docutils literal notranslate"><span class="pre">AutoTuneMLP</span></code>, and more.</p>
+</section>
+<section id="optimizers-schedulers">
+<h2>Optimizers &amp; Schedulers<a class="headerlink" href="#optimizers-schedulers" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Component</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LARS</span></code></p></td>
+<td><p>Layer-wise Adaptive Rate Scaling - the standard optimizer for SSL</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LinearWarmupCosineAnnealing</span></code></p></td>
+<td><p>Linear warmup followed by cosine decay</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LinearWarmupCyclicAnnealing</span></code></p></td>
+<td><p>Linear warmup followed by cyclic cosine decay</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CosineDecayer</span></code></p></td>
+<td><p>Pure cosine decay schedule</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">create_optimizer</span></code> / <code class="docutils literal notranslate"><span class="pre">create_scheduler</span></code></p></td>
+<td><p>Factory functions that accept string names, dicts, or partial objects</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">module</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">(</span>
+    <span class="o">...</span><span class="p">,</span>
+    <span class="n">optim</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;optimizer&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;LARS&quot;</span><span class="p">,</span> <span class="s2">&quot;lr&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;weight_decay&quot;</span><span class="p">:</span> <span class="mf">1e-6</span><span class="p">},</span>
+        <span class="s2">&quot;scheduler&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;LinearWarmupCosineAnnealing&quot;</span><span class="p">},</span>
+        <span class="s2">&quot;interval&quot;</span><span class="p">:</span> <span class="s2">&quot;epoch&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="complete-example">
 <h2>Complete Example<a class="headerlink" href="#complete-example" title="Link to this heading">#</a></h2>
@@ -710,7 +1013,7 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 </details>
 </section>
 <section id="quick-start-with-spt-cli">
-<h2>🚀 Quick Start with <code class="docutils literal notranslate"><span class="pre">spt</span></code> CLI<a class="headerlink" href="#quick-start-with-spt-cli" title="Link to this heading">#</a></h2>
+<h2>Quick Start with <code class="docutils literal notranslate"><span class="pre">spt</span></code> CLI<a class="headerlink" href="#quick-start-with-spt-cli" title="Link to this heading">#</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">spt</span></code> command launches training from YAML configuration files using Hydra.</p>
 <p><strong>Note:</strong> <code class="docutils literal notranslate"><span class="pre">spt</span></code> requires YAML configs. If you have Python-based configs, you can:</p>
 <ul class="simple">
@@ -904,12 +1207,23 @@ tar<span class="w"> </span>xzf<span class="w"> </span>install-tl-unx.tar.gz
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#core-structure">Core Structure</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data">1 - Data</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#module">2 - Module</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#callbacks">3 - Callbacks</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#callbacks">3 - Callbacks</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#evaluation-monitoring">Evaluation &amp; Monitoring</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#training-utilities">Training Utilities</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#checkpointing-export">Checkpointing &amp; Export</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#system-logging">System &amp; Logging</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#intelligent-queue-system">Intelligent Queue System</a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trainer">4 - Trainer</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#global-configuration">Global Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#built-in-methods">Built-in Methods</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#backbones">Backbones</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#optimizers-schedulers">Optimizers &amp; Schedulers</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#complete-example">Complete Example</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start-with-spt-cli">🚀 Quick Start with <code class="docutils literal notranslate"><span class="pre">spt</span></code> CLI</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start-with-spt-cli">Quick Start with <code class="docutils literal notranslate"><span class="pre">spt</span></code> CLI</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#local-training">Local Training</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#slurm-cluster-training">SLURM Cluster Training</a></li>
 </ul>
