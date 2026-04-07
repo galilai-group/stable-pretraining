@@ -7,6 +7,7 @@ import torchvision
 from loguru import logger as logging
 from torch import nn
 from dataclasses import dataclass
+from transformers.utils import ModelOutput
 
 # Try to import optional dependencies
 try:
@@ -242,7 +243,7 @@ class FeaturesConcat(nn.Module):
 
 
 @dataclass
-class EmbeddingOutput:
+class EmbeddingOutput(ModelOutput):
     """HuggingFace-style output container for model embeddings.
 
     Attributes:
@@ -250,15 +251,8 @@ class EmbeddingOutput:
         hidden_states: Dictionary mapping layer names to their intermediate outputs.
     """
 
-    last_hidden_state: Any
-    hidden_states: dict[str, torch.Tensor]
-
-    def __getitem__(self, key: str) -> Any:
-        """Allow dict-like access for backward compatibility."""
-        return getattr(self, key)
-
-    def keys(self):
-        return ["last_hidden_state", "hidden_states"]
+    last_hidden_state: Any = None
+    hidden_states: dict[str, torch.Tensor] = None
 
 
 class HiddenStateExtractor(nn.Module):

@@ -1,7 +1,4 @@
-from contextlib import contextmanager
 from itertools import islice
-from random import getstate, setstate
-from random import seed as rseed
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -197,6 +194,244 @@ class RandomSolarize(Transform, v2.RandomSolarize):
             x, F.solarize(self.nested_get(x, self.source), self.threshold), self.target
         )
         x[self.get_name(x)] = True
+        return x
+
+
+class RandomAutocontrast(Transform, v2.RandomAutocontrast):
+    """Randomly apply autocontrast to the image."""
+
+    def __init__(self, p=0.5, source: str = "image", target: str = "image"):
+        super().__init__(p)
+        self.source = source
+        self.target = target
+
+    def __call__(self, x) -> Any:
+        if self.p < 1 and torch.rand(1) >= self.p:
+            x[self.get_name(x)] = False
+            return x
+        self.nested_set(x, F.autocontrast(self.nested_get(x, self.source)), self.target)
+        x[self.get_name(x)] = True
+        return x
+
+
+class RandomEqualize(Transform, v2.RandomEqualize):
+    """Randomly equalize the histogram of the image."""
+
+    def __init__(self, p=0.5, source: str = "image", target: str = "image"):
+        super().__init__(p)
+        self.source = source
+        self.target = target
+
+    def __call__(self, x) -> Any:
+        if self.p < 1 and torch.rand(1) >= self.p:
+            x[self.get_name(x)] = False
+            return x
+        self.nested_set(x, F.equalize(self.nested_get(x, self.source)), self.target)
+        x[self.get_name(x)] = True
+        return x
+
+
+class RandomInvert(Transform, v2.RandomInvert):
+    """Randomly invert the colors of the image."""
+
+    def __init__(self, p=0.5, source: str = "image", target: str = "image"):
+        super().__init__(p)
+        self.source = source
+        self.target = target
+
+    def __call__(self, x) -> Any:
+        if self.p < 1 and torch.rand(1) >= self.p:
+            x[self.get_name(x)] = False
+            return x
+        self.nested_set(x, F.invert(self.nested_get(x, self.source)), self.target)
+        x[self.get_name(x)] = True
+        return x
+
+
+class RandomPosterize(Transform, v2.RandomPosterize):
+    """Randomly posterize the image by reducing bits per channel."""
+
+    def __init__(self, bits, p=0.5, source: str = "image", target: str = "image"):
+        super().__init__(bits, p)
+        self.source = source
+        self.target = target
+
+    def __call__(self, x) -> Any:
+        if self.p < 1 and torch.rand(1) >= self.p:
+            x[self.get_name(x)] = torch.Tensor([0])
+            return x
+        self.nested_set(
+            x, F.posterize(self.nested_get(x, self.source), self.bits), self.target
+        )
+        x[self.get_name(x)] = torch.Tensor([self.bits])
+        return x
+
+
+class RandomAdjustSharpness(Transform, v2.RandomAdjustSharpness):
+    """Randomly adjust the sharpness of the image."""
+
+    def __init__(
+        self, sharpness_factor, p=0.5, source: str = "image", target: str = "image"
+    ):
+        super().__init__(sharpness_factor, p)
+        self.source = source
+        self.target = target
+
+    def __call__(self, x) -> Any:
+        if self.p < 1 and torch.rand(1) >= self.p:
+            x[self.get_name(x)] = torch.Tensor([0.0])
+            return x
+        self.nested_set(
+            x,
+            F.adjust_sharpness(self.nested_get(x, self.source), self.sharpness_factor),
+            self.target,
+        )
+        x[self.get_name(x)] = torch.Tensor([self.sharpness_factor])
+        return x
+
+
+class RandomVerticalFlip(Transform, v2.RandomVerticalFlip):
+    """Vertically flip the given image randomly with a given probability."""
+
+    def __init__(self, p=0.5, source: str = "image", target: str = "image"):
+        super().__init__(p)
+        self.source = source
+        self.target = target
+
+    def __call__(self, x) -> Any:
+        if self.p > 0 and torch.rand(1) < self.p:
+            candidates = self.nested_get(x, self.source)
+            if type(candidates) in [tuple, list]:
+                out = [F.vertical_flip(c) for c in candidates]
+                self.nested_set(x, out, self.target)
+            else:
+                self.nested_set(x, F.vertical_flip(candidates), self.target)
+            x[self.get_name(x)] = True
+        else:
+            self.nested_set(x, self.nested_get(x, self.source), self.target)
+            x[self.get_name(x)] = False
+        return x
+
+
+class RandomErasing(Transform, v2.RandomErasing):
+    """Randomly erase a rectangular region in the image."""
+
+    _NAMES = ["i", "j", "h", "w"]
+
+    def __init__(
+        self,
+        p=0.5,
+        scale=(0.02, 0.33),
+        ratio=(0.3, 3.3),
+        value=0,
+        inplace=False,
+        source: str = "image",
+        target: str = "image",
+    ):
+        super().__init__(p, scale, ratio, value, inplace)
+        self.source = source
+        self.target = target
+
+    def __call__(self, x) -> Any:
+        if self.p < 1 and torch.rand(1) >= self.p:
+            x[self.get_name(x)] = torch.zeros(4)
+            return x
+        params = self.make_params([self.nested_get(x, self.source)])
+        self.nested_set(
+            x, self.transform(self.nested_get(x, self.source), params), self.target
+        )
+        x[self.get_name(x)] = torch.Tensor(
+            [params["i"], params["j"], params["h"], params["w"]]
+        )
+        return x
+
+
+class RandomAffine(Transform, v2.RandomAffine):
+    """Randomly apply affine transformation to the image."""
+
+    _NAMES = ["angle", "translate_x", "translate_y", "scale", "shear_x", "shear_y"]
+
+    def __init__(
+        self,
+        degrees,
+        translate=None,
+        scale=None,
+        shear=None,
+        interpolation=InterpolationMode.NEAREST,
+        fill=0,
+        center=None,
+        source: str = "image",
+        target: str = "image",
+    ):
+        super().__init__(degrees, translate, scale, shear, interpolation, fill, center)
+        self.source = source
+        self.target = target
+
+    def __call__(self, x):
+        params = self.make_params([self.nested_get(x, self.source)])
+        self.nested_set(
+            x, self.transform(self.nested_get(x, self.source), params), self.target
+        )
+        x[self.get_name(x)] = torch.Tensor(
+            [
+                params["angle"],
+                *params["translate"],
+                params["scale"],
+                *params["shear"],
+            ]
+        )
+        return x
+
+
+class RandomPerspective(Transform, v2.RandomPerspective):
+    """Randomly apply perspective transformation to the image."""
+
+    def __init__(
+        self,
+        distortion_scale=0.5,
+        p=0.5,
+        interpolation=InterpolationMode.BILINEAR,
+        fill=0,
+        source: str = "image",
+        target: str = "image",
+    ):
+        super().__init__(distortion_scale, p, interpolation, fill)
+        self.source = source
+        self.target = target
+
+    def __call__(self, x):
+        if self.p < 1 and torch.rand(1) >= self.p:
+            x[self.get_name(x)] = torch.zeros(8)
+            return x
+        params = self.make_params([self.nested_get(x, self.source)])
+        self.nested_set(
+            x, self.transform(self.nested_get(x, self.source), params), self.target
+        )
+        coeffs = params["coefficients"]
+        x[self.get_name(x)] = torch.Tensor(coeffs)
+        return x
+
+
+class GaussianNoise(Transform, v2.GaussianNoise):
+    """Add Gaussian noise to the image (torchvision implementation)."""
+
+    def __init__(
+        self, mean=0.0, sigma=0.1, p=0.5, source: str = "image", target: str = "image"
+    ):
+        super().__init__(mean, sigma)
+        self.p = p
+        self.source = source
+        self.target = target
+
+    def __call__(self, x) -> Any:
+        if self.p < 1 and torch.rand(1) >= self.p:
+            x[self.get_name(x)] = torch.Tensor([0.0, 0.0])
+            return x
+        params = self.make_params([self.nested_get(x, self.source)])
+        self.nested_set(
+            x, self.transform(self.nested_get(x, self.source), params), self.target
+        )
+        x[self.get_name(x)] = torch.Tensor([self.mean, self.sigma])
         return x
 
 
@@ -590,7 +825,7 @@ class PatchMasking(Transform):
     def __call__(self, x):
         img = self.nested_get(x, self.source)
         img_tensor = self._to_tensor(img)
-        _, H, W = img_tensor.shape
+        C, H, W = img_tensor.shape
 
         # Compute number of patches
         n_patches_h = H // self.patch_size
@@ -604,26 +839,26 @@ class PatchMasking(Transform):
         mask_flat[perm[:n_masked]] = False  # False = masked
         mask = mask_flat.reshape(n_patches_h, n_patches_w)
 
-        # Determine mask value
-        if self.fill_value is not None:
-            fill_value = self.fill_value
-        else:
-            fill_value = 0.0
-        fill_value = torch.tensor(
+        # Determine fill value
+        fill_value = self.fill_value if self.fill_value is not None else 0.0
+        fill = torch.tensor(
             fill_value, dtype=img_tensor.dtype, device=img_tensor.device
         )
 
-        # Vectorized masking: upsample patch mask to full resolution
-        # Create full-size mask initialized to True (keep remainder pixels)
-        full_mask = torch.ones(H, W, dtype=torch.bool, device=img_tensor.device)
+        # Efficient masking via reshape + broadcast (no full-resolution mask needed)
+        ps = self.patch_size
+        ph, pw = n_patches_h * ps, n_patches_w * ps
+        # Reshape patchable region to (C, n_h, ps, n_w, ps) and broadcast small mask
+        patches = img_tensor[:, :ph, :pw].reshape(C, n_patches_h, ps, n_patches_w, ps)
+        patch_mask = mask[None, :, None, :, None]  # (1, n_h, 1, n_w, 1)
+        masked_patches = torch.where(patch_mask, patches, fill)
 
-        # Upsample patch mask and copy to full mask
-        upsampled_mask = mask.repeat_interleave(
-            self.patch_size, dim=0
-        ).repeat_interleave(self.patch_size, dim=1)
-        full_mask[: upsampled_mask.shape[0], : upsampled_mask.shape[1]] = upsampled_mask
-
-        masked_img_out = torch.where(full_mask, img_tensor, fill_value)
+        # Reconstruct image (keep remainder pixels unchanged)
+        if ph == H and pw == W:
+            masked_img_out = masked_patches.reshape(C, H, W)
+        else:
+            masked_img_out = img_tensor.clone()
+            masked_img_out[:, :ph, :pw] = masked_patches.reshape(C, ph, pw)
 
         self.nested_set(x, masked_img_out, self.target)
         self.nested_set(x, mask, self.mask_key)
@@ -661,36 +896,25 @@ class CenterCrop(Transform, v2.CenterCrop):
         return x
 
 
-def set_seed(seeds):
-    if hasattr(seeds[0], "__len__"):
-        version, state, gauss = seeds[0]
-        setstate((version, tuple(state), gauss))
-    else:
-        rseed(seeds[0])
-    if hasattr(seeds[1], "__len__"):
-        np.random.set_state(seeds[1])
-    else:
-        np.random.seed(seeds[1])
-    if hasattr(seeds[2], "__len__"):
-        torch.set_rng_state(seeds[2])
-    else:
-        torch.manual_seed(seeds[2])
-    if len(seeds) == 4:
-        if hasattr(seeds[3], "__len__"):
-            torch.cuda.set_rng_state_all(seeds[3])
-        else:
-            torch.cuda.manual_seed(seeds[3])
+class random_seed:
+    """Context manager that forks the torch RNG, seeds it, and restores on exit.
 
+    Only forks the torch RNG since all transforms use torch random ops.
+    Avoids the overhead of saving/restoring Python and NumPy RNG states
+    (~7.5KB copied per call previously).
+    """
 
-@contextmanager
-def random_seed(seed):
-    seeds = [getstate(), np.random.get_state(), torch.get_rng_state()]
-    if False:  # torch.cuda.is_available():
-        seeds.append(torch.cuda.get_rng_state_all())
-    new_seeds = [int(seed)] * len(seeds)
-    set_seed(new_seeds)
-    yield
-    set_seed(seeds)
+    def __init__(self, seed):
+        self.seed = int(seed)
+        self._fork = torch.random.fork_rng(enabled=True)
+
+    def __enter__(self):
+        self._fork.__enter__()
+        torch.manual_seed(self.seed)
+        return self
+
+    def __exit__(self, *args):
+        return self._fork.__exit__(*args)
 
 
 class ControlledTransform(Transform):

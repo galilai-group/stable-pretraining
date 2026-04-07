@@ -134,7 +134,12 @@ def supervised_forward(self, batch, stage):
             )
         out["loss"] = self.supervised_loss(out["logits"], batch["label"])
         self.log(
-            f"{stage}/loss", out["loss"], on_step=True, on_epoch=True, sync_dist=True
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            prog_bar=True,
         )
 
     return out
@@ -279,7 +284,12 @@ def byol_forward(self, batch, stage):
         out["embedding"] = torch.cat(target_features, dim=0).detach()
         out["loss"] = loss
         self.log(
-            f"{stage}/loss", out["loss"], on_step=True, on_epoch=True, sync_dist=True
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            prog_bar=True,
         )
 
     else:
@@ -763,7 +773,14 @@ def dino_forward(self, batch, stage):
 
     out["embedding"] = teacher_cls_features.detach()
     out["loss"] = loss
-    self.log(f"{stage}/loss", out["loss"], on_step=True, on_epoch=True, sync_dist=True)
+    self.log(
+        f"{stage}/loss",
+        out["loss"],
+        on_step=True,
+        on_epoch=True,
+        sync_dist=True,
+        prog_bar=True,
+    )
 
     return out
 
@@ -1047,6 +1064,13 @@ def dinov2_forward(self, batch, stage):
     # Return flattened CLS features for callbacks (probes expect [n_global * batch_size, dim])
     out["embedding"] = teacher_cls_features.view(n_global * batch_size, -1).detach()
     out["loss"] = loss
-    self.log(f"{stage}/loss", out["loss"], on_step=True, on_epoch=True, sync_dist=True)
+    self.log(
+        f"{stage}/loss",
+        out["loss"],
+        on_step=True,
+        on_epoch=True,
+        sync_dist=True,
+        prog_bar=True,
+    )
 
     return out

@@ -5,6 +5,8 @@ from torch import nn
 from lightning.pytorch.callbacks import Callback
 from loguru import logger
 
+from .utils import log_header
+
 
 class LogUnusedParametersOnce(Callback):
     """Lightning callback that logs parameters which do NOT receive gradients.
@@ -16,12 +18,14 @@ class LogUnusedParametersOnce(Callback):
     Works with both automatic and manual optimization.
     """
 
-    def __init__(self, verbose: bool = True):
+    def __init__(self, verbose: bool = None):
         super().__init__()
+        from .utils import resolve_verbose
+
         self._hooks: List[torch.utils.hooks.RemovableHandle] = []
         self._used_flags: Dict[nn.Parameter, bool] = {}
         self._enabled: bool = True
-        self._verbose = verbose
+        self._verbose = resolve_verbose(verbose)
         self._backward_called: bool = False
 
     def _register_hooks(self, model: nn.Module):
@@ -48,9 +52,9 @@ class LogUnusedParametersOnce(Callback):
             self._hooks.append(h)
 
         if self._verbose:
+            log_header("LogUnusedParametersOnce")
             logger.info(
-                f"[LogUnusedParametersOnce] Registered hooks on "
-                f"{len(self._used_flags)} leaf parameters."
+                f"  registered hooks on {len(self._used_flags)} leaf parameters"
             )
 
     def _remove_hooks(self):
@@ -69,23 +73,22 @@ class LogUnusedParametersOnce(Callback):
         ]
 
         if not unused_names:
-            logger.info(
-                "[LogUnusedParametersOnce] All tracked parameters received gradients "
-                "on the first backward pass."
+            logger.success(
+                "✓ all tracked parameters received gradients on the first backward pass"
             )
         else:
             logger.warning(
-                "[LogUnusedParametersOnce] The following parameters did NOT receive "
+                "! the following parameters did NOT receive "
                 "gradients on the first backward pass (potentially causing "
                 "Lightning's 'unused parameters' error):"
             )
             for name in unused_names:
-                logger.warning(f"  - {name}")
+                logger.warning(f"  {name}")
 
         self._remove_hooks()
         self._enabled = False
         if self._verbose:
-            logger.info("[LogUnusedParametersOnce] Hooks removed, callback disabled.")
+            logger.info("  hooks removed, callback disabled")
 
     def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
         """Register hooks right before the first training batch starts."""
@@ -115,15 +118,13 @@ class LogUnusedParametersOnce(Callback):
 
         if not self._backward_called:
             logger.warning(
-                "[LogUnusedParametersOnce] No gradient hooks fired during the first "
+                "! no gradient hooks fired during the first "
                 "training step. This likely means backward() was never called. "
                 "Cannot verify unused parameters."
             )
             self._remove_hooks()
             self._enabled = False
             if self._verbose:
-                logger.info(
-                    "[LogUnusedParametersOnce] Hooks removed, callback disabled."
-                )
+                logger.info("  hooks removed, callback disabled")
         else:
             self._report_and_disable(pl_module)

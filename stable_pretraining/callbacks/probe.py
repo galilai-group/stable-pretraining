@@ -8,7 +8,7 @@ from loguru import logger as logging
 import types
 from ..utils import get_data_from_batch_or_outputs, detach_tensors
 
-from .utils import TrainableCallback
+from .utils import TrainableCallback, log_header
 
 
 class OnlineProbe(TrainableCallback):
@@ -78,13 +78,17 @@ class OnlineProbe(TrainableCallback):
         gradient_clip_val: float = None,
         gradient_clip_algorithm: str = "norm",
         metrics: Optional[Union[dict, tuple, list, torchmetrics.Metric]] = None,
+        verbose: bool = None,
     ) -> None:
+        from .utils import resolve_verbose
+
         # Initialize base class
         self.input = input
         self.target = target
         if loss is None:
             logging.warning(f"Not loss given to {name}, will use output of `probe`")
         self.loss = loss
+        self.verbose = resolve_verbose(verbose)
 
         # Store probe configuration for later initialization
         self._probe_config = probe
@@ -100,13 +104,14 @@ class OnlineProbe(TrainableCallback):
             gradient_clip_algorithm=gradient_clip_algorithm,
         )
 
-        logging.info(f"Initialized {self.name}")
-        logging.info(f"  - Input: {input}")
-        logging.info(f"  - Target: {target}")
-        logging.info(f"  - Accumulate grad batches: {accumulate_grad_batches}")
+        log_header("OnlineProbe")
+        logging.info(f"  name: {self.name}")
+        logging.info(f"  input: {input}")
+        logging.info(f"  target: {target}")
+        logging.info(f"  accumulate_grad_batches: {accumulate_grad_batches}")
         # Setup metrics
         self.metrics = metrics
-        logging.info(f"{self.name}: We are wrapping up your `forward`!")
+        logging.info("  wrapping forward")
         self.wrap_forward(pl_module=module)
 
     def configure_model(self, pl_module: LightningModule) -> torch.nn.Module:
@@ -153,27 +158,33 @@ class OnlineProbe(TrainableCallback):
             assert prediction_key not in batch
             outputs[prediction_key] = preds
 
-            logs = {}
+            scalar_logs = {}
+            metric_logs = {}
             if stage == "fit":
                 loss = callback.loss(preds, y)
-                assert f"train/{callback.name}_loss" not in logs
+                assert f"train/{callback.name}_loss" not in scalar_logs
                 if "loss" not in outputs:
                     outputs["loss"] = 0
                 outputs["loss"] = outputs["loss"] + loss
-                logs[f"train/{callback.name}_loss"] = loss.item()
+                scalar_logs[f"train/{callback.name}_loss"] = loss.item()
 
                 my_metrics = self.callbacks_metrics[callback.name]["_train"]
                 for metric_name, metric in my_metrics.items():
                     metric.update(preds, y)
-                    assert f"train/{callback.name}_{metric_name}" not in logs
-                    logs[f"train/{callback.name}_{metric_name}"] = metric
+                    assert f"train/{callback.name}_{metric_name}" not in metric_logs
+                    metric_logs[f"train/{callback.name}_{metric_name}"] = metric
             elif stage == "validate":
                 my_metrics = pl_module.callbacks_metrics[callback.name]["_val"]
                 for metric_name, metric in my_metrics.items():
                     metric(preds, y)
-                    logs[f"eval/{callback.name}_{metric_name}"] = metric
+                    metric_logs[f"eval/{callback.name}_{metric_name}"] = metric
 
-            self.log_dict(logs, on_step=True, on_epoch=True, sync_dist=True)
+            # Raw scalars (loss): sync across GPUs
+            if scalar_logs:
+                self.log_dict(scalar_logs, on_step=True, on_epoch=True, sync_dist=True)
+            # torchmetrics: handle their own distributed sync, do NOT use sync_dist
+            if metric_logs:
+                self.log_dict(metric_logs, on_step=True, on_epoch=True, sync_dist=False)
             return outputs
 
         # Bind the new method to the instance

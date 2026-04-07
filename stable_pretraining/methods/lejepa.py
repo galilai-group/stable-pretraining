@@ -27,6 +27,7 @@ Example::
 """
 
 from dataclasses import dataclass
+from transformers.utils import ModelOutput
 from typing import Optional
 
 import timm
@@ -131,7 +132,7 @@ class SlicedEppsPulley(nn.Module):
 
 
 @dataclass
-class LeJEPAOutput:
+class LeJEPAOutput(ModelOutput):
     """Output from LeJEPA forward pass.
 
     :ivar loss: Combined invariance + SIGReg loss (0 in eval mode).
@@ -140,10 +141,10 @@ class LeJEPAOutput:
     :ivar sigreg_loss: Epps-Pulley goodness-of-fit component.
     """
 
-    loss: torch.Tensor
-    embedding: torch.Tensor
-    inv_loss: torch.Tensor
-    sigreg_loss: torch.Tensor
+    loss: torch.Tensor = None
+    embedding: torch.Tensor = None
+    inv_loss: torch.Tensor = None
+    sigreg_loss: torch.Tensor = None
 
 
 class LeJEPA(Module):

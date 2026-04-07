@@ -10,12 +10,6 @@ from functools import wraps
 from typing import Callable, Any
 
 
-try:
-    import wandb
-except ImportError:
-    wandb = None
-
-
 def get_rank():
     """Get distributed training rank."""
     return int(os.environ.get("RANK", "0"))
@@ -57,26 +51,6 @@ def catch_errors():
         # Direct prints to stderr/stdout (backup for Slurm logs)
         print(error_msg, file=sys.stderr, flush=True)
         print(error_msg, file=sys.stdout, flush=True)
-
-        # Wandb logging (only from main process, with error handling)
-        if is_main_process() and wandb is not None:
-            try:
-                if getattr(wandb, "run", None) is not None:
-                    wandb.log(
-                        {
-                            "error_type": type(e).__name__,
-                            "error_message": str(e),
-                            "traceback": traceback.format_exc(),
-                        }
-                    )
-                    wandb.finish(exit_code=1)
-            except Exception as wandb_error:
-                # Don't let wandb errors hide the original error
-                print(
-                    f"Warning: Failed to log to wandb: {wandb_error}",
-                    file=sys.stderr,
-                    flush=True,
-                )
 
         # Always re-raise
         raise

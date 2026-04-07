@@ -11,7 +11,7 @@ from ..utils import get_data_from_batch_or_outputs
 from ..utils.distance_metrics import compute_pairwise_distances_chunked
 
 from .queue import find_or_create_queue_callback
-from .utils import format_metrics_as_dict
+from .utils import format_metrics_as_dict, log_header
 
 
 class OnlineKNN(Callback):
@@ -73,6 +73,7 @@ class OnlineKNN(Callback):
         distance_metric: Literal[
             "euclidean", "squared_euclidean", "cosine", "manhattan"
         ] = "euclidean",
+        verbose: bool = None,
     ) -> None:
         super().__init__()
 
@@ -97,6 +98,9 @@ class OnlineKNN(Callback):
         self.chunk_size = chunk_size
         self.distance_metric = distance_metric
         self.metrics = metrics
+        from .utils import resolve_verbose
+
+        self.verbose = resolve_verbose(verbose)
 
         self._input_queue = None
         self._target_queue = None
@@ -108,7 +112,8 @@ class OnlineKNN(Callback):
 
     def setup(self, trainer: Trainer, pl_module: LightningModule, stage: str) -> None:
         """Find or create queue callbacks and setup metrics."""
-        logging.info(f"Setting up {self.state_key} callback!")
+        log_header("OnlineKNN")
+        logging.info(f"  name: {self.name}")
         if self._input_queue is None or self._target_queue is None:
             self._input_queue = find_or_create_queue_callback(
                 trainer,
@@ -119,7 +124,7 @@ class OnlineKNN(Callback):
                 gather_distributed=True,
                 create_if_missing=True,
             )
-            logging.info(f"{self.name}: Using queue for input '{self.input}'")
+            logging.info(f"  input queue: {self.input}")
 
             self._target_queue = find_or_create_queue_callback(
                 trainer,
@@ -130,9 +135,9 @@ class OnlineKNN(Callback):
                 gather_distributed=True,
                 create_if_missing=True,
             )
-            logging.info(f"{self.name}: Using queue for target '{self.target}'")
+            logging.info(f"  target queue: {self.target}")
 
-            logging.info(f"{self.name}: Setting up metrics")
+            logging.info("  setting up metrics")
             pl_module.callbacks_metrics[self.name] = format_metrics_as_dict(
                 self.metrics
             )
@@ -164,13 +169,13 @@ class OnlineKNN(Callback):
 
         if cached_features is None or cached_labels is None:
             logging.warning(
-                f"{self.name}: Queue data not available (not in validation?)"
+                f"! {self.name}: queue data not available (not in validation?)"
             )
             return
 
         if cached_features.numel() == 0 or cached_labels.numel() == 0:
             logging.warning(
-                f"{self.name}: Queue data is empty, skipping KNN computation"
+                f"! {self.name}: queue data is empty, skipping KNN computation"
             )
             return
 

@@ -12,7 +12,7 @@
 
 AI is moving beyond labels. Today's models learn through **self-supervision** and **multimodal alignment**, extracting knowledge from raw data to build general-purpose representations that work across tasks. These foundation models are then deployed at scale, often after finetuning, to solve tasks in zero or few shot.
 
-`stable-pretraining` is a PyTorch framework built on top of Lightning for this new paradigm. What sets us apart is **real-time visibility into training quality** through extensive logging and monitoring. Our callback ecosystem (`OnlineProbe`, `OnlineKNN`, `RankMe`, and many more) provides insights into feature collapse, training dynamics, and downstream performance. Data flow as dictionaries through model components, metrics, and callbacks, making any intermediate value accessible and debuggable. With `stable-pretraining`: track everything, debug faster, iterate sooner.
+`stable-pretraining` is a PyTorch framework built on top of Lightning for this new paradigm. What sets us apart is **real-time visibility into training quality** through extensive logging and monitoring. Our callback ecosystem (`OnlineProbe`, `OnlineKNN`, `RankMe`, and many more) provides insights into feature collapse, training dynamics, and downstream performance. Data flows as dictionaries through model components, metrics, and callbacks, making any intermediate value accessible and debuggable. With `stable-pretraining`: track everything, debug faster, iterate sooner.
 
 Join our Discord: [https://discord.gg/8M6hT39X](https://discord.gg/adzpqWKM25)
 
@@ -114,17 +114,66 @@ def forward(self, batch, stage):
 - All model components are passed as kwargs to `spt.Module`
 
 ### 3 - Callbacks
+
 Monitor and evaluate your models in real-time during training. Callbacks are key ingredients of `stable-pretraining`, providing rich insights without interrupting your training flow.
 
-For example, OnlineProbe allows to jointly optimize a lightweight model (e.g. a single linear layer) on top of the current backbone model representations.
+#### Evaluation & Monitoring
 
+| Callback | Description |
+|----------|-------------|
+| `OnlineProbe` | Trains a lightweight linear probe on frozen representations to track downstream task accuracy in real-time. Maintains its own optimizer and training loop. |
+| `OnlineKNN` | Non-parametric k-nearest neighbors evaluator using a rolling queue of cached embeddings. Zero training cost. |
+| `RankMe` | Tracks effective rank of feature representations via singular values. A rank drop signals dimensional collapse. |
+| `LiDAR` | Linear Discriminant Analysis Rank over surrogate classes of augmented views. |
+| `CLIPZeroShot` | Zero-shot classification for CLIP-style models. Compares image embeddings against text-encoded class names. |
+| `ImageRetrieval` | Image retrieval evaluator following the DINO protocol with query/gallery splits. |
+| `LatentViz` | Online 2D visualization of the latent space. Learns a neighborhood-preserving projection and periodically plots it. |
+| `EpochMilestones` | Early-stops training if a metric fails to reach a threshold by a given epoch. |
+
+#### Training Utilities
+
+| Callback | Description |
+|----------|-------------|
+| `TeacherStudentCallback` | Auto-discovers `TeacherStudentWrapper` instances and performs EMA teacher updates at configurable frequency. |
+| `WeightDecayUpdater` | Updates weight decay on a per-batch schedule (constant, linear, cosine, or exponential). |
+| `EmbeddingCache` | Hooks into named submodules to cache intermediate embeddings for downstream use. |
+
+#### Checkpointing & Export
+
+| Callback | Description |
+|----------|-------------|
+| `SklearnCheckpoint` | Saves and restores scikit-learn models (probes, classifiers) inside Lightning checkpoints. |
+| `WandbCheckpoint` | Uploads checkpoints to Weights & Biases as artifacts with run-resume support. |
+| `StrictCheckpointCallback` | Controls strict/non-strict checkpoint loading with detailed mismatch reporting. |
+| `HuggingFaceCheckpointCallback` | Exports HuggingFace-compatible checkpoints for any `PreTrainedModel` submodule (zero-knowledge reload). |
+
+#### System & Logging
+
+| Callback | Description |
+|----------|-------------|
+| `LoggingCallback` | Displays validation metrics in a color-coded formatted table after each epoch. |
+| `ModuleSummary` | Logs detailed parameter statistics (trainable, frozen, per-layer) at the start of training. |
+| `TrainerInfo` | Links trainer to DataModule and logs trainer configuration. |
+| `SLURMInfo` | Extracts and logs SLURM environment information (job ID, partition, resources). |
+| `EnvironmentDumpCallback` | Dumps Python version, CUDA info, installed packages, git state, and env vars to `environment.json` for exact reproducibility. |
+| `LogUnusedParametersOnce` | Reports parameters that receive no gradient after the first backward pass. Useful for catching wiring bugs. |
+| `CleanUpCallback` | Removes selected training artifacts (SLURM logs, Hydra files, checkpoints, etc.) after successful training. Keeps everything on failure for debugging. |
+| `ModuleRegistryCallback` | Registers the module for global logging access. Enables `spt.log()` and `spt.log_dict()` from anywhere. |
+
+#### Intelligent Queue System
+
+Callbacks that need rolling feature stores (`OnlineKNN`, `RankMe`, `LiDAR`, `LatentViz`) share memory through an automatic queue management system. If two callbacks monitor the same key with different queue lengths, a single queue is allocated at the maximum length and shared, eliminating redundant computation.
+
+**Why callbacks matter:** Get real-time feedback on representation quality, catch issues like collapse early, and track multiple metrics simultaneously. For detailed usage and practical considerations, see the [Callback guide](stable_pretraining/callbacks/README.md).
+
+**Example:**
 ```python
 # Monitor SSL representations with a linear classifier
 linear_probe = spt.callbacks.OnlineProbe(
-    module,  # Pass the spt.Module instance
-    name="linear_probe",  # Useful for retrieving metrics and values in logging
-    input="embedding",  # Which output from forward to monitor
-    target="label",      # Ground truth from batch
+    module,
+    name="linear_probe",
+    input="embedding",
+    target="label",
     probe=torch.nn.Linear(512, 10),
     loss_fn=torch.nn.CrossEntropyLoss(),
     metrics={
@@ -132,11 +181,7 @@ linear_probe = spt.callbacks.OnlineProbe(
         "top5": torchmetrics.classification.MulticlassAccuracy(10, top_k=5),
     },
 )
-```
 
-OnlineKNN is a non-parametric probe that constructs predictions based on the k nearest neighbors in the representation space.
-
-```python
 # Track representation quality with KNN evaluation
 knn_probe = spt.callbacks.OnlineKNN(
     name="knn_probe",
@@ -146,9 +191,6 @@ knn_probe = spt.callbacks.OnlineKNN(
     k=10,
 )
 ```
-Callbacks are powered by an intelligent queue management system that automatically shares memory between callbacks monitoring the same data thus eliminating redundant computations.
-
-**Why callbacks matter:** Get real-time feedback on representation quality, catch issues like collapse early, and track multiple metrics simultaneously for deeper insights. For more details and an overview of useful callbacks, refer to the [Callback guide](stable_pretraining/callbacks/README.md).
 
 ### 4 - Trainer
 Orchestrate everything together with PyTorch Lightning's `Trainer`:
@@ -167,6 +209,89 @@ manager()
 ```
 
 Once configured, the `Manager` connects all components and handles the training loop with precise logging and monitoring (optional).
+
+## Global Configuration
+
+Instead of scattering options across environment variables, callback constructors, and factory functions, `stable-pretraining` provides a single entry-point to configure library-wide behavior:
+
+```python
+import stable_pretraining as spt
+
+spt.set(
+    verbose="WARNING",                          # Global log level (also controls callback verbosity)
+    progress_bar="rich",                        # "auto", "rich", "simple", or "none"
+    cleanup={"checkpoints": False, "slurm": False},  # What CleanUpCallback removes
+    log_rank="all",                             # Which distributed rank(s) may log (default: 0)
+    default_callbacks={"env_dump": False},       # Toggle individual default callbacks on/off
+)
+
+# Inspect the current configuration
+print(spt.get_config())
+```
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `verbose` | `str` or `int` | `"INFO"` | Loguru log level. Accepts `"DEBUG"`, `"INFO"`, `"WARNING"`, etc., or Python logging ints (`10`, `20`, `30`). Also controls the `verbose` flag on all callbacks when left at their default. |
+| `progress_bar` | `str` | `"auto"` | Progress bar style. `"auto"` picks `"rich"` for TTYs and `"simple"` for non-interactive environments. `"none"` disables it. |
+| `cleanup` | `dict` | keeps checkpoints & logs | Controls which artifact categories `CleanUpCallback` removes after training. Keys: `"checkpoints"`, `"logs"`, `"hydra"`, `"slurm"`, `"env_dump"`, `"callback_artifacts"`. Values are bools (`True` = keep, `False` = delete). |
+| `log_rank` | `int` or `"all"` | `0` | Which distributed rank(s) may produce log output. |
+| `default_callbacks` | `dict` | all enabled | Toggle individual default callbacks: `"progress_bar"`, `"registry"`, `"logging"`, `"env_dump"`, `"trainer_info"`, `"sklearn_checkpoint"`, `"wandb_checkpoint"`, `"module_summary"`, `"slurm_info"`, `"unused_params"`, `"hf_checkpoint"`. |
+
+Settings apply immediately and persist for the process lifetime. `spt.set()` can be called multiple times; only the settings you pass are updated.
+
+## Built-in Methods
+
+`stable-pretraining` ships with ready-to-use forward functions and matching loss functions for popular self-supervised learning methods:
+
+| Method | Forward | Loss | Description |
+|--------|---------|------|-------------|
+| Supervised | `forward.supervised_forward` | any | Standard supervised training with labels |
+| SimCLR | `forward.simclr_forward` | `NTXEntLoss` | Contrastive learning with 2 augmented views |
+| BYOL | `forward.byol_forward` | `BYOLLoss` | Momentum-based self-distillation without negatives |
+| VICReg | `forward.vicreg_forward` | `VICRegLoss` | Variance-invariance-covariance regularization |
+| Barlow Twins | `forward.barlow_twins_forward` | `BarlowTwinsLoss` | Cross-correlation matrix alignment to identity |
+| SwAV | `forward.swav_forward` | `sinkhorn_knopp` | Online clustering with Sinkhorn-Knopp normalization |
+| NNCLR | `forward.nnclr_forward` | `NTXEntLoss` | Nearest-neighbor contrastive learning |
+| DINO | `forward.dino_forward` | `DINOv1Loss` | Self-distillation with multi-crop and centering |
+| DINOv2 | `forward.dinov2_forward` | `DINOv2Loss` | DINO + iBOT masked patch prediction |
+
+## Backbones
+
+Load architectures from popular libraries or use built-in components:
+
+```python
+# From torchvision
+backbone = spt.backbone.from_torchvision("resnet50")
+
+# From timm (thousands of pretrained models)
+backbone = spt.backbone.from_timm("vit_base_patch16_224")
+
+# From HuggingFace
+backbone = spt.backbone.vit_hf("google/vit-base-patch16-224")
+```
+
+Additional building blocks: `MLP`, `ConvMixer`, `Resnet9`, `TeacherStudentWrapper` (EMA), `MAEDecoder`, `MaskedEncoder`, `FlexibleTransformer`, `PatchMasking`, `IJEPAMasking`, `MultiBlockMasking`, `LinearProbe`, `AutoLinearClassifier`, `AutoTuneMLP`, and more.
+
+## Optimizers & Schedulers
+
+| Component | Description |
+|-----------|-------------|
+| `LARS` | Layer-wise Adaptive Rate Scaling - the standard optimizer for SSL |
+| `LinearWarmupCosineAnnealing` | Linear warmup followed by cosine decay |
+| `LinearWarmupCyclicAnnealing` | Linear warmup followed by cyclic cosine decay |
+| `CosineDecayer` | Pure cosine decay schedule |
+| `create_optimizer` / `create_scheduler` | Factory functions that accept string names, dicts, or partial objects |
+
+```python
+module = spt.Module(
+    ...,
+    optim={
+        "optimizer": {"type": "LARS", "lr": 5, "weight_decay": 1e-6},
+        "scheduler": {"type": "LinearWarmupCosineAnnealing"},
+        "interval": "epoch",
+    },
+)
+```
 
 ## Complete Example
 
@@ -314,7 +439,7 @@ manager()
 </details>
 
 
-## 🚀 Quick Start with `spt` CLI
+## Quick Start with `spt` CLI
 
 The `spt` command launches training from YAML configuration files using Hydra.
 
@@ -392,94 +517,53 @@ The library is not yet available on PyPI. You can install it from the source cod
     wandb login
     huggingface-cli login
     ```
-4. LATEX support in Matplotlib (optional)
+4. **LaTeX support in Matplotlib** (optional)
 
-    1.  <details>
-        <summary>Install the LaTex font (Computer Modern)</summary>
+    <details>
+    <summary>Click to expand setup instructions</summary>
 
-        - we provide the ttf files [in the repo](assets/cm-unicode-0.7.0%202/) to make things simple
-        - create your local folder (if not present) and copy the ttf files there
-          - `mkdir -p ~/.local/share/fonts `
-          - `cp assets/cm-unicode-0.7.0\ 2/*ttf ~/.local/share/fonts/`
-        - refresh the font cache with `fc-cache -f -v`
-        - validate that the fonts are listed in your system with `fc-list | grep cmu`
-        - refresh matplotlib cache
-          ```
-          import shutil
-          import matplotlib
+    **Install Computer Modern fonts:**
+    ```bash
+    mkdir -p ~/.local/share/fonts
+    cp assets/cm-unicode-0.7.0\ 2/*.ttf ~/.local/share/fonts/
+    fc-cache -f -v
+    # verify: fc-list | grep cmu
+    ```
 
-          shutil.rmtree(matplotlib.get_cachedir())
-          ```
-        </details>
+    **Clear matplotlib font cache:**
+    ```bash
+    python -c "import shutil, matplotlib; shutil.rmtree(matplotlib.get_cachedir())"
+    ```
 
+    **Install TeX Live (minimal, no sudo):**
+    ```bash
+    cd /tmp
+    wget https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+    tar xzf install-tl-unx.tar.gz
+    cd install-tl-*/
+    ./install-tl --texdir ~/texlive --no-interaction --scheme=scheme-basic
+    ~/texlive/bin/x86_64-linux/tlmgr install type1cm cm-super dvipng collection-fontsrecommended amsmath amssymb bm underscore xcolor
+    ```
 
-    2. <details>
-        <summary>Install the Tex compiler (optional, if not available on your system)</summary>
+    Add to your `~/.bashrc` (or equivalent):
+    ```bash
+    export PATH="$HOME/texlive/bin/x86_64-linux:$PATH"
+    ```
 
-        - install texlive locally following https://tug.org/texlive/quickinstall.html#running where you can use `-texdir your_path` to install to a local path (so you don't need sudo privileges)
-        - follow the instructions at the end of the installation to edit the PATH variables. If in the above step you used `-texdir ~/texdir` then the path to add should be like `TEXDIR_PATH=/private/home/$USER/texdir/bin/x86_64-linux`. You can use your favorite method such as
-          - `export PATH="$TEXDIR_PATH:$PATH"` for local session
-          - adding `export PATH="$TEXDIR_PATH:$PATH"` to your `.bashrc`
-          - run `conda env config vars set PATH="$TEXDIR_PATH:$PATH"` once for it to be set within your conda env
-          - IMPORTANT: if the above is not done you will see an error akin to `! LaTeX Error: File type1ec.sty not found.`
-        - make sure inside the conde environment that you point to the right binaries e.g. `whereis latex` and `whereis mktexfmt`
-        - If at some point there is an error that the file `latex.fmt` is not found. You can generate it with
-          - `pdftex -ini   -jobname=latex -progname=latex -translate-file=cp227.tcx *latex.ini`
-          - or (unsure) `fmtutil-sys --all`
-        </details>
+    **Verify:**
+    ```bash
+    python -c "
+    import matplotlib; matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='serif')
+    plt.figure(); plt.title(r'\$\sum_{i=1}^n x_i\$')
+    plt.savefig('/tmp/tex_test.png')
+    print('Success!')
+    "
+    ```
 
-    3. <details>
-        <summary>rc config (optional)</summary>
-
-        ```
-        font.family: serif
-        font.serif: cmr10
-        font.sans-serif: cmss10
-        font.monospace: cmtt10
-
-        text.usetex: True
-        text.latex.preamble: \usepackage{amssymb} \usepackage{amsmath} \usepackage{bm}
-
-        xtick.labelsize: 14
-        ytick.labelsize: 14
-        legend.fontsize: 14
-        axes.labelsize: 16
-        axes.titlesize: 16
-        axes.formatter.use_mathtext: True
-        ```
-        which can be written to a file, e.g., `~/.config/matplotlib/matplotlibrc` or set via `rc` in your script directly. See here for more details.
-        </details>
-
-    4. <details>
-        <summary>Example of matplotlib script to run for a quick test (optional)</summary>
-
-        ```
-        from matplotlib import rc
-        rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
-        rc('text', usetex=True)
-        import numpy as np
-        import matplotlib.pyplot as plt
-
-
-        t = np.arange(0.0, 1.0 + 0.01, 0.01)
-        s = np.cos(4 * np.pi * t) + 2
-
-        plt.rc('text', usetex=True)
-        plt.rc('font', family='serif')
-        plt.plot(t, s)
-
-        plt.xlabel(r'\textbf{time} (s)')
-        plt.ylabel(r'\textit{voltage} (mV)',fontsize=16)
-        plt.title(r"\TeX\ is Number "
-                  r"$\displaystyle\sum_{n=1}^\infty\frac{-e^{i\pi}}{2^n}$!",
-                  fontsize=16, color='gray')
-        # Make room for the ridiculously large title.
-        plt.subplots_adjust(top=0.8)
-
-        plt.savefig('tex_demo')
-        plt.show()
-        ```
-      </details>
+    </details>
 
 ## Ways You Can Contribute:
 

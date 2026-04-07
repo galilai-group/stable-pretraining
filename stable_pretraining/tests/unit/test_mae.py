@@ -471,13 +471,11 @@ class TestMAEUnit:
     """Unit tests for MAE components without actual model training."""
 
     def test_mae_backbone_initialization(self):
-        """Test MAE backbone can be initialized."""
-        with patch(
-            "stable_pretraining.backbone.mae.vit_base_patch16_dec512d8b"
-        ) as mock_mae:
-            backbone = mock_mae()
-            mock_mae.assert_called_once()
-            assert backbone is not None
+        """Test MAE model can be initialized."""
+        with patch("stable_pretraining.methods.mae.MAE") as mock_mae:
+            model = mock_mae("vit_base_patch16_224")
+            mock_mae.assert_called_once_with("vit_base_patch16_224")
+            assert model is not None
 
     def test_mae_forward_logic(self):
         """Test MAE forward pass logic."""

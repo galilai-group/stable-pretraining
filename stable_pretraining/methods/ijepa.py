@@ -48,10 +48,11 @@ from stable_pretraining.backbone import (
     TeacherStudentWrapper,
 )
 from stable_pretraining import Module
+from transformers.utils import ModelOutput
 
 
 @dataclass
-class IJEPAOutput:
+class IJEPAOutput(ModelOutput):
     """Output from IJEPA forward pass.
 
     :ivar loss: Prediction loss (0 in eval mode)
@@ -62,12 +63,12 @@ class IJEPAOutput:
     :ivar num_context: Number of context patches (all patches in eval)
     """
 
-    loss: torch.Tensor
-    embedding: torch.Tensor
-    predictions: torch.Tensor
-    targets: torch.Tensor
-    num_targets: int
-    num_context: int
+    loss: torch.Tensor = None
+    embedding: torch.Tensor = None
+    predictions: torch.Tensor = None
+    targets: torch.Tensor = None
+    num_targets: int = None
+    num_context: int = None
 
 
 class IJEPA(Module):

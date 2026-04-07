@@ -120,4 +120,5 @@ class CLIPZeroShot(Callback):
             )
             logs[f"val/{self.name}_{metric_name}"] = metric
 
-        pl_module.log_dict(logs, on_step=False, on_epoch=True, sync_dist=True)
+        # torchmetrics handle distributed sync internally — do not double-sync
+        pl_module.log_dict(logs, on_step=False, on_epoch=True, sync_dist=False)

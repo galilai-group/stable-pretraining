@@ -11,7 +11,10 @@ import torch
 from lightning.pytorch import Callback, LightningModule, Trainer
 from loguru import logger as logging
 
+from .registry import log as _spt_log
+
 from ..utils import OrderedQueue, get_data_from_batch_or_outputs
+from .utils import log_header
 
 
 class OnlineQueue(Callback):
@@ -51,6 +54,7 @@ class OnlineQueue(Callback):
         dim: Optional[Union[int, tuple]] = None,
         dtype: Optional[torch.dtype] = None,
         gather_distributed: bool = False,
+        verbose: bool = None,
     ) -> None:
         super().__init__()
 
@@ -59,12 +63,16 @@ class OnlineQueue(Callback):
         self.dim = dim
         self.dtype = dtype
         self.gather_distributed = gather_distributed
+        from .utils import resolve_verbose
+
+        self.verbose = resolve_verbose(verbose)
         self._snapshot = None
 
-        logging.info(f"OnlineQueue initialized for key '{key}'")
-        logging.info(f"\t- requested_length: {queue_length}")
-        logging.info(f"\t- dim: {dim}")
-        logging.info(f"\t- dtype: {dtype}")
+        log_header("OnlineQueue")
+        logging.info(f"  key: {key}")
+        logging.info(f"  requested_length: {queue_length}")
+        logging.info(f"  dim: {dim}")
+        logging.info(f"  dtype: {dtype}")
 
     @property
     def actual_queue_length(self) -> int:
@@ -84,7 +92,7 @@ class OnlineQueue(Callback):
                 "callbacks": [self],
             }
             logging.info(
-                f"OnlineQueue: New key '{self.key}' with initial size {self.requested_length}"
+                f"  new key '{self.key}' with initial size {self.requested_length}"
             )
         else:
             # Update max length if this callback needs more
@@ -92,7 +100,7 @@ class OnlineQueue(Callback):
             if self.requested_length > old_max:
                 self._queue_info[self.key]["max_length"] = self.requested_length
                 logging.info(
-                    f"OnlineQueue: Increased max size for key '{self.key}' "
+                    f"  increased max size for key '{self.key}' "
                     f"from {old_max} to {self.requested_length}"
                 )
 
@@ -112,7 +120,7 @@ class OnlineQueue(Callback):
             queue_key = f"ordered_queue_{self.key}"
             pl_module.callbacks_modules[queue_key] = self._shared_queues[self.key]
             logging.info(
-                f"OnlineQueue: Created shared queue for '{self.key}' with size {max_length}"
+                f"  created shared queue for '{self.key}' with size {max_length}"
             )
         elif self._shared_queues[self.key].max_length < max_length:
             # Need to resize the existing queue
@@ -128,7 +136,7 @@ class OnlineQueue(Callback):
             if old_data is not None and len(old_data) > 0:
                 new_queue.append(old_data)
                 logging.info(
-                    f"OnlineQueue: Resized queue for '{self.key}' from "
+                    f"  resized queue for '{self.key}' from "
                     f"{old_queue.max_length} to {max_length}, preserved {len(old_data)} items"
                 )
 
@@ -165,12 +173,25 @@ class OnlineQueue(Callback):
             # Append to the shared queue
             self._shared_queues[self.key].append(data)
 
+            if self.verbose:
+                queue = self._shared_queues[self.key]
+                n_items = (
+                    queue.max_length if queue.filled else int(queue.pointer.item())
+                )
+                fill = n_items / queue.max_length if queue.max_length > 0 else 0.0
+                _spt_log(
+                    f"queue/{self.key}_fill_pct",
+                    fill,
+                    on_step=True,
+                    on_epoch=False,
+                )
+
     def on_validation_epoch_start(
         self, trainer: Trainer, pl_module: LightningModule
     ) -> None:
         """Create snapshot of the requested portion of queue contents."""
         logging.info(
-            f"OnlineQueue: Creating snapshot for key '{self.key}' "
+            f"  creating snapshot for key '{self.key}' "
             f"(requesting {self.requested_length} from queue of size {self.actual_queue_length})"
         )
 
@@ -182,24 +203,22 @@ class OnlineQueue(Callback):
             # Get the last N items (most recent)
             tensor = full_queue_data[-self.requested_length :]
             logging.info(
-                f"\t- Extracted last {self.requested_length} items from {len(full_queue_data)} available"
+                f"  extracted last {self.requested_length} items from {len(full_queue_data)} available"
             )
         else:
             tensor = full_queue_data
             if len(tensor) < self.requested_length:
                 logging.info(
-                    f"\t- Queue not full yet: {len(tensor)}/{self.requested_length} items"
+                    f"  queue not full yet: {len(tensor)}/{self.requested_length} items"
                 )
 
         if self.gather_distributed and trainer.world_size > 1:
             gathered = pl_module.all_gather(tensor).flatten(0, 1)
             self._snapshot = gathered
-            logging.info(
-                f"\t- {self.key}: {tensor.shape} -> {gathered.shape} (gathered)"
-            )
+            logging.info(f"  {self.key}: {tensor.shape} -> {gathered.shape} (gathered)")
         else:
             self._snapshot = tensor
-            logging.info(f"\t- {self.key}: {tensor.shape}")
+            logging.info(f"  {self.key}: {tensor.shape}")
 
     def on_validation_epoch_end(
         self, trainer: Trainer, pl_module: LightningModule
@@ -211,7 +230,7 @@ class OnlineQueue(Callback):
     def data(self) -> Optional[torch.Tensor]:
         """Get snapshot data during validation."""
         if self._snapshot is None:
-            logging.warning("No queue snapshot available. Called outside validation?")
+            logging.warning("! no queue snapshot available, called outside validation?")
             return None
         return self._snapshot
 
@@ -273,7 +292,7 @@ def find_or_create_queue_callback(
         if create_if_missing:
             # Create a new queue callback
             logging.info(
-                f"No queue found for key '{key}', creating new OnlineQueue with "
+                f"  no queue found for key '{key}', creating new OnlineQueue with "
                 f"length={queue_length}, dim={dim}, dtype={dtype}"
             )
             new_queue = OnlineQueue(
@@ -319,7 +338,7 @@ def find_or_create_queue_callback(
     for callback in matching_queues:
         if callback.requested_length == queue_length:
             logging.info(
-                f"Found existing OnlineQueue for key '{key}' with "
+                f"  found existing OnlineQueue for key '{key}' with "
                 f"requested_length={queue_length} (actual queue size: {callback.actual_queue_length})"
             )
             return callback
@@ -328,7 +347,7 @@ def find_or_create_queue_callback(
     # Create a new callback that will share the underlying queue
     if create_if_missing:
         logging.info(
-            f"Creating new OnlineQueue callback for key '{key}' with "
+            f"  creating new OnlineQueue callback for key '{key}' with "
             f"requested_length={queue_length} (will share underlying queue)"
         )
         new_queue = OnlineQueue(
@@ -345,7 +364,7 @@ def find_or_create_queue_callback(
             if queue_length > old_max:
                 OnlineQueue._queue_info[key]["max_length"] = queue_length
                 logging.info(
-                    f"OnlineQueue: Updated max size for key '{key}' "
+                    f"  updated max size for key '{key}' "
                     f"from {old_max} to {queue_length}"
                 )
             # Add the new callback to the list
@@ -366,7 +385,7 @@ def find_or_create_queue_callback(
         for cb in matching_queues
     ]
     logging.warning(
-        f"Found OnlineQueue callbacks for key '{key}' but none with "
+        f"! found OnlineQueue callbacks for key '{key}' but none with "
         f"requested_length={queue_length}. Existing queues: {queue_details}. "
         f"Using the first one."
     )

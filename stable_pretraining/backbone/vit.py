@@ -7,6 +7,7 @@ from timm.layers import DropPath, Mlp, trunc_normal_
 from loguru import logger
 from .patch_masking import PatchMasking
 from dataclasses import dataclass
+from transformers.utils import ModelOutput
 from .pos_embed import (
     get_sincos_pos_embed,
     get_timestep_embed,
@@ -191,7 +192,7 @@ class QKNorm(nn.Module):
 
 
 @dataclass
-class MaskedEncoderOutput:
+class MaskedEncoderOutput(ModelOutput):
     """Output from MaskedEncoder forward pass.
 
     :ivar encoded: Encoded token representations (B, num_prefix + N_visible, D)
@@ -200,10 +201,10 @@ class MaskedEncoderOutput:
     :ivar grid_size: Patch grid dimensions (height, width)
     """
 
-    encoded: torch.Tensor
-    mask: torch.Tensor
-    ids_keep: torch.Tensor
-    grid_size: Tuple[int, int]
+    encoded: torch.Tensor = None
+    mask: torch.Tensor = None
+    ids_keep: torch.Tensor = None
+    grid_size: Tuple[int, int] = None
 
 
 class MaskedEncoder(nn.Module):

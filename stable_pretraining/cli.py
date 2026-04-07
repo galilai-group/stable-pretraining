@@ -71,7 +71,7 @@ def run(
     config_path, config_name = _find_config_file(config)
 
     if config_path is None:
-        typer.echo(f"❌ Error: Could not find config file '{config}'", err=True)
+        typer.echo(f"Error: Could not find config file '{config}'", err=True)
         raise typer.Exit(code=1)
 
     cmd = [
@@ -89,12 +89,12 @@ def run(
         overrides = [o for o in overrides if o not in ["-m", "--multirun"]]
         if not any("hydra/launcher=" in o for o in overrides):
             overrides.append("hydra/launcher=submitit_slurm")
-        typer.echo("🚀 Running in multirun mode")
+        typer.echo("Running in multirun mode")
 
     if overrides:
         cmd.extend(overrides)
 
-    typer.echo(f"📋 Config: {config_name} from {config_path}")
+    typer.echo(f"Config: {config_name} from {config_path}")
     typer.echo("-" * 50)
 
     try:
@@ -102,7 +102,7 @@ def run(
     except subprocess.CalledProcessError as e:
         raise typer.Exit(code=e.returncode)
     except KeyboardInterrupt:
-        typer.echo("\n⚠️  Interrupted", err=True)
+        typer.echo("\nInterrupted", err=True)
         raise typer.Exit(code=130)
 
 
@@ -126,17 +126,15 @@ def dump_csv_logs(
     # ========== Input Validation ==========
     dir_path = Path(dir)
     if not dir_path.exists():
-        typer.echo(f"❌ Error: Directory '{dir}' does not exist", err=True)
+        typer.echo(f"Error: Directory '{dir}' does not exist", err=True)
         raise typer.Exit(code=1)
 
     if not dir_path.is_dir():
-        typer.echo(f"❌ Error: '{dir}' is not a directory", err=True)
+        typer.echo(f"Error: '{dir}' is not a directory", err=True)
         raise typer.Exit(code=1)
 
     if agg not in ["max", "last", "all"]:
-        typer.echo(
-            f"❌ Error: Invalid aggregation '{agg}'. Use 'max' or 'last'", err=True
-        )
+        typer.echo(f"Error: Invalid aggregation '{agg}'. Use 'max' or 'last'", err=True)
         raise typer.Exit(code=1)
 
     # ========== Define Aggregation Functions ==========
@@ -170,35 +168,33 @@ def dump_csv_logs(
 
     # ========== Process Data ==========
     try:
-        typer.echo(f"📂 Reading CSV logs from: {dir}")
+        typer.echo(f"Reading CSV logs from: {dir}")
         df = CSVLogAutoSummarizer().collect(dir)
 
         if df.empty:
-            typer.echo("⚠️  Warning: Collected DataFrame is empty", err=True)
+            typer.echo("Warning: Collected DataFrame is empty", err=True)
             raise typer.Exit(code=1)
 
-        typer.echo(
-            f"📊 Loaded DataFrame: {df.shape[0]:,} rows × {df.shape[1]:,} columns"
-        )
+        typer.echo(f"Loaded DataFrame: {df.shape[0]:,} rows x {df.shape[1]:,} columns")
 
         # Apply aggregation
-        typer.echo(f"🔄 Applying '{agg}' aggregation...")
+        typer.echo(f"Applying '{agg}' aggregation...")
         df_agg = agg_func(df)
         typer.echo(
-            f"✅ Aggregated to: {df_agg.shape[0]:,} rows × {df_agg.shape[1]:,} columns"
+            f"Aggregated to: {df_agg.shape[0]:,} rows x {df_agg.shape[1]:,} columns"
         )
 
         # Save with best compression
-        typer.echo("💾 Finding best compression format...")
+        typer.echo("Finding best compression format...")
         best_file = save_best_compressed(df_agg, output_name)
 
-        typer.echo(f"✨ Success! Best compressed file: {best_file}")
+        typer.echo(f"Success! Best compressed file: {best_file}")
 
     except FileNotFoundError as e:
-        typer.echo(f"❌ Error: File not found - {e}", err=True)
+        typer.echo(f"Error: File not found - {e}", err=True)
         raise typer.Exit(code=1)
     except Exception as e:
-        typer.echo(f"❌ Error during processing: {e}", err=True)
+        typer.echo(f"Error during processing: {e}", err=True)
         raise typer.Exit(code=1)
 
 

@@ -65,13 +65,13 @@ def get_num_workers():
         - PyTorch DataLoader: https://pytorch.org/docs/stable/data.html
         - CPU affinity: https://man7.org/linux/man-pages/man2/sched_setaffinity.2.html
     """
-    logger.debug("🔍 Starting automatic num_workers detection")
+    logger.debug("Starting automatic num_workers detection")
 
     # Step 1: Detect available CPUs
     try:
         num_cpus = len(os.sched_getaffinity(0))
         logger.info(
-            f"✓ Detected {num_cpus} CPUs via sched_getaffinity (respects affinity mask)"
+            f"  Detected {num_cpus} CPUs via sched_getaffinity (respects affinity mask)"
         )
         logger.debug(
             "Using sched_getaffinity ensures we respect SLURM/Docker/cgroup limits"
@@ -80,11 +80,11 @@ def get_num_workers():
         # Fallback for systems without sched_getaffinity (macOS, Windows)
         num_cpus = os.cpu_count()
         if num_cpus is None:
-            logger.warning("⚠️  os.cpu_count() returned None, defaulting to 1 CPU")
+            logger.warning("! os.cpu_count() returned None, defaulting to 1 CPU")
             num_cpus = 1
         else:
             logger.info(
-                f"✓ Detected {num_cpus} CPUs via os.cpu_count() (fallback for non-Linux)"
+                f"  Detected {num_cpus} CPUs via os.cpu_count() (fallback for non-Linux)"
             )
 
     logger.debug(f"Total CPUs available to this process: {num_cpus}")
@@ -104,7 +104,7 @@ def get_num_workers():
             world_size = torch.distributed.get_world_size()
             rank = torch.distributed.get_rank()
 
-            logger.info(f"🌐 DDP detected: world_size={world_size}, rank={rank}")
+            logger.info(f"  DDP detected: world_size={world_size}, rank={rank}")
             logger.debug(
                 f"Each of {world_size} processes will spawn its own DataLoader workers"
             )
@@ -119,12 +119,12 @@ def get_num_workers():
     if is_distributed and world_size > 1:
         num_workers = num_cpus // world_size
         logger.info(
-            f"📊 DDP mode: {num_cpus} CPUs ÷ {world_size} ranks = {num_workers} workers per rank"
+            f"  DDP mode: {num_cpus} CPUs / {world_size} ranks = {num_workers} workers per rank"
         )
 
         if num_workers == 0:
             logger.warning(
-                f"⚠️  Only {num_cpus} CPUs for {world_size} ranks results in 0 workers/rank. "
+                f"! Only {num_cpus} CPUs for {world_size} ranks results in 0 workers/rank. "
                 f"Setting to 1 worker minimum."
             )
             num_workers = 1
@@ -141,13 +141,13 @@ def get_num_workers():
     if is_distributed:
         total_workers = num_workers * world_size
         logger.success(
-            f"✅ Final configuration: {num_workers} workers/rank × {world_size} ranks = {total_workers} total workers"
+            f"✓ Final configuration: {num_workers} workers/rank x {world_size} ranks = {total_workers} total workers"
         )
     else:
-        logger.success(f"✅ Final configuration: {num_workers} DataLoader workers")
+        logger.success(f"✓ Final configuration: {num_workers} DataLoader workers")
 
     logger.debug(f"Returning num_workers={num_workers}")
-    logger.debug("🏁 num_workers detection complete\n")
+    logger.debug("num_workers detection complete\n")
 
     return num_workers
 

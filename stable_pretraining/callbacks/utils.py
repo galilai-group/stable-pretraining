@@ -8,6 +8,30 @@ from loguru import logger as logging
 import types
 from ..optim import create_optimizer, create_scheduler, LARS
 
+_HEADER_WIDTH = 50
+
+
+def log_header(name: str, width: int = _HEADER_WIDTH) -> None:
+    """Log a unified section header: ``── Name ────────────``."""
+    pad = max(width - len(name) - 4, 2)
+    logging.info(f"── {name} " + "─" * pad)
+
+
+def resolve_verbose(verbose: Optional[bool]) -> bool:
+    """Resolve a callback's ``verbose`` flag.
+
+    * ``True`` / ``False`` — honour the explicit choice.
+    * ``None`` — derive from the global config: verbose if the global
+      log level is INFO or lower (i.e. more detailed).
+    """
+    if verbose is not None:
+        return verbose
+    from .._config import get_config, _VALID_LOG_LEVELS
+
+    level = get_config().verbose
+    # INFO is index 2; anything <= INFO means "chatty enough for verbose"
+    return _VALID_LOG_LEVELS.index(level) <= _VALID_LOG_LEVELS.index("INFO")
+
 
 class TrainableCallback(Callback):
     """Base callback class with optimizer and scheduler management.
@@ -67,16 +91,16 @@ class TrainableCallback(Callback):
             fn()
             module = callback.configure_model(self)
             # Store module in pl_module.callbacks_modules
-            logging.info(f"{callback.name}: Storing module in callbacks_modules")
+            logging.info("  storing module in callbacks_modules")
             self.callbacks_modules[callback.name] = module
-            logging.info(f"{callback.name}: Setting up metrics")
+            logging.info("  setting up metrics")
             assert callback.name not in self.callbacks_metrics
             self.callbacks_metrics[callback.name] = format_metrics_as_dict(
                 callback.metrics
             )
 
         # Bind the new method to the instance
-        logging.info(f"{self.name}: We are wrapping up your `configure_optimizers`!")
+        logging.info("  wrapping configure_model")
         pl_module.configure_model = types.MethodType(new_configure_model, pl_module)
 
     def configure_model(self, pl_module: LightningModule) -> torch.nn.Module:
@@ -125,7 +149,7 @@ class TrainableCallback(Callback):
             return optimizers, schedulers
 
         # Bind the new method to the instance
-        logging.info(f"{self.name}: We are wrapping up your `configure_optimizers`!")
+        logging.info("  wrapping configure_optimizers")
         pl_module.configure_optimizers = types.MethodType(
             new_configure_optimizers, pl_module
         )
@@ -134,7 +158,7 @@ class TrainableCallback(Callback):
         """Initialize optimizer with default LARS if not specified."""
         if self._optimizer_config is None:
             # Use default LARS optimizer for SSL linear probes
-            logging.info(f"{self.name}: No optimizer given, using default LARS")
+            logging.info("  no optimizer given, using default LARS")
             return LARS(
                 self.module.parameters(),
                 lr=0.1,
@@ -144,16 +168,16 @@ class TrainableCallback(Callback):
                 weight_decay=0,
             )
         # Use explicitly provided optimizer config
-        logging.info(f"{self.name}: Use explicitly provided optimizer")
+        logging.info("  using explicitly provided optimizer")
         return create_optimizer(self.module.parameters(), self._optimizer_config)
 
     def setup_scheduler(self, optimizer, pl_module: LightningModule) -> None:
         """Initialize scheduler with default ConstantLR if not specified."""
         if self._scheduler_config is None:
             # Use default ConstantLR scheduler
-            logging.info(f"{self.name}: No scheduler given, using default ConstantLR")
+            logging.info("  no scheduler given, using default ConstantLR")
             return torch.optim.lr_scheduler.ConstantLR(optimizer, factor=1.0)
-        logging.info(f"{self.name}: Use explicitly provided scheduler")
+        logging.info("  using explicitly provided scheduler")
         return create_scheduler(optimizer, self._scheduler_config, module=pl_module)
 
     @property
