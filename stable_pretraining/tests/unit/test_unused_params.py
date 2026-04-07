@@ -184,7 +184,7 @@ def test_auto_all_parameters_used():
         trainer.fit(model, train_dataloaders=loader)
 
     text = "\n".join(messages)
-    assert "All tracked parameters received gradients" in text
+    assert "all tracked parameters received gradients" in text
     assert "did NOT receive gradients" not in text
 
 
@@ -219,7 +219,7 @@ def test_auto_callback_runs_only_once():
         trainer.fit(model, train_dataloaders=loader)
 
     text = "\n".join(messages)
-    assert text.count("Hooks removed, callback disabled.") == 1
+    assert text.count("hooks removed, callback disabled") == 1
 
 
 # ---- Tests: Manual Optimization ----
@@ -237,7 +237,7 @@ def test_manual_all_parameters_used():
         trainer.fit(model, train_dataloaders=loader)
 
     text = "\n".join(messages)
-    assert "All tracked parameters received gradients" in text
+    assert "all tracked parameters received gradients" in text
     assert "did NOT receive gradients" not in text
 
 
@@ -272,4 +272,4 @@ def test_manual_callback_runs_only_once():
         trainer.fit(model, train_dataloaders=loader)
 
     text = "\n".join(messages)
-    assert text.count("Hooks removed, callback disabled.") == 1
+    assert text.count("hooks removed, callback disabled") == 1

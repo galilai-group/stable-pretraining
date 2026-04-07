@@ -48,7 +48,7 @@ class GDriveUploader:
         callback: Optional[Callable[[str, Optional[str], bool], None]] = None,
     ):
         logger.info("=" * 70)
-        logger.info(f"🚀 Initializing GDriveUploader: {folder_name}")
+        logger.info(f"Initializing GDriveUploader: {folder_name}")
         logger.debug(
             f"Credentials: {credentials_path} | Parent: {parent_folder_id or 'ROOT'}"
         )
@@ -79,11 +79,11 @@ class GDriveUploader:
 
             atexit.register(self._cleanup)
             logger.success("=" * 70)
-            logger.success(f"✅ Ready! URL: {self.get_folder_url()}")
+            logger.success(f"✓ Ready! URL: {self.get_folder_url()}")
             logger.success("=" * 70)
 
         except Exception as e:
-            logger.error(f"❌ Initialization failed: {e}")
+            logger.error(f"Initialization failed: {e}")
             logger.exception("Full error:")
             raise
 
@@ -186,7 +186,7 @@ class GDriveUploader:
 
     def _upload_worker(self):
         """Background worker that processes upload queue."""
-        logger.info(f"🔄 Worker started (TID: {Thread.current_thread().ident})")
+        logger.info(f"Worker started (TID: {Thread.current_thread().ident})")
         processed = 0
 
         while not self._stop_worker:
@@ -200,7 +200,7 @@ class GDriveUploader:
                 file_path, custom_name, subfolder_id = task
                 processed += 1
 
-                logger.info(f"📤 Processing upload #{processed}: {file_path}")
+                logger.info(f"Processing upload #{processed}: {file_path}")
                 file_id = self._upload_file(file_path, custom_name, subfolder_id)
 
                 # Callback
@@ -217,7 +217,7 @@ class GDriveUploader:
                 if not self._stop_worker:
                     logger.error(f"Worker error: {e}")
 
-        logger.info(f"🛑 Worker stopped (processed {processed} uploads)")
+        logger.info(f"Worker stopped (processed {processed} uploads)")
 
     def _upload_file(
         self,
@@ -234,12 +234,12 @@ class GDriveUploader:
 
             # Validate
             if not path.exists() or not path.is_file():
-                logger.error(f"❌ Invalid file: {file_path}")
+                logger.error(f"Invalid file: {file_path}")
                 return None
 
             # File info
             size_mb = path.stat().st_size / (1024 * 1024)
-            logger.info(f"📁 Uploading: {path.name} ({size_mb:.2f} MB)")
+            logger.info(f"Uploading: {path.name} ({size_mb:.2f} MB)")
 
             # MIME type
             mime_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
@@ -253,7 +253,7 @@ class GDriveUploader:
 
             # Upload
             media = MediaFileUpload(file_path, mimetype=mime_type, resumable=True)
-            logger.info("🚀 Uploading to Drive...")
+            logger.info("Uploading to Drive...")
 
             file = (
                 self.service.files()
@@ -267,7 +267,7 @@ class GDriveUploader:
 
             file_id = file.get("id")
             logger.success("=" * 60)
-            logger.success(f"✅ Upload complete: {file.get('name')}")
+            logger.success(f"✓ Upload complete: {file.get('name')}")
             logger.success(f"  File ID: {file_id}")
             logger.success(f"  Size: {file.get('size')} bytes")
             logger.debug(f"  Link: {file.get('webViewLink')}")
@@ -276,10 +276,10 @@ class GDriveUploader:
             return file_id
 
         except HttpError as e:
-            logger.error(f"❌ HTTP error: {e.resp.status} - {e.resp.reason}")
+            logger.error(f"HTTP error: {e.resp.status} - {e.resp.reason}")
             return None
         except Exception as e:
-            logger.error(f"❌ Upload failed: {e}")
+            logger.error(f"Upload failed: {e}")
             logger.exception("Full traceback:")
             return None
 
@@ -300,14 +300,14 @@ class GDriveUploader:
             >>> uploader.upload_file("video.mp4")
             >>> uploader.upload_file("report.pdf", custom_name="Q4_report.pdf")
         """
-        logger.info(f"📋 Queuing: {file_path}")
+        logger.info(f"Queuing: {file_path}")
         self._upload_queue.put((file_path, custom_name, subfolder_id))
 
         queue_size = self._upload_queue.qsize()
         logger.info(f"✓ Queued (queue size: {queue_size})")
 
         if queue_size > 10:
-            logger.warning(f"⚠️  Large queue: {queue_size} pending uploads")
+            logger.warning(f"! Large queue: {queue_size} pending uploads")
 
     def wait_for_uploads(self, timeout: Optional[float] = None) -> bool:
         """Wait for all queued uploads to complete.
@@ -329,16 +329,16 @@ class GDriveUploader:
             logger.info("✓ No pending uploads")
             return True
 
-        logger.info(f"⏳ Waiting for {pending} upload(s)...")
+        logger.info(f"Waiting for {pending} upload(s)...")
         if timeout:
             logger.debug(f"Timeout: {timeout}s")
 
         try:
             self._upload_queue.join()
-            logger.success("✅ All uploads complete")
+            logger.success("✓ All uploads complete")
             return True
         except Exception as e:
-            logger.error(f"❌ Wait error: {e}")
+            logger.error(f"Wait error: {e}")
             return False
 
     def get_queue_size(self) -> int:
@@ -355,7 +355,7 @@ class GDriveUploader:
 
     def _cleanup(self):
         """Shutdown worker thread gracefully."""
-        logger.info("🛑 Shutting down GDriveUploader...")
+        logger.info("Shutting down GDriveUploader...")
         self._stop_worker = True
         self._upload_queue.put(None)  # Poison pill
 
@@ -379,9 +379,9 @@ if __name__ == "__main__":
     # Callback for upload notifications
     def on_upload_complete(file_path: str, file_id: Optional[str], success: bool):
         if success:
-            logger.info(f"✅ Uploaded: {file_path} -> {file_id}")
+            logger.info(f"Uploaded: {file_path} -> {file_id}")
         else:
-            logger.error(f"❌ Failed: {file_path}")
+            logger.error(f"Failed: {file_path}")
 
     # Initialize uploader
     uploader = GDriveUploader(

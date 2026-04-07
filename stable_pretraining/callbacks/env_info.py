@@ -15,6 +15,8 @@ from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 
+from .utils import log_header
+
 import tempfile
 import shutil
 import json
@@ -39,7 +41,7 @@ class EnvironmentDumpCallback(Callback):
         self._start_time: Optional[float] = None
 
         logger.info(
-            f"EnvironmentDumpCallback initialized (filename={filename}, async={async_dump})"
+            f"  EnvironmentDumpCallback initialized (filename={filename}, async={async_dump})"
         )
 
     @rank_zero_only
@@ -48,26 +50,23 @@ class EnvironmentDumpCallback(Callback):
     ) -> None:
         """Called when training starts - runs dump in background."""
         if stage != "fit":
-            logger.info(f"Skipping environment dump on {stage=}")
+            logger.info(f"  Skipping environment dump on {stage=}")
             return
 
-        logger.info("=" * 70)
-        logger.info("🔍 Starting environment configuration dump...")
-        logger.info("=" * 70)
+        log_header("EnvironmentDump")
 
         self._start_time = time.time()
 
-        # 🔥 CRITICAL: Get log_dir in main thread BEFORE starting background thread
+        # CRITICAL: Get log_dir in main thread BEFORE starting background thread
         # Use trainer.log_dir for the run-specific versioned directory
         # Falls back to default_root_dir if no logger is configured
         log_dir = Path(trainer.default_root_dir)
-        logger.info(f"EnvironmentDumpCallback  {log_dir=}")
+        logger.info(f"  log_dir: {log_dir}")
 
         if self.async_dump:
             logger.info(
-                "⚡ Running environment dump in background thread (non-blocking)"
+                "  Running environment dump in background thread (non-blocking)"
             )
-            logger.info(f"📁 Log directory: {log_dir}")
             self._dump_thread = threading.Thread(
                 target=self._dump_environment,
                 args=(log_dir,),  # Pass log_dir, not trainer!
@@ -77,7 +76,7 @@ class EnvironmentDumpCallback(Callback):
             self._dump_thread.start()
             logger.success("✓ Background thread started successfully")
         else:
-            logger.info("🔄 Running environment dump synchronously (blocking)")
+            logger.info("  Running environment dump synchronously (blocking)")
             self._dump_environment(log_dir)
 
     @rank_zero_only
@@ -86,12 +85,12 @@ class EnvironmentDumpCallback(Callback):
     ) -> None:
         """Ensure the dump thread completes if still running."""
         if self._dump_thread is not None and self._dump_thread.is_alive():
-            logger.info("⏳ Waiting for environment dump thread to complete...")
+            logger.info("  Waiting for environment dump thread to complete...")
             self._dump_thread.join(timeout=30)
 
             if self._dump_thread.is_alive():
                 logger.warning(
-                    "⚠️  Environment dump thread did not complete within 30 seconds"
+                    "! Environment dump thread did not complete within 30 seconds"
                 )
             else:
                 logger.success("✓ Environment dump thread completed successfully")
@@ -123,7 +122,7 @@ class EnvironmentDumpCallback(Callback):
             versioned_path = parent / f"{stem}_v{version}{suffix}"
             if not versioned_path.exists():
                 logger.info(
-                    f"📋 File exists, using version {version}: {versioned_path.name}"
+                    f"  File exists, using version {version}: {versioned_path.name}"
                 )
                 return versioned_path
             version += 1
@@ -131,7 +130,7 @@ class EnvironmentDumpCallback(Callback):
             # Safety check (avoid infinite loop)
             if version > 1000:
                 logger.warning(
-                    f"⚠️  Too many versions ({version}), using timestamp instead"
+                    f"! Too many versions ({version}), using timestamp instead"
                 )
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 return parent / f"{stem}_{timestamp}{suffix}"
@@ -150,72 +149,68 @@ class EnvironmentDumpCallback(Callback):
     def _dump_environment(self, log_dir: Path) -> None:
         """Collect and dump all environment information."""
         try:
-            logger.info("📊 Collecting environment information...")
+            logger.info("  Collecting environment information...")
 
             # Collect all information
-            logger.debug("  → Collecting Python info...")
+            logger.debug("  Collecting Python info...")
             python_info = self._get_python_info()
             logger.success(
-                f"  ✓ Python {python_info['version_info']['major']}.{python_info['version_info']['minor']}.{python_info['version_info']['micro']}"
+                f"✓ Python {python_info['version_info']['major']}.{python_info['version_info']['minor']}.{python_info['version_info']['micro']}"
             )
 
-            logger.debug("  → Collecting system info...")
+            logger.debug("  Collecting system info...")
             system_info = self._get_system_info()
             logger.success(
-                f"  ✓ System: {system_info['system']} {system_info['release']} ({system_info['machine']})"
+                f"✓ System: {system_info['system']} {system_info['release']} ({system_info['machine']})"
             )
-            logger.info(f"     Hostname: {system_info['hostname']}")
+            logger.info(f"  Hostname: {system_info['hostname']}")
 
-            logger.debug("  → Collecting package info (this may take a few seconds)...")
+            logger.debug("  Collecting package info (this may take a few seconds)...")
             packages_start = time.time()
             packages_info = self._get_packages_info()
             packages_time = time.time() - packages_start
             logger.success(
-                f"  ✓ Packages: {packages_info['total_packages']} packages collected in {packages_time:.2f}s"
+                f"✓ Packages: {packages_info['total_packages']} packages collected in {packages_time:.2f}s"
             )
 
-            logger.debug("  → Collecting CUDA driver info...")
+            logger.debug("  Collecting CUDA driver info...")
             cuda_info = self._get_cuda_info()
             if cuda_info:
-                logger.success(f"  ✓ NVIDIA Driver: {cuda_info['driver_version']}")
+                logger.success(f"✓ NVIDIA Driver: {cuda_info['driver_version']}")
             else:
-                logger.debug("  ℹ️  nvidia-smi not available or no GPU detected")
+                logger.debug("  nvidia-smi not available or no GPU detected")
 
-            logger.debug("  → Collecting git repository info...")
+            logger.debug("  Collecting git repository info...")
             git_info = self._get_git_info()
             if git_info:
                 logger.success(
-                    f"  ✓ Git: {git_info['branch']} @ {git_info['commit_hash'][:8]}"
+                    f"✓ Git: {git_info['branch']} @ {git_info['commit_hash'][:8]}"
                 )
                 if git_info.get("remote_url"):
-                    logger.info(f"     Remote: {git_info['remote_url']}")
+                    logger.info(f"  Remote: {git_info['remote_url']}")
                 if git_info["has_uncommitted_changes"]:
-                    logger.warning("     ⚠️  Working directory has uncommitted changes!")
-                    logger.debug(f"     Changes:\n{git_info['uncommitted_changes']}")
+                    logger.warning("! Working directory has uncommitted changes")
+                    logger.debug(f"  Changes:\n{git_info['uncommitted_changes']}")
             else:
-                logger.debug("  ℹ️  Not in a git repository or git not available")
+                logger.debug("  Not in a git repository or git not available")
 
-            logger.debug("  → Collecting SLURM job info...")
+            logger.debug("  Collecting SLURM job info...")
             slurm_info = self._get_slurm_info()
             if slurm_info:
-                logger.success(
-                    f"  ✓ SLURM Job: {slurm_info.get('SLURM_JOB_ID', 'N/A')}"
-                )
-                logger.info(f"     Name: {slurm_info.get('SLURM_JOB_NAME', 'N/A')}")
+                logger.success(f"✓ SLURM Job: {slurm_info.get('SLURM_JOB_ID', 'N/A')}")
+                logger.info(f"  Name: {slurm_info.get('SLURM_JOB_NAME', 'N/A')}")
                 logger.info(
-                    f"     Partition: {slurm_info.get('SLURM_JOB_PARTITION', 'N/A')}"
+                    f"  Partition: {slurm_info.get('SLURM_JOB_PARTITION', 'N/A')}"
                 )
-                logger.info(
-                    f"     Nodes: {slurm_info.get('SLURM_JOB_NUM_NODES', 'N/A')}"
-                )
-                logger.info(f"     Tasks: {slurm_info.get('SLURM_NTASKS', 'N/A')}")
+                logger.info(f"  Nodes: {slurm_info.get('SLURM_JOB_NUM_NODES', 'N/A')}")
+                logger.info(f"  Tasks: {slurm_info.get('SLURM_NTASKS', 'N/A')}")
             else:
-                logger.debug("  ℹ️  Not running under SLURM")
+                logger.debug("  Not running under SLURM")
 
-            logger.debug("  → Collecting environment variables...")
+            logger.debug("  Collecting environment variables...")
             env_vars = self._get_env_variables()
             logger.success(
-                f"  ✓ Environment: {len(env_vars)} relevant variables captured"
+                f"✓ Environment: {len(env_vars)} relevant variables captured"
             )
 
             # Build complete environment info
@@ -230,7 +225,7 @@ class EnvironmentDumpCallback(Callback):
                 "environment_variables": env_vars,
             }
 
-            logger.info("🔄 Serializing environment data...")
+            logger.info("  Serializing environment data...")
             env_info = self._make_serializable(env_info)
 
             # Determine save location
@@ -238,11 +233,11 @@ class EnvironmentDumpCallback(Callback):
             save_path = self._get_versioned_path(save_dir / self.filename)
             req_path = self._get_versioned_path(save_dir / "requirements_frozen.txt")
 
-            logger.info(f"📁 Save directory: {save_dir}")
+            logger.info(f"  Save directory: {save_dir}")
 
             # Create directory if needed
             if not save_dir.exists():
-                logger.debug(f"Creating directory: {save_dir}")
+                logger.debug(f"  Creating directory: {save_dir}")
                 save_dir.mkdir(parents=True, exist_ok=True)
 
             # Use JSON (faster than YAML)
@@ -252,12 +247,12 @@ class EnvironmentDumpCallback(Callback):
             with tempfile.NamedTemporaryFile(
                 mode="w", delete=False, suffix=".json"
             ) as tmp_f:
-                logger.info("💾 Writing environment to temp file...")
+                logger.info("  Writing environment to temp file...")
                 json.dump(env_info, tmp_f, indent=2)
                 tmp_path = tmp_f.name
 
             # Atomic move
-            logger.info(f"💾 Moving to: {json_path.name}")
+            logger.info(f"  Moving to: {json_path.name}")
             shutil.move(tmp_path, json_path)
             logger.success(
                 f"✓ Environment file saved ({json_path.stat().st_size / 1024:.1f} KB)"
@@ -276,7 +271,7 @@ class EnvironmentDumpCallback(Callback):
             )
 
         except Exception as e:
-            logger.error(f"❌ Error during environment dump: {e}")
+            logger.error(f"Error during environment dump: {e}")
             logger.exception("Full traceback:")
 
     def _get_python_info(self) -> Dict[str, Any]:
@@ -306,19 +301,19 @@ class EnvironmentDumpCallback(Callback):
     def _get_packages_info(self) -> Dict[str, Any]:
         """Get installed packages information."""
         try:
-            logger.debug("     Running 'pip freeze'...")
+            logger.debug("  Running 'pip freeze'...")
             pip_freeze = subprocess.check_output(
                 [sys.executable, "-m", "pip", "freeze"],
                 stderr=subprocess.STDOUT,
                 text=True,
                 timeout=30,
             )
-            logger.debug("     Parsing package list...")
+            logger.debug("  Parsing package list...")
         except subprocess.TimeoutExpired:
-            logger.warning("     ⚠️  pip freeze timed out after 30 seconds")
+            logger.warning("! pip freeze timed out after 30 seconds")
             pip_freeze = "Error: pip freeze timed out"
         except subprocess.CalledProcessError as e:
-            logger.warning(f"     ⚠️  pip freeze failed: {e}")
+            logger.warning(f"! pip freeze failed: {e}")
             pip_freeze = f"Error getting pip freeze: {str(e)}"
 
         # Parse into dict for key packages
@@ -338,7 +333,7 @@ class EnvironmentDumpCallback(Callback):
     def _get_cuda_info(self) -> Optional[Dict[str, Any]]:
         """Get CUDA information from nvidia-smi if available."""
         try:
-            logger.debug("     Running nvidia-smi...")
+            logger.debug("  Running nvidia-smi...")
             nvidia_smi = subprocess.check_output(
                 [
                     "nvidia-smi",
@@ -370,19 +365,19 @@ class EnvironmentDumpCallback(Callback):
                 "driver_version": driver_version,
             }
         except FileNotFoundError:
-            logger.debug("     nvidia-smi not found in PATH")
+            logger.debug("  nvidia-smi not found in PATH")
             return None
         except subprocess.TimeoutExpired:
-            logger.warning("     ⚠️  nvidia-smi timed out")
+            logger.warning("! nvidia-smi timed out")
             return None
         except subprocess.CalledProcessError as e:
-            logger.warning(f"     ⚠️  nvidia-smi failed: {e}")
+            logger.warning(f"! nvidia-smi failed: {e}")
             return None
 
     def _get_git_info(self) -> Optional[Dict[str, Any]]:
         """Get git repository information if available."""
         try:
-            logger.debug("     Checking git repository...")
+            logger.debug("  Checking git repository...")
             git_dir = subprocess.check_output(
                 ["git", "rev-parse", "--git-dir"],
                 stderr=subprocess.STDOUT,
@@ -394,7 +389,7 @@ class EnvironmentDumpCallback(Callback):
             if not git_dir:
                 return None
 
-            logger.debug("     Getting commit hash...")
+            logger.debug("  Getting commit hash...")
             commit_hash = subprocess.check_output(
                 ["git", "rev-parse", "HEAD"],
                 stderr=subprocess.STDOUT,
@@ -402,7 +397,7 @@ class EnvironmentDumpCallback(Callback):
                 timeout=5,
             ).strip()
 
-            logger.debug("     Getting branch name...")
+            logger.debug("  Getting branch name...")
             branch = subprocess.check_output(
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
                 stderr=subprocess.STDOUT,
@@ -410,7 +405,7 @@ class EnvironmentDumpCallback(Callback):
                 timeout=5,
             ).strip()
 
-            logger.debug("     Checking for uncommitted changes...")
+            logger.debug("  Checking for uncommitted changes...")
             status = subprocess.check_output(
                 ["git", "status", "--porcelain"],
                 stderr=subprocess.STDOUT,
@@ -418,7 +413,7 @@ class EnvironmentDumpCallback(Callback):
                 timeout=10,
             ).strip()
 
-            logger.debug("     Getting remote URL...")
+            logger.debug("  Getting remote URL...")
             try:
                 remote_url = subprocess.check_output(
                     ["git", "config", "--get", "remote.origin.url"],
@@ -437,13 +432,13 @@ class EnvironmentDumpCallback(Callback):
                 "remote_url": remote_url,
             }
         except FileNotFoundError:
-            logger.debug("     git not found in PATH")
+            logger.debug("  git not found in PATH")
             return None
         except subprocess.TimeoutExpired:
-            logger.warning("     ⚠️  git command timed out")
+            logger.warning("! git command timed out")
             return None
         except subprocess.CalledProcessError:
-            logger.debug("     Not in a git repository")
+            logger.debug("  Not in a git repository")
             return None
 
     def _get_slurm_info(self) -> Optional[Dict[str, Any]]:
@@ -470,7 +465,7 @@ class EnvironmentDumpCallback(Callback):
                 slurm_info[var] = value
 
         if slurm_info:
-            logger.debug(f"     Found {len(slurm_info)} SLURM variables")
+            logger.debug(f"  Found {len(slurm_info)} SLURM variables")
 
         return slurm_info if slurm_info else None
 
@@ -495,6 +490,6 @@ class EnvironmentDumpCallback(Callback):
         for key, value in os.environ.items():
             if any(key.startswith(prefix) for prefix in relevant_prefixes):
                 env_vars[key] = value
-                logger.debug(f"     Captured: {key}")
+                logger.debug(f"  Captured: {key}")
 
         return env_vars

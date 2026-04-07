@@ -30,13 +30,15 @@ import torch
 import torch.nn as nn
 from typing import Union
 
+from transformers.utils import ModelOutput
+
 from stable_pretraining.backbone import MAEDecoder, MaskedEncoder, PatchMasking
 from stable_pretraining.utils import MAELoss
 from stable_pretraining import Module
 
 
 @dataclass
-class MAEOutput:
+class MAEOutput(ModelOutput):
     """Output from MAE forward pass.
 
     :ivar loss: Reconstruction loss (MSE on masked patches)
@@ -46,11 +48,11 @@ class MAEOutput:
     :ivar num_visible: Number of visible patches
     """
 
-    loss: torch.Tensor
-    predictions: torch.Tensor
-    mask: torch.Tensor
-    num_masked: int
-    num_visible: int
+    loss: torch.Tensor = None
+    predictions: torch.Tensor = None
+    mask: torch.Tensor = None
+    num_masked: int = None
+    num_visible: int = None
 
 
 class MAE(Module):

@@ -64,6 +64,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --user --upgrade --progress-bar off pip
+      - name: Pin CI dependencies
+        run: |
+          python -m pip install --user -r requirements-ci.txt
       - name: Install 'stable_pretraining' package
         run: |
           python -m pip install --user -e .[dev]

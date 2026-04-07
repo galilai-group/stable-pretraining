@@ -1,6 +1,7 @@
 """Patch masking strategies for masked image modeling."""
 
 from dataclasses import dataclass
+from transformers.utils import ModelOutput
 import math
 import torch
 import torch.nn as nn
@@ -19,7 +20,7 @@ __all__ = [
 
 
 @dataclass
-class MaskingOutput:
+class MaskingOutput(ModelOutput):
     """Output from patch masking operation.
 
     :ivar visible: Visible patch embeddings (B, N_keep, D)
@@ -28,10 +29,10 @@ class MaskingOutput:
     :ivar ids_keep: Indices of kept (visible) patches (B, N_keep)
     """
 
-    visible: torch.Tensor
-    mask: torch.Tensor
-    ids_restore: torch.Tensor
-    ids_keep: torch.Tensor
+    visible: torch.Tensor = None
+    mask: torch.Tensor = None
+    ids_restore: torch.Tensor = None
+    ids_keep: torch.Tensor = None
 
 
 class PatchMasking(nn.Module):
@@ -375,7 +376,7 @@ class PatchMasking(nn.Module):
 
 
 @dataclass
-class IJEPAMaskOutput:
+class IJEPAMaskOutput(ModelOutput):
     """Output from I-JEPA masking operation.
 
     :ivar context_idx: Indices of context (visible) patches [B, N_ctx]
@@ -384,10 +385,10 @@ class IJEPAMaskOutput:
     :ivar mask: Full mask where 1 = target, 0 = context [B, N]
     """
 
-    context_idx: torch.Tensor
-    target_idx: torch.Tensor
-    target_block_masks: List[torch.Tensor]
-    mask: torch.Tensor
+    context_idx: torch.Tensor = None
+    target_idx: torch.Tensor = None
+    target_block_masks: List[torch.Tensor] = None
+    mask: torch.Tensor = None
 
 
 class IJEPAMasking(nn.Module):

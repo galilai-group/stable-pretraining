@@ -38,10 +38,11 @@ from stable_pretraining.backbone import (
 )
 from stable_pretraining.data.masking import multi_block_mask
 from stable_pretraining import Module
+from transformers.utils import ModelOutput
 
 
 @dataclass
-class SALTOutput:
+class SALTOutput(ModelOutput):
     """Output from SALT forward pass.
 
     :ivar loss: Prediction loss (L1 between predicted and teacher latents, 0 in eval)
@@ -52,12 +53,12 @@ class SALTOutput:
     :ivar num_context: Number of context patches (all patches in eval)
     """
 
-    loss: torch.Tensor
-    embedding: torch.Tensor
-    predictions: Optional[torch.Tensor]
-    targets: Optional[torch.Tensor]
-    num_targets: int
-    num_context: int
+    loss: torch.Tensor = None
+    embedding: torch.Tensor = None
+    predictions: Optional[torch.Tensor] = None
+    targets: Optional[torch.Tensor] = None
+    num_targets: int = None
+    num_context: int = None
 
 
 class SALT(Module):

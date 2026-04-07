@@ -1,7 +1,7 @@
 """Unit tests for MaskedEncoder across diverse timm ViT families.
 
-Tests six real timm models covering standard ViT, DINOv2, DINOv3 (Eva/RoPE),
-MAE, and CLIP backbones. Validates prefix-token detection, positional embedding
+Tests six real timm models covering standard ViT, DINOv2, RoPE+registers
+(vit_betwixt_patch16_rope_reg4_gap_256), MAE, and CLIP backbones. Validates prefix-token detection, positional embedding
 handling, forward passes (with/without masking), gradient flow, and that
 string-based vs pre-instantiated model creation produces identical behaviour.
 
@@ -33,7 +33,7 @@ MODELS = {
         "expected_num_reg": 0,
     },
     "dinov3": {
-        "name": "vit_base_patch16_dinov3.lvd1689m",
+        "name": "vit_betwixt_patch16_rope_reg4_gap_256",
         "img_size": 256,
         "pos_embed_is_none": True,
         "expected_num_reg": 4,

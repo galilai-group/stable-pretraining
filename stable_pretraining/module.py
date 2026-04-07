@@ -13,6 +13,8 @@ from prettytable import PrettyTable
 from lightning.pytorch.core.optimizer import LightningOptimizer
 from .optim import create_optimizer, create_scheduler
 from stable_pretraining.utils.error_handling import catch_errors_class
+from stable_pretraining.callbacks.registry import log as _spt_log
+from stable_pretraining.callbacks.utils import log_header
 
 
 @catch_errors_class()
@@ -70,7 +72,7 @@ class Module(pl.LightningModule):
 
     def __init__(self, *args, forward: callable = None, hparams: dict = None, **kwargs):
         super().__init__()
-        logging.info("Initializing Module configuration...")
+        log_header("Module")
 
         # Manual optimization to support multiple optimizers and custom stepping
         self.automatic_optimization = False
@@ -89,37 +91,37 @@ class Module(pl.LightningModule):
 
         if hparams is None:
             logging.warning(
-                "No hyperparameters provided - hyperparameter logging is disabled."
+                "! No hyperparameters provided - hyperparameter logging is disabled."
             )
         else:
-            logging.info("Saving provided hyperparameters.")
+            logging.info("  Saving provided hyperparameters.")
             self.save_hyperparameters(hparams)
         self.save_hyperparameters(
             {**self.hparams, "system.working_dir": str(Path().resolve())}
         )
 
-        logging.info("Setting custom forward method.")
+        logging.info("  Setting custom forward method.")
         if forward is None:
             logging.warning(
-                "You didn't pass a forward method"
-                "This will fail unless you implemented your own Module class"
+                "! You didn't pass a forward method. "
+                "This will fail unless you implemented your own Module class."
             )
         elif not callable(forward):
-            msg = "You passed a `forward' object that is not callable!"
+            msg = "! You passed a `forward' object that is not callable!"
             logging.warning(msg)
             raise ValueError(msg)
         else:
             setattr(self, "forward", types.MethodType(forward, self))
 
         for key, value in kwargs.items():
-            logging.info(f"Setting attribute: self.{key} = {type(value)}")
+            logging.info(f"  Setting attribute: self.{key} = {type(value)}")
             setattr(self, key, value)
 
         headers = ["Stage", "Inputs", "Metric"]
         if hasattr(self, "metrics"):
             stats = []
             assert isinstance(self.metrics, torch.nn.ModuleDict)
-            logging.info("Metrics:")
+            logging.info("  Metrics:")
             for stage, metrics in self.metrics.items():
                 assert (
                     isinstance(metrics, torch.nn.ModuleDict)
@@ -132,7 +134,7 @@ class Module(pl.LightningModule):
         else:
             self.metrics = dict(train={}, validate={}, test={}, predict={})
             logging.info(
-                "No metrics configuration provided - automatic metric tracking is disabled."
+                "  No metrics configuration provided - automatic metric tracking is disabled."
             )
 
     def forward(self, *args, **kwargs):
@@ -159,8 +161,8 @@ class Module(pl.LightningModule):
         if with_callbacks and not Module._warned_named_parameters:
             Module._warned_named_parameters = True
             logging.warning(
-                "You are calling self.parameters which also gives callbacks "
-                "parameters, to remove then, pass `with_callbacks=False`"
+                "! You are calling self.parameters which also gives callbacks "
+                "parameters, to remove them, pass `with_callbacks=False`"
             )
         for name, param in super().named_parameters(prefix=prefix, recurse=recurse):
             is_callback = name.startswith("callbacks_")
@@ -208,7 +210,7 @@ class Module(pl.LightningModule):
         Each optimizer updates its assigned parameters based on gradients from this joint loss.
         """
         if type(batch) is not dict:
-            msg = f"batch is expected to be a dict! Not as {type(batch)}"
+            msg = f"! batch is expected to be a dict! Not as {type(batch)}"
             logging.warning(msg)
             raise ValueError(msg)
         batch["batch_idx"] = batch_idx
@@ -273,17 +275,25 @@ class Module(pl.LightningModule):
             if schedulers[idx] is not None:
                 schedulers[idx].step()
 
+            # Log learning rate for each optimizer
+            lr = (
+                opt.optimizer.param_groups[0]["lr"]
+                if isinstance(opt, LightningOptimizer)
+                else opt.param_groups[0]["lr"]
+            )
+            _spt_log(f"hparams/lr_{name}", lr, on_step=True, on_epoch=False)
+
         # zero grad what's needed
         for opt in zero_grad_opts:
             opt.zero_grad(set_to_none=True)
         return state
 
     def on_train_start(self):
-        logging.info("Double checking optimizers!")
+        log_header("Optimizers")
         optimizers = self.optimizers()
         if not isinstance(optimizers, (list, tuple)):
             optimizers = [optimizers]
-        logging.info(f"`self.optimizers() gave us {len(optimizers)} optimizers")
+        logging.info(f"  self.optimizers() gave us {len(optimizers)} optimizers")
         for i in range(len(optimizers)):
             # check if optimizer i is named and well setup
             if i not in self._optimizer_index_to_name:
@@ -291,20 +301,20 @@ class Module(pl.LightningModule):
                 self._optimizer_index_to_name[i] = name
             name = self._optimizer_index_to_name[i]
             if name not in self._optimizer_gradient_clip_val:
-                logging.warning(f"No clip val found for optimizer {name}")
+                logging.warning(f"! No clip val found for optimizer {name}")
                 clip_val = getattr(
                     self.trainer, "gradient_clip_val_", self.trainer.gradient_clip_val
                 )
-                logging.warning(f"-> we will use the Trainer's value of {clip_val}")
+                logging.warning(f"! Will use the Trainer's value of {clip_val}")
                 self._optimizer_gradient_clip_val[name] = clip_val
             if name not in self._optimizer_gradient_clip_algorithm:
-                logging.warning(f"No clip algorithm found for optimizer {name}")
+                logging.warning(f"! No clip algorithm found for optimizer {name}")
                 clip_algo = getattr(
                     self.trainer,
                     "gradient_clip_algorithm_",
                     self.trainer.gradient_clip_algorithm,
                 )
-                logging.warning(f"-> we will use the Trainer's value of {clip_algo}")
+                logging.warning(f"! Will use the Trainer's value of {clip_algo}")
                 self._optimizer_gradient_clip_algorithm[name] = clip_algo
             if name not in self._optimizer_frequencies:
                 freq = getattr(self.trainer, "accumulate_grad_batches", 1)
@@ -326,9 +336,7 @@ class Module(pl.LightningModule):
             row.append(str(self._optimizer_gradient_clip_val[name]))
             row.append(str(self._optimizer_gradient_clip_algorithm[name]))
             table.add_row(row)
-        logging.success(
-            "We are done checking your optimizers! Here is the summary:\n{}", table
-        )
+        logging.success("✓ Optimizer check complete:\n{}", table)
 
     def validation_step(self, batch, batch_idx):
         batch["batch_idx"] = batch_idx
@@ -547,20 +555,20 @@ class Module(pl.LightningModule):
             - classifier_head.linear  -> head_opt (inherits from parent)
             - decoder                 -> None (no match, no parameters collected)
         """
-        logging.info("Configuring optimizers and learning rate schedulers...")
+        log_header("Optimizers")
 
         # Early exit for disabled optimization
         if hasattr(self, "optim") and not self.optim:
-            logging.info("Optimization disabled - skipping optimizer configuration.")
+            logging.info("  Optimization disabled - skipping optimizer configuration.")
             return None
 
         if not hasattr(self, "optim"):
             logging.info(
-                "Using default optimization setup: AdamW optimizer with CosineAnnealingLR scheduler."
+                "  Using default optimization setup: AdamW optimizer with CosineAnnealingLR scheduler."
             )
             self.optim = dict(optimizer=partial(torch.optim.AdamW))
         elif isinstance(self.optim, partial):
-            logging.info("Using user's partial optimizer.")
+            logging.info("  Using user's partial optimizer.")
             self.optim = dict(optimizer=self.optim)
 
         # Single optimizer case
@@ -568,7 +576,7 @@ class Module(pl.LightningModule):
         if isinstance(optimizer_cfg, (str, dict, DictConfig)) or hasattr(
             optimizer_cfg, "__call__"
         ):
-            logging.info("Configuring single optimizer.")
+            logging.info("  Configuring single optimizer.")
 
             # Direct parameter extraction - use globally filtered parameters
             params = list(self.parameters(with_callbacks=False))
@@ -586,7 +594,7 @@ class Module(pl.LightningModule):
             sched_name = self._get_scheduler_name(sched_config, sched)
 
             logging.info(
-                f"Configured {opt.__class__.__name__} optimizer with {sched_name} scheduler."
+                f"  Configured {opt.__class__.__name__} optimizer with {sched_name} scheduler."
             )
 
             # Build scheduler config dict for Lightning
@@ -607,7 +615,7 @@ class Module(pl.LightningModule):
             raise ValueError("For multiple optimizers, all config values must be dicts")
 
         logging.info(
-            f"\tOptimizer specified by Dict with keys {[k for k, _ in optim_items]}... 🔧"
+            f"  Optimizer specified by Dict with keys {[k for k, _ in optim_items]}"
         )
 
         # Build grouping with detailed logging
@@ -622,7 +630,7 @@ class Module(pl.LightningModule):
         for name, config in optim_items:
             params = params_by_name.get(name, [])
             if not params:
-                logging.warning(f"No parameters matched for optimizer {name}")
+                logging.warning(f"! No parameters matched for optimizer {name}")
                 # skip registration when there are no parameters
                 continue
 
@@ -642,7 +650,7 @@ class Module(pl.LightningModule):
             schedulers.append(scheduler_dict)
 
             logging.info(
-                f"Configured optimizer '{name}' (modules={len(modules_by_name.get(name, []))}, "
+                f"  Configured optimizer '{name}' (modules={len(modules_by_name.get(name, []))}, "
                 f"param_tensors={len(params)}, total_params={sum(int(p.numel()) for p in params)}) "
                 f"with {sched_name} scheduler."
             )

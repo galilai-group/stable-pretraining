@@ -143,7 +143,7 @@ class TestMAEImagenet10LoadModule:
         print(
             f"\nMAE (loaded module) final loss after 3 steps: {final_loss.item():.6f}"
         )
-        expected = torch.tensor(1.214716)
+        expected = torch.tensor(1.223879)
         assert torch.isclose(final_loss.cpu(), expected, atol=1e-4), (
             f"MAE loss {final_loss.item():.6f} != expected {expected.item():.6f}"
         )

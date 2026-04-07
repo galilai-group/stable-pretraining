@@ -7,6 +7,7 @@ import torchmetrics
 
 import stable_pretraining as spt
 from stable_pretraining.data import transforms
+from stable_pretraining.methods.mae import MAE
 
 
 @pytest.mark.integration
@@ -71,19 +72,27 @@ class TestMAEIntegration:
 
         data = spt.data.DataModule(train=train, val=val)
 
-        # Define MAE forward function
+        # Define MAE forward function using the new MaskedEncoder + MAEDecoder API
         def forward(self, batch, stage):
-            latent, pred, mask = self.backbone(batch["image"])
-            batch["embedding"] = latent[:, 0]  # CLS token only
+            enc_out = self.backbone.encoder(batch["image"])
+            batch["embedding"] = enc_out.encoded[:, 0]  # CLS token
             if self.training:
-                loss = spt.losses.mae(
-                    self.backbone.patchify(batch["image"]), pred, mask
+                encoded_patches = enc_out.encoded[
+                    :, self.backbone.encoder.num_prefix_tokens :
+                ]
+                predictions = self.backbone.decoder(
+                    encoded_patches,
+                    enc_out.mask,
+                    ids_keep=enc_out.ids_keep,
+                    output_masked_only=False,
                 )
-                batch["loss"] = loss
+                batch["loss"] = self.backbone.loss_fn(
+                    predictions, batch["image"].to(predictions.dtype), enc_out.mask
+                )
             return batch
 
-        # Create MAE backbone and module
-        backbone = spt.backbone.mae.vit_base_patch16_dec512d8b()
+        # Create MAE model and module
+        backbone = MAE("vit_base_patch16_224")
         module = spt.Module(backbone=backbone, forward=forward)
 
         # Create online probe callback
@@ -118,19 +127,18 @@ class TestMAEIntegration:
     def test_mae_reconstruction_loss(self):
         """Test MAE reconstruction loss computation."""
         # Create a small MAE model
-        backbone = spt.backbone.mae.vit_base_patch16_dec512d8b()
+        model = MAE("vit_base_patch16_224")
+        model.train()
 
         # Create dummy batch
         batch_size = 2
         images = torch.randn(batch_size, 3, 224, 224)
 
-        # Forward pass
+        # Forward pass — loss is computed internally
         with torch.cuda.amp.autocast():
-            latent, pred, mask = backbone(images)
+            output = model(images)
 
-        # Compute reconstruction loss
-        patches = backbone.patchify(images)
-        loss = spt.losses.mae(patches, pred, mask)
+        loss = output.loss
 
         # Verify loss properties
         assert isinstance(loss, torch.Tensor)
@@ -140,24 +148,24 @@ class TestMAEIntegration:
     @pytest.mark.gpu
     def test_mae_feature_extraction(self):
         """Test MAE feature extraction for downstream tasks."""
-        # Create MAE backbone
-        backbone = spt.backbone.mae.vit_base_patch16_dec512d8b()
-        backbone.eval()
+        # Create encoder (no masking needed for feature extraction)
+        encoder = spt.backbone.MaskedEncoder("vit_base_patch16_224")
+        encoder.eval()
 
         # Create dummy batch
         images = torch.randn(4, 3, 224, 224)
 
         # Extract features
         with torch.no_grad():
-            latent, _, _ = backbone(images)
-            cls_features = latent[:, 0]  # Extract CLS token
+            output = encoder(images)
+            cls_features = output.encoded[:, 0]  # CLS token is first prefix token
 
         # Verify feature dimensions
         assert cls_features.shape == (4, 768)  # ViT-Base has 768-dim features
 
     def test_mae_patchify_unpatchify(self):
-        """Test MAE patchify and unpatchify operations."""
-        from stable_pretraining.backbone.mae import PatchEmbed
+        """Test patch embedding layer output dimensions."""
+        from timm.layers import PatchEmbed
 
         # Create patch embedding layer
         patch_embed = PatchEmbed(img_size=224, patch_size=16, in_chans=3, embed_dim=768)
@@ -165,7 +173,7 @@ class TestMAEIntegration:
         # Create dummy images
         images = torch.randn(2, 3, 224, 224)
 
-        # Patchify
+        # Apply patch embedding
         patches = patch_embed(images)
 
         # Verify patch dimensions
@@ -175,23 +183,24 @@ class TestMAEIntegration:
     @pytest.mark.v1
     @pytest.mark.download
     def test_mae_with_different_masking_ratios(self):
-        """Test MAE with different masking ratios."""
-        # Note: This test would require modifying the MAE backbone to accept mask_ratio
-        # For now, we'll test that the model works with its default masking
+        """Test MaskedEncoder with different masking ratios."""
+        masking = spt.backbone.PatchMasking(mask_ratio=0.75)
+        encoder = spt.backbone.MaskedEncoder("vit_base_patch16_224", masking=masking)
+        encoder.train()  # masking is only applied in training mode
 
-        backbone = spt.backbone.mae.vit_base_patch16_dec512d8b()
         images = torch.randn(2, 3, 224, 224)
-
-        # Forward pass
-        latent, pred, mask = backbone(images)
+        output = encoder(images)
+        mask = output.mask
 
         # Check that masking is applied
-        assert mask.shape == (2, 196)  # mask for each patch
-        assert mask.dtype == torch.bool
+        assert mask.shape == (
+            2,
+            196,
+        )  # mask for each patch (float: 0=visible, 1=masked)
 
-        # Verify some patches are masked
+        # Verify some patches are masked and not all
         assert mask.sum() > 0
-        assert mask.sum() < mask.numel()  # Not all patches should be masked
+        assert mask.sum() < mask.numel()
 
     def test_mae_multi_view_sampling(self):
         """Test MAE with multi-view data augmentation."""
@@ -225,20 +234,16 @@ class TestMAEIntegration:
     @pytest.mark.gpu
     def test_mae_training_step(self):
         """Test a single MAE training step."""
-        # Create simple MAE setup
-        backbone = spt.backbone.mae.vit_base_patch16_dec512d8b()
+        # Create simple MAE setup using the high-level MAE method
+        model = MAE("vit_base_patch16_224")
 
         def forward(self, batch, stage):
-            latent, pred, mask = self.backbone(batch["image"])
-            batch["embedding"] = latent[:, 0]
+            output = self.backbone(batch["image"])
             if self.training:
-                loss = spt.losses.mae(
-                    self.backbone.patchify(batch["image"]), pred, mask
-                )
-                batch["loss"] = loss
+                batch["loss"] = output.loss
             return batch
 
-        module = spt.Module(backbone=backbone, forward=forward)
+        module = spt.Module(backbone=model, forward=forward)
         module.train()
 
         # Create dummy batch

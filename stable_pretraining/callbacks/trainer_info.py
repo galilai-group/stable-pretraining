@@ -6,6 +6,7 @@ from prettytable import PrettyTable
 from lightning.pytorch.utilities import rank_zero_only
 import os
 from ..data.module import DataModule
+from .utils import log_header
 
 
 class ModuleSummary(pl.Callback):
@@ -40,7 +41,7 @@ class ModuleSummary(pl.Callback):
         table.align["Non Trainable parameters"] = "r"
         table.align["Uninitialized parameters"] = "r"
         table.align["Buffers"] = "r"
-        logging.info("PyTorch Modules:")
+        log_header("PyTorch Modules")
         for name, module in pl_module.named_modules():
             num_trainable = 0
             num_nontrainable = 0
@@ -118,9 +119,9 @@ class TrainerInfo(Callback):
     """
 
     def setup(self, trainer, pl_module, stage):
-        logging.info("\t linking trainer to DataModule! 🔧")
+        logging.info("  linking trainer to DataModule")
         if not isinstance(trainer.datamodule, DataModule):
-            logging.warning("Using a custom DataModule, won't have extra info!")
+            logging.warning("! Using a custom DataModule, won't have extra info")
             return
         try:
             trainer.datamodule.set_pl_trainer(trainer)
@@ -152,20 +153,20 @@ class SLURMInfo(Callback):
     """
 
     def setup(self, trainer, pl_module, stage):
-        logging.info("---- SLURM INFO ---- 🔧")
-        logging.info(f"Job ID: {self._get_env_var('SLURM_JOB_ID')}")
-        logging.info(f"Task ID: {self._get_env_var('SLURM_ARRAY_TASK_ID')}")
-        logging.info(f"Job Name: {self._get_env_var('SLURM_JOB_NAME')}")
-        logging.info(f"Nodes: {self._get_env_var('SLURM_JOB_NUM_NODES')}")
-        logging.info(f"Tasks: {self._get_env_var('SLURM_NTASKS')}")
-        logging.info(f"CPUs per node: {self._get_env_var('SLURM_CPUS_ON_NODE')}")
-        logging.info(f"CPUs per task: {self._get_env_var('SLURM_CPUS_PER_TASK')}")
-        logging.info(f"Memory per node: {self._get_env_var('SLURM_MEM_PER_NODE')}")
-        logging.info(f"Memory per CPU: {self._get_env_var('SLURM_MEM_PER_CPU')}")
-        logging.info(f"Time limit: {self._get_env_var('SLURM_JOB_TIME')}")
-        logging.info(f"Partition: {self._get_env_var('SLURM_JOB_PARTITION')}")
-        logging.info(f"Node List: {self._get_env_var('SLURM_JOB_NODELIST')}")
-        logging.info(f"Submit Directory: {self._get_env_var('SLURM_SUBMIT_DIR')}")
+        log_header("SLURM")
+        logging.info(f"  Job ID: {self._get_env_var('SLURM_JOB_ID')}")
+        logging.info(f"  Task ID: {self._get_env_var('SLURM_ARRAY_TASK_ID')}")
+        logging.info(f"  Job Name: {self._get_env_var('SLURM_JOB_NAME')}")
+        logging.info(f"  Nodes: {self._get_env_var('SLURM_JOB_NUM_NODES')}")
+        logging.info(f"  Tasks: {self._get_env_var('SLURM_NTASKS')}")
+        logging.info(f"  CPUs per node: {self._get_env_var('SLURM_CPUS_ON_NODE')}")
+        logging.info(f"  CPUs per task: {self._get_env_var('SLURM_CPUS_PER_TASK')}")
+        logging.info(f"  Memory per node: {self._get_env_var('SLURM_MEM_PER_NODE')}")
+        logging.info(f"  Memory per CPU: {self._get_env_var('SLURM_MEM_PER_CPU')}")
+        logging.info(f"  Time limit: {self._get_env_var('SLURM_JOB_TIME')}")
+        logging.info(f"  Partition: {self._get_env_var('SLURM_JOB_PARTITION')}")
+        logging.info(f"  Node List: {self._get_env_var('SLURM_JOB_NODELIST')}")
+        logging.info(f"  Submit Directory: {self._get_env_var('SLURM_SUBMIT_DIR')}")
         pl_module.save_hyperparameters(
             {
                 **pl_module.hparams,

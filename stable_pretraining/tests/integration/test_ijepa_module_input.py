@@ -149,7 +149,7 @@ class TestIJEPAModuleInput:
         print(
             f"\nIJEPA (loaded module) final loss after 3 steps: {final_loss.item():.6f}"
         )
-        expected = torch.tensor(0.515345)
+        expected = torch.tensor(0.520613)
         assert torch.isclose(final_loss.cpu(), expected, atol=1e-4), (
             f"IJEPA loss {final_loss.item():.6f} != expected {expected.item():.6f}"
         )

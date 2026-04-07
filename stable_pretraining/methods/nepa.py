@@ -1,6 +1,7 @@
 """NEPA: Next-Embedding Predictive Autoregression."""
 
 from dataclasses import dataclass
+from transformers.utils import ModelOutput
 from typing import Tuple
 import torch
 import torch.nn as nn
@@ -12,12 +13,12 @@ from stable_pretraining.backbone import TransformerBlock
 
 
 @dataclass
-class NEPAOutput:
+class NEPAOutput(ModelOutput):
     """Docstring for NEPAOutput."""
 
-    loss: torch.Tensor
-    embeddings: torch.Tensor
-    grid_size: Tuple[int, int]
+    loss: torch.Tensor = None
+    embeddings: torch.Tensor = None
+    grid_size: Tuple[int, int] = None
 
 
 class NEPA(Module):

@@ -231,7 +231,7 @@ class AutoLinearClassifier(torch.nn.Module):
                 self.metrics,
                 on_step=False,
                 on_epoch=True,
-                sync_dist=True,
+                sync_dist=False,  # torchmetrics handles its own distributed sync
             )
         return sum(loss.values())
 
