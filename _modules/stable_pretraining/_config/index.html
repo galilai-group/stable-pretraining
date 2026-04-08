@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining._config &#8212; stable-pretraining 0.1.dev1+ga5f7f092c documentation</title>
+    <title>stable_pretraining._config &#8212; stable-pretraining 0.1.dev1+geed6ee78d documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=5ffb6424"></script>
+    <script src="../../../_static/documentation_options.js?v=001308ad"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+ga5f7f092c documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+geed6ee78d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -349,6 +349,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
@@ -405,6 +406,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">_CLEANUP_DEFAULTS</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_rank</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_default_callbacks</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SPT_CACHE_DIR&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_requeue_checkpoint</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="c1"># -- verbose ---------------------------------------------------------------</span>
 
@@ -526,6 +529,37 @@
                 <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_default_callbacks</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
+    <span class="c1"># -- cache_dir -------------------------------------------------------------</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cache_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_dir</span>
+
+    <span class="nd">@cache_dir</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cache_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;cache_dir must be a str or None, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cache_dir must not be empty&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_dir</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="c1"># -- requeue_checkpoint ----------------------------------------------------</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">requeue_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_requeue_checkpoint</span>
+
+    <span class="nd">@requeue_checkpoint</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">requeue_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;requeue_checkpoint must be a bool, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_requeue_checkpoint</span> <span class="o">=</span> <span class="n">value</span>
+
     <span class="c1"># -- reset (for testing) ---------------------------------------------------</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -540,6 +574,8 @@
             <span class="sa">f</span><span class="s2">&quot;  cleanup=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="si">!r}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;  log_rank=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_log_rank</span><span class="si">!r}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;  default_callbacks=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_default_callbacks</span><span class="si">!r}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  cache_dir=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_cache_dir</span><span class="si">!r}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  requeue_checkpoint=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_requeue_checkpoint</span><span class="si">!r}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;)&quot;</span>
         <span class="p">)</span>
 
@@ -561,6 +597,8 @@
     <span class="n">cleanup</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">log_rank</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">default_callbacks</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">requeue_checkpoint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Configure library-wide settings for stable_pretraining.</span>
 
@@ -592,6 +630,27 @@
 <span class="sd">            ``&quot;sklearn_checkpoint&quot;``, ``&quot;wandb_checkpoint&quot;``,</span>
 <span class="sd">            ``&quot;module_summary&quot;``, ``&quot;slurm_info&quot;``, ``&quot;unused_params&quot;``,</span>
 <span class="sd">            ``&quot;hf_checkpoint&quot;``.</span>
+<span class="sd">        cache_dir: Root directory for all training outputs.  Each run</span>
+<span class="sd">            creates a unique subdirectory under</span>
+<span class="sd">            ``{cache_dir}/runs/{YYYYMMDD}/{HHMMSS}/{run_id}/``.</span>
+<span class="sd">            When set, the Manager injects this as the Trainer&#39;s</span>
+<span class="sd">            ``default_root_dir`` and auto-configures ``ckpt_path``,</span>
+<span class="sd">            ensuring no path collisions across parallel sweep jobs.</span>
+<span class="sd">            Can also be set via the ``SPT_CACHE_DIR`` environment</span>
+<span class="sd">            variable.  ``None`` (default) disables this and preserves</span>
+<span class="sd">            the standard Lightning / Hydra directory behavior.</span>
+
+<span class="sd">            .. note::</span>
+<span class="sd">                SLURM ``.out`` / ``.err`` files are created by the</span>
+<span class="sd">                scheduler before Python starts and cannot be redirected</span>
+<span class="sd">                into the run directory.</span>
+
+<span class="sd">        requeue_checkpoint: Whether to automatically add a</span>
+<span class="sd">            ``ModelCheckpoint`` that saves ``last.ckpt`` every epoch for</span>
+<span class="sd">            SLURM requeue recovery.  ``True`` (default) ensures seamless</span>
+<span class="sd">            preemption handling.  Set to ``False`` to save time/disk when</span>
+<span class="sd">            preemption is not a concern.  Only applies when ``cache_dir``</span>
+<span class="sd">            is set.</span>
 
 <span class="sd">    Example::</span>
 
@@ -600,6 +659,7 @@
 <span class="sd">        spt.set(verbose=&quot;DEBUG&quot;)</span>
 <span class="sd">        spt.set(cleanup={&quot;checkpoints&quot;: False, &quot;slurm&quot;: False})</span>
 <span class="sd">        spt.set(progress_bar=&quot;simple&quot;, log_rank=&quot;all&quot;)</span>
+<span class="sd">        spt.set(cache_dir=&quot;/scratch/my_runs&quot;)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">cfg</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
 
@@ -618,7 +678,13 @@
         <span class="n">_apply_log_rank</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">log_rank</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">default_callbacks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">cfg</span><span class="o">.</span><span class="n">default_callbacks</span> <span class="o">=</span> <span class="n">default_callbacks</span></div>
+        <span class="n">cfg</span><span class="o">.</span><span class="n">default_callbacks</span> <span class="o">=</span> <span class="n">default_callbacks</span>
+
+    <span class="k">if</span> <span class="n">cache_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span> <span class="o">=</span> <span class="n">cache_dir</span>
+
+    <span class="k">if</span> <span class="n">requeue_checkpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cfg</span><span class="o">.</span><span class="n">requeue_checkpoint</span> <span class="o">=</span> <span class="n">requeue_checkpoint</span></div>
 
 
 

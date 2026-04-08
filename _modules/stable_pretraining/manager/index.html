@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+ga5f7f092c documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+geed6ee78d documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=5ffb6424"></script>
+    <script src="../../../_static/documentation_options.js?v=001308ad"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+ga5f7f092c documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+geed6ee78d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -330,8 +330,10 @@
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">timedelta</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
@@ -340,12 +342,13 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">submitit</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelCheckpoint</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callback</span><span class="p">,</span> <span class="n">ModelCheckpoint</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.utilities.rank_zero</span><span class="w"> </span><span class="kn">import</span> <span class="n">rank_zero_only</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">omegaconf</span><span class="w"> </span><span class="kn">import</span> <span class="n">DictConfig</span><span class="p">,</span> <span class="n">OmegaConf</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">WANDB_AVAILABLE</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span>
 
 <span class="k">if</span> <span class="n">WANDB_AVAILABLE</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">wandb</span>
@@ -396,6 +399,40 @@
     <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SIGCONT: `</span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGCONT</span><span class="p">)</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SIGTERM: `</span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span></div>
 
+
+
+<span class="n">_RUN_META_FILENAME</span> <span class="o">=</span> <span class="s2">&quot;run_meta.json&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_generate_run_id</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a deterministic run ID that all ranks in the same job agree on.</span>
+
+<span class="sd">    Priority:</span>
+<span class="sd">        1. ``SLURM_JOB_ID`` (+ ``SLURM_ARRAY_TASK_ID`` if array job) — same</span>
+<span class="sd">           for every rank in the same SLURM job/task.</span>
+<span class="sd">        2. ``TORCHELASTIC_RUN_ID`` — same for every rank under ``torchrun``.</span>
+<span class="sd">        3. Random ``uuid4`` hex (12 chars) — single-process fallback.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">slurm_job</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_JOB_ID&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">slurm_job</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">array_task</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_ARRAY_TASK_ID&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">array_task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">slurm_job</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">array_task</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">slurm_job</span>
+    <span class="n">elastic_run</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;TORCHELASTIC_RUN_ID&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">elastic_run</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">elastic_run</span>
+    <span class="k">return</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">12</span><span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_RunDirCallback</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Internal callback that persists the run directory path inside every checkpoint.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">=</span> <span class="n">run_dir</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">):</span>
+        <span class="n">checkpoint</span><span class="p">[</span><span class="s2">&quot;spt_run_dir&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span>
 
 
 <div class="viewcode-block" id="Manager">
@@ -455,12 +492,25 @@
         <span class="k">if</span> <span class="n">wandb_logger</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span>
 
-        <span class="c1"># Only attempt resume if we actually have a checkpoint to load</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="c1"># Only attempt resume if there&#39;s evidence of a previous run.</span>
+        <span class="c1"># In cache_dir mode, the run_dir sidecar is sufficient (ckpt_path may be None).</span>
+        <span class="c1"># In legacy mode, we need ckpt_path to exist on disk.</span>
+        <span class="n">has_run_dir</span> <span class="o">=</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_run_dir&quot;</span><span class="p">)</span>
+        <span class="n">has_ckpt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_run_dir</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">has_ckpt</span><span class="p">:</span>
             <span class="k">return</span>
 
-        <span class="n">sidecar</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">_WANDB_RESUME_FILENAME</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">sidecar</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="c1"># Check run_dir first (cache_dir mode), then CWD (legacy)</span>
+        <span class="n">sidecar</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_run_dir&quot;</span><span class="p">):</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">/</span> <span class="n">_WANDB_RESUME_FILENAME</span>
+            <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">sidecar</span> <span class="o">=</span> <span class="n">candidate</span>
+        <span class="k">if</span> <span class="n">sidecar</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">_WANDB_RESUME_FILENAME</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">sidecar</span> <span class="o">=</span> <span class="n">candidate</span>
+        <span class="k">if</span> <span class="n">sidecar</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;  No wandb_resume.json found, skipping run ID injection&quot;</span><span class="p">)</span>
             <span class="k">return</span>
 
@@ -505,6 +555,233 @@
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;WandbResume&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Injected wandb run ID &#39;</span><span class="si">{</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&#39; from </span><span class="si">{</span><span class="n">sidecar</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  project=</span><span class="si">{</span><span class="n">saved_project</span><span class="si">}</span><span class="s2">  entity=</span><span class="si">{</span><span class="n">saved_entity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># -- cache_dir / run_dir ----------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_run_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the run directory under ``cache_dir``.</span>
+
+<span class="sd">        Layout::</span>
+
+<span class="sd">            {cache_dir}/runs/{YYYYMMDD}/{HHMMSS}/{run_id}/</span>
+
+<span class="sd">        On requeue (checkpoint with ``run_meta.json`` sidecar exists), the</span>
+<span class="sd">        previous run directory is reused so that the same job continues</span>
+<span class="sd">        writing to the same location.</span>
+
+<span class="sd">        Returns ``None`` when cache_dir is not configured.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">))</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+
+        <span class="c1"># Try to restore from a previous run (requeue)</span>
+        <span class="n">restored</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_try_restore_run_dir</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">restored</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">=</span> <span class="n">restored</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span> <span class="o">=</span> <span class="n">restored</span><span class="o">.</span><span class="n">name</span>
+            <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory (restored)&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
+
+        <span class="c1"># Fresh run</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="n">run_id</span> <span class="o">=</span> <span class="n">_generate_run_id</span><span class="p">()</span>
+        <span class="n">run_dir</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">cache_dir</span>
+            <span class="o">/</span> <span class="s2">&quot;runs&quot;</span>
+            <span class="o">/</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="o">/</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%H%M%S&quot;</span><span class="p">)</span>
+            <span class="o">/</span> <span class="n">run_id</span>
+        <span class="p">)</span>
+        <span class="n">run_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Write sidecar so requeue can find this directory later</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;run_dir&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">),</span> <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="n">run_id</span><span class="p">}</span>
+        <span class="p">(</span><span class="n">run_dir</span> <span class="o">/</span> <span class="n">_RUN_META_FILENAME</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">meta</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">=</span> <span class="n">run_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span> <span class="o">=</span> <span class="n">run_id</span>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_try_restore_run_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attempt to find a previous run directory for this job.</span>
+
+<span class="sd">        Checks two strategies:</span>
+<span class="sd">            1. Sidecar next to ``ckpt_path`` (explicit checkpoint from user).</span>
+<span class="sd">            2. Glob for the deterministic run_id in the cache_dir (requeue</span>
+<span class="sd">               with SLURM_JOB_ID / TORCHELASTIC_RUN_ID — no ckpt_path needed).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Strategy 1: sidecar next to ckpt_path</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="n">meta_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">_RUN_META_FILENAME</span>
+            <span class="k">if</span> <span class="n">meta_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">meta_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+                    <span class="n">run_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;run_dir&quot;</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">run_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                        <span class="k">return</span> <span class="n">run_dir</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! Could not read </span><span class="si">{</span><span class="n">meta_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Strategy 2: search by deterministic run_id (SLURM/torchrun requeue)</span>
+        <span class="n">run_id</span> <span class="o">=</span> <span class="n">_generate_run_id</span><span class="p">()</span>
+        <span class="n">matches</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cache_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;runs/*/*/</span><span class="si">{</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">matches</span><span class="p">:</span>
+            <span class="c1"># Take the most recent (last sorted by date/time path)</span>
+            <span class="k">return</span> <span class="n">matches</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_inject_run_dir_into_trainer_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set ``default_root_dir`` in the trainer config before instantiation.</span>
+
+<span class="sd">        This is the public Trainer API — Lightning will propagate this to all</span>
+<span class="sd">        loggers and callbacks that rely on it (CSVLogger, TensorBoardLogger,</span>
+<span class="sd">        ModelCheckpoint without explicit ``dirpath``, etc.).</span>
+
+<span class="sd">        If the trainer is already a ``pl.Trainer`` instance (pre-built by the</span>
+<span class="sd">        user), we warn instead of hacking private attributes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="p">(</span><span class="n">DictConfig</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">is_missing</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="s2">&quot;default_root_dir&quot;</span><span class="p">):</span>
+                <span class="k">pass</span>  <span class="c1"># replace the MISSING sentinel</span>
+            <span class="k">elif</span> <span class="s2">&quot;default_root_dir&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;! Overriding trainer.default_root_dir &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">default_root_dir</span><span class="si">}</span><span class="s2">) with cache_dir run_dir: </span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">default_root_dir</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">):</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;! cache_dir is set but the Trainer was passed as an already-&quot;</span>
+                <span class="s2">&quot;instantiated object. Cannot override default_root_dir cleanly. &quot;</span>
+                <span class="s2">&quot;Consider passing the trainer as a config dict instead.&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_load_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determine what checkpoint to pass to ``trainer.fit(ckpt_path=...)``.</span>
+
+<span class="sd">        Priority:</span>
+<span class="sd">            1. User&#39;s explicit ``ckpt_path`` (if it exists on disk).</span>
+<span class="sd">            2. ``{run_dir}/checkpoints/last.ckpt`` (requeue from cache_dir).</span>
+<span class="sd">            3. ``None`` (fresh run).</span>
+
+<span class="sd">        This is purely the *load* path.  Where new checkpoints are *saved*</span>
+<span class="sd">        is controlled separately by ``_configure_cache_dir_checkpointing``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 1. User explicitly provided a checkpoint</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Load checkpoint (user): </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2"> specified but does not exist, using None&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># 2. Auto-detect requeue checkpoint in run_dir</span>
+        <span class="n">auto_ckpt</span> <span class="o">=</span> <span class="n">run_dir</span> <span class="o">/</span> <span class="s2">&quot;checkpoints&quot;</span> <span class="o">/</span> <span class="s2">&quot;last.ckpt&quot;</span>
+        <span class="k">if</span> <span class="n">auto_ckpt</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Load checkpoint (requeue): </span><span class="si">{</span><span class="n">auto_ckpt</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">auto_ckpt</span><span class="p">)</span>
+
+        <span class="c1"># 3. Fresh run</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_configure_cache_dir_checkpointing</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Ensure all checkpoints are saved into ``run_dir/checkpoints/``.</span>
+
+<span class="sd">        When ``cache_dir`` is active:</span>
+<span class="sd">        1. Every user ``ModelCheckpoint`` is redirected to</span>
+<span class="sd">           ``run_dir/checkpoints/`` (preserving filename/monitor/etc.).</span>
+<span class="sd">        2. A **requeue checkpoint** (``last.ckpt``, saved every epoch) is</span>
+<span class="sd">           always added so that SLURM preemption recovery works even if the</span>
+<span class="sd">           user&#39;s callbacks only save &quot;best&quot; models.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">run_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
+        <span class="n">save_dir</span> <span class="o">=</span> <span class="n">run_dir</span> <span class="o">/</span> <span class="s2">&quot;checkpoints&quot;</span>
+        <span class="n">save_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;CacheDirCheckpointing&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Saving checkpoints to: </span><span class="si">{</span><span class="n">save_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Redirect every existing ModelCheckpoint to our save_dir</span>
+        <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">ModelCheckpoint</span><span class="p">):</span>
+                <span class="n">old_dir</span> <span class="o">=</span> <span class="n">cb</span><span class="o">.</span><span class="n">dirpath</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">old_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                    <span class="ow">and</span> <span class="n">Path</span><span class="p">(</span><span class="n">old_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">!=</span> <span class="n">save_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+                <span class="p">):</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;  Redirecting ModelCheckpoint from &#39;</span><span class="si">{</span><span class="n">old_dir</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;to &#39;</span><span class="si">{</span><span class="n">save_dir</span><span class="si">}</span><span class="s2">&#39; (cache_dir is active)&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">cb</span><span class="o">.</span><span class="n">dirpath</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">save_dir</span><span class="p">)</span>
+
+        <span class="c1"># Add a requeue checkpoint (last.ckpt) so preemption recovery works</span>
+        <span class="c1"># regardless of what the user&#39;s callbacks save.  Can be disabled via</span>
+        <span class="c1"># spt.set(requeue_checkpoint=False) to save time/disk.</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">requeue_checkpoint</span><span class="p">:</span>
+            <span class="n">requeue_saver</span> <span class="o">=</span> <span class="n">ModelCheckpoint</span><span class="p">(</span>
+                <span class="n">dirpath</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">save_dir</span><span class="p">),</span>
+                <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;last&quot;</span><span class="p">,</span>
+                <span class="n">save_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">save_on_train_epoch_end</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">enable_version_counter</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">requeue_saver</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Added requeue checkpoint (filename=&#39;last&#39;)&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;  Requeue checkpoint disabled (spt.set(requeue_checkpoint=False))&quot;</span>
+            <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_warn_hydra_conflicts</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Emit warnings when Hydra settings may conflict with the run directory.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">hydra.core.hydra_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">HydraConfig</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">HydraConfig</span><span class="o">.</span><span class="n">initialized</span><span class="p">():</span>
+                <span class="k">return</span>
+            <span class="n">hcfg</span> <span class="o">=</span> <span class="n">HydraConfig</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">hcfg</span><span class="o">.</span><span class="n">job</span><span class="p">,</span> <span class="s2">&quot;chdir&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;! Hydra job.chdir=True detected. stable_pretraining&#39;s &quot;</span>
+                    <span class="s2">&quot;cache_dir overrides output paths — Hydra&#39;s chdir is &quot;</span>
+                    <span class="s2">&quot;redundant and may cause confusion.&quot;</span>
+                <span class="p">)</span>
+            <span class="c1"># run.dir / sweep.dir</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">run_dir_cfg</span> <span class="o">=</span> <span class="n">hcfg</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">dir</span>
+                <span class="k">if</span> <span class="n">run_dir_cfg</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;! Hydra run.dir=&#39;</span><span class="si">{</span><span class="n">run_dir_cfg</span><span class="si">}</span><span class="s2">&#39; will be ignored for &quot;</span>
+                        <span class="s2">&quot;trainer outputs (cache_dir takes precedence).&quot;</span>
+                    <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">sweep_dir_cfg</span> <span class="o">=</span> <span class="n">hcfg</span><span class="o">.</span><span class="n">sweep</span><span class="o">.</span><span class="n">dir</span>
+                <span class="k">if</span> <span class="n">sweep_dir_cfg</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;! Hydra sweep.dir=&#39;</span><span class="si">{</span><span class="n">sweep_dir_cfg</span><span class="si">}</span><span class="s2">&#39; will be ignored for &quot;</span>
+                        <span class="s2">&quot;trainer outputs (cache_dir takes precedence).&quot;</span>
+                    <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>  <span class="c1"># Hydra not active</span>
 
 <div class="viewcode-block" id="Manager.init_and_sync_wandb">
 <a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.manager.Manager.init_and_sync_wandb">[docs]</a>
@@ -591,6 +868,13 @@
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;Seed&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  seed: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">pl</span><span class="o">.</span><span class="n">seed_everything</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># --- cache_dir: resolve run directory and inject into trainer config ---</span>
+        <span class="n">run_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_run_dir</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">run_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_inject_run_dir_into_trainer_config</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_warn_hydra_conflicts</span><span class="p">()</span>
+
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span>
         <span class="k">else</span><span class="p">:</span>
@@ -620,6 +904,10 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`trainer` should be a Trainer&quot;</span><span class="p">)</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">&quot;✓ trainer instantiated&quot;</span><span class="p">)</span>
 
+        <span class="c1"># Persist run_dir in every checkpoint so requeue can restore it</span>
+        <span class="k">if</span> <span class="n">run_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_RunDirCallback</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)))</span>
+
         <span class="c1"># Auto-detect TeacherStudentWrapper and add callback if needed</span>
         <span class="c1"># This runs AFTER trainer is set up, regardless of how it was created</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">.callbacks.teacher_student</span><span class="w"> </span><span class="kn">import</span> <span class="n">TeacherStudentCallback</span>
@@ -648,23 +936,33 @@
 
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;Callbacks&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  count: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="s2">&quot;SLURM_JOB_ID&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;Using SLURM but no ckpt_path, if requeued it will start from scratch&quot;</span>
-            <span class="p">)</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Consider passing a value to the Manager&#39;s `ckpt_path` &quot;</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_configure_checkpointing</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-            <span class="n">ckpt_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2"> specified, but does not exist, using None for now!&quot;</span>
-            <span class="p">)</span>
-            <span class="n">ckpt_path</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># --- Checkpointing setup (load vs save are separate concerns) ---</span>
+        <span class="k">if</span> <span class="n">run_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># cache_dir mode: save always goes to run_dir/checkpoints/,</span>
+            <span class="c1"># load is resolved separately (user ckpt_path or requeue auto-detect)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_configure_cache_dir_checkpointing</span><span class="p">()</span>
+            <span class="n">ckpt_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_load_path</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">ckpt_path</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="c1"># Legacy mode: ckpt_path controls both load and save location</span>
+            <span class="k">if</span> <span class="s2">&quot;SLURM_JOB_ID&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;Using SLURM but no ckpt_path, if requeued it will start &quot;</span>
+                    <span class="s2">&quot;from scratch. Consider using spt.set(cache_dir=...) or &quot;</span>
+                    <span class="s2">&quot;passing a value to the Manager&#39;s `ckpt_path`.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_configure_checkpointing</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">ckpt_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2"> specified, but does not exist, using None for now!&quot;</span>
+                <span class="p">)</span>
+                <span class="n">ckpt_path</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ckpt_path</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compile</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Compiling module!&quot;</span><span class="p">)</span>
@@ -775,7 +1073,10 @@
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Entering checkpoint method&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">path</span> <span class="o">=</span> <span class="p">(</span><span class="n">Path</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;checkpoint.ckpt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_run_dir&quot;</span><span class="p">):</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">/</span> <span class="s2">&quot;checkpoints&quot;</span> <span class="o">/</span> <span class="s2">&quot;checkpoint.ckpt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="p">(</span><span class="n">Path</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;checkpoint.ckpt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  saving checkpoint to local path </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> ...&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
