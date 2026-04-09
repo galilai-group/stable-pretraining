@@ -33,6 +33,8 @@ class CLIPLoss(InfoNCELoss):
     ) -> torch.Tensor:
         # for CLIP, targets are always the diagonal
         targets = torch.arange(feats_i.size(0), device=feats_i.device)
+        if torch.distributed.is_initialized():
+            targets = targets + torch.distributed.get_rank() * feats_i.size(0)
 
         # calculate loss in both directions
         loss_i = self._compute(
