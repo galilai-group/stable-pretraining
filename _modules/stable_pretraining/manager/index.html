@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+geed6ee78d documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+ge6fd1aef8 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=001308ad"></script>
+    <script src="../../../_static/documentation_options.js?v=9c67fe9b"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+geed6ee78d documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+ge6fd1aef8 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -386,7 +386,16 @@
     <span class="k">elif</span> <span class="n">logger</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! No logger used!&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! Unrecognized logger!&quot;</span><span class="p">)</span></div>
+        <span class="c1"># Check for RegistryLogger without importing at module level</span>
+        <span class="n">cls_name</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">logger</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="k">if</span> <span class="n">cls_name</span> <span class="o">==</span> <span class="s2">&quot;RegistryLogger&quot;</span><span class="p">:</span>
+            <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RegistryLogger&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  db_path: </span><span class="si">{</span><span class="n">logger</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">db_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="n">logger</span><span class="o">.</span><span class="n">version</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">logger</span><span class="o">.</span><span class="n">_tags</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  tags:    </span><span class="si">{</span><span class="n">logger</span><span class="o">.</span><span class="n">_tags</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! Unrecognized logger!&quot;</span><span class="p">)</span></div>
 
 
 
@@ -783,6 +792,125 @@
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="k">pass</span>  <span class="c1"># Hydra not active</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_inject_registry_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Auto-add :class:`RegistryLogger` and a :class:`CSVLogger`.</span>
+
+<span class="sd">        Always active by default so that every run is indexed and has</span>
+<span class="sd">        per-step CSV logs.  Works with or without ``cache_dir``:</span>
+
+<span class="sd">        - **With ``cache_dir``**: ``registry.db`` lives in ``cache_dir``,</span>
+<span class="sd">          CSV logs go to ``run_dir/``.</span>
+<span class="sd">        - **Without ``cache_dir``**: both fall back to the Trainer&#39;s</span>
+<span class="sd">          ``default_root_dir`` (typically the current working directory).</span>
+
+<span class="sd">        The RegistryLogger captures the run summary, config, and metadata</span>
+<span class="sd">        into a shared SQLite database for fast cross-run queries.</span>
+
+<span class="sd">        The CSVLogger records **per-step metrics** so that no detailed</span>
+<span class="sd">        training history is lost — the RegistryLogger only stores the</span>
+<span class="sd">        last value per metric key (like wandb&#39;s ``run.summary``), not the</span>
+<span class="sd">        full time series.</span>
+
+<span class="sd">        Can be disabled via ``spt.set(default_callbacks={&quot;registry_logger&quot;: False})``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
+
+        <span class="c1"># Respect user opt-out</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cfg</span><span class="o">.</span><span class="n">default_loggers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;registry&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.registry.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegistryLogger</span>
+
+        <span class="c1"># Resolve paths: cache_dir → run_dir, otherwise trainer&#39;s root dir</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_run_dir&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">log_dir</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="p">)</span>
+            <span class="n">run_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">log_dir</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
+                <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">default_root_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="n">run_id</span> <span class="o">=</span> <span class="n">_generate_run_id</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">db_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;registry.db&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">db_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">log_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;registry.db&quot;</span><span class="p">)</span>
+
+        <span class="n">registry_logger</span> <span class="o">=</span> <span class="n">RegistryLogger</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="n">db_path</span><span class="p">)</span>
+        <span class="n">registry_logger</span><span class="o">.</span><span class="n">_run_id</span> <span class="o">=</span> <span class="n">run_id</span>
+        <span class="n">registry_logger</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">=</span> <span class="n">log_dir</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">registry_logger</span><span class="p">)</span>
+
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RegistryLogger&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  db_path: </span><span class="si">{</span><span class="n">registry_logger</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">db_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">registry_logger</span><span class="o">.</span><span class="n">_tags</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  tags:    </span><span class="si">{</span><span class="n">registry_logger</span><span class="o">.</span><span class="n">_tags</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Ensure a CSVLogger is present so per-step metrics are saved.</span>
+        <span class="c1"># The RegistryLogger only stores summary (last value per key);</span>
+        <span class="c1"># without a CSVLogger, the step-by-step history would be lost.</span>
+        <span class="n">has_csv</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">lgr</span><span class="p">,</span> <span class="n">lightning</span><span class="o">.</span><span class="n">pytorch</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">CSVLogger</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">lgr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_csv</span><span class="p">:</span>
+            <span class="n">csv_logger</span> <span class="o">=</span> <span class="n">lightning</span><span class="o">.</span><span class="n">pytorch</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">CSVLogger</span><span class="p">(</span>
+                <span class="n">save_dir</span><span class="o">=</span><span class="n">log_dir</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">csv_logger</span><span class="p">)</span>
+            <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;CSVLogger (auto)&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  log_dir: </span><span class="si">{</span><span class="n">csv_logger</span><span class="o">.</span><span class="n">log_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_flatten_hydra_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a flat dot-separated dict from the raw Hydra configs.</span>
+
+<span class="sd">        Collects ``trainer``, ``module``, and ``data`` DictConfigs, flattens</span>
+<span class="sd">        them with ``pd.json_normalize``, and recursively expands lists.</span>
+<span class="sd">        Returns an empty dict when everything is already instantiated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="n">DictConfig</span><span class="p">)):</span>
+            <span class="n">config</span><span class="p">[</span><span class="s2">&quot;trainer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">to_container</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="n">resolve</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">module</span><span class="p">,</span> <span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="n">DictConfig</span><span class="p">)):</span>
+            <span class="n">config</span><span class="p">[</span><span class="s2">&quot;module&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">to_container</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">module</span><span class="p">,</span> <span class="n">resolve</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="n">DictConfig</span><span class="p">)):</span>
+            <span class="n">config</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">to_container</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">resolve</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="n">config</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">json_normalize</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(</span><span class="n">orient</span><span class="o">=</span><span class="s2">&quot;records&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="nb">list</span><span class="p">):</span>
+                    <span class="n">changed</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">k</span><span class="p">]):</span>
+                        <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+                    <span class="k">del</span> <span class="n">config</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">changed</span><span class="p">:</span>
+                <span class="n">config</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">json_normalize</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(</span><span class="n">orient</span><span class="o">=</span><span class="s2">&quot;records&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="k">return</span> <span class="n">config</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_inject_hydra_hparams</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inject the full flattened Hydra config into the module&#39;s hparams.</span>
+
+<span class="sd">        Called right before ``trainer.fit()`` so that Lightning&#39;s built-in</span>
+<span class="sd">        ``_log_hyperparams`` sends the config to **all** loggers (wandb,</span>
+<span class="sd">        CSV, TensorBoard, registry, etc.) automatically — no per-logger</span>
+<span class="sd">        special-casing required.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">flat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flatten_hydra_config</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">flat</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">module</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">instantiated_module</span>
+        <span class="n">module</span><span class="o">.</span><span class="n">save_hyperparameters</span><span class="p">(</span><span class="n">flat</span><span class="p">)</span>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;HydraHparams&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Injected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">flat</span><span class="p">)</span><span class="si">}</span><span class="s2"> config keys into module.hparams&quot;</span><span class="p">)</span>
+
 <div class="viewcode-block" id="Manager.init_and_sync_wandb">
 <a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.manager.Manager.init_and_sync_wandb">[docs]</a>
     <span class="nd">@rank_zero_only</span>
@@ -806,33 +934,12 @@
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  a Wandb config is provided, not uploading Hydra&#39;s:&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Wandb&#39;s config is empty, trying to use Hydra&#39;s&quot;</span><span class="p">)</span>
-            <span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-                <span class="n">config</span><span class="p">[</span><span class="s2">&quot;trainer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">to_container</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="n">resolve</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">module</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-                <span class="n">config</span><span class="p">[</span><span class="s2">&quot;module&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">to_container</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">module</span><span class="p">,</span> <span class="n">resolve</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-                <span class="n">config</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">to_container</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">resolve</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flatten_hydra_config</span><span class="p">()</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="p">:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
                     <span class="s2">&quot;  Everything already instantiated, nothing is added to config!&quot;</span>
                 <span class="p">)</span>
                 <span class="k">return</span>
-            <span class="n">config</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">json_normalize</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-            <span class="n">config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(</span><span class="n">orient</span><span class="o">=</span><span class="s2">&quot;records&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  flattening one level of Hydra&#39;s config&quot;</span><span class="p">)</span>
-                <span class="n">valid</span> <span class="o">=</span> <span class="kc">True</span>
-                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
-                    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="ow">is</span> <span class="nb">list</span><span class="p">:</span>
-                        <span class="n">valid</span> <span class="o">=</span> <span class="kc">False</span>
-                        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">k</span><span class="p">]):</span>
-                            <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">j</span>
-                        <span class="k">del</span> <span class="n">config</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
-                <span class="n">config</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">json_normalize</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-                <span class="n">config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(</span><span class="n">orient</span><span class="o">=</span><span class="s2">&quot;records&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-                <span class="k">if</span> <span class="n">valid</span><span class="p">:</span>
-                    <span class="k">break</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final Hydra&#39;s config has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="si">}</span><span class="s2"> items&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">WANDB_AVAILABLE</span> <span class="ow">and</span> <span class="n">wandb</span><span class="o">.</span><span class="n">run</span><span class="p">:</span>
                 <span class="n">wandb</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">config</span><span class="p">)</span></div>
@@ -908,6 +1015,9 @@
         <span class="k">if</span> <span class="n">run_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_RunDirCallback</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)))</span>
 
+        <span class="c1"># Always inject RegistryLogger + CSVLogger (works with or without cache_dir)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inject_registry_logger</span><span class="p">()</span>
+
         <span class="c1"># Auto-detect TeacherStudentWrapper and add callback if needed</span>
         <span class="c1"># This runs AFTER trainer is set up, regardless of how it was created</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">.callbacks.teacher_student</span><span class="w"> </span><span class="kn">import</span> <span class="n">TeacherStudentCallback</span>
@@ -979,6 +1089,11 @@
                 <span class="s2">&quot;Installed Lightning Trainer.fit does not accept `weights_only`; &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;ignoring manager.resume_weights_only=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">resume_weights_only</span><span class="si">}</span><span class="s2">.&quot;</span>
             <span class="p">)</span>
+
+        <span class="c1"># Inject the full flattened Hydra config into the module&#39;s hparams</span>
+        <span class="c1"># so Lightning&#39;s _log_hyperparams sends it to ALL loggers automatically</span>
+        <span class="c1"># (wandb, CSV, TensorBoard, registry, etc.)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inject_hydra_hparams</span><span class="p">()</span>
 
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrainerFit&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ckpt_path: </span><span class="si">{</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>

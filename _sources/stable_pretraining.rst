@@ -13,6 +13,7 @@ Subpackages
    stable_pretraining.losses
    stable_pretraining.methods
    stable_pretraining.optim
+   stable_pretraining.registry
    stable_pretraining.utils
 
 Submodules

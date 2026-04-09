@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining._config &#8212; stable-pretraining 0.1.dev1+geed6ee78d documentation</title>
+    <title>stable_pretraining._config &#8212; stable-pretraining 0.1.dev1+ge6fd1aef8 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=001308ad"></script>
+    <script src="../../../_static/documentation_options.js?v=9c67fe9b"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+geed6ee78d documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+ge6fd1aef8 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -406,7 +406,13 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">_CLEANUP_DEFAULTS</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_rank</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_default_callbacks</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SPT_CACHE_DIR&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_default_loggers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">_default_cache</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">),</span> <span class="s2">&quot;.cache&quot;</span><span class="p">,</span> <span class="s2">&quot;stable-pretraining&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;SPT_CACHE_DIR&quot;</span><span class="p">,</span> <span class="n">_default_cache</span>
+        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_requeue_checkpoint</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="c1"># -- verbose ---------------------------------------------------------------</span>
@@ -529,6 +535,32 @@
                 <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_default_callbacks</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
+    <span class="c1"># -- default_loggers -------------------------------------------------------</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_loggers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_default_loggers</span><span class="p">)</span>
+
+    <span class="nd">@default_loggers</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_loggers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_VALID_LOGGER_KEYS</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;registry&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;default_loggers must be a dict, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_VALID_LOGGER_KEYS</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Unknown default_loggers key </span><span class="si">{</span><span class="n">k</span><span class="si">!r}</span><span class="s2">. Valid keys: </span><span class="si">{</span><span class="n">_VALID_LOGGER_KEYS</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;default_loggers[</span><span class="si">{</span><span class="n">k</span><span class="si">!r}</span><span class="s2">] must be bool, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_default_loggers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
     <span class="c1"># -- cache_dir -------------------------------------------------------------</span>
 
     <span class="nd">@property</span>
@@ -574,6 +606,7 @@
             <span class="sa">f</span><span class="s2">&quot;  cleanup=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="si">!r}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;  log_rank=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_log_rank</span><span class="si">!r}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;  default_callbacks=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_default_callbacks</span><span class="si">!r}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  default_loggers=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_default_loggers</span><span class="si">!r}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;  cache_dir=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_cache_dir</span><span class="si">!r}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;  requeue_checkpoint=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_requeue_checkpoint</span><span class="si">!r}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;)&quot;</span>
@@ -597,6 +630,7 @@
     <span class="n">cleanup</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">log_rank</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">default_callbacks</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">default_loggers</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">requeue_checkpoint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -630,15 +664,20 @@
 <span class="sd">            ``&quot;sklearn_checkpoint&quot;``, ``&quot;wandb_checkpoint&quot;``,</span>
 <span class="sd">            ``&quot;module_summary&quot;``, ``&quot;slurm_info&quot;``, ``&quot;unused_params&quot;``,</span>
 <span class="sd">            ``&quot;hf_checkpoint&quot;``.</span>
+<span class="sd">        default_loggers: Dict toggling individual default loggers</span>
+<span class="sd">            on/off.  Keys: ``&quot;registry&quot;`` (SQLite run registry +</span>
+<span class="sd">            per-step CSV logger — both are added together as a</span>
+<span class="sd">            pair).  Enabled by default.</span>
 <span class="sd">        cache_dir: Root directory for all training outputs.  Each run</span>
 <span class="sd">            creates a unique subdirectory under</span>
 <span class="sd">            ``{cache_dir}/runs/{YYYYMMDD}/{HHMMSS}/{run_id}/``.</span>
-<span class="sd">            When set, the Manager injects this as the Trainer&#39;s</span>
+<span class="sd">            The Manager injects this as the Trainer&#39;s</span>
 <span class="sd">            ``default_root_dir`` and auto-configures ``ckpt_path``,</span>
 <span class="sd">            ensuring no path collisions across parallel sweep jobs.</span>
-<span class="sd">            Can also be set via the ``SPT_CACHE_DIR`` environment</span>
-<span class="sd">            variable.  ``None`` (default) disables this and preserves</span>
-<span class="sd">            the standard Lightning / Hydra directory behavior.</span>
+<span class="sd">            Defaults to ``~/.cache/stable-pretraining``.  Can be</span>
+<span class="sd">            overridden via the ``SPT_CACHE_DIR`` environment variable.</span>
+<span class="sd">            Set to ``None`` to disable and preserve the standard</span>
+<span class="sd">            Lightning / Hydra directory behavior.</span>
 
 <span class="sd">            .. note::</span>
 <span class="sd">                SLURM ``.out`` / ``.err`` files are created by the</span>
@@ -679,6 +718,9 @@
 
     <span class="k">if</span> <span class="n">default_callbacks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">cfg</span><span class="o">.</span><span class="n">default_callbacks</span> <span class="o">=</span> <span class="n">default_callbacks</span>
+
+    <span class="k">if</span> <span class="n">default_loggers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cfg</span><span class="o">.</span><span class="n">default_loggers</span> <span class="o">=</span> <span class="n">default_loggers</span>
 
     <span class="k">if</span> <span class="n">cache_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span> <span class="o">=</span> <span class="n">cache_dir</span>

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.hf_models &#8212; stable-pretraining 0.1.dev1+geed6ee78d documentation</title>
+    <title>stable_pretraining.callbacks.hf_models &#8212; stable-pretraining 0.1.dev1+ge6fd1aef8 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=001308ad"></script>
+    <script src="../../../../_static/documentation_options.js?v=9c67fe9b"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+geed6ee78d documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+ge6fd1aef8 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -454,10 +454,18 @@
         <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_rank</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="n">step</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span>
-        <span class="c1"># Resolve relative save_dir against trainer.default_root_dir</span>
+        <span class="c1"># Resolve relative save_dir against trainer.default_root_dir.</span>
+        <span class="c1"># When running outside the Manager, default_root_dir may be CWD —</span>
+        <span class="c1"># prefer cache_dir if configured so we never pollute CWD.</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span>
+
+        <span class="n">root</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">default_root_dir</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">root</span> <span class="o">==</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()):</span>
+            <span class="n">root</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span>
         <span class="n">save_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">save_dir</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
-            <span class="n">save_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">default_root_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">save_dir</span>
+            <span class="n">save_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span> <span class="o">/</span> <span class="n">save_dir</span>
         <span class="n">hf_step_dir</span> <span class="o">=</span> <span class="n">save_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;step_</span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">&quot;</span>
 
         <span class="c1"># Ensure atomic overwrite: Clear directory if it exists</span>
