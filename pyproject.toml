@@ -36,7 +36,6 @@ dependencies = [
     "scikit-learn>=1.7.0",
     "richuru",
     "opt-einsum",
-    "tqdm",
 ]
 
 dynamic = ["version"]
