@@ -26,7 +26,7 @@ def all_gather(tensor, *args, **kwargs):
         Tuple containing the gathered tensors
     """
     if is_dist_avail_and_initialized():
-        torch.distributed.nn.functional.all_gather(tensor, *args, **kwargs)
+        return torch.distributed.nn.functional.all_gather(tensor, *args, **kwargs)
     return (tensor,)
 
 

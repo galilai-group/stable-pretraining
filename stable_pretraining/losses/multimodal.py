@@ -31,10 +31,13 @@ class CLIPLoss(InfoNCELoss):
         feats_j: torch.Tensor,
         logit_scale: Optional[torch.Tensor | float] = None,
     ) -> torch.Tensor:
-        # for CLIP, targets are always the diagonal
-        targets = torch.arange(feats_i.size(0), device=feats_i.device)
-        if torch.distributed.is_initialized():
-            targets = targets + torch.distributed.get_rank() * feats_i.size(0)
+        # _compute all_gathers both sides -> logits [world*B, world*B]; targets must be length world*B.
+        b = feats_i.size(0)
+        if torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1:
+            w = torch.distributed.get_world_size()
+            targets = torch.arange(w * b, device=feats_i.device, dtype=torch.long)
+        else:
+            targets = torch.arange(b, device=feats_i.device, dtype=torch.long)
 
         # calculate loss in both directions
         loss_i = self._compute(
