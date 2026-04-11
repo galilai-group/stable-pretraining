@@ -25,14 +25,12 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Union
-
-from loguru import logger as logging
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -60,7 +58,9 @@ def _default_db_path() -> str:
     """Resolve the default registry.db path from config or env."""
     cache_dir = os.environ.get("SPT_CACHE_DIR")
     if cache_dir is None:
-        cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "stable-pretraining")
+        cache_dir = os.path.join(
+            os.path.expanduser("~"), ".cache", "stable-pretraining"
+        )
     return str(Path(cache_dir).resolve() / "registry.db")
 
 
@@ -99,6 +99,7 @@ def _write_discovery(db_path: str, info: dict) -> None:
 # ensure_server — called from CLI / .bashrc
 # ---------------------------------------------------------------------------
 
+
 def ensure_server(db_path: str | None = None) -> str:
     """Ensure a registry server is running.  Start one if not.
 
@@ -122,9 +123,12 @@ def ensure_server(db_path: str | None = None) -> str:
 
     server_script = str(Path(__file__).parent / "_server.py")
     cmd = [
-        sys.executable, server_script,
-        "--db", str(Path(db_path).resolve()),
-        "--port", str(port),
+        sys.executable,
+        server_script,
+        "--db",
+        str(Path(db_path).resolve()),
+        "--port",
+        str(port),
     ]
 
     log_file = Path(db_path).with_suffix(".server.log")
@@ -145,20 +149,21 @@ def ensure_server(db_path: str | None = None) -> str:
     deadline = time.time() + 15.0
     while time.time() < deadline:
         if _server_is_alive(url):
-            _write_discovery(db_path, {
-                "url": url,
-                "pid": pid,
-                "port": port,
-                "hostname": hostname,
-                "db_path": str(Path(db_path).resolve()),
-                "started_at": time.time(),
-            })
+            _write_discovery(
+                db_path,
+                {
+                    "url": url,
+                    "pid": pid,
+                    "port": port,
+                    "hostname": hostname,
+                    "db_path": str(Path(db_path).resolve()),
+                    "started_at": time.time(),
+                },
+            )
             return url
         time.sleep(0.3)
 
-    raise RuntimeError(
-        f"Registry server did not start within 15s. Check {log_file}"
-    )
+    raise RuntimeError(f"Registry server did not start within 15s. Check {log_file}")
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +180,7 @@ Add this to your ~/.bashrc (run once on the login node):
 Then re-open your shell or run it manually."""
 
 
-def RegistryDB(db_path: str) -> "RegistryClient":  # noqa: N802
+def RegistryDB(db_path: str) -> "RegistryClient":  # noqa: N802, F821
     """Connect to the registry server for *db_path*.
 
     The server must already be running (started via

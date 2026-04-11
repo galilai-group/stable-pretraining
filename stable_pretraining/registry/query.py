@@ -14,8 +14,8 @@ Example::
 
     # Best runs by validation accuracy
     best = reg.query(tag="sweep:12345", sort_by="summary.val_acc", limit=5)
-    print(best[0].summary)       # {"val_acc": 0.847, ...}
-    print(best[0].run_dir)       # /scratch/runs/runs/20260408/.../12345_0/
+    print(best[0].summary)  # {"val_acc": 0.847, ...}
+    print(best[0].run_dir)  # /scratch/runs/runs/20260408/.../12345_0/
     print(best[0].checkpoint_path)
 
     # Export to pandas DataFrame

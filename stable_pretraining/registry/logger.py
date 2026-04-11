@@ -100,23 +100,29 @@ class RegistryLogger(Logger):
     # -- resilient DB calls ----------------------------------------------------
 
     def _safe_db_call(self, fn, *args, **kwargs) -> bool:
-        """Call a DB method.  On failure (server died during preemption),
-        save a sidecar JSON file in the run directory so data can be
-        recovered later with ``spt registry sync``.
+        """Call a DB method.
 
-        Returns True on success, False on failure."""
+        On failure (server died during preemption), save a sidecar JSON file
+        in the run directory so data can be recovered later with
+        ``spt registry sync``.
+
+        Returns True on success, False on failure.
+        """
         try:
             fn(*args, **kwargs)
             return True
         except Exception as exc:
             from loguru import logger as _log
+
             _log.warning(f"! Registry server unreachable ({exc}), writing sidecar.")
             self._write_sidecar()
             return False
 
     def _write_sidecar(self) -> None:
-        """Write the current run state as a JSON sidecar file in the
-        run directory.  ``spt registry sync`` picks these up later."""
+        """Write the current run state as a JSON sidecar file in the run directory.
+
+        ``spt registry sync`` picks these up later.
+        """
         if self._run_dir is None or self._run_id is None:
             return
         try:
@@ -133,7 +139,10 @@ class RegistryLogger(Logger):
                 "tags": list(self._tags),
                 "notes": self._notes,
             }
-            import json, tempfile, os
+            import json
+            import tempfile
+            import os
+
             fd, tmp = tempfile.mkstemp(dir=str(sidecar_dir), suffix=".tmp")
             try:
                 with os.fdopen(fd, "w") as f:
@@ -188,9 +197,7 @@ class RegistryLogger(Logger):
             return
 
         # Map Lightning status strings
-        db_status = {"success": "completed", "failed": "failed"}.get(
-            status, status
-        )
+        db_status = {"success": "completed", "failed": "failed"}.get(status, status)
 
         # Find best checkpoint path if available
         checkpoint_path = self._find_checkpoint()
@@ -281,7 +288,9 @@ def _flatten_params(params: Any) -> dict[str, Any]:
 
     if not isinstance(params, dict):
         # Namespace or other object
-        params = vars(params) if hasattr(params, "__dict__") else {"params": str(params)}
+        params = (
+            vars(params) if hasattr(params, "__dict__") else {"params": str(params)}
+        )
 
     flat: dict[str, Any] = {}
     _flatten(params, "", flat)

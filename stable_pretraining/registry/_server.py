@@ -51,8 +51,11 @@ class _ServerDB:
         self._check_and_repair()
 
     def _check_and_repair(self) -> None:
-        """Verify DB integrity on startup.  If corrupt (e.g. stale NFS
-        WAL), remove the file and let SQLite recreate it."""
+        """Verify DB integrity on startup.
+
+        If corrupt (e.g. stale NFS WAL), remove the file and let SQLite
+        recreate it.
+        """
         p = Path(self.db_path)
         if not p.exists():
             return
@@ -63,9 +66,11 @@ class _ServerDB:
             conn.close()
         except (sqlite3.DatabaseError, sqlite3.OperationalError) as exc:
             import sys
+
             print(
                 f"[spt-registry] DB corrupt ({exc}), removing and starting fresh.",
-                file=sys.stderr, flush=True,
+                file=sys.stderr,
+                flush=True,
             )
             for suffix in ("", "-wal", "-shm"):
                 try:
@@ -100,8 +105,17 @@ class _ServerDB:
                     raise
         raise sqlite3.OperationalError("max retries")  # pragma: no cover
 
-    def insert_run(self, run_id, *, status="running", run_dir=None,
-                   config=None, hparams=None, tags=None, notes=None):
+    def insert_run(
+        self,
+        run_id,
+        *,
+        status="running",
+        run_dir=None,
+        config=None,
+        hparams=None,
+        tags=None,
+        notes=None,
+    ):
         now = time.time()
         self._exec(
             "INSERT INTO runs "
@@ -112,9 +126,18 @@ class _ServerDB:
             "run_dir=excluded.run_dir,config=excluded.config,"
             "hparams=excluded.hparams,summary=excluded.summary,"
             "tags=excluded.tags,notes=excluded.notes",
-            (run_id, status, now, now, run_dir,
-             json.dumps(config or {}), json.dumps(hparams or {}),
-             json.dumps({}), json.dumps(tags or []), notes or ""),
+            (
+                run_id,
+                status,
+                now,
+                now,
+                run_dir,
+                json.dumps(config or {}),
+                json.dumps(hparams or {}),
+                json.dumps({}),
+                json.dumps(tags or []),
+                notes or "",
+            ),
         )
 
     def update_run(self, run_id: str, **fields):
@@ -136,18 +159,23 @@ class _ServerDB:
         self._exec(f"UPDATE runs SET {clause} WHERE run_id = ?", vals)
 
     def get_run(self, run_id: str) -> Optional[Dict[str, Any]]:
-        row = self._conn().execute(
-            "SELECT * FROM runs WHERE run_id = ?", (run_id,)
-        ).fetchone()
+        row = (
+            self._conn()
+            .execute("SELECT * FROM runs WHERE run_id = ?", (run_id,))
+            .fetchone()
+        )
         return _to_dict(row) if row else None
 
-    def query_runs(self, *, status=None, tag=None, sort_by=None,
-                   descending=True, limit=None) -> List[Dict[str, Any]]:
+    def query_runs(
+        self, *, status=None, tag=None, sort_by=None, descending=True, limit=None
+    ) -> List[Dict[str, Any]]:
         clauses, params = [], []
         if status:
-            clauses.append("status = ?"); params.append(status)
+            clauses.append("status = ?")
+            params.append(status)
         if tag:
-            clauses.append("tags LIKE ?"); params.append(f'%"{tag}"%')
+            clauses.append("tags LIKE ?")
+            params.append(f'%"{tag}"%')
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
         order = ""
         if sort_by:
@@ -159,9 +187,11 @@ class _ServerDB:
                 col = sort_by
             order = f" ORDER BY {col} {'DESC' if descending else 'ASC'}"
         lim = f" LIMIT {int(limit)}" if limit else ""
-        rows = self._conn().execute(
-            f"SELECT * FROM runs{where}{order}{lim}", tuple(params)
-        ).fetchall()
+        rows = (
+            self._conn()
+            .execute(f"SELECT * FROM runs{where}{order}{lim}", tuple(params))
+            .fetchall()
+        )
         return [_to_dict(r) for r in rows]
 
     def count(self) -> int:
@@ -172,11 +202,15 @@ def _to_dict(row: sqlite3.Row) -> Dict[str, Any]:
     d = dict(row)
     for col in ("config", "hparams", "summary"):
         if isinstance(d.get(col), str):
-            try: d[col] = json.loads(d[col])
-            except (json.JSONDecodeError, TypeError): d[col] = {}
+            try:
+                d[col] = json.loads(d[col])
+            except (json.JSONDecodeError, TypeError):
+                d[col] = {}
     if isinstance(d.get("tags"), str):
-        try: d["tags"] = json.loads(d["tags"])
-        except (json.JSONDecodeError, TypeError): d["tags"] = []
+        try:
+            d["tags"] = json.loads(d["tags"])
+        except (json.JSONDecodeError, TypeError):
+            d["tags"] = []
     return d
 
 
@@ -184,7 +218,8 @@ def _to_dict(row: sqlite3.Row) -> Dict[str, Any]:
 # FastAPI app
 # ---------------------------------------------------------------------------
 
-def create_app(db_path: str) -> "FastAPI":
+
+def create_app(db_path: str) -> "FastAPI":  # noqa: F821
     from fastapi import FastAPI, HTTPException
     from pydantic import BaseModel as _BaseModel
 
@@ -221,11 +256,18 @@ def create_app(db_path: str) -> "FastAPI":
     @app.post("/api/runs", status_code=201)
     def create_run(run: RunCreate):
         try:
-            db.insert_run(run.run_id, status=run.status, run_dir=run.run_dir,
-                          config=run.config, hparams=run.hparams,
-                          tags=run.tags, notes=run.notes)
+            db.insert_run(
+                run.run_id,
+                status=run.status,
+                run_dir=run.run_dir,
+                config=run.config,
+                hparams=run.hparams,
+                tags=run.tags,
+                notes=run.notes,
+            )
         except Exception as exc:
             import traceback
+
             detail = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
             raise HTTPException(500, detail=detail)
         return {"run_id": run.run_id}
@@ -239,6 +281,7 @@ def create_app(db_path: str) -> "FastAPI":
             db.update_run(run_id, **fields)
         except Exception as exc:
             import traceback
+
             detail = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
             raise HTTPException(500, detail=detail)
         return {"run_id": run_id}
@@ -255,11 +298,16 @@ def create_app(db_path: str) -> "FastAPI":
         return run
 
     @app.get("/api/runs")
-    def list_runs(status: Optional[str] = None, tag: Optional[str] = None,
-                  sort_by: Optional[str] = None, descending: bool = True,
-                  limit: Optional[int] = None):
-        return db.query_runs(status=status, tag=tag, sort_by=sort_by,
-                             descending=descending, limit=limit)
+    def list_runs(
+        status: Optional[str] = None,
+        tag: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        descending: bool = True,
+        limit: Optional[int] = None,
+    ):
+        return db.query_runs(
+            status=status, tag=tag, sort_by=sort_by, descending=descending, limit=limit
+        )
 
     return app
 
@@ -267,6 +315,7 @@ def create_app(db_path: str) -> "FastAPI":
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -276,8 +325,14 @@ def main():
     args = parser.parse_args()
 
     import uvicorn
-    uvicorn.run(create_app(args.db), host=args.host, port=args.port,
-                workers=1, log_level="warning")
+
+    uvicorn.run(
+        create_app(args.db),
+        host=args.host,
+        port=args.port,
+        workers=1,
+        log_level="warning",
+    )
 
 
 if __name__ == "__main__":

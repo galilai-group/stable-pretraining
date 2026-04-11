@@ -33,7 +33,10 @@ class CLIPLoss(InfoNCELoss):
     ) -> torch.Tensor:
         # _compute all_gathers both sides -> logits [world*B, world*B]; targets must be length world*B.
         b = feats_i.size(0)
-        if torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1:
+        if (
+            torch.distributed.is_initialized()
+            and torch.distributed.get_world_size() > 1
+        ):
             w = torch.distributed.get_world_size()
             targets = torch.arange(w * b, device=feats_i.device, dtype=torch.long)
         else:
