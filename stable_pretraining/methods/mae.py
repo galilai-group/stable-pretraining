@@ -8,7 +8,7 @@ References:
 
 Example::
 
-    from stable_pretraining.backbone import MAE
+    from stable_pretraining.methods import MAE
     import lightning as pl
 
     # Create model
