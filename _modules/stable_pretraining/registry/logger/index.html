@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.registry.logger &#8212; stable-pretraining 0.1.dev1+gf8376c381 documentation</title>
+    <title>stable_pretraining.registry.logger &#8212; stable-pretraining 0.1.dev1+g6a567ebd4 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=93d65be5"></script>
+    <script src="../../../../_static/documentation_options.js?v=46b96f6b"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gf8376c381 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g6a567ebd4 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -428,6 +428,56 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">save_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
 
+    <span class="c1"># -- resilient DB calls ----------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_safe_db_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Call a DB method.  On failure (server died during preemption),</span>
+<span class="sd">        save a sidecar JSON file in the run directory so data can be</span>
+<span class="sd">        recovered later with ``spt registry sync``.</span>
+
+<span class="sd">        Returns True on success, False on failure.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">_log</span>
+            <span class="n">_log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! Registry server unreachable (</span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">), writing sidecar.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_sidecar</span><span class="p">()</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_sidecar</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write the current run state as a JSON sidecar file in the</span>
+<span class="sd">        run directory.  ``spt registry sync`` picks these up later.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sidecar_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="p">)</span>
+            <span class="n">sidecar_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">sidecar</span> <span class="o">=</span> <span class="n">sidecar_dir</span> <span class="o">/</span> <span class="s2">&quot;.registry_sidecar.json&quot;</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="p">,</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;interrupted&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;run_dir&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="p">,</span>
+                <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="p">{},</span>
+                <span class="s2">&quot;hparams&quot;</span><span class="p">:</span> <span class="p">{},</span>
+                <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_summary</span><span class="p">),</span>
+                <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tags</span><span class="p">),</span>
+                <span class="s2">&quot;notes&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_notes</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">json</span><span class="o">,</span><span class="w"> </span><span class="nn">tempfile</span><span class="o">,</span><span class="w"> </span><span class="nn">os</span>
+            <span class="n">fd</span><span class="p">,</span> <span class="n">tmp</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="nb">dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">sidecar_dir</span><span class="p">),</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;.tmp&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">sidecar</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>  <span class="c1"># best-effort — don&#39;t crash during teardown</span>
+
     <span class="c1"># -- logging ---------------------------------------------------------------</span>
 
 <div class="viewcode-block" id="RegistryLogger.log_hyperparams">
@@ -442,6 +492,8 @@
         <span class="c1"># Flatten nested config to a simple dict</span>
         <span class="n">flat</span> <span class="o">=</span> <span class="n">_flatten_params</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
 
+        <span class="c1"># log_hyperparams is called once at startup — let errors</span>
+        <span class="c1"># propagate so the user sees &quot;server not running&quot; immediately.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">insert_run</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="p">,</span>
             <span class="n">status</span><span class="o">=</span><span class="s2">&quot;running&quot;</span><span class="p">,</span>
@@ -491,16 +543,18 @@
 
         <span class="c1"># Ensure the run exists even if log_hyperparams was never called</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_registered</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">insert_run</span><span class="p">(</span>
+            <span class="n">ok</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_safe_db_call</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">insert_run</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="p">,</span>
                 <span class="n">status</span><span class="o">=</span><span class="n">db_status</span><span class="p">,</span>
                 <span class="n">run_dir</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="p">,</span>
                 <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_tags</span><span class="p">,</span>
                 <span class="n">notes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_notes</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_registered</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">ok</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_registered</span> <span class="o">=</span> <span class="kc">True</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">update_run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="p">,</span> <span class="o">**</span><span class="n">fields</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_safe_db_call</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">update_run</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="p">,</span> <span class="o">**</span><span class="n">fields</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
 
@@ -514,7 +568,9 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="p">:</span>
             <span class="n">path</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">checkpoint_callback</span><span class="p">,</span> <span class="s2">&quot;last_model_path&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">update_run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="p">,</span> <span class="n">checkpoint_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">))</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_safe_db_call</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">update_run</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="p">,</span> <span class="n">checkpoint_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="p">)</span></div>
 
 
     <span class="c1"># -- path resolution -------------------------------------------------------</span>
@@ -536,7 +592,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_flush_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_summary</span><span class="p">:</span>
             <span class="k">return</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">update_run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="p">,</span> <span class="n">summary</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_summary</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_safe_db_call</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">update_run</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="p">,</span> <span class="n">summary</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_summary</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_find_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Scan run_dir/checkpoints/ for the best or last checkpoint.&quot;&quot;&quot;</span>
