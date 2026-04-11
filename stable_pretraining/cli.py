@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Command-line interface for Stable SSL training."""
 
+import os
 import sys
 from pathlib import Path
 import subprocess
@@ -242,7 +243,9 @@ def _open_registry(db_path: Optional[str]):
 def registry_ls(
     tag: Optional[str] = typer.Option(None, help="Filter by tag"),
     status: Optional[str] = typer.Option(None, help="Filter by status"),
-    sort: Optional[str] = typer.Option(None, "--sort", help="Sort by column or summary.<key>"),
+    sort: Optional[str] = typer.Option(
+        None, "--sort", help="Sort by column or summary.<key>"
+    ),
     limit: Optional[int] = typer.Option(None, "-n", help="Max rows"),
     db: Optional[str] = typer.Option(None, "--db", help="Path to registry.db"),
 ):
@@ -348,12 +351,14 @@ def best(
         val = r.summary.get(metric, "N/A")
         if isinstance(val, float):
             val = f"{val:.6f}"
-        rows.append({
-            "run_id": r.run_id,
-            metric: val,
-            "tags": ", ".join(r.tags) if r.tags else "",
-            "run_dir": r.run_dir or "",
-        })
+        rows.append(
+            {
+                "run_id": r.run_id,
+                metric: val,
+                "tags": ", ".join(r.tags) if r.tags else "",
+                "run_dir": r.run_dir or "",
+            }
+        )
 
     import pandas as pd
 
@@ -364,7 +369,9 @@ def best(
 
 @registry_app.command()
 def export(
-    output: str = typer.Argument("runs.csv", help="Output file path (.csv or .parquet)"),
+    output: str = typer.Argument(
+        "runs.csv", help="Output file path (.csv or .parquet)"
+    ),
     tag: Optional[str] = typer.Option(None, help="Filter by tag"),
     status: Optional[str] = typer.Option(None, help="Filter by status"),
     db: Optional[str] = typer.Option(None, "--db", help="Path to registry.db"),
@@ -415,19 +422,25 @@ def status(
     db: Optional[str] = typer.Option(None, "--db", help="Path to registry.db"),
 ):
     """Check if the registry server is running."""
-    from stable_pretraining.registry._db import _read_discovery, _server_is_alive, _default_db_path
+    from stable_pretraining.registry._db import (
+        _read_discovery,
+        _server_is_alive,
+        _default_db_path,
+    )
 
     db_path = db or _default_db_path()
     info = _read_discovery(db_path)
     if info and _server_is_alive(info["url"]):
         typer.echo(f"✓ Running at {info['url']} (pid {info.get('pid', '?')})")
     elif info:
-        typer.echo(f"✗ Discovery file exists but server at {info['url']} is not responding.")
-        typer.echo(f"  Run: spt registry ensure")
+        typer.echo(
+            f"✗ Discovery file exists but server at {info['url']} is not responding."
+        )
+        typer.echo("  Run: spt registry ensure")
         raise typer.Exit(code=1)
     else:
         typer.echo(f"✗ No server found (no discovery file at {db_path}).")
-        typer.echo(f"  Run: spt registry ensure")
+        typer.echo("  Run: spt registry ensure")
         raise typer.Exit(code=1)
 
 
@@ -438,7 +451,11 @@ def stop(
     """Stop the registry server."""
     import signal
 
-    from stable_pretraining.registry._db import _read_discovery, _discovery_path, _default_db_path
+    from stable_pretraining.registry._db import (
+        _read_discovery,
+        _discovery_path,
+        _default_db_path,
+    )
 
     db_path = db or _default_db_path()
     info = _read_discovery(db_path)
@@ -466,7 +483,9 @@ def stop(
 
 @registry_app.command()
 def sync(
-    scan_dir: Optional[str] = typer.Argument(None, help="Directory to scan (default: cache_dir)"),
+    scan_dir: Optional[str] = typer.Argument(
+        None, help="Directory to scan (default: cache_dir)"
+    ),
     db: Optional[str] = typer.Option(None, "--db", help="Path to registry.db"),
 ):
     """Sync sidecar files from interrupted runs into the registry.
@@ -488,15 +507,19 @@ def sync(
     # Determine scan root
     if scan_dir is None:
         import os
+
         scan_dir = os.environ.get("SPT_CACHE_DIR")
         if scan_dir is None:
             try:
                 from stable_pretraining._config import get_config
+
                 scan_dir = get_config().cache_dir
             except Exception:
                 pass
         if scan_dir is None:
-            typer.echo("Error: No scan directory. Pass a path or set SPT_CACHE_DIR.", err=True)
+            typer.echo(
+                "Error: No scan directory. Pass a path or set SPT_CACHE_DIR.", err=True
+            )
             raise typer.Exit(code=1)
 
     import json

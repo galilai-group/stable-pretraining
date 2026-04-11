@@ -29,6 +29,7 @@ pytestmark = pytest.mark.regression
 # Fake dataset (no downloads, CPU-only)
 # ---------------------------------------------------------------------------
 
+
 class FakeDataset(Dataset):
     """Returns dicts with an image and label.
 
@@ -56,10 +57,14 @@ class FakeDataset(Dataset):
             # Mimics MultiViewTransform output: dict with "views" key
             return {
                 "views": [
-                    {"image": self.images[idx] + self.noise1[idx],
-                     "label": self.labels[idx]},
-                    {"image": self.images[idx] + self.noise2[idx],
-                     "label": self.labels[idx]},
+                    {
+                        "image": self.images[idx] + self.noise1[idx],
+                        "label": self.labels[idx],
+                    },
+                    {
+                        "image": self.images[idx] + self.noise2[idx],
+                        "label": self.labels[idx],
+                    },
                 ]
             }
         return {"image": self.images[idx], "label": self.labels[idx]}
@@ -105,28 +110,38 @@ def make_predictor(in_dim=PROJ_DIM, out_dim=PROJ_DIM):
 
 
 def make_data(multi_view=True):
-    ds = FakeDataset(num_samples=32, image_size=IMAGE_SIZE, num_classes=NUM_CLASSES, multi_view=multi_view)
+    ds = FakeDataset(
+        num_samples=32,
+        image_size=IMAGE_SIZE,
+        num_classes=NUM_CLASSES,
+        multi_view=multi_view,
+    )
     train_dl = DataLoader(ds, batch_size=8, drop_last=True, num_workers=0)
-    val_ds = FakeDataset(num_samples=16, image_size=IMAGE_SIZE, num_classes=NUM_CLASSES, multi_view=False)
+    val_ds = FakeDataset(
+        num_samples=16, image_size=IMAGE_SIZE, num_classes=NUM_CLASSES, multi_view=False
+    )
     val_dl = DataLoader(val_ds, batch_size=8, num_workers=0)
     return spt.data.DataModule(train=train_dl, val=val_dl)
 
 
 def make_trainer_cfg():
-    return OmegaConf.create({
-        "_target_": "lightning.Trainer",
-        "max_epochs": 1,
-        "accelerator": "cpu",
-        "enable_checkpointing": False,
-        "enable_progress_bar": False,
-        "enable_model_summary": False,
-        "num_sanity_val_steps": 0,
-    })
+    return OmegaConf.create(
+        {
+            "_target_": "lightning.Trainer",
+            "max_epochs": 1,
+            "accelerator": "cpu",
+            "enable_checkpointing": False,
+            "enable_progress_bar": False,
+            "enable_model_summary": False,
+            "num_sanity_val_steps": 0,
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
 # Method definitions
 # ---------------------------------------------------------------------------
+
 
 def build_simclr():
     return dict(
@@ -224,6 +239,7 @@ REFERENCE_LOSSES = {
 def test_method_trains_and_registers(method_name, tmp_path):
     """Each SSL method completes 1 epoch and is indexed in the registry."""
     import lightning as pl
+
     pl.seed_everything(42, workers=True)
     builder = METHOD_BUILDERS[method_name]
     components = builder()
@@ -238,6 +254,7 @@ def test_method_trains_and_registers(method_name, tmp_path):
 
     # Verify the run is in the registry
     from stable_pretraining._config import get_config
+
     db_path = str(get_config().cache_dir) + "/registry.db"
     reg = Registry(RegistryDB(db_path))
 
@@ -263,6 +280,7 @@ def test_method_matches_reference(method_name, tmp_path):
         python stable_pretraining/tests/regression/_capture_refs.py
     """
     import lightning as pl
+
     pl.seed_everything(42, workers=True)
 
     builder = METHOD_BUILDERS[method_name]
@@ -278,6 +296,7 @@ def test_method_matches_reference(method_name, tmp_path):
     manager()
 
     from stable_pretraining._config import get_config
+
     db_path = str(get_config().cache_dir) + "/registry.db"
     reg = Registry(RegistryDB(db_path))
     runs = reg.query(status="completed")

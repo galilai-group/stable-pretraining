@@ -50,6 +50,8 @@ def cache_dir(tmp_path):
 
 
 class TestCacheDirConfig:
+    """Tests for cache_dir configuration."""
+
     def test_default_is_set(self, monkeypatch):
         monkeypatch.delenv("SPT_CACHE_DIR", raising=False)
         get_config().reset()
@@ -119,6 +121,8 @@ class TestCacheDirConfig:
 
 
 class TestRequeueCheckpointConfig:
+    """Tests for requeue_checkpoint configuration."""
+
     def test_default_is_true(self):
         assert get_config().requeue_checkpoint is True
 
@@ -164,6 +168,8 @@ class TestRequeueCheckpointConfig:
 
 
 class TestGenerateRunId:
+    """Tests for run ID generation."""
+
     def test_uuid_fallback(self, monkeypatch):
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
         monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
@@ -216,6 +222,8 @@ class TestGenerateRunId:
 
 
 class TestResolveRunDir:
+    """Tests for run directory resolution."""
+
     def _make_manager(self, ckpt_path=None):
         return Manager(
             trainer=BoringTrainer(enable_checkpointing=False, logger=False),
@@ -353,6 +361,8 @@ class TestResolveRunDir:
 
 
 class TestInjectRunDir:
+    """Tests for run directory injection into configs."""
+
     def test_injects_into_dictconfig(self, tmp_path):
         cfg = OmegaConf.create(
             {
@@ -409,6 +419,8 @@ class TestInjectRunDir:
 
 
 class TestResolveLoadPath:
+    """Tests for checkpoint load path resolution."""
+
     def test_returns_user_ckpt_path_when_exists(self, tmp_path):
         """User's explicit ckpt_path is used for loading."""
         user_ckpt = tmp_path / "pretrained.ckpt"
@@ -509,6 +521,8 @@ class TestResolveLoadPath:
 
 
 class TestConfigureCacheDirCheckpointing:
+    """Tests for cache directory checkpointing configuration."""
+
     def _make_manager_with_trainer(self, tmp_path):
         """Create a Manager with an instantiated trainer and run_dir."""
         trainer = BoringTrainer(
@@ -668,6 +682,8 @@ class TestConfigureCacheDirCheckpointing:
 
 
 class TestRunDirCallback:
+    """Tests for the _RunDirCallback."""
+
     def test_persists_run_dir_in_checkpoint(self):
         cb = _RunDirCallback("/some/path")
         checkpoint = {}
@@ -687,6 +703,8 @@ class TestRunDirCallback:
 
 
 class TestHydraConflictWarnings:
+    """Tests for Hydra conflict warning behavior."""
+
     def test_no_crash_without_hydra(self):
         Manager._warn_hydra_conflicts()
 
@@ -697,6 +715,8 @@ class TestHydraConflictWarnings:
 
 
 class TestSaveCheckpointWithRunDir:
+    """Tests for checkpoint saving with run directory."""
+
     def test_default_path_uses_run_dir(self, tmp_path):
         trainer = BoringTrainer(
             default_root_dir=str(tmp_path),
@@ -755,6 +775,8 @@ class TestSaveCheckpointWithRunDir:
 
 
 class TestManagerCallWithCacheDir:
+    """Tests for Manager.__call__() with cache directory."""
+
     def test_full_flow_with_config_trainer(self, cache_dir, monkeypatch):
         """Manager.__call__() creates run_dir, injects into trainer, sets up checkpointing."""
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
@@ -938,6 +960,7 @@ class TestManagerCallWithCacheDir:
 
     def test_requeue_loads_from_run_dir_not_ckpt_path(self, cache_dir, monkeypatch):
         """Simulate requeue: run_dir has last.ckpt, no user ckpt_path.
+
         The fit call should receive the auto-detected checkpoint.
         """
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
@@ -993,6 +1016,7 @@ class TestManagerCallWithCacheDir:
 
     def test_slurm_requeue_no_ckpt_path_auto_loads(self, cache_dir, monkeypatch):
         """SLURM requeue: no ckpt_path, same SLURM_JOB_ID.
+
         Should find prev run_dir by job ID and auto-load last.ckpt.
         """
         monkeypatch.setenv("SLURM_JOB_ID", "88888")
@@ -1097,6 +1121,8 @@ class TestManagerCallWithCacheDir:
 
 
 class TestCallbackPathResolution:
+    """Tests for callback path resolution with run directory."""
+
     def test_hf_checkpoint_resolves_relative_save_dir(self):
         try:
             from stable_pretraining.callbacks.hf_models import (
@@ -1147,6 +1173,8 @@ class TestCallbackPathResolution:
 
 
 class TestNoCollisions:
+    """Tests for run directory collision avoidance."""
+
     def test_two_managers_get_different_run_dirs(self, cache_dir, monkeypatch):
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
         monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)

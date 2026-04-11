@@ -1,5 +1,4 @@
-"""
-Supervised Learning Example
+"""Supervised Learning Example
 ============================
 
 This example demonstrates how to train models using supervised learning

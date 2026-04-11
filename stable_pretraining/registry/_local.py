@@ -184,10 +184,10 @@ class LocalRegistryDB:
         order = ""
         if sort_by is not None:
             if sort_by.startswith("summary."):
-                key = sort_by[len("summary."):]
+                key = sort_by[len("summary.") :]
                 col_expr = f"json_extract(summary, '$.{key}')"
             elif sort_by.startswith("hparams."):
-                key = sort_by[len("hparams."):]
+                key = sort_by[len("hparams.") :]
                 col_expr = f"json_extract(hparams, '$.{key}')"
             else:
                 col_expr = sort_by

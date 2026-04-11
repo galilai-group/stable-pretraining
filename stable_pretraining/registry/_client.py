@@ -116,11 +116,19 @@ class RegistryClient:
         tags: Optional[List[str]] = None,
         notes: Optional[str] = None,
     ) -> None:
-        self._request("POST", "/runs", body={
-            "run_id": run_id, "status": status, "run_dir": run_dir,
-            "config": config or {}, "hparams": hparams or {},
-            "tags": tags or [], "notes": notes or "",
-        })
+        self._request(
+            "POST",
+            "/runs",
+            body={
+                "run_id": run_id,
+                "status": status,
+                "run_dir": run_dir,
+                "config": config or {},
+                "hparams": hparams or {},
+                "tags": tags or [],
+                "notes": notes or "",
+            },
+        )
 
     def update_run(self, run_id: str, **fields: Any) -> None:
         if not fields:
