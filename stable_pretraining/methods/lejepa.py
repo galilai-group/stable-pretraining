@@ -11,7 +11,7 @@ References:
 
 Example::
 
-    from stable_pretraining.methods.lejepa import LeJEPA
+    from stable_pretraining.methods import LeJEPA
 
     model = LeJEPA("vit_small_patch16_224")
 
@@ -188,7 +188,7 @@ class LeJEPA(Module):
     Example with Lightning::
 
         import lightning as pl
-        from stable_pretraining.methods.lejepa import LeJEPA
+        from stable_pretraining.methods import LeJEPA
 
 
         class LeJEPALightning(pl.LightningModule):
