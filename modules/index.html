@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining &#8212; stable-pretraining 0.1.dev1+g6a567ebd4 documentation</title>
+    <title>stable_pretraining &#8212; stable-pretraining 0.1.dev1+gca461b7a8 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=46b96f6b"></script>
+    <script src="../_static/documentation_options.js?v=76d8e1e2"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g6a567ebd4 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gca461b7a8 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -502,14 +502,12 @@
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining/#module-stable_pretraining.cli">stable_pretraining.cli module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.best"><code class="docutils literal notranslate"><span class="pre">best()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.dump_csv_logs"><code class="docutils literal notranslate"><span class="pre">dump_csv_logs()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.ensure"><code class="docutils literal notranslate"><span class="pre">ensure()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.export"><code class="docutils literal notranslate"><span class="pre">export()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.migrate"><code class="docutils literal notranslate"><span class="pre">migrate()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.registry_ls"><code class="docutils literal notranslate"><span class="pre">registry_ls()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.scan"><code class="docutils literal notranslate"><span class="pre">scan()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.show"><code class="docutils literal notranslate"><span class="pre">show()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.status"><code class="docutils literal notranslate"><span class="pre">status()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.stop"><code class="docutils literal notranslate"><span class="pre">stop()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.cli.sync"><code class="docutils literal notranslate"><span class="pre">sync()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining/#module-stable_pretraining.config">stable_pretraining.config module</a><ul>
@@ -681,9 +679,9 @@
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.RegistryLogger.finalize"><code class="docutils literal notranslate"><span class="pre">RegistryLogger.finalize()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.RegistryLogger.log_hyperparams"><code class="docutils literal notranslate"><span class="pre">RegistryLogger.log_hyperparams()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.RegistryLogger.log_metrics"><code class="docutils literal notranslate"><span class="pre">RegistryLogger.log_metrics()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.RegistryLogger.name"><code class="docutils literal notranslate"><span class="pre">RegistryLogger.name</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.RegistryLogger.save_dir"><code class="docutils literal notranslate"><span class="pre">RegistryLogger.save_dir</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.RegistryLogger.version"><code class="docutils literal notranslate"><span class="pre">RegistryLogger.version</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.RegistryLogger.run_dir"><code class="docutils literal notranslate"><span class="pre">RegistryLogger.run_dir</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.RegistryLogger.run_id"><code class="docutils literal notranslate"><span class="pre">RegistryLogger.run_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.RegistryLogger.save"><code class="docutils literal notranslate"><span class="pre">RegistryLogger.save()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.SklearnCheckpoint"><code class="docutils literal notranslate"><span class="pre">SklearnCheckpoint</span></code></a><ul>

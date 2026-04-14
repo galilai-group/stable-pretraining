@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.cli &#8212; stable-pretraining 0.1.dev1+g6a567ebd4 documentation</title>
+    <title>stable_pretraining.cli &#8212; stable-pretraining 0.1.dev1+gca461b7a8 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=46b96f6b"></script>
+    <script src="../../../_static/documentation_options.js?v=76d8e1e2"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g6a567ebd4 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gca461b7a8 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -540,37 +540,63 @@
 <span class="n">app</span><span class="o">.</span><span class="n">add_typer</span><span class="p">(</span><span class="n">registry_app</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;registry&quot;</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_open_registry</span><span class="p">(</span><span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Open the registry DB without importing the full spt package.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_cache_and_db</span><span class="p">(</span><span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="n">Path</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve ``(cache_dir, db_path)`` for CLI commands.</span>
 
-<span class="sd">    Directly uses the lightweight registry._db and registry.query modules</span>
-<span class="sd">    (only sqlite3/json/pathlib) to avoid loading torch/lightning/hydra</span>
-<span class="sd">    on every CLI invocation.</span>
+<span class="sd">    Preference order: explicit flags &gt; ``SPT_CACHE_DIR`` env var &gt;</span>
+<span class="sd">    ``spt.set(cache_dir=...)`` global config.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.registry._db</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegistryDB</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.registry.query</span><span class="w"> </span><span class="kn">import</span> <span class="n">Registry</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
-    <span class="k">if</span> <span class="n">db_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+    <span class="n">resolved_cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">cache</span>
+    <span class="k">if</span> <span class="n">resolved_cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">resolved_cache</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SPT_CACHE_DIR&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">resolved_cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span>
 
-        <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SPT_CACHE_DIR&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">cache_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span>
+            <span class="n">resolved_cache</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span><span class="o">.</span><span class="n">cache_dir</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+    <span class="k">if</span> <span class="n">resolved_cache</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">db</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+            <span class="s2">&quot;Error: No --cache-dir / --db and no cache_dir configured. &quot;</span>
+            <span class="s2">&quot;Pass --cache-dir or set SPT_CACHE_DIR env var.&quot;</span><span class="p">,</span>
+            <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-                <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span><span class="o">.</span><span class="n">cache_dir</span>
-            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                <span class="k">pass</span>
-        <span class="k">if</span> <span class="n">cache_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                <span class="s2">&quot;Error: No --db path and no cache_dir configured. &quot;</span>
-                <span class="s2">&quot;Pass --db or set SPT_CACHE_DIR env var.&quot;</span><span class="p">,</span>
-                <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">db_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;registry.db&quot;</span><span class="p">)</span>
+    <span class="n">cache_path</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">resolved_cache</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">resolved_cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">Path</span><span class="p">(</span><span class="n">db</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span>  <span class="c1"># type: ignore[arg-type]</span>
+    <span class="p">)</span>
+    <span class="n">db_path</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">db</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">db</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">cache_path</span> <span class="o">/</span> <span class="s2">&quot;registry.db&quot;</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">cache_path</span><span class="p">,</span> <span class="n">db_path</span>
 
-    <span class="k">return</span> <span class="n">Registry</span><span class="p">(</span><span class="n">RegistryDB</span><span class="p">(</span><span class="n">db_path</span><span class="p">))</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_open_registry</span><span class="p">(</span>
+    <span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">scan</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Open a read-only :class:`Registry` after an optional lazy scan.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_registry</span>
+
+    <span class="n">cache_path</span><span class="p">,</span> <span class="n">db_path</span> <span class="o">=</span> <span class="n">_resolve_cache_and_db</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">open_registry</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="n">db_path</span><span class="p">,</span> <span class="n">cache_dir</span><span class="o">=</span><span class="n">cache_path</span><span class="p">,</span> <span class="n">scan</span><span class="o">=</span><span class="n">scan</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;No registry cache found at </span><span class="si">{</span><span class="n">db_path</span><span class="si">}</span><span class="s2">. Run `spt registry scan` first.&quot;</span><span class="p">,</span>
+            <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="registry_ls">
@@ -579,15 +605,22 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">registry_ls</span><span class="p">(</span>
     <span class="n">tag</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Filter by tag&quot;</span><span class="p">),</span>
     <span class="n">status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Filter by status&quot;</span><span class="p">),</span>
-    <span class="n">sort</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--sort&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Sort by column or summary.&lt;key&gt;&quot;</span><span class="p">),</span>
+    <span class="n">alive</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--alive/--dead&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Filter by heartbeat-based liveness&quot;</span>
+    <span class="p">),</span>
+    <span class="n">sort</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--sort&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Sort by column or summary.&lt;key&gt;&quot;</span>
+    <span class="p">),</span>
     <span class="n">limit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;-n&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Max rows&quot;</span><span class="p">),</span>
     <span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--db&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to registry.db&quot;</span><span class="p">),</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--cache-dir&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Cache dir root&quot;</span><span class="p">),</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;List runs in the registry.&quot;&quot;&quot;</span>
-    <span class="n">reg</span> <span class="o">=</span> <span class="n">_open_registry</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">_open_registry</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span>
     <span class="n">runs</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
         <span class="n">tag</span><span class="o">=</span><span class="n">tag</span><span class="p">,</span>
         <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">,</span>
+        <span class="n">alive</span><span class="o">=</span><span class="n">alive</span><span class="p">,</span>
         <span class="n">sort_by</span><span class="o">=</span><span class="n">sort</span><span class="p">,</span>
         <span class="n">descending</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span>
@@ -595,22 +628,19 @@
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">runs</span><span class="p">:</span>
         <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;No runs found.&quot;</span><span class="p">)</span>
+        <span class="n">reg</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">()</span>
 
-    <span class="c1"># Simple table</span>
     <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">runs</span><span class="p">:</span>
         <span class="n">row</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">run_id</span><span class="p">,</span>
             <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">status</span><span class="p">,</span>
+            <span class="s2">&quot;alive&quot;</span><span class="p">:</span> <span class="s2">&quot;yes&quot;</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">alive</span> <span class="k">else</span> <span class="s2">&quot;no&quot;</span><span class="p">,</span>
             <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">tags</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
         <span class="p">}</span>
-        <span class="c1"># Add top summary metrics</span>
         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">items</span><span class="p">())[:</span><span class="mi">5</span><span class="p">]:</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
-                <span class="n">row</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">row</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="n">row</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
         <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
 
     <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -627,9 +657,10 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span>
     <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Run ID to display&quot;</span><span class="p">),</span>
     <span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--db&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to registry.db&quot;</span><span class="p">),</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--cache-dir&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Cache dir root&quot;</span><span class="p">),</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Show details for a single run.&quot;&quot;&quot;</span>
-    <span class="n">reg</span> <span class="o">=</span> <span class="n">_open_registry</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">_open_registry</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span>
     <span class="n">run</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">run</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Run &#39;</span><span class="si">{</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&#39; not found.&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -665,9 +696,10 @@
     <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;-n&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Number of top runs&quot;</span><span class="p">),</span>
     <span class="n">ascending</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;--asc&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Sort ascending (for loss)&quot;</span><span class="p">),</span>
     <span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--db&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to registry.db&quot;</span><span class="p">),</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--cache-dir&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Cache dir root&quot;</span><span class="p">),</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Show top N runs ranked by a summary metric.&quot;&quot;&quot;</span>
-    <span class="n">reg</span> <span class="o">=</span> <span class="n">_open_registry</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">_open_registry</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span>
     <span class="n">runs</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
         <span class="n">tag</span><span class="o">=</span><span class="n">tag</span><span class="p">,</span>
         <span class="n">status</span><span class="o">=</span><span class="s2">&quot;completed&quot;</span><span class="p">,</span>
@@ -691,12 +723,14 @@
         <span class="n">val</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">metric</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
             <span class="n">val</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">val</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-            <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">run_id</span><span class="p">,</span>
-            <span class="n">metric</span><span class="p">:</span> <span class="n">val</span><span class="p">,</span>
-            <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">tags</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;run_dir&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">run_dir</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
-        <span class="p">})</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">run_id</span><span class="p">,</span>
+                <span class="n">metric</span><span class="p">:</span> <span class="n">val</span><span class="p">,</span>
+                <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">tags</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;run_dir&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">run_dir</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
 
     <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
@@ -710,13 +744,16 @@
 <a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.cli.export">[docs]</a>
 <span class="nd">@registry_app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span>
-    <span class="n">output</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="s2">&quot;runs.csv&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output file path (.csv or .parquet)&quot;</span><span class="p">),</span>
+    <span class="n">output</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="s2">&quot;runs.csv&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output file path (.csv or .parquet)&quot;</span>
+    <span class="p">),</span>
     <span class="n">tag</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Filter by tag&quot;</span><span class="p">),</span>
     <span class="n">status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Filter by status&quot;</span><span class="p">),</span>
     <span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--db&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to registry.db&quot;</span><span class="p">),</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--cache-dir&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Cache dir root&quot;</span><span class="p">),</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Export runs to CSV or Parquet with flattened hparams/summary columns.&quot;&quot;&quot;</span>
-    <span class="n">reg</span> <span class="o">=</span> <span class="n">_open_registry</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">_open_registry</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="n">tag</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
@@ -734,165 +771,116 @@
 
 
 
-<div class="viewcode-block" id="ensure">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.cli.ensure">[docs]</a>
+<div class="viewcode-block" id="scan">
+<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.cli.scan">[docs]</a>
 <span class="nd">@registry_app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">ensure</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">scan</span><span class="p">(</span>
+    <span class="n">full</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;--full&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Re-ingest every sidecar regardless of mtime.&quot;</span>
+    <span class="p">),</span>
     <span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--db&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to registry.db&quot;</span><span class="p">),</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--cache-dir&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Cache dir root&quot;</span><span class="p">),</span>
 <span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ensure the registry server is running (start if needed).</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scan ``{cache_dir}/runs`` and refresh the registry cache.</span>
 
-<span class="sd">    Add this to your ~/.bashrc so the server auto-starts on login::</span>
-
-<span class="sd">        spt registry ensure</span>
-
-<span class="sd">    Idempotent — safe to call multiple times.</span>
+<span class="sd">    Normally incremental — only sidecars whose mtime advanced since</span>
+<span class="sd">    the last scan are re-parsed.  Pass ``--full`` to re-ingest every</span>
+<span class="sd">    sidecar (useful if the schema changed or the DB was rebuilt).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.registry._db</span><span class="w"> </span><span class="kn">import</span> <span class="n">ensure_server</span><span class="p">,</span> <span class="n">_default_db_path</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.registry._scanner</span><span class="w"> </span><span class="kn">import</span> <span class="n">scan</span> <span class="k">as</span> <span class="n">run_scan</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.registry._store</span><span class="w"> </span><span class="kn">import</span> <span class="n">Store</span>
 
-    <span class="n">db_path</span> <span class="o">=</span> <span class="n">db</span> <span class="ow">or</span> <span class="n">_default_db_path</span><span class="p">()</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">url</span> <span class="o">=</span> <span class="n">ensure_server</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span>
-        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Registry server running at </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
+    <span class="n">cache_path</span><span class="p">,</span> <span class="n">db_path</span> <span class="o">=</span> <span class="n">_resolve_cache_and_db</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">Store</span><span class="p">(</span><span class="n">db_path</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">store</span><span class="p">:</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="n">run_scan</span><span class="p">(</span><span class="n">cache_path</span><span class="p">,</span> <span class="n">store</span><span class="p">,</span> <span class="n">full</span><span class="o">=</span><span class="n">full</span><span class="p">)</span>
+
+    <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">report</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">total_sidecars</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;(no sidecars found under </span><span class="si">{</span><span class="n">cache_path</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;runs&#39;</span><span class="si">}</span><span class="s2">; &quot;</span>
+            <span class="s2">&quot;is this the right cache_dir?)&quot;</span>
+        <span class="p">)</span></div>
 
 
 
-<div class="viewcode-block" id="status">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.cli.status">[docs]</a>
+<div class="viewcode-block" id="migrate">
+<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.cli.migrate">[docs]</a>
 <span class="nd">@registry_app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">status</span><span class="p">(</span>
-    <span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--db&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to registry.db&quot;</span><span class="p">),</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">migrate</span><span class="p">(</span>
+    <span class="n">src_db</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Legacy registry.db to migrate from&quot;</span><span class="p">),</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--cache-dir&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Cache dir root&quot;</span><span class="p">),</span>
+    <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;--overwrite&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Overwrite sidecars that already exist&quot;</span>
+    <span class="p">),</span>
 <span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if the registry server is running.&quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.registry._db</span><span class="w"> </span><span class="kn">import</span> <span class="n">_read_discovery</span><span class="p">,</span> <span class="n">_server_is_alive</span><span class="p">,</span> <span class="n">_default_db_path</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write sidecar files from a legacy server-backed ``registry.db``.</span>
 
-    <span class="n">db_path</span> <span class="o">=</span> <span class="n">db</span> <span class="ow">or</span> <span class="n">_default_db_path</span><span class="p">()</span>
-    <span class="n">info</span> <span class="o">=</span> <span class="n">_read_discovery</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">info</span> <span class="ow">and</span> <span class="n">_server_is_alive</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;url&quot;</span><span class="p">]):</span>
-        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Running at </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (pid </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pid&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;?&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">info</span><span class="p">:</span>
-        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ Discovery file exists but server at </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> is not responding.&quot;</span><span class="p">)</span>
-        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Run: spt registry ensure&quot;</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ No server found (no discovery file at </span><span class="si">{</span><span class="n">db_path</span><span class="si">}</span><span class="s2">).&quot;</span><span class="p">)</span>
-        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Run: spt registry ensure&quot;</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="stop">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.cli.stop">[docs]</a>
-<span class="nd">@registry_app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">stop</span><span class="p">(</span>
-    <span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--db&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to registry.db&quot;</span><span class="p">),</span>
-<span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stop the registry server.&quot;&quot;&quot;</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
-
-    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.registry._db</span><span class="w"> </span><span class="kn">import</span> <span class="n">_read_discovery</span><span class="p">,</span> <span class="n">_discovery_path</span><span class="p">,</span> <span class="n">_default_db_path</span>
-
-    <span class="n">db_path</span> <span class="o">=</span> <span class="n">db</span> <span class="ow">or</span> <span class="n">_default_db_path</span><span class="p">()</span>
-    <span class="n">info</span> <span class="o">=</span> <span class="n">_read_discovery</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">info</span><span class="p">:</span>
-        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;No server found.&quot;</span><span class="p">)</span>
-        <span class="k">return</span>
-
-    <span class="n">pid</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pid&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">pid</span><span class="p">:</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span>
-            <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sent SIGTERM to pid </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">ProcessLookupError</span><span class="p">:</span>
-            <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2"> already dead&quot;</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">PermissionError</span><span class="p">:</span>
-            <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot kill pid </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2"> (permission denied)&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="c1"># Clean up discovery file</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">_discovery_path</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
-    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
-        <span class="k">pass</span>
-    <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;✓ Server stopped&quot;</span><span class="p">)</span></div>
-
-
-
-<div class="viewcode-block" id="sync">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.cli.sync">[docs]</a>
-<span class="nd">@registry_app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">sync</span><span class="p">(</span>
-    <span class="n">scan_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Directory to scan (default: cache_dir)&quot;</span><span class="p">),</span>
-    <span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--db&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to registry.db&quot;</span><span class="p">),</span>
-<span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sync sidecar files from interrupted runs into the registry.</span>
-
-<span class="sd">    When training jobs lose connection to the server (e.g. during SLURM</span>
-<span class="sd">    preemption), they save a ``.registry_sidecar.json`` in their run</span>
-<span class="sd">    directory.  This command finds and ingests those files.</span>
+<span class="sd">    After migration, delete the old DB and run ``spt registry scan --full``</span>
+<span class="sd">    to rebuild the cache from the filesystem.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.registry._db</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegistryDB</span><span class="p">,</span> <span class="n">_default_db_path</span>
-
-    <span class="n">db_path</span> <span class="o">=</span> <span class="n">db</span> <span class="ow">or</span> <span class="n">_default_db_path</span><span class="p">()</span>
-
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">client</span> <span class="o">=</span> <span class="n">RegistryDB</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-    <span class="c1"># Determine scan root</span>
-    <span class="k">if</span> <span class="n">scan_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-        <span class="n">scan_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SPT_CACHE_DIR&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">scan_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span>
-                <span class="n">scan_dir</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span><span class="o">.</span><span class="n">cache_dir</span>
-            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                <span class="k">pass</span>
-        <span class="k">if</span> <span class="n">scan_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;Error: No scan directory. Pass a path or set SPT_CACHE_DIR.&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
     <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span>
 
-    <span class="n">sidecars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">scan_dir</span><span class="p">)</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">&quot;.registry_sidecar.json&quot;</span><span class="p">))</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">sidecars</span><span class="p">:</span>
-        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No sidecar files found under </span><span class="si">{</span><span class="n">scan_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">_sidecar</span> <span class="k">as</span> <span class="n">sidecar_mod</span>
 
-    <span class="n">synced</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">sidecars</span><span class="p">:</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
-            <span class="n">run_id</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_id&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">run_id</span><span class="p">:</span>
-                <span class="k">continue</span>
+    <span class="n">cache_path</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_resolve_cache_and_db</span><span class="p">(</span><span class="n">db</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">)</span>
 
-            <span class="c1"># Insert or update</span>
-            <span class="n">client</span><span class="o">.</span><span class="n">insert_run</span><span class="p">(</span>
-                <span class="n">run_id</span><span class="p">,</span>
-                <span class="n">status</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;interrupted&quot;</span><span class="p">),</span>
-                <span class="n">run_dir</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_dir&quot;</span><span class="p">),</span>
-                <span class="n">config</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;config&quot;</span><span class="p">),</span>
-                <span class="n">hparams</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hparams&quot;</span><span class="p">),</span>
-                <span class="n">tags</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tags&quot;</span><span class="p">),</span>
-                <span class="n">notes</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;notes&quot;</span><span class="p">),</span>
-            <span class="p">)</span>
-            <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;summary&quot;</span><span class="p">):</span>
-                <span class="n">client</span><span class="o">.</span><span class="n">update_run</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">summary</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;summary&quot;</span><span class="p">])</span>
+    <span class="n">src</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">src_db</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">src</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Source DB not found: </span><span class="si">{</span><span class="n">src</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-            <span class="c1"># Remove sidecar after successful sync</span>
-            <span class="n">path</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
-            <span class="n">synced</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ✓ </span><span class="si">{</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-            <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ✗ </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;file:</span><span class="si">{</span><span class="n">src</span><span class="si">}</span><span class="s2">?mode=ro&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">row_factory</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">Row</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM runs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-    <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Synced </span><span class="si">{</span><span class="n">synced</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">sidecars</span><span class="p">)</span><span class="si">}</span><span class="s2"> sidecar files.&quot;</span><span class="p">)</span></div>
+    <span class="n">written</span> <span class="o">=</span> <span class="n">skipped</span> <span class="o">=</span> <span class="n">missing_dir</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="n">run_dir</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;run_dir&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">run_dir</span><span class="p">:</span>
+            <span class="n">missing_dir</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+        <span class="n">run_dir_p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">run_dir_p</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="n">missing_dir</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+        <span class="n">dest</span> <span class="o">=</span> <span class="n">sidecar_mod</span><span class="o">.</span><span class="n">sidecar_path</span><span class="p">(</span><span class="n">run_dir_p</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dest</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">overwrite</span><span class="p">:</span>
+            <span class="n">skipped</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_decode</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">default</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="k">except</span> <span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="n">default</span>
+            <span class="k">return</span> <span class="n">v</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">sidecar_mod</span><span class="o">.</span><span class="n">make_sidecar</span><span class="p">(</span>
+            <span class="n">run_id</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;run_id&quot;</span><span class="p">],</span>
+            <span class="n">run_dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">run_dir_p</span><span class="p">),</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="s2">&quot;unknown&quot;</span><span class="p">,</span>
+            <span class="n">created_at</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;created_at&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">hparams</span><span class="o">=</span><span class="n">_decode</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;hparams&quot;</span><span class="p">],</span> <span class="p">{}),</span>
+            <span class="n">summary</span><span class="o">=</span><span class="n">_decode</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;summary&quot;</span><span class="p">],</span> <span class="p">{}),</span>
+            <span class="n">tags</span><span class="o">=</span><span class="n">_decode</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;tags&quot;</span><span class="p">],</span> <span class="p">[]),</span>
+            <span class="n">notes</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;notes&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">checkpoint_path</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;checkpoint_path&quot;</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">sidecar_mod</span><span class="o">.</span><span class="n">write_sidecar</span><span class="p">(</span><span class="n">run_dir_p</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="n">written</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;migrate: </span><span class="si">{</span><span class="n">written</span><span class="si">}</span><span class="s2"> sidecars written, </span><span class="si">{</span><span class="n">skipped</span><span class="si">}</span><span class="s2"> already existed, &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">missing_dir</span><span class="si">}</span><span class="s2"> rows had no/missing run_dir&quot;</span>
+    <span class="p">)</span>
+    <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
+        <span class="s2">&quot;Next: delete the old DB and run &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;`spt registry scan --full --cache-dir </span><span class="si">{</span><span class="n">cache_path</span><span class="si">}</span><span class="s2">`&quot;</span>
+    <span class="p">)</span></div>
 
 
 

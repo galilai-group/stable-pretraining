@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g6a567ebd4 documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+gca461b7a8 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=46b96f6b"></script>
+    <script src="../../../_static/documentation_options.js?v=76d8e1e2"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g6a567ebd4 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gca461b7a8 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -793,73 +793,57 @@
             <span class="k">pass</span>  <span class="c1"># Hydra not active</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_inject_registry_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Auto-add :class:`RegistryLogger` and a :class:`CSVLogger`.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Auto-add :class:`RegistryLogger`.</span>
 
-<span class="sd">        Always active by default so that every run is indexed and has</span>
-<span class="sd">        per-step CSV logs.  Works with or without ``cache_dir``:</span>
+<span class="sd">        ``RegistryLogger`` is a :class:`~lightning.pytorch.loggers.CSVLogger`</span>
+<span class="sd">        subclass — a single logger captures per-step CSV metrics and</span>
+<span class="sd">        writes a ``sidecar.json`` + ``heartbeat`` file for fast querying</span>
+<span class="sd">        via ``spt registry …``.  Works with or without ``cache_dir``:</span>
 
-<span class="sd">        - **With ``cache_dir``**: ``registry.db`` lives in ``cache_dir``,</span>
-<span class="sd">          CSV logs go to ``run_dir/``.</span>
-<span class="sd">        - **Without ``cache_dir``**: both fall back to the Trainer&#39;s</span>
-<span class="sd">          ``default_root_dir`` (typically the current working directory).</span>
+<span class="sd">        * **With ``cache_dir``**: run writes under</span>
+<span class="sd">          ``{cache_dir}/runs/YYYYMMDD/HHMMSS/{run_id}/``.</span>
+<span class="sd">        * **Without ``cache_dir``**: falls back to the Trainer&#39;s</span>
+<span class="sd">          ``default_root_dir``.</span>
 
-<span class="sd">        The RegistryLogger captures the run summary, config, and metadata</span>
-<span class="sd">        into a shared SQLite database for fast cross-run queries.</span>
-
-<span class="sd">        The CSVLogger records **per-step metrics** so that no detailed</span>
-<span class="sd">        training history is lost — the RegistryLogger only stores the</span>
-<span class="sd">        last value per metric key (like wandb&#39;s ``run.summary``), not the</span>
-<span class="sd">        full time series.</span>
-
-<span class="sd">        Can be disabled via ``spt.set(default_callbacks={&quot;registry_logger&quot;: False})``.</span>
+<span class="sd">        Can be disabled via ``spt.set(default_loggers={&quot;registry&quot;: False})``.</span>
+<span class="sd">        If a sibling :class:`CSVLogger` is already present, the</span>
+<span class="sd">        ``RegistryLogger`` replaces it to avoid two writers on the same</span>
+<span class="sd">        ``metrics.csv``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cfg</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
-
-        <span class="c1"># Respect user opt-out</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">cfg</span><span class="o">.</span><span class="n">default_loggers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;registry&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
             <span class="k">return</span>
 
         <span class="kn">from</span><span class="w"> </span><span class="nn">.registry.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegistryLogger</span>
 
-        <span class="c1"># Resolve paths: cache_dir → run_dir, otherwise trainer&#39;s root dir</span>
+        <span class="c1"># Resolve run_dir + run_id.  Manager._resolve_run_dir already</span>
+        <span class="c1"># populated these when cache_dir is set.</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_run_dir&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">log_dir</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="p">)</span>
+            <span class="n">run_dir</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="p">)</span>
             <span class="n">run_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">log_dir</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">default_root_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
+            <span class="n">run_dir</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">default_root_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
             <span class="n">run_id</span> <span class="o">=</span> <span class="n">_generate_run_id</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">db_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;registry.db&quot;</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">db_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">log_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;registry.db&quot;</span><span class="p">)</span>
+        <span class="c1"># Drop any pre-existing CSVLogger — RegistryLogger *is* a</span>
+        <span class="c1"># CSVLogger and would otherwise race on metrics.csv.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">lgr</span>
+            <span class="k">for</span> <span class="n">lgr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="n">lgr</span><span class="p">,</span> <span class="n">lightning</span><span class="o">.</span><span class="n">pytorch</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">CSVLogger</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lgr</span><span class="p">,</span> <span class="n">RegistryLogger</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
 
-        <span class="n">registry_logger</span> <span class="o">=</span> <span class="n">RegistryLogger</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="n">db_path</span><span class="p">)</span>
-        <span class="n">registry_logger</span><span class="o">.</span><span class="n">_run_id</span> <span class="o">=</span> <span class="n">run_id</span>
-        <span class="n">registry_logger</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">=</span> <span class="n">log_dir</span>
-
+        <span class="n">registry_logger</span> <span class="o">=</span> <span class="n">RegistryLogger</span><span class="p">(</span><span class="n">run_dir</span><span class="o">=</span><span class="n">run_dir</span><span class="p">,</span> <span class="n">run_id</span><span class="o">=</span><span class="n">run_id</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">registry_logger</span><span class="p">)</span>
 
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RegistryLogger&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  db_path: </span><span class="si">{</span><span class="n">registry_logger</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">db_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir: </span><span class="si">{</span><span class="n">registry_logger</span><span class="o">.</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="n">registry_logger</span><span class="o">.</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">registry_logger</span><span class="o">.</span><span class="n">_tags</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  tags:    </span><span class="si">{</span><span class="n">registry_logger</span><span class="o">.</span><span class="n">_tags</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Ensure a CSVLogger is present so per-step metrics are saved.</span>
-        <span class="c1"># The RegistryLogger only stores summary (last value per key);</span>
-        <span class="c1"># without a CSVLogger, the step-by-step history would be lost.</span>
-        <span class="n">has_csv</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
-            <span class="nb">isinstance</span><span class="p">(</span><span class="n">lgr</span><span class="p">,</span> <span class="n">lightning</span><span class="o">.</span><span class="n">pytorch</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">CSVLogger</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">lgr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span>
-        <span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_csv</span><span class="p">:</span>
-            <span class="n">csv_logger</span> <span class="o">=</span> <span class="n">lightning</span><span class="o">.</span><span class="n">pytorch</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">CSVLogger</span><span class="p">(</span>
-                <span class="n">save_dir</span><span class="o">=</span><span class="n">log_dir</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
-            <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">csv_logger</span><span class="p">)</span>
-            <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;CSVLogger (auto)&quot;</span><span class="p">)</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  log_dir: </span><span class="si">{</span><span class="n">csv_logger</span><span class="o">.</span><span class="n">log_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_flatten_hydra_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a flat dot-separated dict from the raw Hydra configs.</span>

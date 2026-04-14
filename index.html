@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+g6a567ebd4 documentation</title>
+    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+gca461b7a8 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=46b96f6b"></script>
+    <script src="_static/documentation_options.js?v=76d8e1e2"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g6a567ebd4 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gca461b7a8 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -399,10 +399,12 @@
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-registry">Run Registry</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#architecture">Architecture</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-gets-stored">What gets stored</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#grouping-with-tags">Grouping with tags</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#querying-runs">Querying runs</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#concurrency-and-slurm-requeue">Concurrency and SLURM requeue</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#liveness-detection">Liveness detection</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cli">CLI</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#disabling-the-registry">Disabling the registry</a></li>
 </ul>
@@ -880,26 +882,40 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 </section>
 <section id="run-registry">
 <h2>Run Registry<a class="headerlink" href="#run-registry" title="Link to this heading">#</a></h2>
-<p>When <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code> is set, <code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code> automatically maintains a <strong>local SQLite registry</strong> that indexes every run. Think of it as a local, offline, instant-query alternative to the wandb dashboard — designed for large sweeps on HPC clusters.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code> is set, <code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code> automatically maintains a <strong>filesystem-backed run registry</strong> that indexes every run. Think of it as a local, offline, instant-query alternative to the wandb dashboard — designed for large sweeps on HPC clusters.</p>
 <p>There is <strong>nothing to configure</strong> — if <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code> is set, the registry is active:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span>
 
 <span class="n">spt</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">cache_dir</span><span class="o">=</span><span class="s2">&quot;/scratch/runs&quot;</span><span class="p">)</span>
-<span class="c1"># That&#39;s it. Every run is indexed in /scratch/runs/registry.db</span>
+<span class="c1"># That&#39;s it. Every run writes a sidecar.json into its run directory.</span>
 </pre></div>
 </div>
+<section id="architecture">
+<h3>Architecture<a class="headerlink" href="#architecture" title="Link to this heading">#</a></h3>
+<p>The registry uses a <strong>filesystem-first sidecar pattern</strong>. During training, each run writes only plain files — no SQLite, no network I/O:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>{run_dir}/
+  sidecar.json    ← atomic JSON snapshot (hparams, summary, status, tags)
+  heartbeat       ← empty file, mtime touched every flush (liveness signal)
+  metrics.csv     ← CSVLogger per-step time series
+  hparams.yaml    ← CSVLogger hparams
+  checkpoints/    ← Lightning checkpoints
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">sidecar.json</span></code> is the <strong>source of truth</strong> for each run. It is atomically rewritten (tmp + fsync + rename) so readers never see a partial file. A separate <strong>scanner</strong> (<code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">scan</span></code>) walks <code class="docutils literal notranslate"><span class="pre">{cache_dir}/runs/**/sidecar.json</span></code> and builds a SQLite cache (<code class="docutils literal notranslate"><span class="pre">registry.db</span></code>) for fast querying. This cache is fully derived — deleting it is harmless; run <code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">scan</span> <span class="pre">--full</span></code> to rebuild.</p>
+<p>This design eliminates all SQLite contention during training: thousands of concurrent SLURM jobs write only to their own run directory and never touch a shared database.</p>
+</section>
 <section id="what-gets-stored">
 <h3>What gets stored<a class="headerlink" href="#what-gets-stored" title="Link to this heading">#</a></h3>
 <p>The registry captures three categories of data per run, all automatically:</p>
 <ul class="simple">
 <li><p><strong>Config / hparams</strong> — the full Hydra config (trainer, module, data) is flattened into dot-separated keys (e.g. <code class="docutils literal notranslate"><span class="pre">module.optim.optimizer.lr</span></code>, <code class="docutils literal notranslate"><span class="pre">trainer.max_epochs</span></code>) and stored as both <code class="docutils literal notranslate"><span class="pre">config</span></code> and <code class="docutils literal notranslate"><span class="pre">hparams</span></code>. This works the same way as wandb’s config: the Manager flattens the Hydra DictConfig and injects it into <code class="docutils literal notranslate"><span class="pre">module.save_hyperparameters()</span></code> before <code class="docutils literal notranslate"><span class="pre">trainer.fit()</span></code>, so Lightning’s built-in <code class="docutils literal notranslate"><span class="pre">_log_hyperparams</span></code> sends it to <strong>all</strong> loggers (wandb, CSV, TensorBoard, and the registry) automatically.</p></li>
-<li><p><strong>Summary</strong> — every <code class="docutils literal notranslate"><span class="pre">self.log()</span></code> call in your LightningModule accumulates into a wandb-style summary dict (last value per metric key). At the end of training, the final summary (e.g. <code class="docutils literal notranslate"><span class="pre">{&quot;val_acc&quot;:</span> <span class="pre">0.85,</span> <span class="pre">&quot;train_loss&quot;:</span> <span class="pre">0.12}</span></code>) is written to the database.</p></li>
-<li><p><strong>Metadata</strong> — run ID, status (<code class="docutils literal notranslate"><span class="pre">running</span></code>/<code class="docutils literal notranslate"><span class="pre">completed</span></code>/<code class="docutils literal notranslate"><span class="pre">failed</span></code>), tags, notes, <code class="docutils literal notranslate"><span class="pre">run_dir</span></code> path, and best checkpoint path.</p></li>
+<li><p><strong>Summary</strong> — every <code class="docutils literal notranslate"><span class="pre">self.log()</span></code> call in your LightningModule accumulates into a wandb-style summary dict (last value per metric key). At the end of training, the final summary (e.g. <code class="docutils literal notranslate"><span class="pre">{&quot;val_acc&quot;:</span> <span class="pre">0.85,</span> <span class="pre">&quot;train_loss&quot;:</span> <span class="pre">0.12}</span></code>) is written to the sidecar.</p></li>
+<li><p><strong>Metadata</strong> — run ID, status (<code class="docutils literal notranslate"><span class="pre">running</span></code>/<code class="docutils literal notranslate"><span class="pre">completed</span></code>/<code class="docutils literal notranslate"><span class="pre">failed</span></code>/<code class="docutils literal notranslate"><span class="pre">orphaned</span></code>), liveness (heartbeat-based), tags, notes, <code class="docutils literal notranslate"><span class="pre">run_dir</span></code> path, and best checkpoint path.</p></li>
 </ul>
 </section>
 <section id="grouping-with-tags">
 <h3>Grouping with tags<a class="headerlink" href="#grouping-with-tags" title="Link to this heading">#</a></h3>
-<p>All grouping is done through <strong>tags</strong> — a flat list of strings attached to each run. There is no separate “project” or “group” concept; <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code> already acts as the project (one database file), and tags handle everything else.</p>
+<p>All grouping is done through <strong>tags</strong> — a flat list of strings attached to each run. There is no separate “project” or “group” concept; <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code> already acts as the project, and tags handle everything else.</p>
 <p>For SLURM array jobs, a <code class="docutils literal notranslate"><span class="pre">&quot;sweep:&lt;SLURM_ARRAY_JOB_ID&gt;&quot;</span></code> tag is automatically added so that all tasks in the same array are queryable as a group. You can add your own tags in YAML:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">logger</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">_target_</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stable_pretraining.registry.RegistryLogger</span>
@@ -910,7 +926,7 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 </section>
 <section id="querying-runs">
 <h3>Querying runs<a class="headerlink" href="#querying-runs" title="Link to this heading">#</a></h3>
-<p>Use <code class="docutils literal notranslate"><span class="pre">spt.open_registry()</span></code> from a notebook or script to query across all your runs:</p>
+<p><code class="docutils literal notranslate"><span class="pre">open_registry()</span></code> triggers an incremental scan of the filesystem before returning, so the cache reflects the current state. A short in-process TTL ensures back-to-back queries don’t re-scan.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span>
 
 <span class="n">spt</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">cache_dir</span><span class="o">=</span><span class="s2">&quot;/scratch/runs&quot;</span><span class="p">)</span>
@@ -928,10 +944,13 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 <span class="c1"># Filter by any Hydra config key (deeply nested keys work)</span>
 <span class="n">lars_runs</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">hparams</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;module.optim.optimizer.type&quot;</span><span class="p">:</span> <span class="s2">&quot;LARS&quot;</span><span class="p">})</span>
 
+<span class="c1"># Check which runs are still alive (heartbeat-based)</span>
+<span class="n">active</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">alive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
 <span class="c1"># All resnet runs as a pandas DataFrame</span>
 <span class="n">df</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="s2">&quot;resnet50&quot;</span><span class="p">)</span>
 <span class="c1"># Columns include flattened hparams and summary:</span>
-<span class="c1">#   run_id, status, tags, notes, checkpoint_path,</span>
+<span class="c1">#   run_id, status, alive, tags, notes, checkpoint_path,</span>
 <span class="c1">#   hparams.module.optim.optimizer.lr, hparams.trainer.max_epochs,</span>
 <span class="c1">#   summary.val_acc, summary.train_loss, ...</span>
 
@@ -944,7 +963,18 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 </section>
 <section id="concurrency-and-slurm-requeue">
 <h3>Concurrency and SLURM requeue<a class="headerlink" href="#concurrency-and-slurm-requeue" title="Link to this heading">#</a></h3>
-<p>The registry uses SQLite in WAL mode with exponential-backoff retries, so thousands of concurrent SLURM jobs can safely write to the same database file. On SLURM requeue, the run ID is deterministic (derived from <code class="docutils literal notranslate"><span class="pre">SLURM_JOB_ID</span></code>), so the requeued job reconnects to the same registry row and resumes seamlessly — the same mechanism used for wandb run resumption and checkpoint recovery.</p>
+<p>Since training jobs only write to their own run directory (plain files, no shared database), there is zero SQLite contention — thousands of concurrent SLURM jobs run safely with no coordination. The scanner is the sole SQLite writer and uses WAL mode so concurrent readers never block it. On SLURM requeue, the run ID is deterministic (derived from <code class="docutils literal notranslate"><span class="pre">SLURM_JOB_ID</span></code>), so the requeued job finds its previous sidecar and resumes seamlessly — the same mechanism used for wandb run resumption and checkpoint recovery.</p>
+</section>
+<section id="liveness-detection">
+<h3>Liveness detection<a class="headerlink" href="#liveness-detection" title="Link to this heading">#</a></h3>
+<p>The registry tracks whether a run is alive via a <strong>heartbeat</strong> file (an empty file whose mtime is touched on every <code class="docutils literal notranslate"><span class="pre">log_metrics</span></code> call). The scanner considers a run alive if its heartbeat is newer than 180 seconds and its status is not terminal. This lets you distinguish running, stalled, and dead jobs without contacting SLURM:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Only alive runs</span>
+spt<span class="w"> </span>registry<span class="w"> </span>ls<span class="w"> </span>--alive
+
+<span class="c1"># Only dead/finished runs</span>
+spt<span class="w"> </span>registry<span class="w"> </span>ls<span class="w"> </span>--dead
+</pre></div>
+</div>
 </section>
 <section id="cli">
 <h3>CLI<a class="headerlink" href="#cli" title="Link to this heading">#</a></h3>
@@ -952,8 +982,9 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># List all runs</span>
 spt<span class="w"> </span>registry<span class="w"> </span>ls
 
-<span class="c1"># Filter by tag or status</span>
+<span class="c1"># Filter by tag, status, or liveness</span>
 spt<span class="w"> </span>registry<span class="w"> </span>ls<span class="w"> </span>--tag<span class="w"> </span>resnet50<span class="w"> </span>--status<span class="w"> </span>completed
+spt<span class="w"> </span>registry<span class="w"> </span>ls<span class="w"> </span>--alive
 
 <span class="c1"># Top 5 runs by a metric (use --asc for losses)</span>
 spt<span class="w"> </span>registry<span class="w"> </span>best<span class="w"> </span>val_acc
@@ -964,9 +995,16 @@ spt<span class="w"> </span>registry<span class="w"> </span>show<span class="w"> 
 
 <span class="c1"># Export to CSV or Parquet</span>
 spt<span class="w"> </span>registry<span class="w"> </span><span class="nb">export</span><span class="w"> </span>sweep_results.csv<span class="w"> </span>--tag<span class="w"> </span>sweep:12345
+
+<span class="c1"># Manually refresh the SQLite cache from sidecars</span>
+spt<span class="w"> </span>registry<span class="w"> </span>scan
+spt<span class="w"> </span>registry<span class="w"> </span>scan<span class="w"> </span>--full<span class="w">  </span><span class="c1"># re-ingest everything (schema migration, DB rebuild)</span>
+
+<span class="c1"># Migrate from a legacy server-backed registry.db</span>
+spt<span class="w"> </span>registry<span class="w"> </span>migrate<span class="w"> </span>/path/to/old/registry.db<span class="w"> </span>--cache-dir<span class="w"> </span>/scratch/runs
 </pre></div>
 </div>
-<p>By default the CLI uses <code class="docutils literal notranslate"><span class="pre">~/.cache/stable-pretraining/registry.db</span></code> (or <code class="docutils literal notranslate"><span class="pre">$SPT_CACHE_DIR/registry.db</span></code> if set). Pass <code class="docutils literal notranslate"><span class="pre">--db</span> <span class="pre">/path/to/registry.db</span></code> to query a different database.</p>
+<p>By default the CLI uses <code class="docutils literal notranslate"><span class="pre">$SPT_CACHE_DIR/registry.db</span></code> (or the <code class="docutils literal notranslate"><span class="pre">spt.set(cache_dir=...)</span></code> value). Pass <code class="docutils literal notranslate"><span class="pre">--db</span> <span class="pre">/path/to/registry.db</span></code> and/or <code class="docutils literal notranslate"><span class="pre">--cache-dir</span></code> to override.</p>
 </section>
 <section id="disabling-the-registry">
 <h3>Disabling the registry<a class="headerlink" href="#disabling-the-registry" title="Link to this heading">#</a></h3>
@@ -1459,10 +1497,12 @@ tar<span class="w"> </span>xzf<span class="w"> </span>install-tl-unx.tar.gz
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-registry">Run Registry</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#architecture">Architecture</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-gets-stored">What gets stored</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#grouping-with-tags">Grouping with tags</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#querying-runs">Querying runs</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#concurrency-and-slurm-requeue">Concurrency and SLURM requeue</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#liveness-detection">Liveness detection</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cli">CLI</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#disabling-the-registry">Disabling the registry</a></li>
 </ul>

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.registry.query &#8212; stable-pretraining 0.1.dev1+g6a567ebd4 documentation</title>
+    <title>stable_pretraining.registry.query &#8212; stable-pretraining 0.1.dev1+gca461b7a8 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=46b96f6b"></script>
+    <script src="../../../../_static/documentation_options.js?v=76d8e1e2"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g6a567ebd4 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gca461b7a8 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -330,46 +330,45 @@
 <span></span><span class="c1"># This source code is licensed under the license found in the</span>
 <span class="c1"># LICENSE file in the root directory of this source tree.</span>
 
-<span class="sd">&quot;&quot;&quot;Read-only query API for the run registry.</span>
+<span class="sd">&quot;&quot;&quot;Read-only query API for the filesystem-backed run registry.</span>
 
-<span class="sd">Example::</span>
+<span class="sd">Usage::</span>
 
 <span class="sd">    import stable_pretraining as spt</span>
 
-<span class="sd">    reg = spt.open_registry()</span>
+<span class="sd">    reg = spt.open_registry()  # lazily scans before querying</span>
 
-<span class="sd">    # All runs from a SLURM array sweep</span>
 <span class="sd">    runs = reg.query(tag=&quot;sweep:12345&quot;)</span>
-
-<span class="sd">    # Best runs by validation accuracy</span>
 <span class="sd">    best = reg.query(tag=&quot;sweep:12345&quot;, sort_by=&quot;summary.val_acc&quot;, limit=5)</span>
-<span class="sd">    print(best[0].summary)       # {&quot;val_acc&quot;: 0.847, ...}</span>
-<span class="sd">    print(best[0].run_dir)       # /scratch/runs/runs/20260408/.../12345_0/</span>
-<span class="sd">    print(best[0].checkpoint_path)</span>
 
-<span class="sd">    # Export to pandas DataFrame</span>
 <span class="sd">    df = reg.to_dataframe(tag=&quot;resnet50&quot;)</span>
+
+<span class="sd">``open_registry()`` triggers an incremental scan of</span>
+<span class="sd">``{cache_dir}/runs/**`` before returning.  A short in-process TTL</span>
+<span class="sd">short-circuits back-to-back calls so scripts stay snappy.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._db</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegistryDB</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">_scanner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._store</span><span class="w"> </span><span class="kn">import</span> <span class="n">Store</span>
 
 
 <div class="viewcode-block" id="RunRecord">
 <a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.RunRecord">[docs]</a>
 <span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">RunRecord</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Immutable record for a single training run.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Immutable view of a single training run, hydrated from the cache.&quot;&quot;&quot;</span>
 
     <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">created_at</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">updated_at</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">alive</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">run_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">checkpoint_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
@@ -383,13 +382,17 @@
 <div class="viewcode-block" id="Registry">
 <a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.Registry">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Registry</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read-only query interface over the run registry database.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read-only query interface over the registry cache.</span>
 
-<span class="sd">    Do not instantiate directly — use :func:`open_registry`.</span>
+<span class="sd">    Instantiate via :func:`open_registry` rather than directly — the</span>
+<span class="sd">    factory runs a lazy filesystem scan first so you don&#39;t query stale</span>
+<span class="sd">    data.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">RegistryDB</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_db</span> <span class="o">=</span> <span class="n">db</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">store</span><span class="p">:</span> <span class="n">Store</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_store</span> <span class="o">=</span> <span class="n">store</span>
+
+    <span class="c1"># ------------------------------------------------------------------ queries</span>
 
 <div class="viewcode-block" id="Registry.query">
 <a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.Registry.query">[docs]</a>
@@ -398,81 +401,68 @@
         <span class="o">*</span><span class="p">,</span>
         <span class="n">tag</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">alive</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">hparams</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">sort_by</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">descending</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">limit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">RunRecord</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Query runs matching the given filters.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Query runs matching filters.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            tag: Filter runs that contain this tag.  Use</span>
-<span class="sd">                ``&quot;sweep:&lt;job_id&gt;&quot;`` to find all runs from a SLURM array.</span>
-<span class="sd">            status: Filter by run status (``&quot;running&quot;``, ``&quot;completed&quot;``,</span>
-<span class="sd">                ``&quot;failed&quot;``).</span>
-<span class="sd">            hparams: Dict of ``{key: value}`` pairs to match against the</span>
-<span class="sd">                flattened hparams JSON.  All pairs must match (AND logic).</span>
-<span class="sd">            sort_by: Column or JSON path to sort by.  Use</span>
-<span class="sd">                ``&quot;summary.&lt;key&gt;&quot;`` or ``&quot;hparams.&lt;key&gt;&quot;`` for JSON fields,</span>
-<span class="sd">                or plain column names like ``&quot;created_at&quot;``.</span>
-<span class="sd">            descending: Sort direction (default ``True``).</span>
-<span class="sd">            limit: Maximum number of results.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            List of :class:`RunRecord` objects.</span>
+<span class="sd">            tag: Include runs that carry this tag (uses substring match</span>
+<span class="sd">                on the stored JSON tag array).</span>
+<span class="sd">            status: Filter by ``status`` column (``running``,</span>
+<span class="sd">                ``completed``, ``failed``, ``orphaned``, ``interrupted``).</span>
+<span class="sd">            alive: Filter by heartbeat-based liveness.</span>
+<span class="sd">            hparams: ``{key: value}`` pairs the flattened hparams must</span>
+<span class="sd">                match (AND, client-side).</span>
+<span class="sd">            sort_by: Column name or ``summary.&lt;k&gt;`` / ``hparams.&lt;k&gt;``</span>
+<span class="sd">                / ``config.&lt;k&gt;``.</span>
+<span class="sd">            descending: Sort order.</span>
+<span class="sd">            limit: Max rows.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">query_runs</span><span class="p">(</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="o">.</span><span class="n">query_runs</span><span class="p">(</span>
             <span class="n">tag</span><span class="o">=</span><span class="n">tag</span><span class="p">,</span>
             <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">,</span>
+            <span class="n">alive</span><span class="o">=</span><span class="n">alive</span><span class="p">,</span>
             <span class="n">sort_by</span><span class="o">=</span><span class="n">sort_by</span><span class="p">,</span>
             <span class="n">descending</span><span class="o">=</span><span class="n">descending</span><span class="p">,</span>
             <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span>
         <span class="p">)</span>
-
-        <span class="n">records</span> <span class="o">=</span> <span class="p">[</span><span class="n">_dict_to_record</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">]</span>
-
-        <span class="c1"># Client-side hparams filtering (works even without json_extract)</span>
+        <span class="n">records</span> <span class="o">=</span> <span class="p">[</span><span class="n">_row_to_record</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">hparams</span><span class="p">:</span>
             <span class="n">records</span> <span class="o">=</span> <span class="p">[</span>
                 <span class="n">r</span>
                 <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span>
                 <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="o">==</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">hparams</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
             <span class="p">]</span>
-
         <span class="k">return</span> <span class="n">records</span></div>
 
 
 <div class="viewcode-block" id="Registry.get">
 <a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.Registry.get">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">RunRecord</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fetch a single run by ID.&quot;&quot;&quot;</span>
-        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">row</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">_dict_to_record</span><span class="p">(</span><span class="n">row</span><span class="p">)</span></div>
+        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_row_to_record</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="k">if</span> <span class="n">row</span> <span class="k">else</span> <span class="kc">None</span></div>
 
 
 <div class="viewcode-block" id="Registry.to_dataframe">
 <a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.Registry.to_dataframe">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">query_kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;pd.DataFrame&quot;</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Query runs and return a pandas DataFrame.</span>
-
-<span class="sd">        Flattens ``hparams`` and ``summary`` dicts into columns with</span>
-<span class="sd">        ``hparams.`` and ``summary.`` prefixes.</span>
-
-<span class="sd">        Accepts the same keyword arguments as :meth:`query`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">query_kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a DataFrame with flattened ``hparams.*`` / ``summary.*`` cols.&quot;&quot;&quot;</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
         <span class="n">records</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="o">**</span><span class="n">query_kwargs</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">records</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
 
-        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span><span class="p">:</span>
             <span class="n">row</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">run_id</span><span class="p">,</span>
                 <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">status</span><span class="p">,</span>
+                <span class="s2">&quot;alive&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">alive</span><span class="p">,</span>
                 <span class="s2">&quot;created_at&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">created_at</span><span class="p">,</span>
                 <span class="s2">&quot;updated_at&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">updated_at</span><span class="p">,</span>
                 <span class="s2">&quot;run_dir&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">run_dir</span><span class="p">,</span>
@@ -485,80 +475,117 @@
             <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">summary</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;summary.</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
-
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span></div>
 
 
+    <span class="c1"># ------------------------------------------------------------------ dunder</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RunRecord</span><span class="p">:</span>
-        <span class="n">record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">record</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">rec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rec</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">record</span>
+        <span class="k">return</span> <span class="n">rec</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Registry(db_path=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">db_path</span><span class="si">!r}</span><span class="s2">, runs=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Registry(db_path=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="o">.</span><span class="n">db_path</span><span class="si">!r}</span><span class="s2">, runs=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
 
 <div class="viewcode-block" id="Registry.close">
 <a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.Registry.close">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_store</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 </div>
 
 
 
+<span class="c1"># --------------------------------------------------------------------- factory</span>
+
+
 <div class="viewcode-block" id="open_registry">
 <a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.open_registry">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">open_registry</span><span class="p">(</span><span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Registry</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Open a run registry database for querying.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">open_registry</span><span class="p">(</span>
+    <span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">scan</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">scan_ttl_s</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Registry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Open the registry for querying.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        db_path: Path to the SQLite database file.  If ``None``, uses</span>
-<span class="sd">            ``{cache_dir}/registry.db`` from the global config.</span>
+<span class="sd">        db_path: Path to the cache DB.  Defaults to</span>
+<span class="sd">            ``{cache_dir}/registry.db``.</span>
+<span class="sd">        cache_dir: Root where runs are stored (``{cache_dir}/runs/...``).</span>
+<span class="sd">            Defaults to ``spt.set(cache_dir=...)``.</span>
+<span class="sd">        scan: Run an incremental scan before returning, so the cache</span>
+<span class="sd">            reflects the current filesystem state.  Disable when you</span>
+<span class="sd">            know the scan was just done.</span>
+<span class="sd">        scan_ttl_s: If another scan happened within this many seconds</span>
+<span class="sd">            in the current process, skip.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        :class:`Registry` instance.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If ``db_path`` is None and no ``cache_dir`` is configured.</span>
+<span class="sd">        A read-only :class:`Registry`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">resolved_cache</span><span class="p">,</span> <span class="n">resolved_db</span> <span class="o">=</span> <span class="n">_resolve_paths</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">db_path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">scan</span><span class="p">:</span>
+        <span class="n">_scanner</span><span class="o">.</span><span class="n">scan_for_query</span><span class="p">(</span>
+            <span class="n">resolved_cache</span><span class="p">,</span>
+            <span class="n">resolved_db</span><span class="p">,</span>
+            <span class="n">ttl_s</span><span class="o">=</span><span class="n">scan_ttl_s</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Registry</span><span class="p">(</span><span class="n">Store</span><span class="p">(</span><span class="n">resolved_db</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_paths</span><span class="p">(</span>
+    <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]],</span>
+    <span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="n">Path</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve ``(cache_dir, db_path)`` from args + global config.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">cache_dir</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">db_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">.._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span>
+
+            <span class="n">cfg_cache</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span><span class="o">.</span><span class="n">cache_dir</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">cfg_cache</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">cache_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">cfg_cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;No cache_dir provided and spt.set(cache_dir=...) is not &quot;</span>
+                    <span class="s2">&quot;configured. Pass an explicit cache_dir or set it globally.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">cfg_cache</span>
+
+    <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">db_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">.._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span>
+        <span class="n">db_path</span> <span class="o">=</span> <span class="n">cache_dir</span> <span class="o">/</span> <span class="s2">&quot;registry.db&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">db_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
 
-        <span class="n">cfg</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;No db_path provided and spt.set(cache_dir=...) is not configured. &quot;</span>
-                <span class="s2">&quot;Pass an explicit db_path or set cache_dir first.&quot;</span>
-            <span class="p">)</span>
-        <span class="n">db_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;registry.db&quot;</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">Registry</span><span class="p">(</span><span class="n">RegistryDB</span><span class="p">(</span><span class="n">db_path</span><span class="p">))</span></div>
+    <span class="k">return</span> <span class="n">cache_dir</span><span class="p">,</span> <span class="n">db_path</span>
 
 
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_dict_to_record</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">RunRecord</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_row_to_record</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">RunRecord</span><span class="p">:</span>
     <span class="k">return</span> <span class="n">RunRecord</span><span class="p">(</span>
         <span class="n">run_id</span><span class="o">=</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;run_id&quot;</span><span class="p">],</span>
         <span class="n">status</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
-        <span class="n">created_at</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;created_at&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
-        <span class="n">updated_at</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;updated_at&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="n">created_at</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;created_at&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="n">updated_at</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;updated_at&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="n">alive</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;alive&quot;</span><span class="p">)),</span>
         <span class="n">run_dir</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_dir&quot;</span><span class="p">),</span>
         <span class="n">checkpoint_path</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;checkpoint_path&quot;</span><span class="p">),</span>
-        <span class="n">config</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;config&quot;</span><span class="p">,</span> <span class="p">{}),</span>
-        <span class="n">hparams</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hparams&quot;</span><span class="p">,</span> <span class="p">{}),</span>
-        <span class="n">summary</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;summary&quot;</span><span class="p">,</span> <span class="p">{}),</span>
-        <span class="n">tags</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tags&quot;</span><span class="p">,</span> <span class="p">[]),</span>
-        <span class="n">notes</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;notes&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+        <span class="n">config</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;config&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{},</span>
+        <span class="n">hparams</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hparams&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{},</span>
+        <span class="n">summary</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;summary&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{},</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tags&quot;</span><span class="p">,</span> <span class="p">[])</span> <span class="ow">or</span> <span class="p">[],</span>
+        <span class="n">notes</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;notes&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-
-
-<span class="k">try</span><span class="p">:</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>  <span class="c1"># noqa: F401</span>
-<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-    <span class="k">pass</span>
 </pre></div>
 
                 </article>
