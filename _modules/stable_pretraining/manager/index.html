@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+gca461b7a8 documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g570c592d3 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=76d8e1e2"></script>
+    <script src="../../../_static/documentation_options.js?v=9da81be6"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gca461b7a8 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g570c592d3 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -356,6 +356,10 @@
     <span class="n">wandb</span> <span class="o">=</span> <span class="kc">None</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.callbacks.checkpoint_sklearn</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_wandb_logger</span><span class="p">,</span> <span class="n">_WANDB_RESUME_FILENAME</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.callbacks.checkpoint_trackio</span><span class="w"> </span><span class="kn">import</span> <span class="n">_TRACKIO_RESUME_FILENAME</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.callbacks.checkpoint_swanlab</span><span class="w"> </span><span class="kn">import</span> <span class="n">_SWANLAB_RESUME_FILENAME</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.loggers.trackio</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_trackio_logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.loggers.swanlab</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_swanlab_logger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_required_fn_parameters</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.callbacks.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_header</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.utils.error_handling</span><span class="w"> </span><span class="kn">import</span> <span class="n">catch_errors_class</span>
@@ -386,7 +390,7 @@
     <span class="k">elif</span> <span class="n">logger</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! No logger used!&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># Check for RegistryLogger without importing at module level</span>
+        <span class="c1"># Check for known loggers without importing at module level</span>
         <span class="n">cls_name</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">logger</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
         <span class="k">if</span> <span class="n">cls_name</span> <span class="o">==</span> <span class="s2">&quot;RegistryLogger&quot;</span><span class="p">:</span>
             <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RegistryLogger&quot;</span><span class="p">)</span>
@@ -394,6 +398,26 @@
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="n">logger</span><span class="o">.</span><span class="n">version</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">logger</span><span class="o">.</span><span class="n">_tags</span><span class="p">:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  tags:    </span><span class="si">{</span><span class="n">logger</span><span class="o">.</span><span class="n">_tags</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">cls_name</span> <span class="o">==</span> <span class="s2">&quot;TrackioLogger&quot;</span><span class="p">:</span>
+            <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrackioLogger&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  project: </span><span class="si">{</span><span class="n">logger</span><span class="o">.</span><span class="n">_project</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  name:    </span><span class="si">{</span><span class="n">logger</span><span class="o">.</span><span class="n">_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">logger</span><span class="o">.</span><span class="n">_group</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  group:   </span><span class="si">{</span><span class="n">logger</span><span class="o">.</span><span class="n">_group</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  resume:  </span><span class="si">{</span><span class="n">logger</span><span class="o">.</span><span class="n">_resume</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">cls_name</span> <span class="o">==</span> <span class="s2">&quot;SwanLabLogger&quot;</span><span class="p">:</span>
+            <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;SwanLabLogger&quot;</span><span class="p">)</span>
+            <span class="n">init_cfg</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="s2">&quot;_swanlab_init&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  project:         </span><span class="si">{</span><span class="n">init_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;project&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  experiment_name: </span><span class="si">{</span><span class="n">init_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;experiment_name&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">init_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;group&quot;</span><span class="p">):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  group:           </span><span class="si">{</span><span class="n">init_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;group&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">init_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  id:              </span><span class="si">{</span><span class="n">init_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">init_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mode&quot;</span><span class="p">):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  mode:            </span><span class="si">{</span><span class="n">init_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mode&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! Unrecognized logger!&quot;</span><span class="p">)</span></div>
 
@@ -564,6 +588,132 @@
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;WandbResume&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Injected wandb run ID &#39;</span><span class="si">{</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&#39; from </span><span class="si">{</span><span class="n">sidecar</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  project=</span><span class="si">{</span><span class="n">saved_project</span><span class="si">}</span><span class="s2">  entity=</span><span class="si">{</span><span class="n">saved_entity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_maybe_restore_trackio_run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inject a previous Trackio run name into the logger BEFORE trackio.init().</span>
+
+<span class="sd">        Reads the sidecar ``trackio_resume.json`` written by</span>
+<span class="sd">        :class:`TrackioCheckpoint` and, if present, calls</span>
+<span class="sd">        ``set_resume(name)`` on the :class:`TrackioLogger` so that</span>
+<span class="sd">        ``trackio.init()`` resumes the correct run.</span>
+
+<span class="sd">        Must be called after the Trainer is created but before anything</span>
+<span class="sd">        accesses ``trainer.logger.experiment``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">trackio_logger</span> <span class="o">=</span> <span class="n">find_trackio_logger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trackio_logger</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">has_run_dir</span> <span class="o">=</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_run_dir&quot;</span><span class="p">)</span>
+        <span class="n">has_ckpt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_run_dir</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">has_ckpt</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">sidecar</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_run_dir&quot;</span><span class="p">):</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">/</span> <span class="n">_TRACKIO_RESUME_FILENAME</span>
+            <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">sidecar</span> <span class="o">=</span> <span class="n">candidate</span>
+        <span class="k">if</span> <span class="n">sidecar</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">_TRACKIO_RESUME_FILENAME</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">sidecar</span> <span class="o">=</span> <span class="n">candidate</span>
+        <span class="k">if</span> <span class="n">sidecar</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s2">&quot;  No trackio_resume.json found, skipping run name injection&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">resume_info</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">sidecar</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;! Failed to read </span><span class="si">{</span><span class="n">sidecar</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2"> — skipping trackio resume&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">run_name</span> <span class="o">=</span> <span class="n">resume_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">run_name</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! trackio_resume.json has no &#39;name&#39; — skipping&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">saved_project</span> <span class="o">=</span> <span class="n">resume_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project&quot;</span><span class="p">)</span>
+        <span class="n">current_project</span> <span class="o">=</span> <span class="n">trackio_logger</span><span class="o">.</span><span class="n">_project</span>
+        <span class="k">if</span> <span class="n">saved_project</span> <span class="ow">and</span> <span class="n">current_project</span> <span class="ow">and</span> <span class="n">saved_project</span> <span class="o">!=</span> <span class="n">current_project</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;! trackio_resume.json project &#39;</span><span class="si">{</span><span class="n">saved_project</span><span class="si">}</span><span class="s2">&#39; does not match &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;current logger project &#39;</span><span class="si">{</span><span class="n">current_project</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+                <span class="s2">&quot;Skipping run name injection to avoid resuming into the wrong project.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">trackio_logger</span><span class="o">.</span><span class="n">set_resume</span><span class="p">(</span><span class="n">run_name</span><span class="p">)</span>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrackioResume&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Injected trackio run name &#39;</span><span class="si">{</span><span class="n">run_name</span><span class="si">}</span><span class="s2">&#39; from </span><span class="si">{</span><span class="n">sidecar</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  project=</span><span class="si">{</span><span class="n">saved_project</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_maybe_restore_swanlab_run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inject a previous SwanLab experiment ID into the logger BEFORE swanlab.init().</span>
+
+<span class="sd">        Reads the sidecar ``swanlab_resume.json`` written by</span>
+<span class="sd">        :class:`SwanLabCheckpoint` and, if present, calls</span>
+<span class="sd">        ``set_resume(id)`` on the :class:`SwanLabLogger` so that</span>
+<span class="sd">        ``swanlab.init()`` resumes the correct experiment.</span>
+
+<span class="sd">        Must be called after the Trainer is created but before anything</span>
+<span class="sd">        accesses ``trainer.logger.experiment``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">swanlab_logger</span> <span class="o">=</span> <span class="n">find_swanlab_logger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">swanlab_logger</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">has_run_dir</span> <span class="o">=</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_run_dir&quot;</span><span class="p">)</span>
+        <span class="n">has_ckpt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_run_dir</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">has_ckpt</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">sidecar</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_run_dir&quot;</span><span class="p">):</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">/</span> <span class="n">_SWANLAB_RESUME_FILENAME</span>
+            <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">sidecar</span> <span class="o">=</span> <span class="n">candidate</span>
+        <span class="k">if</span> <span class="n">sidecar</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">_SWANLAB_RESUME_FILENAME</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">sidecar</span> <span class="o">=</span> <span class="n">candidate</span>
+        <span class="k">if</span> <span class="n">sidecar</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s2">&quot;  No swanlab_resume.json found, skipping experiment id injection&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">resume_info</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">sidecar</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;! Failed to read </span><span class="si">{</span><span class="n">sidecar</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2"> — skipping swanlab resume&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">run_id</span> <span class="o">=</span> <span class="n">resume_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">run_id</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! swanlab_resume.json has no &#39;id&#39; — skipping&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">saved_project</span> <span class="o">=</span> <span class="n">resume_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project&quot;</span><span class="p">)</span>
+        <span class="n">current_project</span> <span class="o">=</span> <span class="n">swanlab_logger</span><span class="o">.</span><span class="n">_project</span>
+        <span class="k">if</span> <span class="n">saved_project</span> <span class="ow">and</span> <span class="n">current_project</span> <span class="ow">and</span> <span class="n">saved_project</span> <span class="o">!=</span> <span class="n">current_project</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;! swanlab_resume.json project &#39;</span><span class="si">{</span><span class="n">saved_project</span><span class="si">}</span><span class="s2">&#39; does not match &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;current logger project &#39;</span><span class="si">{</span><span class="n">current_project</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+                <span class="s2">&quot;Skipping id injection to avoid resuming into the wrong project.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">swanlab_logger</span><span class="o">.</span><span class="n">set_resume</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;SwanLabResume&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Injected swanlab experiment id &#39;</span><span class="si">{</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&#39; from </span><span class="si">{</span><span class="n">sidecar</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  project=</span><span class="si">{</span><span class="n">saved_project</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="c1"># -- cache_dir / run_dir ----------------------------------------------------</span>
 
@@ -1022,6 +1172,8 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">TeacherStudentCallback</span><span class="p">())</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_restore_wandb_run_id</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_restore_trackio_run</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_restore_swanlab_run</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">init_and_sync_wandb</span><span class="p">()</span>
         <span class="n">print_logger_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
         <span class="n">print_signal_info</span><span class="p">()</span>

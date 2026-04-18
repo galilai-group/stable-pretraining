@@ -10,6 +10,7 @@ Subpackages
    stable_pretraining.backbone
    stable_pretraining.callbacks
    stable_pretraining.data
+   stable_pretraining.loggers
    stable_pretraining.losses
    stable_pretraining.methods
    stable_pretraining.optim

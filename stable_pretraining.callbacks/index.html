@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+gca461b7a8 documentation</title>
+    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+g570c592d3 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=76d8e1e2"></script>
+    <script src="../_static/documentation_options.js?v=9da81be6"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gca461b7a8 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g570c592d3 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -390,6 +390,24 @@
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_sklearn.find_wandb_logger"><code class="docutils literal notranslate"><span class="pre">find_wandb_logger()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.checkpoint_swanlab">stable_pretraining.callbacks.checkpoint_swanlab module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint"><code class="docutils literal notranslate"><span class="pre">SwanLabCheckpoint</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.on_load_checkpoint"><code class="docutils literal notranslate"><span class="pre">SwanLabCheckpoint.on_load_checkpoint()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">SwanLabCheckpoint.on_save_checkpoint()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.setup"><code class="docutils literal notranslate"><span class="pre">SwanLabCheckpoint.setup()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.checkpoint_trackio">stable_pretraining.callbacks.checkpoint_trackio module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint"><code class="docutils literal notranslate"><span class="pre">TrackioCheckpoint</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.on_load_checkpoint"><code class="docutils literal notranslate"><span class="pre">TrackioCheckpoint.on_load_checkpoint()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">TrackioCheckpoint.on_save_checkpoint()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.setup"><code class="docutils literal notranslate"><span class="pre">TrackioCheckpoint.setup()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.cleanup">stable_pretraining.callbacks.cleanup module</a><ul class="nav section-nav flex-column">
@@ -790,6 +808,149 @@ the Manager should have already set the correct ID).</p></li>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If more than one WandbLogger is attached (ambiguous resume target).</p>
 </dd>
 </dl>
+</dd></dl>
+
+</section>
+<section id="module-stable_pretraining.callbacks.checkpoint_swanlab">
+<span id="stable-pretraining-callbacks-checkpoint-swanlab-module"></span><h2>stable_pretraining.callbacks.checkpoint_swanlab module<a class="headerlink" href="#module-stable_pretraining.callbacks.checkpoint_swanlab" title="Link to this heading">#</a></h2>
+<p>Callback for persisting SwanLab run identity across checkpoint save/load.</p>
+<p>Mirrors <code class="xref py py-class docutils literal notranslate"><span class="pre">WandbCheckpoint</span></code> / <code class="xref py py-class docutils literal notranslate"><span class="pre">TrackioCheckpoint</span></code> but for
+SwanLab:</p>
+<ul class="simple">
+<li><p><strong>On save</strong> — stores <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;project&quot;:</span> <span class="pre">...,</span> <span class="pre">...}</span></code> in the
+checkpoint dict and writes a <code class="docutils literal notranslate"><span class="pre">swanlab_resume.json</span></code> sidecar so the
+Manager can inject the experiment ID <em>before</em> <code class="docutils literal notranslate"><span class="pre">swanlab.init()</span></code> fires
+on the next SLURM job.</p></li>
+<li><p><strong>On load</strong> — verifies the active SwanLab logger matches what the
+checkpoint expects.</p></li>
+</ul>
+<p>Only performs I/O on <code class="docutils literal notranslate"><span class="pre">trainer.is_global_zero</span></code> to stay safe under DDP.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.checkpoint_swanlab.</span></span><span class="sig-name descname"><span class="pre">SwanLabCheckpoint</span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/checkpoint_swanlab/#SwanLabCheckpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Callback</span></code></p>
+<p>Persist the SwanLab experiment ID across checkpoint save/load for seamless requeue resume.</p>
+<dl class="simple">
+<dt>On save:</dt><dd><ul class="simple">
+<li><p>Stores <code class="docutils literal notranslate"><span class="pre">{&quot;id&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;project&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;experiment_name&quot;:</span> <span class="pre">...,</span>
+<span class="pre">&quot;group&quot;:</span> <span class="pre">...}</span></code> in the checkpoint dict under the <code class="docutils literal notranslate"><span class="pre">&quot;swanlab&quot;</span></code> key.</p></li>
+<li><p>Writes a <code class="docutils literal notranslate"><span class="pre">swanlab_resume.json</span></code> sidecar in the run directory (and
+optionally CWD) so the Manager can configure the logger’s
+<code class="docutils literal notranslate"><span class="pre">resume=&quot;must&quot;</span></code> <em>before</em> <code class="docutils literal notranslate"><span class="pre">swanlab.init()</span></code> fires on the next job.</p></li>
+</ul>
+</dd>
+<dt>On load:</dt><dd><ul class="simple">
+<li><p>Verifies the active SwanLab logger matches the checkpoint.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.on_load_checkpoint">
+<span class="sig-name descname"><span class="pre">on_load_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">checkpoint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/checkpoint_swanlab/#SwanLabCheckpoint.on_load_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.on_load_checkpoint" title="Link to this definition">#</a></dt>
+<dd><p>Called when loading a model checkpoint, use to reload state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trainer</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">Trainer</span></code> instance.</p></li>
+<li><p><strong>pl_module</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">LightningModule</span></code> instance.</p></li>
+<li><p><strong>checkpoint</strong> – the full checkpoint dictionary that got loaded by the Trainer.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.on_save_checkpoint">
+<span class="sig-name descname"><span class="pre">on_save_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">checkpoint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/checkpoint_swanlab/#SwanLabCheckpoint.on_save_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.on_save_checkpoint" title="Link to this definition">#</a></dt>
+<dd><p>Called when saving a checkpoint to give you a chance to store anything else you might want to save.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trainer</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">Trainer</span></code> instance.</p></li>
+<li><p><strong>pl_module</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">LightningModule</span></code> instance.</p></li>
+<li><p><strong>checkpoint</strong> – the checkpoint dictionary that will be saved.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.setup">
+<span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/checkpoint_swanlab/#SwanLabCheckpoint.setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.setup" title="Link to this definition">#</a></dt>
+<dd><p>Called when fit, validate, test, predict, or tune begins.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-stable_pretraining.callbacks.checkpoint_trackio">
+<span id="stable-pretraining-callbacks-checkpoint-trackio-module"></span><h2>stable_pretraining.callbacks.checkpoint_trackio module<a class="headerlink" href="#module-stable_pretraining.callbacks.checkpoint_trackio" title="Link to this heading">#</a></h2>
+<p>Callback for persisting Trackio run identity across checkpoint save/load.</p>
+<p>Mirrors <code class="xref py py-class docutils literal notranslate"><span class="pre">WandbCheckpoint</span></code> but for Trackio:</p>
+<ul class="simple">
+<li><p><strong>On save</strong> — stores <code class="docutils literal notranslate"><span class="pre">{&quot;name&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;project&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;group&quot;:</span> <span class="pre">...}</span></code> in
+the checkpoint dict and writes a <code class="docutils literal notranslate"><span class="pre">trackio_resume.json</span></code> sidecar so the
+Manager can inject the run name <em>before</em> <code class="docutils literal notranslate"><span class="pre">trackio.init()</span></code> fires on the
+next SLURM job.</p></li>
+<li><p><strong>On load</strong> — verifies the active Trackio run matches what the
+checkpoint expects.</p></li>
+</ul>
+<p>Only performs I/O on <code class="docutils literal notranslate"><span class="pre">trainer.is_global_zero</span></code> to stay safe under DDP.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.checkpoint_trackio.</span></span><span class="sig-name descname"><span class="pre">TrackioCheckpoint</span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/checkpoint_trackio/#TrackioCheckpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Callback</span></code></p>
+<p>Persist the Trackio run name across checkpoint save/load for seamless requeue resume.</p>
+<dl class="simple">
+<dt>On save:</dt><dd><ul class="simple">
+<li><p>Stores <code class="docutils literal notranslate"><span class="pre">{&quot;name&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;project&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;group&quot;:</span> <span class="pre">...}</span></code> in the
+checkpoint dict under the <code class="docutils literal notranslate"><span class="pre">&quot;trackio&quot;</span></code> key.</p></li>
+<li><p>Writes a <code class="docutils literal notranslate"><span class="pre">trackio_resume.json</span></code> sidecar in the run directory (and
+optionally CWD) so the Manager can configure the logger’s
+<code class="docutils literal notranslate"><span class="pre">resume=&quot;must&quot;</span></code> <em>before</em> <code class="docutils literal notranslate"><span class="pre">trackio.init()</span></code> fires on the next job.</p></li>
+</ul>
+</dd>
+<dt>On load:</dt><dd><ul class="simple">
+<li><p>Verifies the active Trackio logger matches the checkpoint.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.on_load_checkpoint">
+<span class="sig-name descname"><span class="pre">on_load_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">checkpoint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/checkpoint_trackio/#TrackioCheckpoint.on_load_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.on_load_checkpoint" title="Link to this definition">#</a></dt>
+<dd><p>Called when loading a model checkpoint, use to reload state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trainer</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">Trainer</span></code> instance.</p></li>
+<li><p><strong>pl_module</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">LightningModule</span></code> instance.</p></li>
+<li><p><strong>checkpoint</strong> – the full checkpoint dictionary that got loaded by the Trainer.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.on_save_checkpoint">
+<span class="sig-name descname"><span class="pre">on_save_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">checkpoint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/checkpoint_trackio/#TrackioCheckpoint.on_save_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.on_save_checkpoint" title="Link to this definition">#</a></dt>
+<dd><p>Called when saving a checkpoint to give you a chance to store anything else you might want to save.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trainer</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">Trainer</span></code> instance.</p></li>
+<li><p><strong>pl_module</strong> – the current <code class="xref py py-class docutils literal notranslate"><span class="pre">LightningModule</span></code> instance.</p></li>
+<li><p><strong>checkpoint</strong> – the checkpoint dictionary that will be saved.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.setup">
+<span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/checkpoint_trackio/#TrackioCheckpoint.setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.setup" title="Link to this definition">#</a></dt>
+<dd><p>Called when fit, validate, test, predict, or tune begins.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -2312,6 +2473,24 @@ loss returned from <code class="docutils literal notranslate"><span class="pre">
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_sklearn.find_wandb_logger"><code class="docutils literal notranslate"><span class="pre">find_wandb_logger()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.checkpoint_swanlab">stable_pretraining.callbacks.checkpoint_swanlab module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint"><code class="docutils literal notranslate"><span class="pre">SwanLabCheckpoint</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.on_load_checkpoint"><code class="docutils literal notranslate"><span class="pre">SwanLabCheckpoint.on_load_checkpoint()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">SwanLabCheckpoint.on_save_checkpoint()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_swanlab.SwanLabCheckpoint.setup"><code class="docutils literal notranslate"><span class="pre">SwanLabCheckpoint.setup()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.checkpoint_trackio">stable_pretraining.callbacks.checkpoint_trackio module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint"><code class="docutils literal notranslate"><span class="pre">TrackioCheckpoint</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.on_load_checkpoint"><code class="docutils literal notranslate"><span class="pre">TrackioCheckpoint.on_load_checkpoint()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">TrackioCheckpoint.on_save_checkpoint()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.checkpoint_trackio.TrackioCheckpoint.setup"><code class="docutils literal notranslate"><span class="pre">TrackioCheckpoint.setup()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.cleanup">stable_pretraining.callbacks.cleanup module</a><ul class="nav section-nav flex-column">

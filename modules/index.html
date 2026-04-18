@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining &#8212; stable-pretraining 0.1.dev1+gca461b7a8 documentation</title>
+    <title>stable_pretraining &#8212; stable-pretraining 0.1.dev1+g570c592d3 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=76d8e1e2"></script>
+    <script src="../_static/documentation_options.js?v=9da81be6"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gca461b7a8 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g570c592d3 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -398,6 +398,8 @@
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.callbacks/">stable_pretraining.callbacks package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#submodules">Submodules</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.checkpoint_sklearn">stable_pretraining.callbacks.checkpoint_sklearn module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.checkpoint_swanlab">stable_pretraining.callbacks.checkpoint_swanlab module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.checkpoint_trackio">stable_pretraining.callbacks.checkpoint_trackio module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.cleanup">stable_pretraining.callbacks.cleanup module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.clip_zero_shot">stable_pretraining.callbacks.clip_zero_shot module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.earlystop">stable_pretraining.callbacks.earlystop module</a></li>
@@ -435,6 +437,13 @@
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.data/#module-stable_pretraining.data.transforms">stable_pretraining.data.transforms module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.data/#module-stable_pretraining.data.utils">stable_pretraining.data.utils module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.data/#module-stable_pretraining.data">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.loggers/">stable_pretraining.loggers package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.loggers/#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.loggers/#module-stable_pretraining.loggers.swanlab">stable_pretraining.loggers.swanlab module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.loggers/#module-stable_pretraining.loggers.trackio">stable_pretraining.loggers.trackio module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining.loggers/#module-stable_pretraining.loggers">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining.losses/">stable_pretraining.losses package</a><ul>
@@ -690,6 +699,7 @@
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.SklearnCheckpoint.setup"><code class="docutils literal notranslate"><span class="pre">SklearnCheckpoint.setup()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.SwanLabLogger"><code class="docutils literal notranslate"><span class="pre">SwanLabLogger</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TeacherStudentCallback"><code class="docutils literal notranslate"><span class="pre">TeacherStudentCallback</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TeacherStudentCallback.on_after_backward"><code class="docutils literal notranslate"><span class="pre">TeacherStudentCallback.on_after_backward()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TeacherStudentCallback.on_fit_start"><code class="docutils literal notranslate"><span class="pre">TeacherStudentCallback.on_fit_start()</span></code></a></li>
@@ -702,6 +712,17 @@
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TeacherStudentWrapper.forward_teacher"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.forward_teacher()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TeacherStudentWrapper.update_ema_coefficient"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.update_ema_coefficient()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TeacherStudentWrapper.update_teacher"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.update_teacher()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TrackioLogger"><code class="docutils literal notranslate"><span class="pre">TrackioLogger</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TrackioLogger.experiment"><code class="docutils literal notranslate"><span class="pre">TrackioLogger.experiment</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TrackioLogger.finalize"><code class="docutils literal notranslate"><span class="pre">TrackioLogger.finalize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TrackioLogger.log_hyperparams"><code class="docutils literal notranslate"><span class="pre">TrackioLogger.log_hyperparams()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TrackioLogger.log_metrics"><code class="docutils literal notranslate"><span class="pre">TrackioLogger.log_metrics()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TrackioLogger.name"><code class="docutils literal notranslate"><span class="pre">TrackioLogger.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TrackioLogger.resume_info"><code class="docutils literal notranslate"><span class="pre">TrackioLogger.resume_info</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TrackioLogger.set_resume"><code class="docutils literal notranslate"><span class="pre">TrackioLogger.set_resume()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TrackioLogger.version"><code class="docutils literal notranslate"><span class="pre">TrackioLogger.version</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../stable_pretraining/#stable_pretraining.TrainerInfo"><code class="docutils literal notranslate"><span class="pre">TrainerInfo</span></code></a><ul>

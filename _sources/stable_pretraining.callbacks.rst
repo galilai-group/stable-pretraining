@@ -12,6 +12,22 @@ stable\_pretraining.callbacks.checkpoint\_sklearn module
    :show-inheritance:
    :undoc-members:
 
+stable\_pretraining.callbacks.checkpoint\_swanlab module
+--------------------------------------------------------
+
+.. automodule:: stable_pretraining.callbacks.checkpoint_swanlab
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+stable\_pretraining.callbacks.checkpoint\_trackio module
+--------------------------------------------------------
+
+.. automodule:: stable_pretraining.callbacks.checkpoint_trackio
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 stable\_pretraining.callbacks.cleanup module
 --------------------------------------------
 
