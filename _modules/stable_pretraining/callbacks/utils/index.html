@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.utils &#8212; stable-pretraining 0.1.dev1+g570c592d3 documentation</title>
+    <title>stable_pretraining.callbacks.utils &#8212; stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=9da81be6"></script>
+    <script src="../../../../_static/documentation_options.js?v=11df7697"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g570c592d3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -432,11 +432,14 @@
             <span class="c1"># Store module in pl_module.callbacks_modules</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  storing module in callbacks_modules&quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">callbacks_modules</span><span class="p">[</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">module</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  setting up metrics&quot;</span><span class="p">)</span>
-            <span class="k">assert</span> <span class="n">callback</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks_metrics</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">callbacks_metrics</span><span class="p">[</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">format_metrics_as_dict</span><span class="p">(</span>
-                <span class="n">callback</span><span class="o">.</span><span class="n">metrics</span>
-            <span class="p">)</span>
+            <span class="c1"># Metrics are optional — not all trainable callbacks expose</span>
+            <span class="c1"># them (e.g. generative/reconstruction heads whose only output</span>
+            <span class="c1"># is a loss scalar).</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">metrics</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  setting up metrics&quot;</span><span class="p">)</span>
+                <span class="k">assert</span> <span class="n">callback</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks_metrics</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">callbacks_metrics</span><span class="p">[</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">format_metrics_as_dict</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
 
         <span class="c1"># Bind the new method to the instance</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  wrapping configure_model&quot;</span><span class="p">)</span>

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.loggers.trackio &#8212; stable-pretraining 0.1.dev1+g570c592d3 documentation</title>
+    <title>stable_pretraining.loggers.trackio &#8212; stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=9da81be6"></script>
+    <script src="../../../../_static/documentation_options.js?v=11df7697"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g570c592d3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -443,9 +443,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_group</span> <span class="o">=</span> <span class="n">group</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_space_id</span> <span class="o">=</span> <span class="n">space_id</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_server_url</span> <span class="o">=</span> <span class="n">resolved_server_url</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_auto_log_gpu</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">_cuda_available</span><span class="p">()</span> <span class="k">if</span> <span class="n">auto_log_gpu</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">auto_log_gpu</span>
-        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_auto_log_gpu</span> <span class="o">=</span> <span class="n">_cuda_available</span><span class="p">()</span> <span class="k">if</span> <span class="n">auto_log_gpu</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">auto_log_gpu</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_gpu_log_interval</span> <span class="o">=</span> <span class="n">gpu_log_interval</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_resume</span> <span class="o">=</span> <span class="n">resume</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trackio_kwargs</span> <span class="o">=</span> <span class="n">trackio_kwargs</span>
@@ -485,9 +483,7 @@
 <div class="viewcode-block" id="TrackioLogger.log_metrics">
 <a class="viewcode-back" href="../../../../stable_pretraining.loggers/#stable_pretraining.TrackioLogger.log_metrics">[docs]</a>
     <span class="nd">@rank_zero_only</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">log_metrics</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">step</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">log_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">step</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_init_run</span><span class="p">()</span>
         <span class="c1"># Filter to scalar values only — Trackio expects numeric metrics.</span>
@@ -527,8 +523,9 @@
     <span class="c1"># -- Internal helpers ------------------------------------------------------</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_init_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise the run — either via ``trackio.init()`` or, for a</span>
-<span class="sd">        self-hosted ``server_url``, by constructing a :class:`trackio.run.Run`</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise the run via ``trackio.init()`` or against a self-hosted server.</span>
+
+<span class="sd">        For a self-hosted ``server_url``, constructs a :class:`trackio.run.Run`</span>
 <span class="sd">        directly against the server.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_server_url</span><span class="p">:</span>

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; stable-pretraining 0.1.dev1+g570c592d3 documentation</title>
+    <title>Index &#8212; stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=9da81be6"></script>
+    <script src="../_static/documentation_options.js?v=11df7697"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g570c592d3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -397,14 +397,14 @@
         <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.distributed.all_gather">(in module stable_pretraining.utils.distributed)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.all_reduce">all_reduce() (in module stable_pretraining.utils)</a>
 
       <ul>
         <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.distributed.all_reduce">(in module stable_pretraining.utils.distributed)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.log_reader.alphanum_key">alphanum_key() (in module stable_pretraining.utils.log_reader)</a>
 </li>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.nn_modules.OrderedQueue.append">append() (stable_pretraining.utils.nn_modules.OrderedQueue method)</a>
@@ -426,6 +426,8 @@
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.lightning_patch.apply_manual_optimization_patch">apply_manual_optimization_patch() (in module stable_pretraining.utils.lightning_patch)</a>
 </li>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.utils.apply_masks">apply_masks() (in module stable_pretraining.data.utils)</a>
+</li>
+      <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.apply_rotary_emb">apply_rotary_emb() (in module stable_pretraining.backbone.pos_embed)</a>
 </li>
       <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.vit.Attention">Attention (class in stable_pretraining.backbone.vit)</a>
 </li>
@@ -463,15 +465,17 @@
       </ul></li>
       <li><a href="../stable_pretraining/#stable_pretraining.cli.best">best() (in module stable_pretraining.cli)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.broadcast_param_to_list">broadcast_param_to_list() (in module stable_pretraining.utils)</a>
 
       <ul>
         <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.inspection_utils.broadcast_param_to_list">(in module stable_pretraining.utils.inspection_utils)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.flops.BudgetedFlopCounterMode">BudgetedFlopCounterMode (class in stable_pretraining.utils.flops)</a>
+</li>
+      <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.build_rotary_pos_embed">build_rotary_pos_embed() (in module stable_pretraining.backbone.pos_embed)</a>
 </li>
       <li><a href="../api/gen_modules/stable_pretraining.data.bulk_download/#stable_pretraining.data.bulk_download">bulk_download() (in module stable_pretraining.data)</a>, <a href="../stable_pretraining.data/#stable_pretraining.data.bulk_download">[1]</a>
 
@@ -807,14 +811,14 @@
         <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.utils.EvalOnly">(class in stable_pretraining.backbone.utils)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.execute_from_config">execute_from_config() (in module stable_pretraining.utils)</a>
 
       <ul>
         <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.config.execute_from_config">(in module stable_pretraining.utils.config)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.loggers/#stable_pretraining.loggers.trackio.TrackioLogger.experiment">experiment (stable_pretraining.loggers.trackio.TrackioLogger property)</a>
 
       <ul>
@@ -849,6 +853,12 @@
         <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MultiBlockMasking.extra_repr">(stable_pretraining.backbone.patch_masking.MultiBlockMasking method)</a>
 </li>
         <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.PatchMasking.extra_repr">(stable_pretraining.backbone.patch_masking.PatchMasking method)</a>
+</li>
+        <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding1D.extra_repr">(stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding1D method)</a>
+</li>
+        <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding2D.extra_repr">(stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding2D method)</a>
+</li>
+        <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding3D.extra_repr">(stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding3D method)</a>
 </li>
         <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.vit.Attention.extra_repr">(stable_pretraining.backbone.vit.Attention method)</a>
 </li>
@@ -941,6 +951,12 @@
         <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MultiBlockMasking.forward">(stable_pretraining.backbone.patch_masking.MultiBlockMasking method)</a>
 </li>
         <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.PatchMasking.forward">(stable_pretraining.backbone.patch_masking.PatchMasking method)</a>
+</li>
+        <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding1D.forward">(stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding1D method)</a>
+</li>
+        <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding2D.forward">(stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding2D method)</a>
+</li>
+        <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding3D.forward">(stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding3D method)</a>
 </li>
         <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.probe.AutoLinearClassifier.forward">(stable_pretraining.backbone.probe.AutoLinearClassifier method)</a>
 </li>
@@ -1223,6 +1239,8 @@
 </li>
       <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.get_2d_sincos_pos_embed">get_2d_sincos_pos_embed() (in module stable_pretraining.backbone.pos_embed)</a>
 </li>
+      <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.get_3d_sincos_pos_embed">get_3d_sincos_pos_embed() (in module stable_pretraining.backbone.pos_embed)</a>
+</li>
       <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.probe.AutoTuneMLP.get_best_variant">get_best_variant() (stable_pretraining.backbone.probe.AutoTuneMLP method)</a>
 </li>
       <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.utils.get_children_modules">get_children_modules() (in module stable_pretraining.backbone.utils)</a>
@@ -1247,18 +1265,26 @@
         <li><a href="../stable_pretraining.methods/#stable_pretraining.methods.nepa.NEPA.get_dense_features">(stable_pretraining.methods.nepa.NEPA method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.gdrive_utils.GDriveUploader.get_folder_id">get_folder_id() (stable_pretraining.utils.gdrive_utils.GDriveUploader method)</a>
 
       <ul>
         <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.GDriveUploader.get_folder_id">(stable_pretraining.utils.GDriveUploader method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.gdrive_utils.GDriveUploader.get_folder_url">get_folder_url() (stable_pretraining.utils.gdrive_utils.GDriveUploader method)</a>
 
       <ul>
         <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.GDriveUploader.get_folder_url">(stable_pretraining.utils.GDriveUploader method)</a>
+</li>
+      </ul></li>
+      <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding1D.get_freqs">get_freqs() (stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding1D method)</a>
+
+      <ul>
+        <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding2D.get_freqs">(stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding2D method)</a>
+</li>
+        <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding3D.get_freqs">(stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding3D method)</a>
 </li>
       </ul></li>
       <li><a href="../stable_pretraining.optim/#stable_pretraining.optim.lr_scheduler.LinearWarmupCosineAnnealingLR.get_lr">get_lr() (stable_pretraining.optim.lr_scheduler.LinearWarmupCosineAnnealingLR method)</a>
@@ -2629,6 +2655,12 @@
       <li><a href="../stable_pretraining.callbacks/#stable_pretraining.callbacks.factories.RichProgressBar">RichProgressBar (class in stable_pretraining.callbacks.factories)</a>
 </li>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.solver.ODESolver.RK4">RK4 (stable_pretraining.utils.solver.ODESolver attribute)</a>
+</li>
+      <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding1D">RotaryPositionEmbedding1D (class in stable_pretraining.backbone.pos_embed)</a>
+</li>
+      <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding2D">RotaryPositionEmbedding2D (class in stable_pretraining.backbone.pos_embed)</a>
+</li>
+      <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding3D">RotaryPositionEmbedding3D (class in stable_pretraining.backbone.pos_embed)</a>
 </li>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.RoundRobinMultiViewTransform">RoundRobinMultiViewTransform (class in stable_pretraining.data.transforms)</a>
 </li>

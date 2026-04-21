@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.pos_embed &#8212; stable-pretraining 0.1.dev1+g570c592d3 documentation</title>
+    <title>stable_pretraining.backbone.pos_embed &#8212; stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=9da81be6"></script>
+    <script src="../../../../_static/documentation_options.js?v=11df7697"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g570c592d3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -339,8 +339,14 @@
     <span class="s2">&quot;get_sincos_pos_embed&quot;</span><span class="p">,</span>
     <span class="s2">&quot;get_1d_sincos_pos_embed&quot;</span><span class="p">,</span>
     <span class="s2">&quot;get_2d_sincos_pos_embed&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;get_3d_sincos_pos_embed&quot;</span><span class="p">,</span>
     <span class="s2">&quot;interpolate_pos_embed&quot;</span><span class="p">,</span>
     <span class="s2">&quot;get_timestep_embed&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;apply_rotary_emb&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RotaryPositionEmbedding1D&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RotaryPositionEmbedding2D&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RotaryPositionEmbedding3D&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;build_rotary_pos_embed&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 
 
@@ -458,29 +464,100 @@
 
 
 
+<div class="viewcode-block" id="get_3d_sincos_pos_embed">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.get_3d_sincos_pos_embed">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_3d_sincos_pos_embed</span><span class="p">(</span>
+    <span class="n">embed_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+    <span class="n">cls_token</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate 3D sinusoidal positional embeddings for video patches.</span>
+
+<span class="sd">    Axes are (T, H, W) — temporal, height, width — flattened in that order.</span>
+
+<span class="sd">    :param embed_dim: Embedding dimension (must be divisible by 6)</span>
+<span class="sd">    :param grid_size: Grid as int (T=H=W=grid_size) or (T, H, W) tuple</span>
+<span class="sd">    :param cls_token: If True, prepend a zero embedding for CLS token</span>
+<span class="sd">    :return: Positional embeddings of shape (T*H*W, embed_dim) or</span>
+<span class="sd">             (T*H*W + 1, embed_dim) if cls_token=True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">embed_dim</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">embed_dim</span> <span class="o">%</span> <span class="mi">6</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;embed_dim must be positive and divisible by 6, got </span><span class="si">{</span><span class="n">embed_dim</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">grid_size</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">grid_t</span> <span class="o">=</span> <span class="n">grid_h</span> <span class="o">=</span> <span class="n">grid_w</span> <span class="o">=</span> <span class="n">grid_size</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">grid_t</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span> <span class="o">=</span> <span class="n">grid_size</span>
+
+    <span class="k">if</span> <span class="n">grid_t</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">grid_h</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">grid_w</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;grid dimensions must be positive, got (</span><span class="si">{</span><span class="n">grid_t</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">grid_h</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">grid_w</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">ts</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">grid_t</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">hs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">grid_h</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">ws</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">grid_w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">tt</span><span class="p">,</span> <span class="n">hh</span><span class="p">,</span> <span class="n">ww</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">hs</span><span class="p">,</span> <span class="n">ws</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s2">&quot;ij&quot;</span><span class="p">)</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">tt</span><span class="p">,</span> <span class="n">hh</span><span class="p">,</span> <span class="n">ww</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+
+    <span class="n">dim</span> <span class="o">=</span> <span class="n">embed_dim</span> <span class="o">//</span> <span class="mi">6</span>
+    <span class="n">omega</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="o">/</span> <span class="n">dim</span>
+    <span class="n">omega</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mi">10000</span><span class="o">**</span><span class="n">omega</span><span class="p">)</span>
+
+    <span class="n">out_t</span> <span class="o">=</span> <span class="n">grid</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]</span> <span class="o">@</span> <span class="n">omega</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">out_h</span> <span class="o">=</span> <span class="n">grid</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">@</span> <span class="n">omega</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">out_w</span> <span class="o">=</span> <span class="n">grid</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">@</span> <span class="n">omega</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">pe</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">out_t</span><span class="p">),</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">out_t</span><span class="p">),</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">out_h</span><span class="p">),</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">out_h</span><span class="p">),</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">out_w</span><span class="p">),</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">out_w</span><span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cls_token</span><span class="p">:</span>
+        <span class="n">pe</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">embed_dim</span><span class="p">),</span> <span class="n">pe</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pe</span></div>
+
+
+
 <div class="viewcode-block" id="get_sincos_pos_embed">
 <a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.get_sincos_pos_embed">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_sincos_pos_embed</span><span class="p">(</span>
     <span class="n">embed_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">num_patches</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;1d&quot;</span><span class="p">,</span> <span class="s2">&quot;2d&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1d&quot;</span><span class="p">,</span>
-    <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;1d&quot;</span><span class="p">,</span> <span class="s2">&quot;2d&quot;</span><span class="p">,</span> <span class="s2">&quot;3d&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1d&quot;</span><span class="p">,</span>
+    <span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">cls_token</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Unified interface for generating sinusoidal positional embeddings.</span>
 
 <span class="sd">    :param embed_dim: Embedding dimension</span>
 <span class="sd">    :param num_patches: Total number of patches (used for 1d mode)</span>
-<span class="sd">    :param mode: Embedding type - &#39;1d&#39; for sequence, &#39;2d&#39; for image grid</span>
-<span class="sd">    :param grid_size: Required for &#39;2d&#39; mode</span>
+<span class="sd">    :param mode: Embedding type - &#39;1d&#39; for sequence, &#39;2d&#39; for image grid,</span>
+<span class="sd">                 &#39;3d&#39; for video grid (T, H, W)</span>
+<span class="sd">    :param grid_size: Required for &#39;2d&#39; and &#39;3d&#39; modes</span>
 <span class="sd">    :param cls_token: If True, prepend a zero embedding for CLS token</span>
 <span class="sd">    :return: Positional embeddings tensor</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;3d&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">grid_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;grid_size is required for 3d mode&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">get_3d_sincos_pos_embed</span><span class="p">(</span><span class="n">embed_dim</span><span class="p">,</span> <span class="n">grid_size</span><span class="p">,</span> <span class="n">cls_token</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;2d&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">grid_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;grid_size is required for 2d mode&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">get_2d_sincos_pos_embed</span><span class="p">(</span><span class="n">embed_dim</span><span class="p">,</span> <span class="n">grid_size</span><span class="p">,</span> <span class="n">cls_token</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">get_1d_sincos_pos_embed</span><span class="p">(</span><span class="n">embed_dim</span><span class="p">,</span> <span class="n">num_patches</span><span class="p">,</span> <span class="n">cls_token</span><span class="p">)</span></div>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;1d&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">get_1d_sincos_pos_embed</span><span class="p">(</span><span class="n">embed_dim</span><span class="p">,</span> <span class="n">num_patches</span><span class="p">,</span> <span class="n">cls_token</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mode must be &#39;1d&#39;, &#39;2d&#39;, or &#39;3d&#39;, got </span><span class="si">{</span><span class="n">mode</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 
@@ -559,6 +636,8 @@
 <span class="c1"># =============================================================================</span>
 <span class="c1"># Rotary Position Embedding (RoPE)</span>
 <span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="apply_rotary_emb">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.apply_rotary_emb">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">apply_rotary_emb</span><span class="p">(</span>
     <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
     <span class="n">cos</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
@@ -571,18 +650,11 @@
 <span class="sd">    :param sin: Sine frequencies [seq_len, dim] or [1, 1, seq_len, dim]</span>
 <span class="sd">    :return: Rotated tensor</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Split into pairs and rotate</span>
     <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span>
 
-    <span class="c1"># Ensure cos/sin have right shape for broadcasting</span>
-    <span class="k">if</span> <span class="n">cos</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="n">cos</span> <span class="o">=</span> <span class="n">cos</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span>  <span class="c1"># [seq_len, dim//2]</span>
-        <span class="n">sin</span> <span class="o">=</span> <span class="n">sin</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">cos</span> <span class="o">=</span> <span class="n">cos</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span>
-        <span class="n">sin</span> <span class="o">=</span> <span class="n">sin</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">cos</span> <span class="o">=</span> <span class="n">cos</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">sin</span> <span class="o">=</span> <span class="n">sin</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span>
 
-    <span class="c1"># Apply rotation</span>
     <span class="n">out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
         <span class="p">[</span>
             <span class="n">x1</span> <span class="o">*</span> <span class="n">cos</span> <span class="o">-</span> <span class="n">x2</span> <span class="o">*</span> <span class="n">sin</span><span class="p">,</span>
@@ -591,9 +663,106 @@
         <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">out</span>
+    <span class="k">return</span> <span class="n">out</span></div>
 
 
+
+<div class="viewcode-block" id="RotaryPositionEmbedding1D">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding1D">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RotaryPositionEmbedding1D</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;1D Rotary Position Embedding (RoPE) for sequence transformers.</span>
+
+<span class="sd">    Standard GPT-NeoX / LLaMA-style RoPE: rotates pairs of adjacent</span>
+<span class="sd">    channels (x[..., 2k], x[..., 2k+1]) by angle ``pos * inv_freq[k]``,</span>
+<span class="sd">    making attention scores depend only on relative position.</span>
+<span class="sd">    :param head_dim: Dimension per attention head (must be even)</span>
+<span class="sd">    :param max_seq_len: Maximum sequence length hint for cache sizing</span>
+<span class="sd">    :param base: Base for frequency computation (default: 10000.0)</span>
+<span class="sd">    Example::</span>
+<span class="sd">        rope = RotaryPositionEmbedding1D(head_dim=64)</span>
+<span class="sd">        q, k = rope(q, k)  # q, k shape [B, num_heads, seq_len, head_dim]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">head_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">max_seq_len</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2048</span><span class="p">,</span>
+        <span class="n">base</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10000.0</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">head_dim</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">head_dim</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;head_dim must be positive and even, got </span><span class="si">{</span><span class="n">head_dim</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span> <span class="o">=</span> <span class="n">head_dim</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_seq_len</span> <span class="o">=</span> <span class="n">max_seq_len</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base</span> <span class="o">=</span> <span class="n">base</span>
+        <span class="n">inv_freq</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">base</span> <span class="o">**</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">head_dim</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span> <span class="o">/</span> <span class="n">head_dim</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;inv_freq&quot;</span><span class="p">,</span> <span class="n">inv_freq</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_seq_len</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_cache</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">seq_len</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build and cache sin/cos frequencies for the given sequence length.&quot;&quot;&quot;</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">seq_len</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">freqs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">inv_freq</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">))</span>
+        <span class="c1"># Interleave so that apply_rotary_emb&#39;s stride-2 indexing hits one</span>
+        <span class="c1"># frequency per rotary pair: freqs[:, 2k] = freqs[:, 2k+1] = pos*inv_freq[k].</span>
+        <span class="n">freqs</span> <span class="o">=</span> <span class="n">freqs</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;cos_cached&quot;</span><span class="p">,</span> <span class="n">freqs</span><span class="o">.</span><span class="n">cos</span><span class="p">(),</span> <span class="n">persistent</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;sin_cached&quot;</span><span class="p">,</span> <span class="n">freqs</span><span class="o">.</span><span class="n">sin</span><span class="p">(),</span> <span class="n">persistent</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_seq_len</span> <span class="o">=</span> <span class="n">seq_len</span>
+
+<div class="viewcode-block" id="RotaryPositionEmbedding1D.get_freqs">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding1D.get_freqs">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_freqs</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">seq_len</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get cos/sin frequencies for the given sequence length.</span>
+
+<span class="sd">        :param seq_len: Sequence length</span>
+<span class="sd">        :param device: Target device</span>
+<span class="sd">        :param dtype: Target dtype</span>
+<span class="sd">        :return: (cos, sin) tensors of shape [seq_len, head_dim].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">seq_len</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_seq_len</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_build_cache</span><span class="p">(</span><span class="n">seq_len</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cos_cached</span><span class="p">[:</span><span class="n">seq_len</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">sin_cached</span><span class="p">[:</span><span class="n">seq_len</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="RotaryPositionEmbedding1D.forward">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding1D.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">q</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">k</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply 1D rotary embeddings to query and key tensors.</span>
+
+<span class="sd">        :param q: Query tensor [..., seq_len, head_dim]</span>
+<span class="sd">        :param k: Key tensor [..., seq_len, head_dim]</span>
+<span class="sd">        :return: (rotated_q, rotated_k).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">seq_len</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">cos</span><span class="p">,</span> <span class="n">sin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_freqs</span><span class="p">(</span><span class="n">seq_len</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">apply_rotary_emb</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">cos</span><span class="p">,</span> <span class="n">sin</span><span class="p">),</span> <span class="n">apply_rotary_emb</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">cos</span><span class="p">,</span> <span class="n">sin</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RotaryPositionEmbedding1D.extra_repr">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding1D.extra_repr">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">extra_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;head_dim=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span><span class="si">}</span><span class="s2">, max_seq_len=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">max_seq_len</span><span class="si">}</span><span class="s2">, base=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="si">}</span><span class="s2">&quot;</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="RotaryPositionEmbedding2D">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding2D">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RotaryPositionEmbedding2D</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;2D Rotary Position Embedding (RoPE) for vision transformers.</span>
 
@@ -623,13 +792,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span> <span class="o">=</span> <span class="n">head_dim</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_grid_size</span> <span class="o">=</span> <span class="n">max_grid_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base</span> <span class="o">=</span> <span class="n">base</span>
-        <span class="c1"># Each 2D axis gets head_dim // 4 frequency pairs</span>
-        <span class="c1"># Total: (head_dim // 4) * 2 for height + (head_dim // 4) * 2 for width = head_dim</span>
+        <span class="c1"># Each 2D axis contributes head_dim // 4 frequencies per pair; two</span>
+        <span class="c1"># pairs per axis (sin/cos duplicate) and two axes (h, w) → total</span>
+        <span class="c1"># head_dim dims in the final cos/sin table, matching what</span>
+        <span class="c1"># apply_rotary_emb consumes.</span>
         <span class="n">dim_per_axis</span> <span class="o">=</span> <span class="n">head_dim</span> <span class="o">//</span> <span class="mi">4</span>
         <span class="k">if</span> <span class="n">dim_per_axis</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;head_dim must be &gt;= 4, got </span><span class="si">{</span><span class="n">head_dim</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">inv_freq</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span>
-            <span class="n">base</span> <span class="o">**</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dim_per_axis</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span> <span class="o">/</span> <span class="n">dim_per_axis</span><span class="p">)</span>
+            <span class="n">base</span> <span class="o">**</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dim_per_axis</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span> <span class="o">/</span> <span class="n">dim_per_axis</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;inv_freq&quot;</span><span class="p">,</span> <span class="n">inv_freq</span><span class="p">)</span>
         <span class="c1"># Cache for current grid size</span>
@@ -671,6 +842,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_h</span> <span class="o">=</span> <span class="n">grid_h</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_w</span> <span class="o">=</span> <span class="n">grid_w</span>
 
+<div class="viewcode-block" id="RotaryPositionEmbedding2D.get_freqs">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding2D.get_freqs">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_freqs</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">grid_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -689,8 +862,11 @@
         <span class="k">if</span> <span class="n">grid_h</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_h</span> <span class="ow">or</span> <span class="n">grid_w</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_w</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_build_cache</span><span class="p">(</span><span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
         <span class="n">seq_len</span> <span class="o">=</span> <span class="n">grid_h</span> <span class="o">*</span> <span class="n">grid_w</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cos_cached</span><span class="p">[:</span><span class="n">seq_len</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">sin_cached</span><span class="p">[:</span><span class="n">seq_len</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cos_cached</span><span class="p">[:</span><span class="n">seq_len</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">sin_cached</span><span class="p">[:</span><span class="n">seq_len</span><span class="p">]</span></div>
 
+
+<div class="viewcode-block" id="RotaryPositionEmbedding2D.forward">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding2D.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">q</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
@@ -710,10 +886,177 @@
 
         <span class="n">q_rot</span> <span class="o">=</span> <span class="n">apply_rotary_emb</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">cos</span><span class="p">,</span> <span class="n">sin</span><span class="p">)</span>
         <span class="n">k_rot</span> <span class="o">=</span> <span class="n">apply_rotary_emb</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">cos</span><span class="p">,</span> <span class="n">sin</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">q_rot</span><span class="p">,</span> <span class="n">k_rot</span>
+        <span class="k">return</span> <span class="n">q_rot</span><span class="p">,</span> <span class="n">k_rot</span></div>
 
+
+<div class="viewcode-block" id="RotaryPositionEmbedding2D.extra_repr">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding2D.extra_repr">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">extra_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;head_dim=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span><span class="si">}</span><span class="s2">, max_grid_size=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">max_grid_size</span><span class="si">}</span><span class="s2">, base=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;head_dim=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span><span class="si">}</span><span class="s2">, max_grid_size=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">max_grid_size</span><span class="si">}</span><span class="s2">, base=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="si">}</span><span class="s2">&quot;</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="RotaryPositionEmbedding3D">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding3D">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RotaryPositionEmbedding3D</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;3D Rotary Position Embedding (RoPE) for video transformers.</span>
+
+<span class="sd">    Mirrors :class:`RotaryPositionEmbedding2D`, with a third axis for time.</span>
+<span class="sd">    Uses separate frequencies for temporal, height, and width dimensions</span>
+<span class="sd">    and encodes relative positions along each axis independently.</span>
+<span class="sd">    :param head_dim: Dimension per attention head (must be divisible by 6)</span>
+<span class="sd">    :param max_grid_size: Maximum grid size hint for cache pre-sizing</span>
+<span class="sd">    :param base: Base for frequency computation (default: 10000.0)</span>
+<span class="sd">    Example::</span>
+<span class="sd">        rope = RotaryPositionEmbedding3D(head_dim=96)</span>
+<span class="sd">        q, k = rope(q, k, grid_t=8, grid_h=14, grid_w=14)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">head_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">max_grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+        <span class="n">base</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10000.0</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="c1"># Each 3D axis gets head_dim // 6 frequencies, duplicated for the</span>
+        <span class="c1"># sin/cos pair → 6 blocks × (head_dim // 6) = head_dim total dims.</span>
+        <span class="n">dim_per_axis</span> <span class="o">=</span> <span class="n">head_dim</span> <span class="o">//</span> <span class="mi">6</span>
+        <span class="k">if</span> <span class="n">dim_per_axis</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">head_dim</span> <span class="o">%</span> <span class="mi">6</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;head_dim must be positive and divisible by 6, got </span><span class="si">{</span><span class="n">head_dim</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span> <span class="o">=</span> <span class="n">head_dim</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_grid_size</span> <span class="o">=</span> <span class="n">max_grid_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base</span> <span class="o">=</span> <span class="n">base</span>
+        <span class="n">inv_freq</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span>
+            <span class="n">base</span> <span class="o">**</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dim_per_axis</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span> <span class="o">/</span> <span class="n">dim_per_axis</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;inv_freq&quot;</span><span class="p">,</span> <span class="n">inv_freq</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_t</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_h</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_w</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_cache</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">grid_t</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_w</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">inv_freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inv_freq</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">pos_t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">grid_t</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">pos_h</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">grid_h</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">pos_w</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">grid_w</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">freqs_t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">pos_t</span><span class="p">,</span> <span class="n">inv_freq</span><span class="p">)</span>  <span class="c1"># [T, dim//6]</span>
+        <span class="n">freqs_h</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">pos_h</span><span class="p">,</span> <span class="n">inv_freq</span><span class="p">)</span>  <span class="c1"># [H, dim//6]</span>
+        <span class="n">freqs_w</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">pos_w</span><span class="p">,</span> <span class="n">inv_freq</span><span class="p">)</span>  <span class="c1"># [W, dim//6]</span>
+        <span class="c1"># Expand to full grid [T, H, W, dim//6]</span>
+        <span class="n">freqs_t</span> <span class="o">=</span> <span class="n">freqs_t</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">freqs_h</span> <span class="o">=</span> <span class="n">freqs_h</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">grid_t</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">freqs_w</span> <span class="o">=</span> <span class="n">freqs_w</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">grid_t</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">freqs_t</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">freqs_t</span> <span class="o">=</span> <span class="n">freqs_t</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+        <span class="n">freqs_h</span> <span class="o">=</span> <span class="n">freqs_h</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+        <span class="n">freqs_w</span> <span class="o">=</span> <span class="n">freqs_w</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+        <span class="c1"># 6 blocks × dim_per_axis = head_dim, duplicated for sin/cos pairs.</span>
+        <span class="n">freqs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">freqs_t</span><span class="p">,</span> <span class="n">freqs_t</span><span class="p">,</span> <span class="n">freqs_h</span><span class="p">,</span> <span class="n">freqs_h</span><span class="p">,</span> <span class="n">freqs_w</span><span class="p">,</span> <span class="n">freqs_w</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;cos_cached&quot;</span><span class="p">,</span> <span class="n">freqs</span><span class="o">.</span><span class="n">cos</span><span class="p">(),</span> <span class="n">persistent</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;sin_cached&quot;</span><span class="p">,</span> <span class="n">freqs</span><span class="o">.</span><span class="n">sin</span><span class="p">(),</span> <span class="n">persistent</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_t</span> <span class="o">=</span> <span class="n">grid_t</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_h</span> <span class="o">=</span> <span class="n">grid_h</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_w</span> <span class="o">=</span> <span class="n">grid_w</span>
+
+<div class="viewcode-block" id="RotaryPositionEmbedding3D.get_freqs">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding3D.get_freqs">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_freqs</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">grid_t</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_w</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get cos/sin frequencies for the given (T, H, W) grid.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">grid_t</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_t</span>
+            <span class="ow">or</span> <span class="n">grid_h</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_h</span>
+            <span class="ow">or</span> <span class="n">grid_w</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_grid_w</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_build_cache</span><span class="p">(</span><span class="n">grid_t</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
+        <span class="n">seq_len</span> <span class="o">=</span> <span class="n">grid_t</span> <span class="o">*</span> <span class="n">grid_h</span> <span class="o">*</span> <span class="n">grid_w</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cos_cached</span><span class="p">[:</span><span class="n">seq_len</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">sin_cached</span><span class="p">[:</span><span class="n">seq_len</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="RotaryPositionEmbedding3D.forward">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding3D.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">q</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">k</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">grid_t</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">grid_w</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply 3D rotary embeddings to query and key tensors.</span>
+
+<span class="sd">        :param q: Query tensor [..., T*H*W, head_dim]</span>
+<span class="sd">        :param k: Key tensor [..., T*H*W, head_dim]</span>
+<span class="sd">        :param grid_t: Temporal grid size</span>
+<span class="sd">        :param grid_h: Height grid size</span>
+<span class="sd">        :param grid_w: Width grid size</span>
+<span class="sd">        :return: (rotated_q, rotated_k).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cos</span><span class="p">,</span> <span class="n">sin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_freqs</span><span class="p">(</span><span class="n">grid_t</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">apply_rotary_emb</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">cos</span><span class="p">,</span> <span class="n">sin</span><span class="p">),</span> <span class="n">apply_rotary_emb</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">cos</span><span class="p">,</span> <span class="n">sin</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RotaryPositionEmbedding3D.extra_repr">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.RotaryPositionEmbedding3D.extra_repr">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">extra_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;head_dim=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span><span class="si">}</span><span class="s2">, max_grid_size=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">max_grid_size</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;base=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="build_rotary_pos_embed">
+<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.build_rotary_pos_embed">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_rotary_pos_embed</span><span class="p">(</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;1d&quot;</span><span class="p">,</span> <span class="s2">&quot;2d&quot;</span><span class="p">,</span> <span class="s2">&quot;3d&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">head_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">max_grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+    <span class="n">base</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10000.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Factory returning the right RoPE module for a given mode string.</span>
+
+<span class="sd">    :param mode: &#39;1d&#39;, &#39;2d&#39;, &#39;3d&#39;, or None (returns None for disabled)</span>
+<span class="sd">    :param head_dim: Dimension per attention head</span>
+<span class="sd">    :param max_grid_size: Hint for 2D/3D cache pre-sizing (used as</span>
+<span class="sd">        ``max_seq_len`` for the 1D case)</span>
+<span class="sd">    :param base: Frequency base (default 10000.0)</span>
+<span class="sd">    :return: A RoPE module, or None if ``mode`` is None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;1d&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RotaryPositionEmbedding1D</span><span class="p">(</span><span class="n">head_dim</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="o">=</span><span class="n">max_grid_size</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="n">base</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;2d&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RotaryPositionEmbedding2D</span><span class="p">(</span>
+            <span class="n">head_dim</span><span class="p">,</span> <span class="n">max_grid_size</span><span class="o">=</span><span class="n">max_grid_size</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="n">base</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;3d&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RotaryPositionEmbedding3D</span><span class="p">(</span>
+            <span class="n">head_dim</span><span class="p">,</span> <span class="n">max_grid_size</span><span class="o">=</span><span class="n">max_grid_size</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="n">base</span>
+        <span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mode must be &#39;1d&#39;, &#39;2d&#39;, &#39;3d&#39;, or None, got </span><span class="si">{</span><span class="n">mode</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
 </pre></div>
 
                 </article>

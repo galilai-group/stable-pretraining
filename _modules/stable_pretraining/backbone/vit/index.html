@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.vit &#8212; stable-pretraining 0.1.dev1+g570c592d3 documentation</title>
+    <title>stable_pretraining.backbone.vit &#8212; stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=9da81be6"></script>
+    <script src="../../../../_static/documentation_options.js?v=11df7697"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g570c592d3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -338,11 +338,30 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">transformers.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelOutput</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.pos_embed</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">build_rotary_pos_embed</span><span class="p">,</span>
     <span class="n">get_sincos_pos_embed</span><span class="p">,</span>
     <span class="n">get_timestep_embed</span><span class="p">,</span>
     <span class="n">interpolate_pos_embed</span><span class="p">,</span>
-    <span class="n">RotaryPositionEmbedding2D</span><span class="p">,</span>
 <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalize_rope_mode</span><span class="p">(</span>
+    <span class="n">use_rope</span><span class="p">:</span> <span class="s2">&quot;bool | str | None&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;str | None&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize the ``use_rope`` argument to a RoPE mode string or None.</span>
+
+<span class="sd">    Accepts: True (&#39;2d&#39; for backward compat), False/None (disabled),</span>
+<span class="sd">    or one of &#39;1d&#39;/&#39;2d&#39;/&#39;3d&#39;. Raises ValueError for any other value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">use_rope</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">use_rope</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">use_rope</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;2d&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">use_rope</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">use_rope</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;1d&quot;</span><span class="p">,</span> <span class="s2">&quot;2d&quot;</span><span class="p">,</span> <span class="s2">&quot;3d&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">use_rope</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;use_rope must be one of &#39;1d&#39;, &#39;2d&#39;, &#39;3d&#39;, True, False, or None; got </span><span class="si">{</span><span class="n">use_rope</span><span class="si">!r}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
 
 
 <div class="viewcode-block" id="SwiGLU">
@@ -920,7 +939,7 @@
         <span class="n">qkv_bias</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">attn_drop</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="n">proj_drop</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="n">use_rope</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">use_rope</span><span class="p">:</span> <span class="s2">&quot;bool | Literal[&#39;1d&#39;, &#39;2d&#39;, &#39;3d&#39;] | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">use_qk_norm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">max_grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
     <span class="p">):</span>
@@ -933,7 +952,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">num_heads</span> <span class="o">=</span> <span class="n">num_heads</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span> <span class="o">=</span> <span class="n">dim</span> <span class="o">//</span> <span class="n">num_heads</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span><span class="o">**-</span><span class="mf">0.5</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_rope</span> <span class="o">=</span> <span class="n">use_rope</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rope_mode</span> <span class="o">=</span> <span class="n">_normalize_rope_mode</span><span class="p">(</span><span class="n">use_rope</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_rope</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rope_mode</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">use_qk_norm</span> <span class="o">=</span> <span class="n">use_qk_norm</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">qkv</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="n">qkv_bias</span><span class="p">)</span>
@@ -941,8 +961,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">proj_drop</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="n">proj_drop</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">use_rope</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">rope</span> <span class="o">=</span> <span class="n">RotaryPositionEmbedding2D</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span><span class="p">,</span> <span class="n">max_grid_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rope</span> <span class="o">=</span> <span class="n">build_rotary_pos_embed</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rope_mode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span><span class="p">,</span> <span class="n">max_grid_size</span><span class="o">=</span><span class="n">max_grid_size</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">use_qk_norm</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">qk_norm</span> <span class="o">=</span> <span class="n">QKNorm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span><span class="p">)</span>
@@ -953,7 +974,7 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
         <span class="n">attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">grid_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="s2">&quot;Optional[Tuple[int, ...] | int]&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute multi-head self-attention.</span>
 
@@ -972,14 +993,18 @@
 <span class="sd">            - Causal: ``torch.triu(torch.ones(N, N, dtype=torch.bool), diagonal=1)``</span>
 <span class="sd">            - Leave-one-out: ``torch.eye(N, dtype=torch.bool)``</span>
 
-<span class="sd">        :param grid_size: Spatial grid dimensions as ``(height, width)``.</span>
-<span class="sd">            **Required when** ``use_rope=True``. Used to compute 2D rotary</span>
-<span class="sd">            position embeddings. For a 224x224 image with patch_size=16,</span>
-<span class="sd">            use ``grid_size=(14, 14)``.</span>
+<span class="sd">        :param grid_size: Grid dimensions used by RoPE. Meaning depends on</span>
+<span class="sd">            ``use_rope``:</span>
+
+<span class="sd">            - ``&#39;1d&#39;``: ignored (sequence length is inferred from ``x``)</span>
+<span class="sd">            - ``&#39;2d&#39;``: ``(height, width)`` — required</span>
+<span class="sd">            - ``&#39;3d&#39;``: ``(time, height, width)`` — required</span>
+
+<span class="sd">            For ``&#39;2d&#39;`` with a square grid, this can be inferred from ``N``.</span>
 
 <span class="sd">        :return: Output tensor of shape ``[B, N, D]``</span>
 
-<span class="sd">        :raises ValueError: If ``use_rope=True`` but ``grid_size`` is None</span>
+<span class="sd">        :raises ValueError: If the grid_size shape doesn&#39;t match ``use_rope``</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">B</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
 
@@ -995,19 +1020,27 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_qk_norm</span><span class="p">:</span>
             <span class="n">q</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qk_norm</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
 
-        <span class="c1"># Apply 2D Rotary Position Embedding</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_rope</span><span class="p">:</span>
+        <span class="c1"># Apply Rotary Position Embedding (mode-dependent)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rope_mode</span> <span class="o">==</span> <span class="s2">&quot;1d&quot;</span><span class="p">:</span>
+            <span class="n">q</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rope</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">rope_mode</span> <span class="o">==</span> <span class="s2">&quot;2d&quot;</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">grid_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="c1"># Attempt to infer square grid</span>
                 <span class="n">grid_h</span> <span class="o">=</span> <span class="n">grid_w</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">N</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">grid_h</span> <span class="o">*</span> <span class="n">grid_w</span> <span class="o">!=</span> <span class="n">N</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;use_rope=True requires grid_size parameter for non-square &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;use_rope=&#39;2d&#39; requires grid_size for non-square &quot;</span>
                         <span class="sa">f</span><span class="s2">&quot;sequences. Got N=</span><span class="si">{</span><span class="n">N</span><span class="si">}</span><span class="s2"> which is not a perfect square.&quot;</span>
                     <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span> <span class="o">=</span> <span class="n">grid_size</span>
             <span class="n">q</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rope</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">rope_mode</span> <span class="o">==</span> <span class="s2">&quot;3d&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">grid_size</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid_size</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;use_rope=&#39;3d&#39; requires grid_size=(T, H, W); got </span><span class="si">{</span><span class="n">grid_size</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">grid_t</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span> <span class="o">=</span> <span class="n">grid_size</span>
+            <span class="n">q</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rope</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">grid_t</span><span class="p">,</span> <span class="n">grid_h</span><span class="p">,</span> <span class="n">grid_w</span><span class="p">)</span>
 
         <span class="c1"># Convert boolean mask to SDPA-compatible float mask</span>
         <span class="n">attn_mask_sdpa</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_attn_mask</span><span class="p">(</span><span class="n">attn_mask</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
@@ -1060,7 +1093,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">extra_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;num_heads=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_heads</span><span class="si">}</span><span class="s2">, head_dim=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">head_dim</span><span class="si">}</span><span class="s2">, &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;use_rope=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">use_rope</span><span class="si">}</span><span class="s2">, use_qk_norm=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">use_qk_norm</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;rope_mode=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rope_mode</span><span class="si">!r}</span><span class="s2">, use_qk_norm=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">use_qk_norm</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span></div>
 </div>
 
@@ -1308,7 +1341,7 @@
         <span class="n">self_attn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">cross_attn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">use_adaln</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">use_rope</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">use_rope</span><span class="p">:</span> <span class="s2">&quot;bool | Literal[&#39;1d&#39;, &#39;2d&#39;, &#39;3d&#39;] | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">use_qk_norm</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">mlp_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;gelu&quot;</span><span class="p">,</span> <span class="s2">&quot;swiglu&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;gelu&quot;</span><span class="p">,</span>
         <span class="n">use_layer_scale</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -1323,7 +1356,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">use_self_attn</span> <span class="o">=</span> <span class="n">self_attn</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">use_cross_attn</span> <span class="o">=</span> <span class="n">cross_attn</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">use_adaln</span> <span class="o">=</span> <span class="n">use_adaln</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_rope</span> <span class="o">=</span> <span class="n">use_rope</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rope_mode</span> <span class="o">=</span> <span class="n">_normalize_rope_mode</span><span class="p">(</span><span class="n">use_rope</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_rope</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rope_mode</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">use_layer_scale</span> <span class="o">=</span> <span class="n">use_layer_scale</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">self_attn</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">cross_attn</span><span class="p">:</span>
@@ -1395,7 +1429,7 @@
         <span class="n">cond</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">cross_attn_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">grid_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="s2">&quot;Optional[Tuple[int, ...] | int]&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass.</span>
 
@@ -1404,15 +1438,16 @@
 <span class="sd">        :param cond: Conditioning tensor [B, D] (required if use_adaln=True)</span>
 <span class="sd">        :param attn_mask: Self-attention mask. True = blocked.</span>
 <span class="sd">        :param cross_attn_mask: Cross-attention mask. True = blocked.</span>
-<span class="sd">        :param grid_size: (grid_h, grid_w) for RoPE. Required if use_rope=True.</span>
+<span class="sd">        :param grid_size: Grid dims for RoPE. For 2D: (H, W); for 3D: (T, H, W);</span>
+<span class="sd">            ignored for 1D.</span>
 <span class="sd">        :return: Output tensor [B, N, D]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_cross_attn</span> <span class="ow">and</span> <span class="n">context</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;context required when cross_attn=True&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_adaln</span> <span class="ow">and</span> <span class="n">cond</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cond required when use_adaln=True&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_rope</span> <span class="ow">and</span> <span class="n">grid_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;grid_size required when use_rope=True&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rope_mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;2d&quot;</span><span class="p">,</span> <span class="s2">&quot;3d&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">grid_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;grid_size required when use_rope=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rope_mode</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_adaln</span><span class="p">:</span>
             <span class="n">mods</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaLN_mlp</span><span class="p">(</span><span class="n">cond</span><span class="p">)</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_mods</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
@@ -1640,8 +1675,10 @@
         <span class="n">self_attn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">cross_attn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">use_adaln</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">pos_embed_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;sincos_1d&quot;</span><span class="p">,</span> <span class="s2">&quot;sincos_2d&quot;</span><span class="p">,</span> <span class="s2">&quot;learned&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sincos_2d&quot;</span><span class="p">,</span>
-        <span class="n">grid_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pos_embed_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span>
+            <span class="s2">&quot;sincos_1d&quot;</span><span class="p">,</span> <span class="s2">&quot;sincos_2d&quot;</span><span class="p">,</span> <span class="s2">&quot;sincos_3d&quot;</span><span class="p">,</span> <span class="s2">&quot;learned&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sincos_2d&quot;</span><span class="p">,</span>
+        <span class="n">grid_size</span><span class="p">:</span> <span class="s2">&quot;Optional[int | tuple[int, int] | tuple[int, int, int]]&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">drop_path_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="n">attn_drop</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="n">proj_drop</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
@@ -1684,12 +1721,37 @@
                 <span class="n">hidden_dim</span><span class="p">,</span> <span class="n">num_patches</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;2d&quot;</span><span class="p">,</span> <span class="n">grid_size</span><span class="o">=</span><span class="n">grid_size</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;pos_embed&quot;</span><span class="p">,</span> <span class="n">pe</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">pos_embed_type</span> <span class="o">==</span> <span class="s2">&quot;sincos_3d&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">grid_size</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="p">(</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="n">grid_size</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid_size</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;sincos_3d requires grid_size=(T, H, W); got </span><span class="si">{</span><span class="n">grid_size</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">grid_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">grid_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">grid_size</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="n">num_patches</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;grid_size </span><span class="si">{</span><span class="n">grid_size</span><span class="si">}</span><span class="s2"> has </span><span class="si">{</span><span class="n">grid_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">grid_size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">grid_size</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2"> &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;elements but num_patches=</span><span class="si">{</span><span class="n">num_patches</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">pe</span> <span class="o">=</span> <span class="n">get_sincos_pos_embed</span><span class="p">(</span>
+                <span class="n">hidden_dim</span><span class="p">,</span> <span class="n">num_patches</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;3d&quot;</span><span class="p">,</span> <span class="n">grid_size</span><span class="o">=</span><span class="n">grid_size</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;pos_embed&quot;</span><span class="p">,</span> <span class="n">pe</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
         <span class="k">elif</span> <span class="n">pos_embed_type</span> <span class="o">==</span> <span class="s2">&quot;sincos_1d&quot;</span><span class="p">:</span>
             <span class="n">pe</span> <span class="o">=</span> <span class="n">get_sincos_pos_embed</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">num_patches</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;1d&quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;pos_embed&quot;</span><span class="p">,</span> <span class="n">pe</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
-        <span class="k">else</span><span class="p">:</span>  <span class="c1"># learned</span>
+        <span class="k">elif</span> <span class="n">pos_embed_type</span> <span class="o">==</span> <span class="s2">&quot;none&quot;</span><span class="p">:</span>
+            <span class="c1"># No additive positional embed (typically paired with RoPE).</span>
+            <span class="c1"># Register zeros so downstream gather/add code is unchanged.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;pos_embed&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_patches</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">pos_embed_type</span> <span class="o">==</span> <span class="s2">&quot;learned&quot;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">pos_embed</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_patches</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">))</span>
             <span class="n">trunc_normal_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_embed</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;pos_embed_type must be one of &#39;sincos_1d&#39;, &#39;sincos_2d&#39;, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&#39;sincos_3d&#39;, &#39;learned&#39;, &#39;none&#39;; got </span><span class="si">{</span><span class="n">pos_embed_type</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
 
         <span class="c1"># Prefix token positional embeddings (content comes from input)</span>
         <span class="k">if</span> <span class="n">num_prefix_tokens</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
