@@ -5,6 +5,8 @@ from lightning.pytorch import Callback, LightningModule, Trainer
 from lightning.pytorch.callbacks import RichProgressBar as _RichProgressBar
 
 from .checkpoint_sklearn import SklearnCheckpoint, WandbCheckpoint
+from .checkpoint_trackio import TrackioCheckpoint
+from .checkpoint_swanlab import SwanLabCheckpoint
 from .env_info import EnvironmentDumpCallback
 from .hf_models import HuggingFaceCheckpointCallback
 from .registry import ModuleRegistryCallback
@@ -114,6 +116,8 @@ _DEFAULT_CALLBACK_REGISTRY = {
     "trainer_info": (TrainerInfo, {}),
     "sklearn_checkpoint": (SklearnCheckpoint, {}),
     "wandb_checkpoint": (WandbCheckpoint, {}),
+    "trackio_checkpoint": (TrackioCheckpoint, {}),
+    "swanlab_checkpoint": (SwanLabCheckpoint, {}),
     "module_summary": (ModuleSummary, {}),
     "slurm_info": (SLURMInfo, {}),
     "unused_params": (LogUnusedParametersOnce, {}),

@@ -319,7 +319,7 @@ When `cache_dir` is active, Hydra's `run.dir`, `sweep.dir`, and `job.chdir` sett
 
 ## Run Registry
 
-When `cache_dir` is set, `stable-pretraining` automatically maintains a **local SQLite registry** that indexes every run. Think of it as a local, offline, instant-query alternative to the wandb dashboard — designed for large sweeps on HPC clusters.
+When `cache_dir` is set, `stable-pretraining` automatically maintains a **filesystem-backed run registry** that indexes every run. Think of it as a local, offline, instant-query alternative to the wandb dashboard — designed for large sweeps on HPC clusters.
 
 There is **nothing to configure** — if `cache_dir` is set, the registry is active:
 
@@ -327,20 +327,37 @@ There is **nothing to configure** — if `cache_dir` is set, the registry is act
 import stable_pretraining as spt
 
 spt.set(cache_dir="/scratch/runs")
-# That's it. Every run is indexed in /scratch/runs/registry.db
+# That's it. Every run writes a sidecar.json into its run directory.
 ```
+
+### Architecture
+
+The registry uses a **filesystem-first sidecar pattern**. During training, each run writes only plain files — no SQLite, no network I/O:
+
+```
+{run_dir}/
+  sidecar.json    ← atomic JSON snapshot (hparams, summary, status, tags)
+  heartbeat       ← empty file, mtime touched every flush (liveness signal)
+  metrics.csv     ← CSVLogger per-step time series
+  hparams.yaml    ← CSVLogger hparams
+  checkpoints/    ← Lightning checkpoints
+```
+
+The `sidecar.json` is the **source of truth** for each run. It is atomically rewritten (tmp + fsync + rename) so readers never see a partial file. A separate **scanner** (`spt registry scan`) walks `{cache_dir}/runs/**/sidecar.json` and builds a SQLite cache (`registry.db`) for fast querying. This cache is fully derived — deleting it is harmless; run `spt registry scan --full` to rebuild.
+
+This design eliminates all SQLite contention during training: thousands of concurrent SLURM jobs write only to their own run directory and never touch a shared database.
 
 ### What gets stored
 
 The registry captures three categories of data per run, all automatically:
 
 - **Config / hparams** — the full Hydra config (trainer, module, data) is flattened into dot-separated keys (e.g. `module.optim.optimizer.lr`, `trainer.max_epochs`) and stored as both `config` and `hparams`. This works the same way as wandb's config: the Manager flattens the Hydra DictConfig and injects it into `module.save_hyperparameters()` before `trainer.fit()`, so Lightning's built-in `_log_hyperparams` sends it to **all** loggers (wandb, CSV, TensorBoard, and the registry) automatically.
-- **Summary** — every `self.log()` call in your LightningModule accumulates into a wandb-style summary dict (last value per metric key). At the end of training, the final summary (e.g. `{"val_acc": 0.85, "train_loss": 0.12}`) is written to the database.
-- **Metadata** — run ID, status (`running`/`completed`/`failed`), tags, notes, `run_dir` path, and best checkpoint path.
+- **Summary** — every `self.log()` call in your LightningModule accumulates into a wandb-style summary dict (last value per metric key). At the end of training, the final summary (e.g. `{"val_acc": 0.85, "train_loss": 0.12}`) is written to the sidecar.
+- **Metadata** — run ID, status (`running`/`completed`/`failed`/`orphaned`), liveness (heartbeat-based), tags, notes, `run_dir` path, and best checkpoint path.
 
 ### Grouping with tags
 
-All grouping is done through **tags** — a flat list of strings attached to each run. There is no separate "project" or "group" concept; `cache_dir` already acts as the project (one database file), and tags handle everything else.
+All grouping is done through **tags** — a flat list of strings attached to each run. There is no separate "project" or "group" concept; `cache_dir` already acts as the project, and tags handle everything else.
 
 For SLURM array jobs, a `"sweep:<SLURM_ARRAY_JOB_ID>"` tag is automatically added so that all tasks in the same array are queryable as a group. You can add your own tags in YAML:
 
@@ -353,7 +370,7 @@ logger:
 
 ### Querying runs
 
-Use `spt.open_registry()` from a notebook or script to query across all your runs:
+`open_registry()` triggers an incremental scan of the filesystem before returning, so the cache reflects the current state. A short in-process TTL ensures back-to-back queries don't re-scan.
 
 ```python
 import stable_pretraining as spt
@@ -373,10 +390,13 @@ ckpt = torch.load(best[0].checkpoint_path)
 # Filter by any Hydra config key (deeply nested keys work)
 lars_runs = reg.query(hparams={"module.optim.optimizer.type": "LARS"})
 
+# Check which runs are still alive (heartbeat-based)
+active = reg.query(alive=True)
+
 # All resnet runs as a pandas DataFrame
 df = reg.to_dataframe(tag="resnet50")
 # Columns include flattened hparams and summary:
-#   run_id, status, tags, notes, checkpoint_path,
+#   run_id, status, alive, tags, notes, checkpoint_path,
 #   hparams.module.optim.optimizer.lr, hparams.trainer.max_epochs,
 #   summary.val_acc, summary.train_loss, ...
 
@@ -388,7 +408,19 @@ df[["run_id", "hparams.module.optim.optimizer.lr", "summary.val_acc"]].sort_valu
 
 ### Concurrency and SLURM requeue
 
-The registry uses SQLite in WAL mode with exponential-backoff retries, so thousands of concurrent SLURM jobs can safely write to the same database file. On SLURM requeue, the run ID is deterministic (derived from `SLURM_JOB_ID`), so the requeued job reconnects to the same registry row and resumes seamlessly — the same mechanism used for wandb run resumption and checkpoint recovery.
+Since training jobs only write to their own run directory (plain files, no shared database), there is zero SQLite contention — thousands of concurrent SLURM jobs run safely with no coordination. The scanner is the sole SQLite writer and uses WAL mode so concurrent readers never block it. On SLURM requeue, the run ID is deterministic (derived from `SLURM_JOB_ID`), so the requeued job finds its previous sidecar and resumes seamlessly — the same mechanism used for wandb run resumption and checkpoint recovery.
+
+### Liveness detection
+
+The registry tracks whether a run is alive via a **heartbeat** file (an empty file whose mtime is touched on every `log_metrics` call). The scanner considers a run alive if its heartbeat is newer than 180 seconds and its status is not terminal. This lets you distinguish running, stalled, and dead jobs without contacting SLURM:
+
+```bash
+# Only alive runs
+spt registry ls --alive
+
+# Only dead/finished runs
+spt registry ls --dead
+```
 
 ### CLI
 
@@ -398,8 +430,9 @@ The `spt registry` command lets you query runs from the terminal:
 # List all runs
 spt registry ls
 
-# Filter by tag or status
+# Filter by tag, status, or liveness
 spt registry ls --tag resnet50 --status completed
+spt registry ls --alive
 
 # Top 5 runs by a metric (use --asc for losses)
 spt registry best val_acc
@@ -410,9 +443,16 @@ spt registry show <run_id>
 
 # Export to CSV or Parquet
 spt registry export sweep_results.csv --tag sweep:12345
+
+# Manually refresh the SQLite cache from sidecars
+spt registry scan
+spt registry scan --full  # re-ingest everything (schema migration, DB rebuild)
+
+# Migrate from a legacy server-backed registry.db
+spt registry migrate /path/to/old/registry.db --cache-dir /scratch/runs
 ```
 
-By default the CLI uses `~/.cache/stable-pretraining/registry.db` (or `$SPT_CACHE_DIR/registry.db` if set). Pass `--db /path/to/registry.db` to query a different database.
+By default the CLI uses `$SPT_CACHE_DIR/registry.db` (or the `spt.set(cache_dir=...)` value). Pass `--db /path/to/registry.db` and/or `--cache-dir` to override.
 
 ### Disabling the registry
 

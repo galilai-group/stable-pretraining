@@ -9,11 +9,30 @@ from .patch_masking import PatchMasking
 from dataclasses import dataclass
 from transformers.utils import ModelOutput
 from .pos_embed import (
+    build_rotary_pos_embed,
     get_sincos_pos_embed,
     get_timestep_embed,
     interpolate_pos_embed,
-    RotaryPositionEmbedding2D,
 )
+
+
+def _normalize_rope_mode(
+    use_rope: "bool | str | None",
+) -> "str | None":
+    """Normalize the ``use_rope`` argument to a RoPE mode string or None.
+
+    Accepts: True ('2d' for backward compat), False/None (disabled),
+    or one of '1d'/'2d'/'3d'. Raises ValueError for any other value.
+    """
+    if use_rope is None or use_rope is False:
+        return None
+    if use_rope is True:
+        return "2d"
+    if isinstance(use_rope, str) and use_rope in ("1d", "2d", "3d"):
+        return use_rope
+    raise ValueError(
+        f"use_rope must be one of '1d', '2d', '3d', True, False, or None; got {use_rope!r}"
+    )
 
 
 class SwiGLU(nn.Module):
@@ -556,7 +575,7 @@ class Attention(nn.Module):
         qkv_bias: bool = True,
         attn_drop: float = 0.0,
         proj_drop: float = 0.0,
-        use_rope: bool = False,
+        use_rope: "bool | Literal['1d', '2d', '3d'] | None" = None,
         use_qk_norm: bool = False,
         max_grid_size: int = 32,
     ):
@@ -569,7 +588,8 @@ class Attention(nn.Module):
         self.num_heads = num_heads
         self.head_dim = dim // num_heads
         self.scale = self.head_dim**-0.5
-        self.use_rope = use_rope
+        self.rope_mode = _normalize_rope_mode(use_rope)
+        self.use_rope = self.rope_mode is not None
         self.use_qk_norm = use_qk_norm
 
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
@@ -577,8 +597,9 @@ class Attention(nn.Module):
         self.proj = nn.Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
 
-        if use_rope:
-            self.rope = RotaryPositionEmbedding2D(self.head_dim, max_grid_size)
+        self.rope = build_rotary_pos_embed(
+            self.rope_mode, self.head_dim, max_grid_size=max_grid_size
+        )
 
         if use_qk_norm:
             self.qk_norm = QKNorm(self.head_dim)
@@ -587,7 +608,7 @@ class Attention(nn.Module):
         self,
         x: torch.Tensor,
         attn_mask: Optional[torch.Tensor] = None,
-        grid_size: Optional[Tuple[int, int]] = None,
+        grid_size: "Optional[Tuple[int, ...] | int]" = None,
     ) -> torch.Tensor:
         """Compute multi-head self-attention.
 
@@ -606,14 +627,18 @@ class Attention(nn.Module):
             - Causal: ``torch.triu(torch.ones(N, N, dtype=torch.bool), diagonal=1)``
             - Leave-one-out: ``torch.eye(N, dtype=torch.bool)``
 
-        :param grid_size: Spatial grid dimensions as ``(height, width)``.
-            **Required when** ``use_rope=True``. Used to compute 2D rotary
-            position embeddings. For a 224x224 image with patch_size=16,
-            use ``grid_size=(14, 14)``.
+        :param grid_size: Grid dimensions used by RoPE. Meaning depends on
+            ``use_rope``:
+
+            - ``'1d'``: ignored (sequence length is inferred from ``x``)
+            - ``'2d'``: ``(height, width)`` — required
+            - ``'3d'``: ``(time, height, width)`` — required
+
+            For ``'2d'`` with a square grid, this can be inferred from ``N``.
 
         :return: Output tensor of shape ``[B, N, D]``
 
-        :raises ValueError: If ``use_rope=True`` but ``grid_size`` is None
+        :raises ValueError: If the grid_size shape doesn't match ``use_rope``
         """
         B, N, C = x.shape
 
@@ -629,19 +654,27 @@ class Attention(nn.Module):
         if self.use_qk_norm:
             q, k = self.qk_norm(q, k)
 
-        # Apply 2D Rotary Position Embedding
-        if self.use_rope:
+        # Apply Rotary Position Embedding (mode-dependent)
+        if self.rope_mode == "1d":
+            q, k = self.rope(q, k)
+        elif self.rope_mode == "2d":
             if grid_size is None:
-                # Attempt to infer square grid
                 grid_h = grid_w = int(N**0.5)
                 if grid_h * grid_w != N:
                     raise ValueError(
-                        f"use_rope=True requires grid_size parameter for non-square "
+                        f"use_rope='2d' requires grid_size for non-square "
                         f"sequences. Got N={N} which is not a perfect square."
                     )
             else:
                 grid_h, grid_w = grid_size
             q, k = self.rope(q, k, grid_h, grid_w)
+        elif self.rope_mode == "3d":
+            if grid_size is None or len(grid_size) != 3:
+                raise ValueError(
+                    f"use_rope='3d' requires grid_size=(T, H, W); got {grid_size!r}"
+                )
+            grid_t, grid_h, grid_w = grid_size
+            q, k = self.rope(q, k, grid_t, grid_h, grid_w)
 
         # Convert boolean mask to SDPA-compatible float mask
         attn_mask_sdpa = self._prepare_attn_mask(attn_mask, q.dtype, q.device)
@@ -691,7 +724,7 @@ class Attention(nn.Module):
     def extra_repr(self) -> str:
         return (
             f"num_heads={self.num_heads}, head_dim={self.head_dim}, "
-            f"use_rope={self.use_rope}, use_qk_norm={self.use_qk_norm}"
+            f"rope_mode={self.rope_mode!r}, use_qk_norm={self.use_qk_norm}"
         )
 
 
@@ -926,7 +959,7 @@ class TransformerBlock(nn.Module):
         self_attn: bool = True,
         cross_attn: bool = False,
         use_adaln: bool = False,
-        use_rope: bool = False,
+        use_rope: "bool | Literal['1d', '2d', '3d'] | None" = None,
         use_qk_norm: bool = False,
         mlp_type: Literal["gelu", "swiglu"] = "gelu",
         use_layer_scale: bool = False,
@@ -941,7 +974,8 @@ class TransformerBlock(nn.Module):
         self.use_self_attn = self_attn
         self.use_cross_attn = cross_attn
         self.use_adaln = use_adaln
-        self.use_rope = use_rope
+        self.rope_mode = _normalize_rope_mode(use_rope)
+        self.use_rope = self.rope_mode is not None
         self.use_layer_scale = use_layer_scale
 
         if not self_attn and not cross_attn:
@@ -1011,7 +1045,7 @@ class TransformerBlock(nn.Module):
         cond: Optional[torch.Tensor] = None,
         attn_mask: Optional[torch.Tensor] = None,
         cross_attn_mask: Optional[torch.Tensor] = None,
-        grid_size: Optional[Tuple[int, int]] = None,
+        grid_size: "Optional[Tuple[int, ...] | int]" = None,
     ) -> torch.Tensor:
         """Forward pass.
 
@@ -1020,15 +1054,16 @@ class TransformerBlock(nn.Module):
         :param cond: Conditioning tensor [B, D] (required if use_adaln=True)
         :param attn_mask: Self-attention mask. True = blocked.
         :param cross_attn_mask: Cross-attention mask. True = blocked.
-        :param grid_size: (grid_h, grid_w) for RoPE. Required if use_rope=True.
+        :param grid_size: Grid dims for RoPE. For 2D: (H, W); for 3D: (T, H, W);
+            ignored for 1D.
         :return: Output tensor [B, N, D]
         """
         if self.use_cross_attn and context is None:
             raise ValueError("context required when cross_attn=True")
         if self.use_adaln and cond is None:
             raise ValueError("cond required when use_adaln=True")
-        if self.use_rope and grid_size is None:
-            raise ValueError("grid_size required when use_rope=True")
+        if self.rope_mode in ("2d", "3d") and grid_size is None:
+            raise ValueError(f"grid_size required when use_rope={self.rope_mode!r}")
 
         if self.use_adaln:
             mods = self.adaLN_mlp(cond).chunk(self.num_mods, dim=-1)
@@ -1252,8 +1287,10 @@ class FlexibleTransformer(nn.Module):
         self_attn: bool = True,
         cross_attn: bool = True,
         use_adaln: bool = True,
-        pos_embed_type: Literal["sincos_1d", "sincos_2d", "learned"] = "sincos_2d",
-        grid_size: Optional[int | tuple[int, int]] = None,
+        pos_embed_type: Literal[
+            "sincos_1d", "sincos_2d", "sincos_3d", "learned", "none"
+        ] = "sincos_2d",
+        grid_size: "Optional[int | tuple[int, int] | tuple[int, int, int]]" = None,
         drop_path_rate: float = 0.0,
         attn_drop: float = 0.0,
         proj_drop: float = 0.0,
@@ -1296,12 +1333,37 @@ class FlexibleTransformer(nn.Module):
                 hidden_dim, num_patches, mode="2d", grid_size=grid_size
             )
             self.register_buffer("pos_embed", pe.unsqueeze(0))
+        elif pos_embed_type == "sincos_3d":
+            if grid_size is None or not (
+                isinstance(grid_size, tuple) and len(grid_size) == 3
+            ):
+                raise ValueError(
+                    f"sincos_3d requires grid_size=(T, H, W); got {grid_size!r}"
+                )
+            if grid_size[0] * grid_size[1] * grid_size[2] != num_patches:
+                raise ValueError(
+                    f"grid_size {grid_size} has {grid_size[0] * grid_size[1] * grid_size[2]} "
+                    f"elements but num_patches={num_patches}"
+                )
+            pe = get_sincos_pos_embed(
+                hidden_dim, num_patches, mode="3d", grid_size=grid_size
+            )
+            self.register_buffer("pos_embed", pe.unsqueeze(0))
         elif pos_embed_type == "sincos_1d":
             pe = get_sincos_pos_embed(hidden_dim, num_patches, mode="1d")
             self.register_buffer("pos_embed", pe.unsqueeze(0))
-        else:  # learned
+        elif pos_embed_type == "none":
+            # No additive positional embed (typically paired with RoPE).
+            # Register zeros so downstream gather/add code is unchanged.
+            self.register_buffer("pos_embed", torch.zeros(1, num_patches, hidden_dim))
+        elif pos_embed_type == "learned":
             self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, hidden_dim))
             trunc_normal_(self.pos_embed, std=0.02)
+        else:
+            raise ValueError(
+                f"pos_embed_type must be one of 'sincos_1d', 'sincos_2d', "
+                f"'sincos_3d', 'learned', 'none'; got {pos_embed_type!r}"
+            )
 
         # Prefix token positional embeddings (content comes from input)
         if num_prefix_tokens > 0:

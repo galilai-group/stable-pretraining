@@ -1,19 +1,24 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-"""Lightning Logger that writes run metadata to a local SQLite registry.
+"""Lightning logger for the filesystem-backed run registry.
 
-Drop-in replacement (or complement) for WandbLogger / CSVLogger.  All
-``self.log()`` and ``self.log_dict()`` calls from the LightningModule are
-routed here automatically by Lightning.
+:class:`RegistryLogger` is a thin subclass of Lightning's
+:class:`~lightning.pytorch.loggers.CSVLogger`.  It writes the standard
+CSV + hparams artifacts **and** an indexable ``sidecar.json`` + a
+``heartbeat`` file in the run directory.
 
-Usage in YAML (uses ``spt.set(cache_dir=...)`` automatically)::
+Nothing in the training path touches SQLite or a network server:
 
-    logger:
-      _target_: stable_pretraining.registry.RegistryLogger
-      tags: [resnet50, simclr, ablation-v2]
+* ``log_hyperparams`` → CSV hparams + sidecar snapshot.
+* ``log_metrics``     → CSV metrics row + summary accumulator + heartbeat touch.
+* ``save``            → CSV flush + sidecar rewrite (atomic).
+* ``finalize``        → terminal status in sidecar.
+* ``after_save_checkpoint`` → ``checkpoint_path`` in sidecar.
 
-Or auto-injected when ``spt.set(cache_dir=...)`` is configured.
+A separate scanner (see :mod:`stable_pretraining.registry._scanner`)
+turns sidecars into a fast-queryable SQLite cache.  Deleting that cache
+is harmless — rerun ``spt registry scan --full`` to rebuild.
 """
 
 from __future__ import annotations
@@ -23,198 +28,181 @@ import os
 from pathlib import Path
 from typing import Any, Optional, Union
 
-from lightning.pytorch.loggers.logger import Logger
+from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.utilities.rank_zero import rank_zero_only
 
-from ._db import RegistryDB
+from . import _sidecar
 
 
-class RegistryLogger(Logger):
-    """Lightning Logger backed by a local SQLite database.
+class RegistryLogger(CSVLogger):
+    """CSV logger with a filesystem-indexable sidecar.
 
-    Every ``self.log()``, ``self.log_dict()`` call in the LightningModule
-    flows through :meth:`log_metrics`, accumulating a wandb-style summary
-    dict (last value per key).  The summary is periodically flushed to
-    the database and finalized at the end of training.
-
-    Grouping is done entirely through **tags**.  SLURM array jobs
-    automatically get a ``"sweep:<SLURM_ARRAY_JOB_ID>"`` tag so all
-    tasks in the same array are queryable as a group.
+    The sidecar is an atomically-rewritten JSON file that captures the
+    run's hparams, latest metric values (``summary``), status, and
+    checkpoint path.  It is the source of truth for the registry
+    scanner.
 
     Args:
-        db_path: Path to the SQLite database file.  If ``None``
-            (default), uses ``{cache_dir}/registry.db`` from
-            ``spt.set(cache_dir=...)``.
-        tags: Optional list of string tags for this run.  Use tags for
-            any kind of grouping: model architecture, experiment name,
-            sweep identifier, etc.
-        notes: Optional free-text notes / description for the run.
-        flush_every: Flush summary to the database every *N* calls to
-            :meth:`log_metrics`.  Lower values give more up-to-date
-            results at the cost of more DB writes.  Default 50.
+        run_dir: Directory this run writes to.  CSV logs,
+            ``sidecar.json`` and ``heartbeat`` all live here.
+        run_id: Unique identifier for this run (typically the SLURM job
+            id or a deterministic hash).  Used as the primary key in
+            the registry cache and as the CSV version component.
+        tags: Free-form string tags for grouping runs (e.g. model
+            architecture, experiment name, sweep id).  Any
+            ``SLURM_ARRAY_JOB_ID`` env var is auto-appended as
+            ``"sweep:<id>"`` for array-job convenience.
+        notes: Optional free-text description.
+        flush_logs_every_n_steps: How often the CSV is flushed; the
+            sidecar is rewritten on the same cadence.  The heartbeat
+            is touched on every ``log_metrics`` call (cheap).
     """
 
     def __init__(
         self,
-        db_path: Optional[str] = None,
+        run_dir: Union[str, Path],
+        run_id: str,
+        *,
         tags: Optional[list[str]] = None,
         notes: Optional[str] = None,
-        flush_every: int = 50,
+        flush_logs_every_n_steps: int = 50,
     ) -> None:
-        super().__init__()
-        if db_path is None:
-            db_path = self._resolve_db_path()
-        self._db = RegistryDB(db_path)
-        self._tags = list(tags or [])
-        self._notes = notes or ""
-        self._flush_every = flush_every
+        run_dir = Path(run_dir).expanduser().resolve()
+        run_dir.mkdir(parents=True, exist_ok=True)
 
-        # Auto-tag SLURM array jobs so sweeps are queryable
+        # save_dir + name="" + version="" ⇒ CSVLogger.log_dir == run_dir.
+        # Matches the existing Manager-auto-CSV layout.
+        super().__init__(
+            save_dir=str(run_dir),
+            name="",
+            version="",
+            flush_logs_every_n_steps=flush_logs_every_n_steps,
+        )
+
+        self._run_dir = run_dir
+        self._run_id = str(run_id)
+
+        self._tags: list[str] = list(tags or [])
         array_job = os.environ.get("SLURM_ARRAY_JOB_ID")
         if array_job and f"sweep:{array_job}" not in self._tags:
             self._tags.append(f"sweep:{array_job}")
 
-        # Set externally by Manager before training starts
-        self._run_id: Optional[str] = None
-        self._run_dir: Optional[str] = None
+        self._notes = notes or ""
+        self._hparams: dict[str, Any] = {}
+        self._summary: dict[str, Any] = {}
+        self._checkpoint_path: Optional[str] = None
+        self._status = "running"
+        # Preserve the first-write timestamp across sidecar rewrites so
+        # the registry can order runs chronologically regardless of how
+        # often we flush.
+        self._created_at: Optional[float] = None
 
-        # Accumulated summary — latest value per metric key
-        self._summary: dict[str, float] = {}
-        self._log_count = 0
-        self._registered = False
-
-    # -- abstract properties ---------------------------------------------------
-
-    @property
-    def name(self) -> Optional[str]:
-        return "registry"
+    # -- identity ---------------------------------------------------------------
 
     @property
-    def version(self) -> Optional[str]:
+    def run_id(self) -> str:
         return self._run_id
 
     @property
-    def save_dir(self) -> Optional[str]:
+    def run_dir(self) -> Path:
         return self._run_dir
 
-    # -- logging ---------------------------------------------------------------
+    # -- lightning hooks --------------------------------------------------------
 
     @rank_zero_only
     def log_hyperparams(
-        self, params: Union[dict[str, Any], Any], *args: Any, **kwargs: Any
+        self, params: Union[dict[str, Any], Any], *args: Any, **kw: Any
     ) -> None:
-        if self._run_id is None:
-            return
-
-        # Flatten nested config to a simple dict
-        flat = _flatten_params(params)
-
-        self._db.insert_run(
-            self._run_id,
-            status="running",
-            run_dir=self._run_dir,
-            config=flat,
-            hparams=flat,
-            tags=self._tags,
-            notes=self._notes,
-        )
-        self._registered = True
+        # Persist to CSVLogger's hparams.yaml.
+        super().log_hyperparams(params, *args, **kw)
+        self._hparams = _flatten_params(params)
+        self._write_sidecar()
 
     @rank_zero_only
-    def log_metrics(
-        self, metrics: dict[str, float], step: Optional[int] = None
-    ) -> None:
-        self._summary.update(metrics)
-        self._log_count += 1
+    def log_metrics(self, metrics: dict[str, Any], step: Optional[int] = None) -> None:
+        # CSV-side: write the raw per-step row.
+        super().log_metrics(metrics, step)
 
-        if self._log_count % self._flush_every == 0:
-            self._flush_summary()
+        # Sidecar-side: accumulate last-value-per-key summary.
+        for k, v in metrics.items():
+            scalar = _to_scalar(v)
+            if scalar is not None:
+                self._summary[k] = scalar
+
+        # Heartbeat: cheap, fire-and-forget; used by the scanner to
+        # distinguish running / stalled / dead without contacting SLURM.
+        _sidecar.touch_heartbeat(self._run_dir)
+
+    @rank_zero_only
+    def save(self) -> None:
+        super().save()
+        self._write_sidecar()
 
     @rank_zero_only
     def finalize(self, status: str) -> None:
-        if self._run_id is None:
-            return
-
-        # Map Lightning status strings
-        db_status = {"success": "completed", "failed": "failed"}.get(
-            status, status
-        )
-
-        # Find best checkpoint path if available
-        checkpoint_path = self._find_checkpoint()
-
-        fields: dict[str, Any] = {
-            "summary": self._summary,
-            "status": db_status,
-        }
-        if checkpoint_path is not None:
-            fields["checkpoint_path"] = checkpoint_path
-
-        # Ensure the run exists even if log_hyperparams was never called
-        if not self._registered:
-            self._db.insert_run(
-                self._run_id,
-                status=db_status,
-                run_dir=self._run_dir,
-                tags=self._tags,
-                notes=self._notes,
-            )
-            self._registered = True
-
-        self._db.update_run(self._run_id, **fields)
-        self._db.close()
+        # Map Lightning status strings to our canonical vocabulary.
+        self._status = {"success": "completed", "failed": "failed"}.get(status, status)
+        # Parent writes CSVs.  We don't call super().finalize first
+        # because _experiment may be None on rank-zero callers that
+        # never logged — super() handles that no-op correctly.
+        super().finalize(status)
+        self._write_sidecar()
 
     def after_save_checkpoint(self, checkpoint_callback: Any) -> None:
-        """Update checkpoint_path in the DB whenever Lightning saves a checkpoint."""
-        if self._run_id is None:
-            return
-        path = getattr(checkpoint_callback, "best_model_path", None)
-        if not path:
-            path = getattr(checkpoint_callback, "last_model_path", None)
+        # This callback fires on every rank; we gate on rank_zero via
+        # the helper write (which is rank-zero-only upstream).
+        path = (
+            getattr(checkpoint_callback, "best_model_path", None)
+            or getattr(checkpoint_callback, "last_model_path", None)
+            or None
+        )
         if path:
-            self._db.update_run(self._run_id, checkpoint_path=str(path))
+            self._checkpoint_path = str(path)
+            self._write_sidecar_safe()
 
-    # -- path resolution -------------------------------------------------------
+    # -- sidecar ----------------------------------------------------------------
 
-    @staticmethod
-    def _resolve_db_path() -> str:
-        from .._config import get_config
+    @rank_zero_only
+    def _write_sidecar(self) -> None:
+        """Atomically (re)write the sidecar.  Let exceptions propagate."""
+        data = _sidecar.make_sidecar(
+            run_id=self._run_id,
+            run_dir=str(self._run_dir),
+            status=self._status,
+            created_at=self._created_at,
+            hparams=self._hparams,
+            summary=self._summary,
+            tags=self._tags,
+            notes=self._notes,
+            checkpoint_path=self._checkpoint_path,
+        )
+        _sidecar.write_sidecar(self._run_dir, data)
+        if self._created_at is None:
+            self._created_at = data["created_at"]
 
-        cfg = get_config()
-        if cfg.cache_dir is None:
-            raise ValueError(
-                "RegistryLogger requires a db_path or spt.set(cache_dir=...). "
-                "Either pass db_path explicitly or configure cache_dir first."
-            )
-        return str(Path(cfg.cache_dir).resolve() / "registry.db")
+    @rank_zero_only
+    def _write_sidecar_safe(self) -> None:
+        """Same as :meth:`_write_sidecar` but swallows I/O errors.
 
-    # -- internals -------------------------------------------------------------
+        Used from callback hooks where a failed write should never take
+        down a training run.
+        """
+        try:
+            self._write_sidecar()
+        except OSError:
+            pass
 
-    def _flush_summary(self) -> None:
-        if self._run_id is None or not self._summary:
-            return
-        self._db.update_run(self._run_id, summary=self._summary)
 
-    def _find_checkpoint(self) -> Optional[str]:
-        """Scan run_dir/checkpoints/ for the best or last checkpoint."""
-        if self._run_dir is None:
-            return None
-        ckpt_dir = Path(self._run_dir) / "checkpoints"
-        if not ckpt_dir.is_dir():
-            return None
-        # Prefer best model, fall back to last.ckpt
-        ckpts = sorted(ckpt_dir.glob("*.ckpt"), key=lambda p: p.stat().st_mtime)
-        if not ckpts:
-            return None
-        # If there's a non-"last" checkpoint, prefer it (likely the "best")
-        for ckpt in reversed(ckpts):
-            if ckpt.stem != "last":
-                return str(ckpt)
-        return str(ckpts[-1])
+# --------------------------------------------------------------------- helpers
 
 
 def _flatten_params(params: Any) -> dict[str, Any]:
-    """Flatten nested config/params to a dot-separated dict of JSON-safe values."""
+    """Flatten a (possibly nested) hparams object to a flat JSON-safe dict.
+
+    Accepts ``DictConfig``, ``Namespace``, dicts, lists, scalars, or
+    anything.  Non-serializable values are stringified so the sidecar
+    stays round-trippable.
+    """
     try:
         from omegaconf import DictConfig, OmegaConf
 
@@ -224,12 +212,13 @@ def _flatten_params(params: Any) -> dict[str, Any]:
         pass
 
     if not isinstance(params, dict):
-        # Namespace or other object
-        params = vars(params) if hasattr(params, "__dict__") else {"params": str(params)}
+        params = (
+            vars(params) if hasattr(params, "__dict__") else {"params": str(params)}
+        )
 
-    flat: dict[str, Any] = {}
-    _flatten(params, "", flat)
-    return flat
+    out: dict[str, Any] = {}
+    _flatten(params, "", out)
+    return out
 
 
 def _flatten(obj: Any, prefix: str, out: dict[str, Any]) -> None:
@@ -241,9 +230,34 @@ def _flatten(obj: Any, prefix: str, out: dict[str, Any]) -> None:
             _flatten(v, f"{prefix}{i}.", out)
     else:
         key = prefix.rstrip(".")
-        # Ensure JSON-serializable
         try:
             json.dumps(obj)
             out[key] = obj
         except (TypeError, ValueError):
             out[key] = str(obj)
+
+
+def _to_scalar(v: Any) -> Optional[float]:
+    """Coerce metric value to a float scalar, or ``None`` if not scalar.
+
+    Handles torch Tensors, numpy scalars, int, float, bool.  Anything
+    else (strings, multi-element tensors, etc.) is skipped — we
+    deliberately keep the summary numeric so downstream tools can
+    always ``float()`` it.
+    """
+    # Common path: plain float/int.
+    if isinstance(v, bool):
+        return float(v)
+    if isinstance(v, (int, float)):
+        return float(v)
+    # Tensor-like with an ``item()`` method and 0-dim shape.
+    item = getattr(v, "item", None)
+    if callable(item):
+        try:
+            numel = getattr(v, "numel", None)
+            if callable(numel) and numel() != 1:
+                return None
+            return float(item())
+        except (RuntimeError, ValueError, TypeError):
+            return None
+    return None

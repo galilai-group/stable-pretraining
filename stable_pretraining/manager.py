@@ -27,6 +27,10 @@ else:
     wandb = None
 
 from .callbacks.checkpoint_sklearn import find_wandb_logger, _WANDB_RESUME_FILENAME
+from .callbacks.checkpoint_trackio import _TRACKIO_RESUME_FILENAME
+from .callbacks.checkpoint_swanlab import _SWANLAB_RESUME_FILENAME
+from .loggers.trackio import find_trackio_logger
+from .loggers.swanlab import find_swanlab_logger
 from .utils import get_required_fn_parameters
 from stable_pretraining.callbacks.utils import log_header
 from stable_pretraining.utils.error_handling import catch_errors_class
@@ -55,7 +59,7 @@ def print_logger_info(logger):
     elif logger is None:
         logging.warning("! No logger used!")
     else:
-        # Check for RegistryLogger without importing at module level
+        # Check for known loggers without importing at module level
         cls_name = type(logger).__name__
         if cls_name == "RegistryLogger":
             log_header("RegistryLogger")
@@ -63,6 +67,24 @@ def print_logger_info(logger):
             logging.info(f"  run_id:  {logger.version}")
             if logger._tags:
                 logging.info(f"  tags:    {logger._tags}")
+        elif cls_name == "TrackioLogger":
+            log_header("TrackioLogger")
+            logging.info(f"  project: {logger._project}")
+            logging.info(f"  name:    {logger._name}")
+            if logger._group:
+                logging.info(f"  group:   {logger._group}")
+            logging.info(f"  resume:  {logger._resume}")
+        elif cls_name == "SwanLabLogger":
+            log_header("SwanLabLogger")
+            init_cfg = getattr(logger, "_swanlab_init", {}) or {}
+            logging.info(f"  project:         {init_cfg.get('project')}")
+            logging.info(f"  experiment_name: {init_cfg.get('experiment_name')}")
+            if init_cfg.get("group"):
+                logging.info(f"  group:           {init_cfg.get('group')}")
+            if init_cfg.get("id"):
+                logging.info(f"  id:              {init_cfg.get('id')}")
+            if init_cfg.get("mode"):
+                logging.info(f"  mode:            {init_cfg.get('mode')}")
         else:
             logging.warning("! Unrecognized logger!")
 
@@ -228,6 +250,130 @@ class Manager(submitit.helpers.Checkpointable):
         logging.info(f"  Injected wandb run ID '{run_id}' from {sidecar}")
         logging.info(f"  project={saved_project}  entity={saved_entity}")
 
+    def _maybe_restore_trackio_run(self):
+        """Inject a previous Trackio run name into the logger BEFORE trackio.init().
+
+        Reads the sidecar ``trackio_resume.json`` written by
+        :class:`TrackioCheckpoint` and, if present, calls
+        ``set_resume(name)`` on the :class:`TrackioLogger` so that
+        ``trackio.init()`` resumes the correct run.
+
+        Must be called after the Trainer is created but before anything
+        accesses ``trainer.logger.experiment``.
+        """
+        trackio_logger = find_trackio_logger(self._trainer)
+        if trackio_logger is None:
+            return
+
+        has_run_dir = hasattr(self, "_run_dir")
+        has_ckpt = self.ckpt_path is not None and self.ckpt_path.is_file()
+        if not has_run_dir and not has_ckpt:
+            return
+
+        sidecar = None
+        if hasattr(self, "_run_dir"):
+            candidate = self._run_dir / _TRACKIO_RESUME_FILENAME
+            if candidate.is_file():
+                sidecar = candidate
+        if sidecar is None:
+            candidate = Path(_TRACKIO_RESUME_FILENAME)
+            if candidate.is_file():
+                sidecar = candidate
+        if sidecar is None:
+            logging.debug("  No trackio_resume.json found, skipping run name injection")
+            return
+
+        try:
+            resume_info = json.loads(sidecar.read_text())
+        except (json.JSONDecodeError, OSError) as e:
+            logging.warning(
+                f"! Failed to read {sidecar}: {e} — skipping trackio resume"
+            )
+            return
+
+        run_name = resume_info.get("name")
+        if not run_name:
+            logging.warning("! trackio_resume.json has no 'name' — skipping")
+            return
+
+        saved_project = resume_info.get("project")
+        current_project = trackio_logger._project
+        if saved_project and current_project and saved_project != current_project:
+            logging.error(
+                f"! trackio_resume.json project '{saved_project}' does not match "
+                f"current logger project '{current_project}'. "
+                "Skipping run name injection to avoid resuming into the wrong project."
+            )
+            return
+
+        trackio_logger.set_resume(run_name)
+        log_header("TrackioResume")
+        logging.info(f"  Injected trackio run name '{run_name}' from {sidecar}")
+        logging.info(f"  project={saved_project}")
+
+    def _maybe_restore_swanlab_run(self):
+        """Inject a previous SwanLab experiment ID into the logger BEFORE swanlab.init().
+
+        Reads the sidecar ``swanlab_resume.json`` written by
+        :class:`SwanLabCheckpoint` and, if present, calls
+        ``set_resume(id)`` on the :class:`SwanLabLogger` so that
+        ``swanlab.init()`` resumes the correct experiment.
+
+        Must be called after the Trainer is created but before anything
+        accesses ``trainer.logger.experiment``.
+        """
+        swanlab_logger = find_swanlab_logger(self._trainer)
+        if swanlab_logger is None:
+            return
+
+        has_run_dir = hasattr(self, "_run_dir")
+        has_ckpt = self.ckpt_path is not None and self.ckpt_path.is_file()
+        if not has_run_dir and not has_ckpt:
+            return
+
+        sidecar = None
+        if hasattr(self, "_run_dir"):
+            candidate = self._run_dir / _SWANLAB_RESUME_FILENAME
+            if candidate.is_file():
+                sidecar = candidate
+        if sidecar is None:
+            candidate = Path(_SWANLAB_RESUME_FILENAME)
+            if candidate.is_file():
+                sidecar = candidate
+        if sidecar is None:
+            logging.debug(
+                "  No swanlab_resume.json found, skipping experiment id injection"
+            )
+            return
+
+        try:
+            resume_info = json.loads(sidecar.read_text())
+        except (json.JSONDecodeError, OSError) as e:
+            logging.warning(
+                f"! Failed to read {sidecar}: {e} — skipping swanlab resume"
+            )
+            return
+
+        run_id = resume_info.get("id")
+        if not run_id:
+            logging.warning("! swanlab_resume.json has no 'id' — skipping")
+            return
+
+        saved_project = resume_info.get("project")
+        current_project = swanlab_logger._project
+        if saved_project and current_project and saved_project != current_project:
+            logging.error(
+                f"! swanlab_resume.json project '{saved_project}' does not match "
+                f"current logger project '{current_project}'. "
+                "Skipping id injection to avoid resuming into the wrong project."
+            )
+            return
+
+        swanlab_logger.set_resume(run_id)
+        log_header("SwanLabResume")
+        logging.info(f"  Injected swanlab experiment id '{run_id}' from {sidecar}")
+        logging.info(f"  project={saved_project}")
+
     # -- cache_dir / run_dir ----------------------------------------------------
 
     def _resolve_run_dir(self) -> Optional[Path]:
@@ -354,9 +500,9 @@ class Manager(submitit.helpers.Checkpointable):
                 logging.info(f"  Load checkpoint (user): {self.ckpt_path}")
                 return str(self.ckpt_path)
             logging.warning(
-                f"  {self.ckpt_path} specified but does not exist, using None"
+                f"  {self.ckpt_path} specified but does not exist, "
+                "falling back to auto-detection"
             )
-            return None
 
         # 2. Auto-detect requeue checkpoint in run_dir
         auto_ckpt = run_dir / "checkpoints" / "last.ckpt"
@@ -456,75 +602,57 @@ class Manager(submitit.helpers.Checkpointable):
             pass  # Hydra not active
 
     def _inject_registry_logger(self) -> None:
-        """Auto-add :class:`RegistryLogger` and a :class:`CSVLogger`.
+        """Auto-add :class:`RegistryLogger`.
 
-        Always active by default so that every run is indexed and has
-        per-step CSV logs.  Works with or without ``cache_dir``:
+        ``RegistryLogger`` is a :class:`~lightning.pytorch.loggers.CSVLogger`
+        subclass — a single logger captures per-step CSV metrics and
+        writes a ``sidecar.json`` + ``heartbeat`` file for fast querying
+        via ``spt registry …``.  Works with or without ``cache_dir``:
 
-        - **With ``cache_dir``**: ``registry.db`` lives in ``cache_dir``,
-          CSV logs go to ``run_dir/``.
-        - **Without ``cache_dir``**: both fall back to the Trainer's
-          ``default_root_dir`` (typically the current working directory).
+        * **With ``cache_dir``**: run writes under
+          ``{cache_dir}/runs/YYYYMMDD/HHMMSS/{run_id}/``.
+        * **Without ``cache_dir``**: falls back to the Trainer's
+          ``default_root_dir``.
 
-        The RegistryLogger captures the run summary, config, and metadata
-        into a shared SQLite database for fast cross-run queries.
-
-        The CSVLogger records **per-step metrics** so that no detailed
-        training history is lost — the RegistryLogger only stores the
-        last value per metric key (like wandb's ``run.summary``), not the
-        full time series.
-
-        Can be disabled via ``spt.set(default_callbacks={"registry_logger": False})``.
+        Can be disabled via ``spt.set(default_loggers={"registry": False})``.
+        If a sibling :class:`CSVLogger` is already present, the
+        ``RegistryLogger`` replaces it to avoid two writers on the same
+        ``metrics.csv``.
         """
         cfg = get_config()
-
-        # Respect user opt-out
         if not cfg.default_loggers.get("registry", True):
             return
 
         from .registry.logger import RegistryLogger
 
-        # Resolve paths: cache_dir → run_dir, otherwise trainer's root dir
+        # Resolve run_dir + run_id.  Manager._resolve_run_dir already
+        # populated these when cache_dir is set.
         if hasattr(self, "_run_dir") and self._run_dir is not None:
-            log_dir = str(self._run_dir)
+            run_dir = str(self._run_dir)
             run_id = self._run_id
         else:
-            log_dir = str(
-                Path(self._trainer.default_root_dir).resolve()
-            )
+            run_dir = str(Path(self._trainer.default_root_dir).resolve())
             run_id = _generate_run_id()
 
-        if cfg.cache_dir is not None:
-            db_path = str(Path(cfg.cache_dir).resolve() / "registry.db")
-        else:
-            db_path = str(Path(log_dir) / "registry.db")
+        # Drop any pre-existing CSVLogger — RegistryLogger *is* a
+        # CSVLogger and would otherwise race on metrics.csv.
+        self._trainer.loggers = [
+            lgr
+            for lgr in self._trainer.loggers
+            if not (
+                isinstance(lgr, lightning.pytorch.loggers.CSVLogger)
+                and not isinstance(lgr, RegistryLogger)
+            )
+        ]
 
-        registry_logger = RegistryLogger(db_path=db_path)
-        registry_logger._run_id = run_id
-        registry_logger._run_dir = log_dir
-
+        registry_logger = RegistryLogger(run_dir=run_dir, run_id=run_id)
         self._trainer.loggers.append(registry_logger)
 
         log_header("RegistryLogger")
-        logging.info(f"  db_path: {registry_logger._db.db_path}")
-        logging.info(f"  run_id:  {run_id}")
+        logging.info(f"  run_dir: {registry_logger.run_dir}")
+        logging.info(f"  run_id:  {registry_logger.run_id}")
         if registry_logger._tags:
             logging.info(f"  tags:    {registry_logger._tags}")
-
-        # Ensure a CSVLogger is present so per-step metrics are saved.
-        # The RegistryLogger only stores summary (last value per key);
-        # without a CSVLogger, the step-by-step history would be lost.
-        has_csv = any(
-            isinstance(lgr, lightning.pytorch.loggers.CSVLogger)
-            for lgr in self._trainer.loggers
-        )
-        if not has_csv:
-            csv_logger = lightning.pytorch.loggers.CSVLogger(
-                save_dir=log_dir, name="", version=""
-            )
-            self._trainer.loggers.append(csv_logger)
-            log_header("CSVLogger (auto)")
-            logging.info(f"  log_dir: {csv_logger.log_dir}")
 
     def _flatten_hydra_config(self) -> dict:
         """Build a flat dot-separated dict from the raw Hydra configs.
@@ -700,6 +828,8 @@ class Manager(submitit.helpers.Checkpointable):
                 self._trainer.callbacks.append(TeacherStudentCallback())
 
         self._maybe_restore_wandb_run_id()
+        self._maybe_restore_trackio_run()
+        self._maybe_restore_swanlab_run()
         self.init_and_sync_wandb()
         print_logger_info(self._trainer.logger)
         print_signal_info()

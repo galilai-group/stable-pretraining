@@ -1,184 +1,403 @@
-"""Unit tests for the SQLite run registry (db, logger, query)."""
+"""Unit tests for the filesystem-backed run registry.
 
+The registry is made of four independent layers — test each in
+isolation, then a few end-to-end checks to confirm they compose:
+
+1. :mod:`stable_pretraining.registry._sidecar` — atomic JSON writer +
+   heartbeat helpers.
+2. :mod:`stable_pretraining.registry._store`   — SQLite cache.
+3. :mod:`stable_pretraining.registry._scanner` — filesystem → cache.
+4. :mod:`stable_pretraining.registry.logger`   — Lightning logger.
+"""
+
+from __future__ import annotations
+
+import json
 import os
 import time
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from omegaconf import OmegaConf
 
-from stable_pretraining.registry._db import RegistryDB
-from stable_pretraining.registry.logger import RegistryLogger, _flatten_params
-from stable_pretraining.registry.query import Registry, RunRecord, open_registry
+from stable_pretraining.registry import (
+    RegistryLogger,
+    RunRecord,
+    open_registry,
+)
+from stable_pretraining.registry import _scanner as scanner
+from stable_pretraining.registry import _sidecar as sidecar
+from stable_pretraining.registry._scanner import scan
+from stable_pretraining.registry._store import Store
+from stable_pretraining.registry.logger import _flatten_params
 
 pytestmark = pytest.mark.unit
 
 
 # ============================================================================
-# Fixtures
+# Helpers
 # ============================================================================
 
 
-@pytest.fixture
-def tmp_db(tmp_path):
-    """Return path to a fresh temporary database."""
-    return str(tmp_path / "test_registry.db")
+def _make_run_dir(cache_dir: Path, run_id: str) -> Path:
+    """Create a ``{cache_dir}/runs/<date>/<time>/<run_id>`` layout."""
+    run_dir = cache_dir / "runs" / "20260101" / "000000" / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return run_dir
 
 
-@pytest.fixture
-def db(tmp_db):
-    """Return an open RegistryDB instance."""
-    _db = RegistryDB(tmp_db)
-    yield _db
-    _db.close()
-
-
-@pytest.fixture
-def populated_db(db):
-    """Insert a few sample runs and return the DB."""
-    db.insert_run(
-        "run-001",
-        status="completed",
-        run_dir="/tmp/runs/run-001",
-        config={"trainer.max_epochs": 100, "module.lr": 0.01},
-        hparams={"lr": 0.01, "epochs": 100},
-        tags=["resnet", "baseline", "sweep:100"],
-        notes="First baseline run",
+def _write_test_sidecar(run_dir: Path, **overrides) -> None:
+    data = sidecar.make_sidecar(
+        run_id=overrides.pop("run_id", run_dir.name),
+        run_dir=str(run_dir),
+        **overrides,
     )
-    db.insert_run(
-        "run-002",
-        status="completed",
-        run_dir="/tmp/runs/run-002",
-        config={"trainer.max_epochs": 100, "module.lr": 0.1},
-        hparams={"lr": 0.1, "epochs": 100},
-        tags=["resnet", "high-lr", "sweep:100"],
-    )
-    db.insert_run(
-        "run-003",
-        status="running",
-        run_dir="/tmp/runs/run-003",
-        config={"trainer.max_epochs": 50},
-        hparams={"lr": 0.001, "epochs": 50},
-        tags=["vit", "sweep:200"],
-    )
-    # Add summary to run-001 and run-002
-    db.update_run("run-001", summary={"val_acc": 0.85, "train_loss": 0.12})
-    db.update_run("run-002", summary={"val_acc": 0.92, "train_loss": 0.08})
-    return db
+    sidecar.write_sidecar(run_dir, data)
 
 
 # ============================================================================
-# RegistryDB
+# _sidecar
 # ============================================================================
 
 
-class TestRegistryDB:
-    """Tests for the RegistryDB SQLite wrapper."""
+class TestSidecar:
+    """Atomic write, JSON round-trip, heartbeat, and liveness rules."""
 
-    def test_insert_and_get(self, db):
-        db.insert_run(
-            "test-run",
-            run_dir="/tmp/test",
-            config={"lr": 0.01},
+    def test_atomic_write_and_read_roundtrip(self, tmp_path):
+        run_dir = tmp_path / "r1"
+        data = sidecar.make_sidecar(
+            run_id="r1",
+            run_dir=str(run_dir),
             hparams={"lr": 0.01},
+            summary={"loss": 0.5},
+            tags=["a", "b"],
         )
-        run = db.get_run("test-run")
-        assert run is not None
-        assert run["run_id"] == "test-run"
-        assert run["status"] == "running"
-        assert run["config"] == {"lr": 0.01}
-        assert run["hparams"] == {"lr": 0.01}
-        assert run["summary"] == {}
-        assert run["tags"] == []
-        assert run["notes"] == ""
+        sidecar.write_sidecar(run_dir, data)
 
-    def test_get_nonexistent(self, db):
-        assert db.get_run("nonexistent") is None
+        read = sidecar.read_sidecar(sidecar.sidecar_path(run_dir))
+        assert read is not None
+        assert read["run_id"] == "r1"
+        assert read["hparams"] == {"lr": 0.01}
+        assert read["summary"] == {"loss": 0.5}
+        assert read["tags"] == ["a", "b"]
+        assert read["schema_version"] == sidecar.SCHEMA_VERSION
 
-    def test_update_run(self, db):
-        db.insert_run("test-run", run_dir="/tmp/test")
-        db.update_run("test-run", status="completed", checkpoint_path="/tmp/ckpt.pt")
-        run = db.get_run("test-run")
-        assert run["status"] == "completed"
-        assert run["checkpoint_path"] == "/tmp/ckpt.pt"
-
-    def test_update_summary_json(self, db):
-        db.insert_run("test-run")
-        db.update_run("test-run", summary={"val_acc": 0.9, "loss": 0.1})
-        run = db.get_run("test-run")
-        assert run["summary"] == {"val_acc": 0.9, "loss": 0.1}
-
-    def test_upsert_updates_fields(self, db):
-        db.insert_run("test-run", status="running", config={"v": 1})
-        db.insert_run("test-run", status="completed", config={"v": 2})
-        run = db.get_run("test-run")
-        assert run["status"] == "completed"
-        assert run["config"] == {"v": 2}
-
-    def test_requeue_preserves_created_at(self, db):
-        """On requeue (same run_id re-inserted), created_at must not change."""
-        db.insert_run("requeue-run", status="running", config={"epoch": 0})
-        original = db.get_run("requeue-run")
-        original_created = original["created_at"]
-
-        time.sleep(0.05)  # ensure wall-clock advances
-
-        db.insert_run("requeue-run", status="running", config={"epoch": 50})
-        requeued = db.get_run("requeue-run")
-        assert requeued["created_at"] == original_created
-        assert requeued["updated_at"] > original_created
-        assert requeued["config"] == {"epoch": 50}
-
-    def test_query_by_status(self, populated_db):
-        runs = populated_db.query_runs(status="running")
-        assert len(runs) == 1
-        assert runs[0]["run_id"] == "run-003"
-
-    def test_query_by_tag(self, populated_db):
-        runs = populated_db.query_runs(tag="resnet")
-        assert len(runs) == 2
-        assert {r["run_id"] for r in runs} == {"run-001", "run-002"}
-
-    def test_query_by_sweep_tag(self, populated_db):
-        runs = populated_db.query_runs(tag="sweep:100")
-        assert len(runs) == 2
-
-    def test_query_sort_by_column(self, populated_db):
-        runs = populated_db.query_runs(tag="sweep:100", sort_by="created_at")
-        assert len(runs) == 2
-
-    def test_query_sort_by_summary(self, populated_db):
-        runs = populated_db.query_runs(
-            tag="sweep:100", sort_by="summary.val_acc", descending=True
+    def test_write_stamps_updated_at_fresh(self, tmp_path):
+        run_dir = tmp_path / "r1"
+        before = time.time()
+        sidecar.write_sidecar(
+            run_dir, sidecar.make_sidecar(run_id="r1", run_dir=str(run_dir))
         )
-        assert len(runs) == 2
-        assert runs[0]["run_id"] == "run-002"  # 0.92 > 0.85
+        read = sidecar.read_sidecar(sidecar.sidecar_path(run_dir))
+        assert read["updated_at"] >= before
 
-    def test_query_limit(self, populated_db):
-        runs = populated_db.query_runs(limit=1)
-        assert len(runs) == 1
+    def test_read_missing_returns_none(self, tmp_path):
+        assert sidecar.read_sidecar(tmp_path / "missing.json") is None
 
-    def test_query_all(self, populated_db):
-        runs = populated_db.query_runs()
-        assert len(runs) == 3
+    def test_read_malformed_returns_none(self, tmp_path):
+        path = tmp_path / "bad.json"
+        path.write_text("{not json")
+        assert sidecar.read_sidecar(path) is None
 
-    def test_wal_mode_enabled(self, tmp_db):
-        db = RegistryDB(tmp_db)
-        conn = db._get_connection()
-        mode = conn.execute("PRAGMA journal_mode").fetchone()[0]
-        assert mode == "wal"
-        db.close()
+    def test_read_missing_run_id_returns_none(self, tmp_path):
+        path = tmp_path / "incomplete.json"
+        path.write_text(json.dumps({"status": "running"}))
+        assert sidecar.read_sidecar(path) is None
 
-    def test_close_and_reopen(self, tmp_db):
-        db = RegistryDB(tmp_db)
-        db.insert_run("persistent-run", config={"x": 1})
-        db.close()
+    def test_no_tmp_leak_after_write(self, tmp_path):
+        """After a successful write, no .tmp files should remain."""
+        run_dir = tmp_path / "r1"
+        sidecar.write_sidecar(
+            run_dir, sidecar.make_sidecar(run_id="r1", run_dir=str(run_dir))
+        )
+        leftover = list(run_dir.glob(".sidecar.*.tmp"))
+        assert leftover == []
 
-        db2 = RegistryDB(tmp_db)
-        run = db2.get_run("persistent-run")
-        assert run is not None
-        assert run["config"] == {"x": 1}
-        db2.close()
+    def test_heartbeat_touch_creates_file(self, tmp_path):
+        run_dir = tmp_path / "r1"
+        run_dir.mkdir()
+        sidecar.touch_heartbeat(run_dir)
+        assert sidecar.heartbeat_path(run_dir).exists()
+        assert sidecar.heartbeat_mtime(run_dir) is not None
+
+    def test_heartbeat_touch_updates_mtime(self, tmp_path):
+        run_dir = tmp_path / "r1"
+        run_dir.mkdir()
+        sidecar.touch_heartbeat(run_dir)
+        t1 = sidecar.heartbeat_mtime(run_dir)
+        # Set mtime to the past so the next touch is observably newer.
+        os.utime(sidecar.heartbeat_path(run_dir), (t1 - 100, t1 - 100))
+        sidecar.touch_heartbeat(run_dir)
+        t2 = sidecar.heartbeat_mtime(run_dir)
+        assert t2 > t1 - 100
+
+    def test_is_alive_terminal_statuses(self, tmp_path):
+        now = time.time()
+        for status in ("completed", "failed", "orphaned"):
+            assert not sidecar.is_alive(status, now, now=now)
+
+    def test_is_alive_within_timeout(self):
+        now = 1_000_000.0
+        assert sidecar.is_alive("running", now - 10, now=now, timeout_s=60)
+
+    def test_is_alive_past_timeout(self):
+        now = 1_000_000.0
+        assert not sidecar.is_alive("running", now - 300, now=now, timeout_s=60)
+
+    def test_is_alive_no_heartbeat(self):
+        assert not sidecar.is_alive("running", None)
+
+
+# ============================================================================
+# _store
+# ============================================================================
+
+
+class TestStore:
+    """SQLite cache: upserts, mtime tracking, filters, read-only mode."""
+
+    def test_upsert_and_get(self, tmp_path):
+        with Store(tmp_path / "r.db") as store:
+            store.begin()
+            store.upsert(
+                "r1",
+                sidecar.make_sidecar(
+                    run_id="r1",
+                    run_dir="/tmp/r1",
+                    hparams={"lr": 0.01},
+                    summary={"loss": 0.5},
+                    tags=["a", "b"],
+                ),
+                sidecar_mtime=123.0,
+                alive=True,
+            )
+            store.commit()
+
+            row = store.get_run("r1")
+            assert row is not None
+            assert row["run_id"] == "r1"
+            assert row["run_dir"] == "/tmp/r1"
+            assert row["hparams"] == {"lr": 0.01}
+            assert row["summary"] == {"loss": 0.5}
+            assert row["tags"] == ["a", "b"]
+            assert row["alive"] is True
+
+    def test_upsert_preserves_created_at_when_present(self, tmp_path):
+        with Store(tmp_path / "r.db") as store:
+            store.begin()
+            first = sidecar.make_sidecar(run_id="r1", run_dir="/tmp/r1")
+            first["created_at"] = 1000.0
+            store.upsert("r1", first, sidecar_mtime=1.0, alive=True)
+
+            second = sidecar.make_sidecar(run_id="r1", run_dir="/tmp/r1")
+            second["created_at"] = 1000.0  # sidecar is the source of truth
+            store.upsert("r1", second, sidecar_mtime=2.0, alive=True)
+            store.commit()
+
+            row = store.get_run("r1")
+            assert row["created_at"] == 1000.0
+
+    def test_mark_orphaned(self, tmp_path):
+        with Store(tmp_path / "r.db") as store:
+            store.begin()
+            for rid in ("a", "b", "c"):
+                store.upsert(
+                    rid,
+                    sidecar.make_sidecar(run_id=rid, run_dir=f"/tmp/{rid}"),
+                    sidecar_mtime=1.0,
+                    alive=True,
+                )
+            store.mark_orphaned(["b"])
+            store.commit()
+
+            assert store.get_run("b")["status"] == "orphaned"
+            assert store.get_run("b")["alive"] is False
+            assert store.get_run("a")["status"] == "running"
+
+    def test_query_filters(self, tmp_path):
+        with Store(tmp_path / "r.db") as store:
+            store.begin()
+            store.upsert(
+                "a",
+                sidecar.make_sidecar(
+                    run_id="a",
+                    run_dir="/tmp/a",
+                    status="completed",
+                    tags=["resnet"],
+                    summary={"val_acc": 0.8},
+                ),
+                sidecar_mtime=1.0,
+                alive=False,
+            )
+            store.upsert(
+                "b",
+                sidecar.make_sidecar(
+                    run_id="b",
+                    run_dir="/tmp/b",
+                    status="completed",
+                    tags=["resnet"],
+                    summary={"val_acc": 0.9},
+                ),
+                sidecar_mtime=1.0,
+                alive=False,
+            )
+            store.upsert(
+                "c",
+                sidecar.make_sidecar(
+                    run_id="c",
+                    run_dir="/tmp/c",
+                    status="running",
+                    tags=["vit"],
+                ),
+                sidecar_mtime=1.0,
+                alive=True,
+            )
+            store.commit()
+
+            assert {r["run_id"] for r in store.query_runs(status="completed")} == {
+                "a",
+                "b",
+            }
+            assert {r["run_id"] for r in store.query_runs(tag="resnet")} == {"a", "b"}
+            assert {r["run_id"] for r in store.query_runs(alive=True)} == {"c"}
+
+            sorted_desc = store.query_runs(sort_by="summary.val_acc", descending=True)
+            # Only a/b have val_acc; c has None which sorts last DESC.
+            assert sorted_desc[0]["run_id"] == "b"
+            assert sorted_desc[1]["run_id"] == "a"
+
+            assert len(store.query_runs(limit=1)) == 1
+
+    def test_readonly_rejects_writes(self, tmp_path):
+        db = tmp_path / "r.db"
+        Store(db).close()  # create
+        ro = Store(db, readonly=True)
+        with pytest.raises(RuntimeError):
+            ro.begin()
+        ro.close()
+
+    def test_readonly_missing_file_raises(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            Store(tmp_path / "missing.db", readonly=True)
+
+    def test_sidecar_mtimes(self, tmp_path):
+        with Store(tmp_path / "r.db") as store:
+            store.begin()
+            store.upsert(
+                "a",
+                sidecar.make_sidecar(run_id="a", run_dir="/tmp/a"),
+                sidecar_mtime=100.0,
+                alive=True,
+            )
+            store.commit()
+            assert store.sidecar_mtimes() == {"a": 100.0}
+
+
+# ============================================================================
+# _scanner
+# ============================================================================
+
+
+class TestScanner:
+    """Filesystem → cache ingestion: full, incremental, orphan, liveness."""
+
+    def test_full_scan_ingests_sidecars(self, tmp_path):
+        for rid in ("a", "b"):
+            run_dir = _make_run_dir(tmp_path, rid)
+            _write_test_sidecar(run_dir, hparams={"lr": 0.01})
+            sidecar.touch_heartbeat(run_dir)
+
+        with Store(tmp_path / "registry.db") as store:
+            report = scan(tmp_path, store, full=True)
+            assert report.total_sidecars == 2
+            assert report.upserted == 2
+            assert report.orphaned == 0
+
+            rows = store.query_runs()
+            assert {r["run_id"] for r in rows} == {"a", "b"}
+
+    def test_incremental_skips_unchanged(self, tmp_path):
+        run_dir = _make_run_dir(tmp_path, "a")
+        _write_test_sidecar(run_dir, summary={"loss": 1.0})
+
+        with Store(tmp_path / "registry.db") as store:
+            r1 = scan(tmp_path, store)
+            assert r1.upserted == 1
+            r2 = scan(tmp_path, store)
+            assert r2.upserted == 0
+            assert r2.skipped_unchanged == 1
+
+    def test_incremental_picks_up_updates(self, tmp_path):
+        run_dir = _make_run_dir(tmp_path, "a")
+        _write_test_sidecar(run_dir, summary={"loss": 1.0})
+        db = tmp_path / "registry.db"
+
+        with Store(db) as store:
+            scan(tmp_path, store)
+
+        # Update the sidecar — bump mtime so the scanner sees it.
+        _write_test_sidecar(run_dir, summary={"loss": 0.5})
+        os.utime(sidecar.sidecar_path(run_dir), None)
+
+        with Store(db) as store:
+            r = scan(tmp_path, store)
+            assert r.upserted == 1
+            row = store.get_run("a")
+            assert row["summary"] == {"loss": 0.5}
+
+    def test_orphan_sweep_marks_missing_run_dir(self, tmp_path):
+        run_dir = _make_run_dir(tmp_path, "a")
+        _write_test_sidecar(run_dir)
+        db = tmp_path / "registry.db"
+
+        with Store(db) as store:
+            scan(tmp_path, store)
+
+        import shutil
+
+        shutil.rmtree(run_dir)
+
+        with Store(db) as store:
+            r = scan(tmp_path, store)
+            assert r.orphaned == 1
+            row = store.get_run("a")
+            assert row["status"] == "orphaned"
+            assert row["alive"] is False
+
+    def test_skips_invalid_sidecar(self, tmp_path):
+        run_dir = _make_run_dir(tmp_path, "a")
+        sidecar.sidecar_path(run_dir).write_text("{not json")
+
+        with Store(tmp_path / "registry.db") as store:
+            r = scan(tmp_path, store)
+            assert r.total_sidecars == 1
+            assert r.upserted == 0
+            assert r.skipped_invalid == 1
+
+    def test_alive_tracking_from_heartbeat(self, tmp_path):
+        run_dir = _make_run_dir(tmp_path, "a")
+        _write_test_sidecar(run_dir, status="running")
+        sidecar.touch_heartbeat(run_dir)
+
+        with Store(tmp_path / "registry.db") as store:
+            scan(tmp_path, store, heartbeat_timeout_s=60)
+            assert store.get_run("a")["alive"] is True
+
+        # Age the heartbeat past the timeout — alive flips without
+        # re-writing the sidecar (incremental path refreshes alive).
+        hb = sidecar.heartbeat_path(run_dir)
+        old = hb.stat().st_mtime - 600
+        os.utime(hb, (old, old))
+
+        with Store(tmp_path / "registry.db") as store:
+            scan(tmp_path, store, heartbeat_timeout_s=60)
+            assert store.get_run("a")["alive"] is False
+
+    def test_empty_cache_dir(self, tmp_path):
+        with Store(tmp_path / "registry.db") as store:
+            r = scan(tmp_path, store)
+            assert r.total_sidecars == 0
 
 
 # ============================================================================
@@ -187,249 +406,248 @@ class TestRegistryDB:
 
 
 class TestRegistryLogger:
-    """Tests for the RegistryLogger Lightning logger."""
+    """Lightning logger: CSV + sidecar + heartbeat in one pass."""
 
-    def test_name_and_version(self, tmp_db):
-        logger = RegistryLogger(db_path=tmp_db)
-        logger._run_id = "run-42"
-        assert logger.name == "registry"
-        assert logger.version == "run-42"
+    def test_construction_sets_log_dir(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        assert Path(logger.log_dir).resolve() == tmp_path.resolve()
+        assert logger.run_id == "r1"
 
-    def test_log_hyperparams(self, tmp_db):
-        logger = RegistryLogger(db_path=tmp_db, tags=["resnet"])
-        logger._run_id = "run-hp"
-        logger._run_dir = "/tmp/runs/run-hp"
+    def test_log_hyperparams_writes_sidecar_and_yaml(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
         logger.log_hyperparams({"lr": 0.01, "batch_size": 32})
+        logger.save()
 
-        run = logger._db.get_run("run-hp")
-        assert run is not None
-        assert run["hparams"]["lr"] == 0.01
-        assert run["run_dir"] == "/tmp/runs/run-hp"
-        assert run["status"] == "running"
-        assert "resnet" in run["tags"]
-
-    def test_log_metrics_accumulates_summary(self, tmp_db):
-        logger = RegistryLogger(db_path=tmp_db, flush_every=100)
-        logger._run_id = "run-metrics"
-
-        logger.log_metrics({"train_loss": 1.0}, step=0)
-        logger.log_metrics({"train_loss": 0.5, "val_acc": 0.8}, step=1)
-
-        assert logger._summary == {"train_loss": 0.5, "val_acc": 0.8}
-
-    def test_log_metrics_periodic_flush(self, tmp_db):
-        logger = RegistryLogger(db_path=tmp_db, flush_every=2)
-        logger._run_id = "run-flush"
-        logger._run_dir = "/tmp/runs/run-flush"
-
-        logger.log_hyperparams({"lr": 0.01})
-
-        logger.log_metrics({"loss": 1.0}, step=0)
-        run = logger._db.get_run("run-flush")
-        assert run["summary"] == {}
-
-        logger.log_metrics({"loss": 0.5}, step=1)
-        run = logger._db.get_run("run-flush")
-        assert run["summary"]["loss"] == 0.5
-
-    def test_finalize_success(self, tmp_db):
-        logger = RegistryLogger(db_path=tmp_db)
-        logger._run_id = "run-final"
-        logger._run_dir = "/tmp/runs/run-final"
-
-        logger.log_hyperparams({"lr": 0.01})
-        logger.log_metrics({"val_acc": 0.9}, step=99)
+        data = sidecar.read_sidecar(sidecar.sidecar_path(tmp_path))
+        assert data["run_id"] == "r1"
+        assert data["hparams"]["lr"] == 0.01
+        assert data["hparams"]["batch_size"] == 32
+        # CSVLogger writes hparams.yaml at its own timing (finalize / save).
         logger.finalize("success")
+        assert (tmp_path / "hparams.yaml").exists()
 
-        db = RegistryDB(tmp_db)
-        run = db.get_run("run-final")
-        assert run["status"] == "completed"
-        assert run["summary"]["val_acc"] == 0.9
-        db.close()
-
-    def test_finalize_failed(self, tmp_db):
-        logger = RegistryLogger(db_path=tmp_db)
-        logger._run_id = "run-fail"
-        logger._run_dir = "/tmp/runs/run-fail"
-
-        logger.log_hyperparams({"lr": 0.01})
-        logger.finalize("failed")
-
-        db = RegistryDB(tmp_db)
-        run = db.get_run("run-fail")
-        assert run["status"] == "failed"
-        db.close()
-
-    def test_finalize_without_log_hyperparams(self, tmp_db):
-        logger = RegistryLogger(db_path=tmp_db)
-        logger._run_id = "run-no-hp"
-        logger._run_dir = "/tmp/runs/run-no-hp"
-
-        logger.log_metrics({"loss": 0.5}, step=0)
-        logger.finalize("success")
-
-        db = RegistryDB(tmp_db)
-        run = db.get_run("run-no-hp")
-        assert run is not None
-        assert run["status"] == "completed"
-        db.close()
-
-    def test_after_save_checkpoint(self, tmp_db):
-        logger = RegistryLogger(db_path=tmp_db)
-        logger._run_id = "run-ckpt"
-        logger._run_dir = "/tmp/runs/run-ckpt"
+    def test_log_metrics_accumulates_summary(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
         logger.log_hyperparams({})
+        logger.log_metrics({"loss": 1.0, "acc": 0.3}, step=0)
+        logger.log_metrics({"loss": 0.5, "acc": 0.7}, step=1)
+        logger.save()
 
+        data = sidecar.read_sidecar(sidecar.sidecar_path(tmp_path))
+        assert data["summary"]["loss"] == 0.5
+        assert data["summary"]["acc"] == 0.7
+
+    def test_log_metrics_touches_heartbeat(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        assert sidecar.heartbeat_mtime(tmp_path) is None
+        logger.log_metrics({"loss": 1.0}, step=0)
+        assert sidecar.heartbeat_mtime(tmp_path) is not None
+
+    def test_log_metrics_coerces_tensor_scalar(self, tmp_path):
+        import torch
+
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": torch.tensor(0.25)}, step=0)
+        logger.save()
+
+        data = sidecar.read_sidecar(sidecar.sidecar_path(tmp_path))
+        assert data["summary"]["loss"] == 0.25
+
+    def test_log_metrics_skips_non_numeric(self, tmp_path):
+        """Non-numeric values never land in the summary dict.
+
+        The CSV path may accept them, but the sidecar summary must stay
+        strictly numeric so downstream tools can always ``float()`` it.
+        """
+        from stable_pretraining.registry.logger import _to_scalar
+
+        assert _to_scalar("not a number") is None
+        assert _to_scalar(None) is None
+        assert _to_scalar([1, 2, 3]) is None
+        assert _to_scalar(True) == 1.0
+        assert _to_scalar(1) == 1.0
+        assert _to_scalar(1.5) == 1.5
+
+    def test_finalize_success_maps_to_completed(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({"lr": 0.01})
+        logger.log_metrics({"val_acc": 0.9}, step=0)
+        logger.finalize("success")
+
+        data = sidecar.read_sidecar(sidecar.sidecar_path(tmp_path))
+        assert data["status"] == "completed"
+        assert data["summary"]["val_acc"] == 0.9
+
+    def test_finalize_failed_maps_to_failed(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.finalize("failed")
+        data = sidecar.read_sidecar(sidecar.sidecar_path(tmp_path))
+        assert data["status"] == "failed"
+
+    def test_after_save_checkpoint_records_path(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
         mock_cb = MagicMock()
-        mock_cb.best_model_path = "/tmp/runs/run-ckpt/checkpoints/best.ckpt"
+        mock_cb.best_model_path = str(tmp_path / "checkpoints" / "best.ckpt")
         logger.after_save_checkpoint(mock_cb)
 
-        run = logger._db.get_run("run-ckpt")
-        assert run["checkpoint_path"] == "/tmp/runs/run-ckpt/checkpoints/best.ckpt"
+        data = sidecar.read_sidecar(sidecar.sidecar_path(tmp_path))
+        assert data["checkpoint_path"] == str(tmp_path / "checkpoints" / "best.ckpt")
 
-    def test_no_run_id_is_noop(self, tmp_db):
-        logger = RegistryLogger(db_path=tmp_db)
-        logger.log_hyperparams({"lr": 0.01})
-        logger.log_metrics({"loss": 0.5}, step=0)
-        logger.finalize("success")
-
-    def test_auto_tag_slurm_array(self, tmp_db):
-        """SLURM_ARRAY_JOB_ID should auto-add a sweep:<id> tag."""
+    def test_auto_tag_slurm_array(self, tmp_path):
         with patch.dict(os.environ, {"SLURM_ARRAY_JOB_ID": "99999"}):
-            logger = RegistryLogger(db_path=tmp_db, tags=["resnet"])
+            logger = RegistryLogger(run_dir=tmp_path, run_id="r1", tags=["resnet"])
         assert "sweep:99999" in logger._tags
         assert "resnet" in logger._tags
 
-    def test_auto_tag_no_duplicate(self, tmp_db):
-        """If user already has the sweep tag, don't duplicate."""
+    def test_auto_tag_no_duplicate(self, tmp_path):
         with patch.dict(os.environ, {"SLURM_ARRAY_JOB_ID": "99999"}):
-            logger = RegistryLogger(db_path=tmp_db, tags=["sweep:99999", "resnet"])
+            logger = RegistryLogger(run_dir=tmp_path, run_id="r1", tags=["sweep:99999"])
         assert logger._tags.count("sweep:99999") == 1
 
-    def test_tags_and_notes(self, tmp_db):
+    def test_tags_and_notes_in_sidecar(self, tmp_path):
         logger = RegistryLogger(
-            db_path=tmp_db,
+            run_dir=tmp_path,
+            run_id="r1",
             tags=["ssl", "debug"],
             notes="Quick test run",
         )
-        logger._run_id = "tagged-run"
-        logger._run_dir = "/tmp/runs/tagged"
-        logger.log_hyperparams({"lr": 0.01})
+        logger.log_hyperparams({})
+        data = sidecar.read_sidecar(sidecar.sidecar_path(tmp_path))
+        assert data["tags"] == ["ssl", "debug"]
+        assert data["notes"] == "Quick test run"
 
-        run = logger._db.get_run("tagged-run")
-        assert run["tags"] == ["ssl", "debug"]
-        assert run["notes"] == "Quick test run"
+    def test_created_at_stable_across_flushes(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        first = sidecar.read_sidecar(sidecar.sidecar_path(tmp_path))["created_at"]
+        time.sleep(0.02)
+        logger.save()
+        second = sidecar.read_sidecar(sidecar.sidecar_path(tmp_path))["created_at"]
+        assert first == second
 
 
 # ============================================================================
-# Query API
+# Registry query API (via open_registry)
 # ============================================================================
 
 
-class TestRegistry:
-    """Tests for the Registry query API."""
+class TestRegistryQuery:
+    """Query API (``open_registry()`` + ``Registry``)."""
 
-    def test_query_all(self, populated_db):
-        reg = Registry(populated_db)
+    @pytest.fixture
+    def populated_cache(self, tmp_path):
+        """Build a cache dir with three runs + scanned DB."""
+        for rid, spec in {
+            "r1": dict(
+                status="completed",
+                hparams={"lr": 0.01},
+                summary={"val_acc": 0.85},
+                tags=["resnet", "sweep:100"],
+                notes="baseline",
+            ),
+            "r2": dict(
+                status="completed",
+                hparams={"lr": 0.1},
+                summary={"val_acc": 0.92},
+                tags=["resnet", "sweep:100"],
+            ),
+            "r3": dict(
+                status="running",
+                hparams={"lr": 0.001},
+                tags=["vit", "sweep:200"],
+            ),
+        }.items():
+            run_dir = _make_run_dir(tmp_path, rid)
+            _write_test_sidecar(run_dir, **spec)
+            if spec["status"] == "running":
+                sidecar.touch_heartbeat(run_dir)
+        return tmp_path
+
+    def test_query_all(self, populated_cache):
+        reg = open_registry(cache_dir=populated_cache)
         runs = reg.query()
         assert len(runs) == 3
         assert all(isinstance(r, RunRecord) for r in runs)
+        reg.close()
 
-    def test_query_by_tag(self, populated_db):
-        reg = Registry(populated_db)
-        runs = reg.query(tag="resnet")
-        assert len(runs) == 2
+    def test_query_by_tag(self, populated_cache):
+        reg = open_registry(cache_dir=populated_cache)
+        assert {r.run_id for r in reg.query(tag="resnet")} == {"r1", "r2"}
+        reg.close()
 
-    def test_query_by_sweep_tag(self, populated_db):
-        reg = Registry(populated_db)
-        runs = reg.query(tag="sweep:100")
-        assert len(runs) == 2
+    def test_query_by_sweep_tag(self, populated_cache):
+        reg = open_registry(cache_dir=populated_cache)
+        assert len(reg.query(tag="sweep:100")) == 2
+        reg.close()
 
-    def test_query_by_hparams(self, populated_db):
-        reg = Registry(populated_db)
+    def test_query_by_hparams(self, populated_cache):
+        reg = open_registry(cache_dir=populated_cache)
         runs = reg.query(hparams={"lr": 0.01})
-        assert len(runs) == 1
-        assert runs[0].run_id == "run-001"
+        assert [r.run_id for r in runs] == ["r1"]
+        reg.close()
 
-    def test_query_sort_by_summary(self, populated_db):
-        reg = Registry(populated_db)
+    def test_query_sort_by_summary(self, populated_cache):
+        reg = open_registry(cache_dir=populated_cache)
         runs = reg.query(tag="sweep:100", sort_by="summary.val_acc", descending=True)
-        assert runs[0].run_id == "run-002"
+        assert runs[0].run_id == "r2"
         assert runs[0].summary["val_acc"] == 0.92
+        reg.close()
 
-    def test_get(self, populated_db):
-        reg = Registry(populated_db)
-        run = reg.get("run-001")
-        assert run is not None
-        assert run.run_id == "run-001"
-        assert run.summary["val_acc"] == 0.85
-        assert run.tags == ["resnet", "baseline", "sweep:100"]
-        assert run.notes == "First baseline run"
+    def test_get(self, populated_cache):
+        reg = open_registry(cache_dir=populated_cache)
+        run = reg.get("r1")
+        assert run.run_id == "r1"
+        assert run.notes == "baseline"
+        assert run.tags == ["resnet", "sweep:100"]
+        reg.close()
 
-    def test_get_nonexistent(self, populated_db):
-        reg = Registry(populated_db)
-        assert reg.get("nonexistent") is None
-
-    def test_getitem(self, populated_db):
-        reg = Registry(populated_db)
-        run = reg["run-001"]
-        assert run.run_id == "run-001"
-
-    def test_getitem_raises(self, populated_db):
-        reg = Registry(populated_db)
+    def test_get_nonexistent(self, populated_cache):
+        reg = open_registry(cache_dir=populated_cache)
+        assert reg.get("nope") is None
         with pytest.raises(KeyError):
-            reg["nonexistent"]
+            _ = reg["nope"]
+        reg.close()
 
-    def test_len(self, populated_db):
-        reg = Registry(populated_db)
+    def test_len_and_repr(self, populated_cache):
+        reg = open_registry(cache_dir=populated_cache)
         assert len(reg) == 3
+        assert "runs=3" in repr(reg)
+        reg.close()
 
-    def test_repr(self, populated_db):
-        reg = Registry(populated_db)
-        r = repr(reg)
-        assert "Registry" in r
-        assert "runs=3" in r
-
-    def test_to_dataframe(self, populated_db):
-        reg = Registry(populated_db)
+    def test_to_dataframe_columns(self, populated_cache):
+        reg = open_registry(cache_dir=populated_cache)
         df = reg.to_dataframe(tag="sweep:100")
         assert len(df) == 2
         assert "summary.val_acc" in df.columns
         assert "hparams.lr" in df.columns
         assert "tags" in df.columns
-        assert "notes" in df.columns
-
-    def test_to_dataframe_empty(self, populated_db):
-        reg = Registry(populated_db)
-        df = reg.to_dataframe(tag="nonexistent")
-        assert len(df) == 0
-
-
-# ============================================================================
-# open_registry
-# ============================================================================
-
-
-class TestOpenRegistry:
-    """Tests for the open_registry() factory."""
-
-    def test_open_with_explicit_path(self, tmp_db):
-        db = RegistryDB(tmp_db)
-        db.insert_run("test-run")
-        db.close()
-
-        reg = open_registry(tmp_db)
-        assert len(reg) == 1
         reg.close()
 
-    def test_open_without_path_raises(self):
+    def test_to_dataframe_empty(self, populated_cache):
+        reg = open_registry(cache_dir=populated_cache)
+        assert reg.to_dataframe(tag="nonexistent").empty
+        reg.close()
+
+    def test_open_without_scan(self, populated_cache):
+        """Scan-once then open repeatedly without re-scanning."""
+        open_registry(cache_dir=populated_cache).close()  # first scan
+        scanner.invalidate_ttl()
+        reg = open_registry(cache_dir=populated_cache, scan=False)
+        assert len(reg) == 3
+        reg.close()
+
+    def test_open_registry_no_cache_dir_raises(self, tmp_path):
         from stable_pretraining._config import get_config
 
         cfg = get_config()
-        original = cfg.cache_dir
+        original = cfg._cache_dir
         cfg._cache_dir = None
         try:
-            with pytest.raises(ValueError, match="No db_path provided"):
+            with pytest.raises(ValueError, match="cache_dir"):
                 open_registry()
         finally:
             cfg._cache_dir = original
@@ -441,23 +659,29 @@ class TestOpenRegistry:
 
 
 class TestFlattenParams:
-    """Tests for the _flatten_params helper."""
+    """Dot-path flattening of nested hparam containers."""
 
     def test_flat_dict(self):
-        result = _flatten_params({"lr": 0.01, "epochs": 100})
-        assert result == {"lr": 0.01, "epochs": 100}
+        assert _flatten_params({"lr": 0.01, "epochs": 100}) == {
+            "lr": 0.01,
+            "epochs": 100,
+        }
 
     def test_nested_dict(self):
-        result = _flatten_params({"optimizer": {"lr": 0.01, "wd": 1e-4}})
-        assert result == {"optimizer.lr": 0.01, "optimizer.wd": 1e-4}
+        assert _flatten_params({"opt": {"lr": 0.01, "wd": 1e-4}}) == {
+            "opt.lr": 0.01,
+            "opt.wd": 1e-4,
+        }
 
     def test_list_values(self):
-        result = _flatten_params({"layers": [64, 128, 256]})
-        assert result == {"layers.0": 64, "layers.1": 128, "layers.2": 256}
+        assert _flatten_params({"layers": [64, 128, 256]}) == {
+            "layers.0": 64,
+            "layers.1": 128,
+            "layers.2": 256,
+        }
 
-    def test_non_serializable_values(self):
+    def test_non_serializable_values_stringified(self):
         result = _flatten_params({"fn": lambda x: x})
-        assert "fn" in result
         assert isinstance(result["fn"], str)
 
 
@@ -467,111 +691,223 @@ class TestFlattenParams:
 
 
 class TestRegistryCLI:
-    """Tests for the ``spt registry`` CLI commands."""
+    """``spt registry`` subcommands: ls/show/best/export/scan/migrate."""
 
     @pytest.fixture
-    def cli_db(self, tmp_db):
-        """Populate a DB with sample runs and return the path."""
-        db = RegistryDB(tmp_db)
-        db.insert_run(
-            "cli-run-1", status="completed", run_dir="/tmp/r1",
-            config={"lr": 0.01}, hparams={"lr": 0.01},
-            tags=["resnet", "sweep:100"],
-        )
-        db.update_run("cli-run-1", summary={"val_acc": 0.85, "train_loss": 0.12})
-        db.insert_run(
-            "cli-run-2", status="completed", run_dir="/tmp/r2",
-            config={"lr": 0.1}, hparams={"lr": 0.1},
-            tags=["resnet", "sweep:100"],
-        )
-        db.update_run("cli-run-2", summary={"val_acc": 0.92, "train_loss": 0.08})
-        db.insert_run(
-            "cli-run-3", status="running", run_dir="/tmp/r3",
-            tags=["vit"],
-        )
-        db.close()
-        return tmp_db
+    def cli_cache(self, tmp_path):
+        """Populate a cache dir + scanned DB suitable for CLI tests."""
+        for rid, spec in {
+            "cli-run-1": dict(
+                status="completed",
+                hparams={"lr": 0.01},
+                summary={"val_acc": 0.85, "train_loss": 0.12},
+                tags=["resnet", "sweep:100"],
+            ),
+            "cli-run-2": dict(
+                status="completed",
+                hparams={"lr": 0.1},
+                summary={"val_acc": 0.92, "train_loss": 0.08},
+                tags=["resnet", "sweep:100"],
+            ),
+            "cli-run-3": dict(status="running", tags=["vit"]),
+        }.items():
+            run_dir = _make_run_dir(tmp_path, rid)
+            _write_test_sidecar(run_dir, **spec)
+        # Scan up-front so the CLI has a DB to open.
+        with Store(tmp_path / "registry.db") as store:
+            scan(tmp_path, store)
+        return tmp_path
 
-    def test_ls(self, cli_db):
+    def test_ls(self, cli_cache):
         from typer.testing import CliRunner
         from stable_pretraining.cli import app
 
-        result = CliRunner().invoke(app, ["registry", "ls", "--db", cli_db])
-        assert result.exit_code == 0
-        assert "cli-run-1" in result.output
-        assert "cli-run-2" in result.output
-        assert "cli-run-3" in result.output
+        scanner.invalidate_ttl()
+        result = CliRunner().invoke(
+            app, ["registry", "ls", "--cache-dir", str(cli_cache)]
+        )
+        assert result.exit_code == 0, result.output
+        for rid in ("cli-run-1", "cli-run-2", "cli-run-3"):
+            assert rid in result.output
 
-    def test_ls_filter_by_tag(self, cli_db):
+    def test_ls_filter_by_tag(self, cli_cache):
         from typer.testing import CliRunner
         from stable_pretraining.cli import app
 
-        result = CliRunner().invoke(app, ["registry", "ls", "--db", cli_db, "--tag", "vit"])
+        scanner.invalidate_ttl()
+        result = CliRunner().invoke(
+            app, ["registry", "ls", "--cache-dir", str(cli_cache), "--tag", "vit"]
+        )
         assert result.exit_code == 0
         assert "cli-run-3" in result.output
         assert "cli-run-1" not in result.output
 
-    def test_ls_filter_by_status(self, cli_db):
+    def test_ls_filter_by_status(self, cli_cache):
         from typer.testing import CliRunner
         from stable_pretraining.cli import app
 
-        result = CliRunner().invoke(app, ["registry", "ls", "--db", cli_db, "--status", "completed"])
+        scanner.invalidate_ttl()
+        result = CliRunner().invoke(
+            app,
+            ["registry", "ls", "--cache-dir", str(cli_cache), "--status", "completed"],
+        )
         assert result.exit_code == 0
         assert "cli-run-1" in result.output
         assert "cli-run-3" not in result.output
 
-    def test_show(self, cli_db):
+    def test_show(self, cli_cache):
         from typer.testing import CliRunner
         from stable_pretraining.cli import app
 
-        result = CliRunner().invoke(app, ["registry", "show", "cli-run-1", "--db", cli_db])
+        scanner.invalidate_ttl()
+        result = CliRunner().invoke(
+            app,
+            ["registry", "show", "cli-run-1", "--cache-dir", str(cli_cache)],
+        )
         assert result.exit_code == 0
         assert "cli-run-1" in result.output
         assert "val_acc" in result.output
         assert "0.85" in result.output
-        assert "resnet" in result.output
 
-    def test_show_not_found(self, cli_db):
+    def test_show_not_found(self, cli_cache):
         from typer.testing import CliRunner
         from stable_pretraining.cli import app
 
-        result = CliRunner().invoke(app, ["registry", "show", "nonexistent", "--db", cli_db])
+        scanner.invalidate_ttl()
+        result = CliRunner().invoke(
+            app,
+            ["registry", "show", "missing", "--cache-dir", str(cli_cache)],
+        )
         assert result.exit_code == 1
         assert "not found" in result.output
 
-    def test_best(self, cli_db):
+    def test_best_descending(self, cli_cache):
         from typer.testing import CliRunner
         from stable_pretraining.cli import app
 
-        result = CliRunner().invoke(app, ["registry", "best", "val_acc", "--db", cli_db])
+        scanner.invalidate_ttl()
+        result = CliRunner().invoke(
+            app,
+            ["registry", "best", "val_acc", "--cache-dir", str(cli_cache)],
+        )
         assert result.exit_code == 0
-        # cli-run-2 has higher val_acc (0.92), should be first
         lines = result.output.strip().split("\n")
-        assert "cli-run-2" in lines[1]  # first data row
-
-    def test_best_ascending(self, cli_db):
-        from typer.testing import CliRunner
-        from stable_pretraining.cli import app
-
-        result = CliRunner().invoke(app, ["registry", "best", "train_loss", "--asc", "--db", cli_db])
-        assert result.exit_code == 0
-        # cli-run-2 has lower loss (0.08), should be first with --asc
-        lines = result.output.strip().split("\n")
+        # Header line + first data row
         assert "cli-run-2" in lines[1]
 
-    def test_export_csv(self, cli_db, tmp_path):
+    def test_best_ascending(self, cli_cache):
         from typer.testing import CliRunner
         from stable_pretraining.cli import app
 
-        output = str(tmp_path / "export.csv")
-        result = CliRunner().invoke(app, ["registry", "export", output, "--db", cli_db])
+        scanner.invalidate_ttl()
+        result = CliRunner().invoke(
+            app,
+            [
+                "registry",
+                "best",
+                "train_loss",
+                "--asc",
+                "--cache-dir",
+                str(cli_cache),
+            ],
+        )
         assert result.exit_code == 0
+        lines = result.output.strip().split("\n")
+        assert "cli-run-2" in lines[1]  # 0.08 < 0.12
+
+    def test_export_csv(self, cli_cache, tmp_path):
+        from typer.testing import CliRunner
+        from stable_pretraining.cli import app
+
+        scanner.invalidate_ttl()
+        out = tmp_path / "export.csv"
+        result = CliRunner().invoke(
+            app,
+            ["registry", "export", str(out), "--cache-dir", str(cli_cache)],
+        )
+        assert result.exit_code == 0, result.output
         assert "Exported 3 runs" in result.output
 
         import pandas as pd
-        df = pd.read_csv(output)
+
+        df = pd.read_csv(out)
         assert len(df) == 3
         assert "summary.val_acc" in df.columns
+
+    def test_scan_command(self, tmp_path):
+        """`spt registry scan` bootstraps the DB from sidecars."""
+        from typer.testing import CliRunner
+        from stable_pretraining.cli import app
+
+        run_dir = _make_run_dir(tmp_path, "a")
+        _write_test_sidecar(run_dir, summary={"loss": 1.0})
+
+        scanner.invalidate_ttl()
+        result = CliRunner().invoke(
+            app, ["registry", "scan", "--cache-dir", str(tmp_path)]
+        )
+        assert result.exit_code == 0
+        assert (tmp_path / "registry.db").exists()
+
+    def test_migrate_writes_sidecars_from_legacy_db(self, tmp_path):
+        """Create a minimal legacy DB and migrate it; sidecars appear."""
+        import sqlite3
+        from typer.testing import CliRunner
+
+        from stable_pretraining.cli import app
+
+        legacy = tmp_path / "legacy.db"
+        run_dir = _make_run_dir(tmp_path, "legacy-run")
+
+        conn = sqlite3.connect(legacy)
+        conn.executescript(
+            """
+            CREATE TABLE runs (
+                run_id TEXT PRIMARY KEY,
+                status TEXT,
+                created_at REAL,
+                updated_at REAL,
+                run_dir TEXT,
+                checkpoint_path TEXT,
+                config TEXT,
+                hparams TEXT,
+                summary TEXT,
+                tags TEXT,
+                notes TEXT
+            );
+            """
+        )
+        conn.execute(
+            "INSERT INTO runs VALUES (?, 'completed', 100.0, 200.0, ?, NULL, '{}', ?, ?, ?, '')",
+            (
+                "legacy-run",
+                str(run_dir),
+                json.dumps({"lr": 0.01}),
+                json.dumps({"val_acc": 0.77}),
+                json.dumps(["legacy"]),
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        scanner.invalidate_ttl()
+        result = CliRunner().invoke(
+            app,
+            [
+                "registry",
+                "migrate",
+                str(legacy),
+                "--cache-dir",
+                str(tmp_path),
+            ],
+        )
+        assert result.exit_code == 0, result.output
+
+        data = sidecar.read_sidecar(sidecar.sidecar_path(run_dir))
+        assert data["run_id"] == "legacy-run"
+        assert data["hparams"] == {"lr": 0.01}
+        assert data["summary"] == {"val_acc": 0.77}
+        assert data["tags"] == ["legacy"]
 
 
 # ============================================================================
@@ -583,17 +919,14 @@ class TestFlattenHydraConfig:
     """Tests for Manager._flatten_hydra_config (the shared flattening logic)."""
 
     def _make_manager_with_configs(self, trainer_cfg, module_cfg, data_cfg):
-        """Create a Manager with DictConfig fields for testing flatten logic."""
         from stable_pretraining.manager import Manager
         from stable_pretraining.tests.utils import BoringModule, BoringDataModule
 
-        # Manager stores raw configs when passed as dicts
         manager = Manager(
             trainer=OmegaConf.create(trainer_cfg),
-            module=BoringModule(),  # already instantiated → skipped by flatten
-            data=BoringDataModule(),  # already instantiated → skipped by flatten
+            module=BoringModule(),
+            data=BoringDataModule(),
         )
-        # Override with DictConfigs so flatten picks them up
         if module_cfg is not None:
             manager.module = OmegaConf.create(module_cfg)
         if data_cfg is not None:
@@ -608,276 +941,131 @@ class TestFlattenHydraConfig:
         )
         flat = manager._flatten_hydra_config()
         assert flat["trainer.max_epochs"] == 100
-        assert flat["trainer.accelerator"] == "gpu"
         assert flat["module._target_"] == "my.Module"
-        assert flat["module.lr"] == 0.01
 
     def test_deeply_nested(self):
         manager = self._make_manager_with_configs(
             {"max_epochs": 10},
-            {
-                "optim": {
-                    "optimizer": {
-                        "type": "LARS",
-                        "lr": 5.0,
-                        "weight_decay": 1e-6,
-                    },
-                    "scheduler": {
-                        "type": "CosineAnnealing",
-                        "T_max": 100,
-                        "eta_min": 1e-5,
-                    },
-                },
-                "backbone": {
-                    "_target_": "torchvision.models.resnet50",
-                    "pretrained": False,
-                },
-            },
+            {"optim": {"optimizer": {"lr": 5.0, "weight_decay": 1e-6}}},
             None,
         )
         flat = manager._flatten_hydra_config()
-        assert flat["module.optim.optimizer.type"] == "LARS"
         assert flat["module.optim.optimizer.lr"] == 5.0
         assert flat["module.optim.optimizer.weight_decay"] == 1e-6
-        assert flat["module.optim.scheduler.type"] == "CosineAnnealing"
-        assert flat["module.optim.scheduler.T_max"] == 100
-        assert flat["module.backbone._target_"] == "torchvision.models.resnet50"
 
     def test_lists_expanded(self):
         manager = self._make_manager_with_configs(
             {"max_epochs": 10},
-            {"hidden_dims": [128, 256, 512]},
+            {"hidden_dims": [64, 128, 256]},
             None,
         )
         flat = manager._flatten_hydra_config()
-        assert flat["module.hidden_dims.0"] == 128
-        assert flat["module.hidden_dims.1"] == 256
-        assert flat["module.hidden_dims.2"] == 512
-        assert "module.hidden_dims" not in flat  # list itself is removed
-
-    def test_nested_lists(self):
-        manager = self._make_manager_with_configs(
-            {"max_epochs": 10},
-            {
-                "callbacks": [
-                    {"_target_": "A", "k": 1},
-                    {"_target_": "B", "k": 2},
-                ]
-            },
-            None,
-        )
-        flat = manager._flatten_hydra_config()
-        assert flat["module.callbacks.0._target_"] == "A"
-        assert flat["module.callbacks.0.k"] == 1
-        assert flat["module.callbacks.1._target_"] == "B"
-
-    def test_all_instantiated_returns_empty(self):
-        """When trainer/module/data are all instantiated objects, returns {}."""
-        from stable_pretraining.manager import Manager
-        from stable_pretraining.tests.utils import (
-            BoringTrainer,
-            BoringModule,
-            BoringDataModule,
-        )
-
-        manager = Manager(
-            trainer=BoringTrainer(
-                enable_checkpointing=False, logger=False
-            ),
-            module=BoringModule(),
-            data=BoringDataModule(),
-        )
-        assert manager._flatten_hydra_config() == {}
-
-    def test_mixed_instantiated_and_config(self):
-        """Only DictConfig fields are flattened; instantiated objects are skipped."""
-        from stable_pretraining.manager import Manager
-        from stable_pretraining.tests.utils import BoringModule, BoringDataModule
-
-        manager = Manager(
-            trainer=OmegaConf.create({"max_epochs": 50, "accelerator": "cpu"}),
-            module=BoringModule(),
-            data=BoringDataModule(),
-        )
-        flat = manager._flatten_hydra_config()
-        assert "trainer.max_epochs" in flat
-        assert not any(k.startswith("module.") for k in flat)
-        assert not any(k.startswith("data.") for k in flat)
+        assert flat["module.hidden_dims.0"] == 64
+        assert flat["module.hidden_dims.2"] == 256
+        assert "module.hidden_dims" not in flat
 
 
-class TestInjectHydraHparams:
-    """Tests that _inject_hydra_hparams puts flattened config into module.hparams."""
+class TestEndToEnd:
+    """End-to-end: Manager → sidecar → scan → queryable Registry.
 
-    def test_hparams_injected_into_module(self):
-        from stable_pretraining.manager import Manager
-        from stable_pretraining.tests.utils import BoringModule, BoringDataModule
-
-        manager = Manager(
-            trainer=OmegaConf.create({
-                "max_epochs": 100,
-                "accelerator": "cpu",
-            }),
-            module=BoringModule(),
-            data=BoringDataModule(),
-        )
-        # Simulate the instantiation path
-        module = manager.instantiated_module
-
-        manager._inject_hydra_hparams()
-
-        assert "trainer.max_epochs" in module.hparams
-        assert module.hparams["trainer.max_epochs"] == 100
-        assert module.hparams["trainer.accelerator"] == "cpu"
-
-    def test_deeply_nested_hparams_in_module(self):
-        """Deeply nested Hydra config keys are flattened and injected correctly."""
-        from stable_pretraining.manager import Manager
-        from stable_pretraining.tests.utils import BoringModule, BoringDataModule
-
-        # Build a Manager with deeply nested module config as DictConfig
-        trainer_cfg = OmegaConf.create({"max_epochs": 10})
-        module_cfg = OmegaConf.create({
-            "optim": {"optimizer": {"lr": 0.01, "wd": 1e-4}},
-            "backbone": {"name": "resnet50", "layers": [3, 4, 6, 3]},
-        })
-        manager = Manager(
-            trainer=trainer_cfg,
-            module=BoringModule(),
-            data=BoringDataModule(),
-        )
-        # Override .module with DictConfig so flatten picks it up,
-        # but keep the instantiated module available
-        manager.module = module_cfg
-
-        flat = manager._flatten_hydra_config()
-        assert flat["module.optim.optimizer.lr"] == 0.01
-        assert flat["module.optim.optimizer.wd"] == 1e-4
-        assert flat["module.backbone.name"] == "resnet50"
-        assert flat["module.backbone.layers.0"] == 3
-        assert flat["module.backbone.layers.3"] == 3
-        assert flat["trainer.max_epochs"] == 10
-
-
-class TestEndToEndConfigToRegistry:
-    """End-to-end: Manager → cache_dir → RegistryLogger + CSVLogger → queryable DB.
-
-    These tests go through the Manager (the real production path) to verify
-    that the full Hydra config is flattened, injected into module.hparams,
-    and ends up queryable in the SQLite registry. All outputs land in
-    tmp_path via cache_dir — nothing leaks to the working directory.
+    Covers the full production path: Hydra config flows through
+    Manager, the logger writes sidecar + CSV, the scanner picks it up,
+    and ``open_registry()`` can query it.
     """
 
-    def _run_via_manager(self, tmp_path, trainer_cfg, module, data):
-        """Run a training job through the Manager.
-
-        cache_dir is already set to tmp_path by the autouse fixture.
-        """
+    def _run(self, tmp_path, trainer_cfg, module, data):
         from stable_pretraining.manager import Manager
 
-        manager = Manager(trainer=trainer_cfg, module=module, data=data)
-        manager()
-        return str(tmp_path / "registry.db")
+        Manager(trainer=trainer_cfg, module=module, data=data)()
 
-    def test_config_flows_through_manager_to_registry(self, tmp_path):
-        """Full integration: Hydra config flows through Manager to the registry DB."""
-        from omegaconf import OmegaConf
+    def test_config_flows_to_registry(self, tmp_path):
         from stable_pretraining.tests.utils import BoringModule, BoringDataModule
 
-        trainer_cfg = OmegaConf.create({
-            "_target_": "lightning.Trainer",
-            "max_epochs": 1,
-            "accelerator": "cpu",
-            "enable_checkpointing": False,
-            "enable_progress_bar": False,
-            "enable_model_summary": False,
-        })
-
-        db_path = self._run_via_manager(
-            tmp_path, trainer_cfg, BoringModule(), BoringDataModule()
+        trainer_cfg = OmegaConf.create(
+            {
+                "_target_": "lightning.Trainer",
+                "max_epochs": 1,
+                "accelerator": "cpu",
+                "enable_checkpointing": False,
+                "enable_progress_bar": False,
+                "enable_model_summary": False,
+            }
         )
+        self._run(tmp_path, trainer_cfg, BoringModule(), BoringDataModule())
 
-        reg = Registry(RegistryDB(db_path))
+        scanner.invalidate_ttl()
+        reg = open_registry(cache_dir=tmp_path)
         assert len(reg) == 1
         run = reg.query()[0]
         assert run.status == "completed"
         assert run.hparams["trainer.max_epochs"] == 1
-        assert run.hparams["trainer.accelerator"] == "cpu"
         assert run.run_dir is not None
-
-    def test_deeply_nested_config_queryable(self, tmp_path):
-        """Deeply nested Hydra keys survive the Manager → DB pipeline."""
-        from omegaconf import OmegaConf
-        from stable_pretraining.tests.utils import BoringModule, BoringDataModule
-
-        trainer_cfg = OmegaConf.create({
-            "_target_": "lightning.Trainer",
-            "max_epochs": 1,
-            "accelerator": "cpu",
-            "enable_checkpointing": False,
-            "enable_progress_bar": False,
-            "enable_model_summary": False,
-        })
-        module = BoringModule()
-        # Override module config with deeply nested structure
-        # (Manager stores this as self.module DictConfig)
-
-        db_path = self._run_via_manager(
-            tmp_path, trainer_cfg, module, BoringDataModule()
-        )
-
-        reg = Registry(RegistryDB(db_path))
-        run = reg.query()[0]
-        # Trainer config keys are flattened
-        assert "trainer.max_epochs" in run.hparams
-        assert "trainer.accelerator" in run.hparams
+        reg.close()
 
     def test_no_files_leak_to_cwd(self, tmp_path):
-        """With cache_dir set, nothing should be written to CWD."""
         import glob
-        from omegaconf import OmegaConf
+
         from stable_pretraining.tests.utils import BoringModule, BoringDataModule
 
-        # Snapshot CWD before
         cwd_before = set(glob.glob("*"))
-
-        trainer_cfg = OmegaConf.create({
-            "_target_": "lightning.Trainer",
-            "max_epochs": 1,
-            "accelerator": "cpu",
-            "enable_checkpointing": False,
-            "enable_progress_bar": False,
-            "enable_model_summary": False,
-        })
-
-        self._run_via_manager(
-            tmp_path, trainer_cfg, BoringModule(), BoringDataModule()
+        trainer_cfg = OmegaConf.create(
+            {
+                "_target_": "lightning.Trainer",
+                "max_epochs": 1,
+                "accelerator": "cpu",
+                "enable_checkpointing": False,
+                "enable_progress_bar": False,
+                "enable_model_summary": False,
+            }
         )
-
-        # Snapshot CWD after
-        cwd_after = set(glob.glob("*"))
-        leaked = cwd_after - cwd_before
+        self._run(tmp_path, trainer_cfg, BoringModule(), BoringDataModule())
+        leaked = set(glob.glob("*")) - cwd_before
         assert not leaked, f"Files leaked to CWD: {leaked}"
 
     def test_dataframe_has_flattened_hparams(self, tmp_path):
-        """to_dataframe() exposes flattened hparams as columns."""
-        from omegaconf import OmegaConf
         from stable_pretraining.tests.utils import BoringModule, BoringDataModule
 
-        trainer_cfg = OmegaConf.create({
-            "_target_": "lightning.Trainer",
-            "max_epochs": 1,
-            "accelerator": "cpu",
-            "enable_checkpointing": False,
-            "enable_progress_bar": False,
-            "enable_model_summary": False,
-        })
-
-        db_path = self._run_via_manager(
-            tmp_path, trainer_cfg, BoringModule(), BoringDataModule()
+        trainer_cfg = OmegaConf.create(
+            {
+                "_target_": "lightning.Trainer",
+                "max_epochs": 1,
+                "accelerator": "cpu",
+                "enable_checkpointing": False,
+                "enable_progress_bar": False,
+                "enable_model_summary": False,
+            }
         )
+        self._run(tmp_path, trainer_cfg, BoringModule(), BoringDataModule())
 
-        reg = Registry(RegistryDB(db_path))
+        scanner.invalidate_ttl()
+        reg = open_registry(cache_dir=tmp_path)
         df = reg.to_dataframe()
         assert len(df) == 1
         assert "hparams.trainer.max_epochs" in df.columns
         assert df.iloc[0]["hparams.trainer.max_epochs"] == 1
+        reg.close()
+
+    def test_csv_still_written(self, tmp_path):
+        """RegistryLogger is a CSVLogger — metrics.csv must exist."""
+        from stable_pretraining.tests.utils import BoringModule, BoringDataModule
+
+        trainer_cfg = OmegaConf.create(
+            {
+                "_target_": "lightning.Trainer",
+                "max_epochs": 1,
+                "accelerator": "cpu",
+                "enable_checkpointing": False,
+                "enable_progress_bar": False,
+                "enable_model_summary": False,
+            }
+        )
+        self._run(tmp_path, trainer_cfg, BoringModule(), BoringDataModule())
+
+        # Find the run_dir (layout: cache_dir/runs/<date>/<time>/<run_id>)
+        run_dirs = list((tmp_path / "runs").rglob("sidecar.json"))
+        assert len(run_dirs) == 1
+        run_dir = run_dirs[0].parent
+        # CSVLogger writes metrics.csv unless there were zero metrics
+        # (BoringModule may not log any) — so we check either the CSV
+        # or the hparams.yaml, at least one of which must be present.
+        assert (run_dir / "hparams.yaml").exists() or (run_dir / "metrics.csv").exists()

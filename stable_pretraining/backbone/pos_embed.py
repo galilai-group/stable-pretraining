@@ -10,8 +10,14 @@ __all__ = [
     "get_sincos_pos_embed",
     "get_1d_sincos_pos_embed",
     "get_2d_sincos_pos_embed",
+    "get_3d_sincos_pos_embed",
     "interpolate_pos_embed",
     "get_timestep_embed",
+    "apply_rotary_emb",
+    "RotaryPositionEmbedding1D",
+    "RotaryPositionEmbedding2D",
+    "RotaryPositionEmbedding3D",
+    "build_rotary_pos_embed",
 ]
 
 
@@ -120,27 +126,95 @@ def get_2d_sincos_pos_embed(
     return pe
 
 
+def get_3d_sincos_pos_embed(
+    embed_dim: int,
+    grid_size: int | tuple[int, int, int],
+    cls_token: bool = False,
+) -> torch.Tensor:
+    """Generate 3D sinusoidal positional embeddings for video patches.
+
+    Axes are (T, H, W) — temporal, height, width — flattened in that order.
+
+    :param embed_dim: Embedding dimension (must be divisible by 6)
+    :param grid_size: Grid as int (T=H=W=grid_size) or (T, H, W) tuple
+    :param cls_token: If True, prepend a zero embedding for CLS token
+    :return: Positional embeddings of shape (T*H*W, embed_dim) or
+             (T*H*W + 1, embed_dim) if cls_token=True
+    """
+    if embed_dim <= 0 or embed_dim % 6 != 0:
+        raise ValueError(
+            f"embed_dim must be positive and divisible by 6, got {embed_dim}"
+        )
+
+    if isinstance(grid_size, int):
+        grid_t = grid_h = grid_w = grid_size
+    else:
+        grid_t, grid_h, grid_w = grid_size
+
+    if grid_t <= 0 or grid_h <= 0 or grid_w <= 0:
+        raise ValueError(
+            f"grid dimensions must be positive, got ({grid_t}, {grid_h}, {grid_w})"
+        )
+
+    ts = torch.arange(grid_t, dtype=torch.float32)
+    hs = torch.arange(grid_h, dtype=torch.float32)
+    ws = torch.arange(grid_w, dtype=torch.float32)
+    tt, hh, ww = torch.meshgrid(ts, hs, ws, indexing="ij")
+    grid = torch.stack([tt, hh, ww], dim=-1).reshape(-1, 3)
+
+    dim = embed_dim // 6
+    omega = torch.arange(dim, dtype=torch.float32) / dim
+    omega = 1.0 / (10000**omega)
+
+    out_t = grid[:, 0:1] @ omega.unsqueeze(0)
+    out_h = grid[:, 1:2] @ omega.unsqueeze(0)
+    out_w = grid[:, 2:3] @ omega.unsqueeze(0)
+
+    pe = torch.cat(
+        [
+            torch.sin(out_t),
+            torch.cos(out_t),
+            torch.sin(out_h),
+            torch.cos(out_h),
+            torch.sin(out_w),
+            torch.cos(out_w),
+        ],
+        dim=1,
+    )
+
+    if cls_token:
+        pe = torch.cat([torch.zeros(1, embed_dim), pe], dim=0)
+    return pe
+
+
 def get_sincos_pos_embed(
     embed_dim: int,
     num_patches: int,
-    mode: Literal["1d", "2d"] = "1d",
-    grid_size: int | tuple[int, int] | None = None,
+    mode: Literal["1d", "2d", "3d"] = "1d",
+    grid_size: int | tuple[int, int] | tuple[int, int, int] | None = None,
     cls_token: bool = False,
 ) -> torch.Tensor:
     """Unified interface for generating sinusoidal positional embeddings.
 
     :param embed_dim: Embedding dimension
     :param num_patches: Total number of patches (used for 1d mode)
-    :param mode: Embedding type - '1d' for sequence, '2d' for image grid
-    :param grid_size: Required for '2d' mode
+    :param mode: Embedding type - '1d' for sequence, '2d' for image grid,
+                 '3d' for video grid (T, H, W)
+    :param grid_size: Required for '2d' and '3d' modes
     :param cls_token: If True, prepend a zero embedding for CLS token
     :return: Positional embeddings tensor
     """
+    if mode == "3d":
+        if grid_size is None:
+            raise ValueError("grid_size is required for 3d mode")
+        return get_3d_sincos_pos_embed(embed_dim, grid_size, cls_token)
     if mode == "2d":
         if grid_size is None:
             raise ValueError("grid_size is required for 2d mode")
         return get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token)
-    return get_1d_sincos_pos_embed(embed_dim, num_patches, cls_token)
+    if mode == "1d":
+        return get_1d_sincos_pos_embed(embed_dim, num_patches, cls_token)
+    raise ValueError(f"mode must be '1d', '2d', or '3d', got {mode!r}")
 
 
 def interpolate_pos_embed(
@@ -227,18 +301,11 @@ def apply_rotary_emb(
     :param sin: Sine frequencies [seq_len, dim] or [1, 1, seq_len, dim]
     :return: Rotated tensor
     """
-    # Split into pairs and rotate
     x1, x2 = x[..., ::2], x[..., 1::2]
 
-    # Ensure cos/sin have right shape for broadcasting
-    if cos.dim() == 2:
-        cos = cos[..., ::2]  # [seq_len, dim//2]
-        sin = sin[..., ::2]
-    else:
-        cos = cos[..., ::2]
-        sin = sin[..., ::2]
+    cos = cos[..., ::2]
+    sin = sin[..., ::2]
 
-    # Apply rotation
     out = torch.stack(
         [
             x1 * cos - x2 * sin,
@@ -248,6 +315,88 @@ def apply_rotary_emb(
     ).flatten(-2)
 
     return out
+
+
+class RotaryPositionEmbedding1D(nn.Module):
+    """1D Rotary Position Embedding (RoPE) for sequence transformers.
+
+    Standard GPT-NeoX / LLaMA-style RoPE: rotates pairs of adjacent
+    channels (x[..., 2k], x[..., 2k+1]) by angle ``pos * inv_freq[k]``,
+    making attention scores depend only on relative position.
+    :param head_dim: Dimension per attention head (must be even)
+    :param max_seq_len: Maximum sequence length hint for cache sizing
+    :param base: Base for frequency computation (default: 10000.0)
+    Example::
+        rope = RotaryPositionEmbedding1D(head_dim=64)
+        q, k = rope(q, k)  # q, k shape [B, num_heads, seq_len, head_dim]
+    """
+
+    def __init__(
+        self,
+        head_dim: int,
+        max_seq_len: int = 2048,
+        base: float = 10000.0,
+    ):
+        super().__init__()
+        if head_dim < 2 or head_dim % 2 != 0:
+            raise ValueError(f"head_dim must be positive and even, got {head_dim}")
+        self.head_dim = head_dim
+        self.max_seq_len = max_seq_len
+        self.base = base
+        inv_freq = 1.0 / (base ** (torch.arange(0, head_dim, 2).float() / head_dim))
+        self.register_buffer("inv_freq", inv_freq)
+        self._cached_seq_len = 0
+
+    def _build_cache(
+        self,
+        seq_len: int,
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> None:
+        """Build and cache sin/cos frequencies for the given sequence length."""
+        pos = torch.arange(seq_len, device=device, dtype=dtype)
+        freqs = torch.outer(pos, self.inv_freq.to(device=device, dtype=dtype))
+        # Interleave so that apply_rotary_emb's stride-2 indexing hits one
+        # frequency per rotary pair: freqs[:, 2k] = freqs[:, 2k+1] = pos*inv_freq[k].
+        freqs = freqs.repeat_interleave(2, dim=-1)
+        self.register_buffer("cos_cached", freqs.cos(), persistent=False)
+        self.register_buffer("sin_cached", freqs.sin(), persistent=False)
+        self._cached_seq_len = seq_len
+
+    def get_freqs(
+        self,
+        seq_len: int,
+        device: torch.device,
+        dtype: torch.dtype = torch.float32,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Get cos/sin frequencies for the given sequence length.
+
+        :param seq_len: Sequence length
+        :param device: Target device
+        :param dtype: Target dtype
+        :return: (cos, sin) tensors of shape [seq_len, head_dim].
+        """
+        if seq_len != self._cached_seq_len:
+            self._build_cache(seq_len, device, dtype)
+        return self.cos_cached[:seq_len], self.sin_cached[:seq_len]
+
+    def forward(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Apply 1D rotary embeddings to query and key tensors.
+
+        :param q: Query tensor [..., seq_len, head_dim]
+        :param k: Key tensor [..., seq_len, head_dim]
+        :return: (rotated_q, rotated_k).
+        """
+        seq_len = q.shape[-2]
+        cos, sin = self.get_freqs(seq_len, q.device, q.dtype)
+        return apply_rotary_emb(q, cos, sin), apply_rotary_emb(k, cos, sin)
+
+    def extra_repr(self) -> str:
+        return f"head_dim={self.head_dim}, max_seq_len={self.max_seq_len}, base={self.base}"
 
 
 class RotaryPositionEmbedding2D(nn.Module):
@@ -279,13 +428,15 @@ class RotaryPositionEmbedding2D(nn.Module):
         self.head_dim = head_dim
         self.max_grid_size = max_grid_size
         self.base = base
-        # Each 2D axis gets head_dim // 4 frequency pairs
-        # Total: (head_dim // 4) * 2 for height + (head_dim // 4) * 2 for width = head_dim
+        # Each 2D axis contributes head_dim // 4 frequencies per pair; two
+        # pairs per axis (sin/cos duplicate) and two axes (h, w) → total
+        # head_dim dims in the final cos/sin table, matching what
+        # apply_rotary_emb consumes.
         dim_per_axis = head_dim // 4
         if dim_per_axis <= 0:
             raise ValueError(f"head_dim must be >= 4, got {head_dim}")
         inv_freq = 1.0 / (
-            base ** (torch.arange(0, dim_per_axis, 2).float() / dim_per_axis)
+            base ** (torch.arange(0, dim_per_axis).float() / dim_per_axis)
         )
         self.register_buffer("inv_freq", inv_freq)
         # Cache for current grid size
@@ -370,3 +521,150 @@ class RotaryPositionEmbedding2D(nn.Module):
 
     def extra_repr(self) -> str:
         return f"head_dim={self.head_dim}, max_grid_size={self.max_grid_size}, base={self.base}"
+
+
+class RotaryPositionEmbedding3D(nn.Module):
+    """3D Rotary Position Embedding (RoPE) for video transformers.
+
+    Mirrors :class:`RotaryPositionEmbedding2D`, with a third axis for time.
+    Uses separate frequencies for temporal, height, and width dimensions
+    and encodes relative positions along each axis independently.
+    :param head_dim: Dimension per attention head (must be divisible by 6)
+    :param max_grid_size: Maximum grid size hint for cache pre-sizing
+    :param base: Base for frequency computation (default: 10000.0)
+    Example::
+        rope = RotaryPositionEmbedding3D(head_dim=96)
+        q, k = rope(q, k, grid_t=8, grid_h=14, grid_w=14)
+    """
+
+    def __init__(
+        self,
+        head_dim: int,
+        max_grid_size: int = 32,
+        base: float = 10000.0,
+    ):
+        super().__init__()
+        # Each 3D axis gets head_dim // 6 frequencies, duplicated for the
+        # sin/cos pair → 6 blocks × (head_dim // 6) = head_dim total dims.
+        dim_per_axis = head_dim // 6
+        if dim_per_axis <= 0 or head_dim % 6 != 0:
+            raise ValueError(
+                f"head_dim must be positive and divisible by 6, got {head_dim}"
+            )
+        self.head_dim = head_dim
+        self.max_grid_size = max_grid_size
+        self.base = base
+        inv_freq = 1.0 / (
+            base ** (torch.arange(0, dim_per_axis).float() / dim_per_axis)
+        )
+        self.register_buffer("inv_freq", inv_freq)
+        self._cached_grid_t = 0
+        self._cached_grid_h = 0
+        self._cached_grid_w = 0
+
+    def _build_cache(
+        self,
+        grid_t: int,
+        grid_h: int,
+        grid_w: int,
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> None:
+        inv_freq = self.inv_freq.to(device=device, dtype=dtype)
+        pos_t = torch.arange(grid_t, device=device, dtype=dtype)
+        pos_h = torch.arange(grid_h, device=device, dtype=dtype)
+        pos_w = torch.arange(grid_w, device=device, dtype=dtype)
+        freqs_t = torch.outer(pos_t, inv_freq)  # [T, dim//6]
+        freqs_h = torch.outer(pos_h, inv_freq)  # [H, dim//6]
+        freqs_w = torch.outer(pos_w, inv_freq)  # [W, dim//6]
+        # Expand to full grid [T, H, W, dim//6]
+        freqs_t = freqs_t[:, None, None, :].expand(-1, grid_h, grid_w, -1)
+        freqs_h = freqs_h[None, :, None, :].expand(grid_t, -1, grid_w, -1)
+        freqs_w = freqs_w[None, None, :, :].expand(grid_t, grid_h, -1, -1)
+        d = freqs_t.shape[-1]
+        freqs_t = freqs_t.reshape(-1, d)
+        freqs_h = freqs_h.reshape(-1, d)
+        freqs_w = freqs_w.reshape(-1, d)
+        # 6 blocks × dim_per_axis = head_dim, duplicated for sin/cos pairs.
+        freqs = torch.cat(
+            [freqs_t, freqs_t, freqs_h, freqs_h, freqs_w, freqs_w], dim=-1
+        )
+        self.register_buffer("cos_cached", freqs.cos(), persistent=False)
+        self.register_buffer("sin_cached", freqs.sin(), persistent=False)
+        self._cached_grid_t = grid_t
+        self._cached_grid_h = grid_h
+        self._cached_grid_w = grid_w
+
+    def get_freqs(
+        self,
+        grid_t: int,
+        grid_h: int,
+        grid_w: int,
+        device: torch.device,
+        dtype: torch.dtype = torch.float32,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Get cos/sin frequencies for the given (T, H, W) grid."""
+        if (
+            grid_t != self._cached_grid_t
+            or grid_h != self._cached_grid_h
+            or grid_w != self._cached_grid_w
+        ):
+            self._build_cache(grid_t, grid_h, grid_w, device, dtype)
+        seq_len = grid_t * grid_h * grid_w
+        return self.cos_cached[:seq_len], self.sin_cached[:seq_len]
+
+    def forward(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        grid_t: int,
+        grid_h: int,
+        grid_w: int,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Apply 3D rotary embeddings to query and key tensors.
+
+        :param q: Query tensor [..., T*H*W, head_dim]
+        :param k: Key tensor [..., T*H*W, head_dim]
+        :param grid_t: Temporal grid size
+        :param grid_h: Height grid size
+        :param grid_w: Width grid size
+        :return: (rotated_q, rotated_k).
+        """
+        cos, sin = self.get_freqs(grid_t, grid_h, grid_w, q.device, q.dtype)
+        return apply_rotary_emb(q, cos, sin), apply_rotary_emb(k, cos, sin)
+
+    def extra_repr(self) -> str:
+        return (
+            f"head_dim={self.head_dim}, max_grid_size={self.max_grid_size}, "
+            f"base={self.base}"
+        )
+
+
+def build_rotary_pos_embed(
+    mode: Literal["1d", "2d", "3d"] | None,
+    head_dim: int,
+    max_grid_size: int = 32,
+    base: float = 10000.0,
+) -> nn.Module | None:
+    """Factory returning the right RoPE module for a given mode string.
+
+    :param mode: '1d', '2d', '3d', or None (returns None for disabled)
+    :param head_dim: Dimension per attention head
+    :param max_grid_size: Hint for 2D/3D cache pre-sizing (used as
+        ``max_seq_len`` for the 1D case)
+    :param base: Frequency base (default 10000.0)
+    :return: A RoPE module, or None if ``mode`` is None
+    """
+    if mode is None:
+        return None
+    if mode == "1d":
+        return RotaryPositionEmbedding1D(head_dim, max_seq_len=max_grid_size, base=base)
+    if mode == "2d":
+        return RotaryPositionEmbedding2D(
+            head_dim, max_grid_size=max_grid_size, base=base
+        )
+    if mode == "3d":
+        return RotaryPositionEmbedding3D(
+            head_dim, max_grid_size=max_grid_size, base=base
+        )
+    raise ValueError(f"mode must be '1d', '2d', '3d', or None, got {mode!r}")

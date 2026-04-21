@@ -81,9 +81,7 @@ class _GlobalConfig:
         _default_cache = str(
             os.path.join(os.path.expanduser("~"), ".cache", "stable-pretraining")
         )
-        self._cache_dir: Optional[str] = os.environ.get(
-            "SPT_CACHE_DIR", _default_cache
-        )
+        self._cache_dir: Optional[str] = os.environ.get("SPT_CACHE_DIR", _default_cache)
         self._requeue_checkpoint: bool = True
 
     # -- verbose ---------------------------------------------------------------
@@ -186,6 +184,8 @@ class _GlobalConfig:
             "trainer_info",
             "sklearn_checkpoint",
             "wandb_checkpoint",
+            "trackio_checkpoint",
+            "swanlab_checkpoint",
             "module_summary",
             "slurm_info",
             "unused_params",
@@ -214,9 +214,7 @@ class _GlobalConfig:
 
     @default_loggers.setter
     def default_loggers(self, value: Dict[str, bool]) -> None:
-        _VALID_LOGGER_KEYS = (
-            "registry",
-        )
+        _VALID_LOGGER_KEYS = ("registry",)
         if not isinstance(value, dict):
             raise TypeError(
                 f"default_loggers must be a dict, got {type(value).__name__}"
@@ -328,6 +326,7 @@ def set(
             on/off.  Keys: ``"progress_bar"``, ``"registry"``,
             ``"logging"``, ``"env_dump"``, ``"trainer_info"``,
             ``"sklearn_checkpoint"``, ``"wandb_checkpoint"``,
+            ``"trackio_checkpoint"``, ``"swanlab_checkpoint"``,
             ``"module_summary"``, ``"slurm_info"``, ``"unused_params"``,
             ``"hf_checkpoint"``.
         default_loggers: Dict toggling individual default loggers

@@ -26,10 +26,35 @@ try:
 except ImportError:
     WANDB_AVAILABLE = False
 
+try:
+    import trackio  # noqa: F401
+
+    TRACKIO_AVAILABLE = True
+except ImportError:
+    TRACKIO_AVAILABLE = False
+
+try:
+    import swanlab  # noqa: F401
+
+    SWANLAB_AVAILABLE = True
+except ImportError:
+    SWANLAB_AVAILABLE = False
+
 # Import global config first (no heavy deps)
 from ._config import get_config, set  # noqa: F401
 
-from . import backbone, callbacks, data, losses, module, optim, registry, static, utils
+from . import (
+    backbone,
+    callbacks,
+    data,
+    loggers,
+    losses,
+    module,
+    optim,
+    registry,
+    static,
+    utils,
+)
 from .__about__ import (
     __author__,
     __license__,
@@ -54,6 +79,7 @@ from .callbacks import (
 )
 from .callbacks.registry import log, log_dict
 from .manager import Manager
+from .loggers import SwanLabLogger, TrackioLogger
 from .registry import RegistryLogger, open_registry
 from .module import Module
 from .utils.lightning_patch import apply_manual_optimization_patch
@@ -68,6 +94,8 @@ __all__ = [
     # Availability flags
     "SKLEARN_AVAILABLE",
     "WANDB_AVAILABLE",
+    "TRACKIO_AVAILABLE",
+    "SWANLAB_AVAILABLE",
     # Global config
     "set",
     "get_config",
@@ -99,6 +127,10 @@ __all__ = [
     "TeacherStudentWrapper",
     "log",
     "log_dict",
+    # Loggers
+    "loggers",
+    "TrackioLogger",
+    "SwanLabLogger",
     # Registry
     "registry",
     "RegistryLogger",

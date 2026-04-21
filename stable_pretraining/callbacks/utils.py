@@ -93,11 +93,14 @@ class TrainableCallback(Callback):
             # Store module in pl_module.callbacks_modules
             logging.info("  storing module in callbacks_modules")
             self.callbacks_modules[callback.name] = module
-            logging.info("  setting up metrics")
-            assert callback.name not in self.callbacks_metrics
-            self.callbacks_metrics[callback.name] = format_metrics_as_dict(
-                callback.metrics
-            )
+            # Metrics are optional — not all trainable callbacks expose
+            # them (e.g. generative/reconstruction heads whose only output
+            # is a loss scalar).
+            metrics = getattr(callback, "metrics", None)
+            if metrics is not None:
+                logging.info("  setting up metrics")
+                assert callback.name not in self.callbacks_metrics
+                self.callbacks_metrics[callback.name] = format_metrics_as_dict(metrics)
 
         # Bind the new method to the instance
         logging.info("  wrapping configure_model")

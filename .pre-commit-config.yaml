@@ -30,6 +30,7 @@ repos:
       - id: check-case-conflict
       - id: check-added-large-files
       - id: check-merge-conflict
+        exclude: '\.rst$'
 
   # shell scripts linter
   - repo: https://github.com/shellcheck-py/shellcheck-py

@@ -3,7 +3,7 @@
 import json
 import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 import lightning as pl
@@ -50,7 +50,11 @@ def cache_dir(tmp_path):
 
 
 class TestCacheDirConfig:
-    def test_default_is_set(self):
+    """Tests for cache_dir config defaults and env overrides."""
+
+    def test_default_is_set(self, monkeypatch):
+        monkeypatch.delenv("SPT_CACHE_DIR", raising=False)
+        get_config().reset()
         assert get_config().cache_dir is not None
         assert "stable-pretraining" in get_config().cache_dir
 
@@ -81,7 +85,8 @@ class TestCacheDirConfig:
         with pytest.raises(TypeError, match="must be a str"):
             get_config().cache_dir = 123
 
-    def test_reset_restores_default_cache_dir(self, tmp_path):
+    def test_reset_restores_default_cache_dir(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("SPT_CACHE_DIR", raising=False)
         spt_set(cache_dir=str(tmp_path))
         get_config().reset()
         # reset() restores the default (~/.cache/stable-pretraining), not None
@@ -116,6 +121,8 @@ class TestCacheDirConfig:
 
 
 class TestRequeueCheckpointConfig:
+    """Tests for requeue checkpoint config resolution."""
+
     def test_default_is_true(self):
         assert get_config().requeue_checkpoint is True
 
@@ -161,6 +168,8 @@ class TestRequeueCheckpointConfig:
 
 
 class TestGenerateRunId:
+    """Tests for run ID generation."""
+
     def test_uuid_fallback(self, monkeypatch):
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
         monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
@@ -213,6 +222,8 @@ class TestGenerateRunId:
 
 
 class TestResolveRunDir:
+    """Tests for run_dir resolution logic."""
+
     def _make_manager(self, ckpt_path=None):
         return Manager(
             trainer=BoringTrainer(enable_checkpointing=False, logger=False),
@@ -350,6 +361,8 @@ class TestResolveRunDir:
 
 
 class TestInjectRunDir:
+    """Tests for injecting run_dir into the config tree."""
+
     def test_injects_into_dictconfig(self, tmp_path):
         cfg = OmegaConf.create(
             {
@@ -406,6 +419,8 @@ class TestInjectRunDir:
 
 
 class TestResolveLoadPath:
+    """Tests for resolving checkpoint load paths."""
+
     def test_returns_user_ckpt_path_when_exists(self, tmp_path):
         """User's explicit ckpt_path is used for loading."""
         user_ckpt = tmp_path / "pretrained.ckpt"
@@ -421,8 +436,8 @@ class TestResolveLoadPath:
         result = manager._resolve_load_path(run_dir)
         assert result == str(user_ckpt.resolve())
 
-    def test_returns_none_when_user_ckpt_path_missing(self, tmp_path):
-        """User's ckpt_path doesn't exist on disk → None."""
+    def test_returns_none_when_user_ckpt_path_missing_and_no_last_ckpt(self, tmp_path):
+        """User's ckpt_path doesn't exist and no last.ckpt → None."""
         manager = Manager(
             trainer=BoringTrainer(enable_checkpointing=False, logger=False),
             module=BoringModule(),
@@ -433,6 +448,26 @@ class TestResolveLoadPath:
         run_dir.mkdir()
         result = manager._resolve_load_path(run_dir)
         assert result is None
+
+    def test_falls_back_to_last_ckpt_when_user_ckpt_path_missing(self, tmp_path):
+        """User's ckpt_path doesn't exist but last.ckpt does → load last.ckpt.
+
+        This is the requeue scenario: a stale ckpt_path from a previous job
+        no longer exists, but last.ckpt was saved in the run_dir.
+        """
+        manager = Manager(
+            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
+            module=BoringModule(),
+            data=BoringDataModule(),
+            ckpt_path=str(tmp_path / "nonexistent.ckpt"),
+        )
+        run_dir = tmp_path / "run"
+        ckpt_dir = run_dir / "checkpoints"
+        ckpt_dir.mkdir(parents=True)
+        (ckpt_dir / "last.ckpt").touch()
+
+        result = manager._resolve_load_path(run_dir)
+        assert result == str(ckpt_dir / "last.ckpt")
 
     def test_auto_detects_requeue_checkpoint(self, tmp_path):
         """When no ckpt_path but run_dir/checkpoints/last.ckpt exists, load it."""
@@ -486,6 +521,8 @@ class TestResolveLoadPath:
 
 
 class TestConfigureCacheDirCheckpointing:
+    """Tests for configuring cache_dir-based checkpointing."""
+
     def _make_manager_with_trainer(self, tmp_path):
         """Create a Manager with an instantiated trainer and run_dir."""
         trainer = BoringTrainer(
@@ -509,9 +546,7 @@ class TestConfigureCacheDirCheckpointing:
         manager._configure_cache_dir_checkpointing()
 
         mc_callbacks = [
-            cb
-            for cb in manager._trainer.callbacks
-            if isinstance(cb, ModelCheckpoint)
+            cb for cb in manager._trainer.callbacks if isinstance(cb, ModelCheckpoint)
         ]
         assert len(mc_callbacks) >= 1
         assert len(manager._trainer.callbacks) == initial_count + 1
@@ -521,9 +556,7 @@ class TestConfigureCacheDirCheckpointing:
         manager._configure_cache_dir_checkpointing()
 
         mc = [
-            cb
-            for cb in manager._trainer.callbacks
-            if isinstance(cb, ModelCheckpoint)
+            cb for cb in manager._trainer.callbacks if isinstance(cb, ModelCheckpoint)
         ][-1]
         assert mc.dirpath == str(manager._run_dir / "checkpoints")
 
@@ -550,7 +583,9 @@ class TestConfigureCacheDirCheckpointing:
         save_dir = run_dir / "checkpoints"
         save_dir.mkdir(parents=True)
 
-        user_mc = ModelCheckpoint(dirpath=str(save_dir), filename="best", monitor="val_loss")
+        user_mc = ModelCheckpoint(
+            dirpath=str(save_dir), filename="best", monitor="val_loss"
+        )
         trainer.callbacks.append(user_mc)
 
         manager = Manager(
@@ -633,14 +668,10 @@ class TestConfigureCacheDirCheckpointing:
         assert mc1.dirpath == expected
         assert mc2.dirpath == expected
         # 2 user + 1 requeue
-        mc_count = sum(
-            isinstance(cb, ModelCheckpoint) for cb in trainer.callbacks
-        )
+        mc_count = sum(isinstance(cb, ModelCheckpoint) for cb in trainer.callbacks)
         assert mc_count == 3
         filenames = {
-            cb.filename
-            for cb in trainer.callbacks
-            if isinstance(cb, ModelCheckpoint)
+            cb.filename for cb in trainer.callbacks if isinstance(cb, ModelCheckpoint)
         }
         assert filenames == {"every-epoch", "best", "last"}
 
@@ -651,6 +682,8 @@ class TestConfigureCacheDirCheckpointing:
 
 
 class TestRunDirCallback:
+    """Tests for the run_dir callback wiring."""
+
     def test_persists_run_dir_in_checkpoint(self):
         cb = _RunDirCallback("/some/path")
         checkpoint = {}
@@ -670,6 +703,8 @@ class TestRunDirCallback:
 
 
 class TestHydraConflictWarnings:
+    """Tests for Hydra config conflict warnings."""
+
     def test_no_crash_without_hydra(self):
         Manager._warn_hydra_conflicts()
 
@@ -680,6 +715,8 @@ class TestHydraConflictWarnings:
 
 
 class TestSaveCheckpointWithRunDir:
+    """Tests for saving checkpoints under run_dir."""
+
     def test_default_path_uses_run_dir(self, tmp_path):
         trainer = BoringTrainer(
             default_root_dir=str(tmp_path),
@@ -738,6 +775,8 @@ class TestSaveCheckpointWithRunDir:
 
 
 class TestManagerCallWithCacheDir:
+    """Tests for Manager invocation with cache_dir wiring."""
+
     def test_full_flow_with_config_trainer(self, cache_dir, monkeypatch):
         """Manager.__call__() creates run_dir, injects into trainer, sets up checkpointing."""
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
@@ -783,15 +822,11 @@ class TestManagerCallWithCacheDir:
         assert manager.ckpt_path is None
 
         # _RunDirCallback was added
-        assert any(
-            isinstance(cb, _RunDirCallback) for cb in manager._trainer.callbacks
-        )
+        assert any(isinstance(cb, _RunDirCallback) for cb in manager._trainer.callbacks)
 
         # ModelCheckpoint saving to run_dir/checkpoints/ was added
         mc_callbacks = [
-            cb
-            for cb in manager._trainer.callbacks
-            if isinstance(cb, ModelCheckpoint)
+            cb for cb in manager._trainer.callbacks if isinstance(cb, ModelCheckpoint)
         ]
         assert any(
             cb.dirpath == str(manager._run_dir / "checkpoints") for cb in mc_callbacks
@@ -877,9 +912,7 @@ class TestManagerCallWithCacheDir:
         assert manager.ckpt_path == user_ckpt.resolve()
         # But checkpoints are saved to run_dir, NOT to user_ckpt.parent
         mc_callbacks = [
-            cb
-            for cb in manager._trainer.callbacks
-            if isinstance(cb, ModelCheckpoint)
+            cb for cb in manager._trainer.callbacks if isinstance(cb, ModelCheckpoint)
         ]
         assert any(
             cb.dirpath == str(manager._run_dir / "checkpoints") for cb in mc_callbacks
@@ -927,7 +960,9 @@ class TestManagerCallWithCacheDir:
 
     def test_requeue_loads_from_run_dir_not_ckpt_path(self, cache_dir, monkeypatch):
         """Simulate requeue: run_dir has last.ckpt, no user ckpt_path.
-        The fit call should receive the auto-detected checkpoint."""
+
+        The fit call should receive the auto-detected checkpoint.
+        """
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
         monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
 
@@ -975,16 +1010,15 @@ class TestManagerCallWithCacheDir:
         manager()
 
         # Should have loaded from the user's ckpt_path
-        assert captured_kwargs["ckpt_path"] == str(
-            (ckpt_dir / "last.ckpt").resolve()
-        )
+        assert captured_kwargs["ckpt_path"] == str((ckpt_dir / "last.ckpt").resolve())
         # And the run_dir should be the restored prev_run_dir (same directory)
         assert manager._run_dir == prev_run_dir
 
-
     def test_slurm_requeue_no_ckpt_path_auto_loads(self, cache_dir, monkeypatch):
         """SLURM requeue: no ckpt_path, same SLURM_JOB_ID.
-        Should find prev run_dir by job ID and auto-load last.ckpt."""
+
+        Should find prev run_dir by job ID and auto-load last.ckpt.
+        """
         monkeypatch.setenv("SLURM_JOB_ID", "88888")
         monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
 
@@ -1076,9 +1110,7 @@ class TestManagerCallWithCacheDir:
         manager()
 
         mc_callbacks = [
-            cb
-            for cb in manager._trainer.callbacks
-            if isinstance(cb, ModelCheckpoint)
+            cb for cb in manager._trainer.callbacks if isinstance(cb, ModelCheckpoint)
         ]
         assert not any(cb.filename == "last" for cb in mc_callbacks)
 
@@ -1089,6 +1121,8 @@ class TestManagerCallWithCacheDir:
 
 
 class TestCallbackPathResolution:
+    """Tests for callback path resolution."""
+
     def test_hf_checkpoint_resolves_relative_save_dir(self):
         try:
             from stable_pretraining.callbacks.hf_models import (
@@ -1139,6 +1173,8 @@ class TestCallbackPathResolution:
 
 
 class TestNoCollisions:
+    """Tests that independent runs do not collide on paths."""
+
     def test_two_managers_get_different_run_dirs(self, cache_dir, monkeypatch):
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
         monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)

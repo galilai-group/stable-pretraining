@@ -3,6 +3,8 @@ from .checkpoint_sklearn import (
     WandbCheckpoint,
     StrictCheckpointCallback,
 )
+from .checkpoint_trackio import TrackioCheckpoint
+from .checkpoint_swanlab import SwanLabCheckpoint
 from .image_retrieval import ImageRetrieval
 from .knn import OnlineKNN
 from .latent_viz import LatentViz
@@ -49,4 +51,6 @@ __all__ = [
     ModuleRegistryCallback,
     LogUnusedParametersOnce,
     HuggingFaceCheckpointCallback,
+    TrackioCheckpoint,
+    SwanLabCheckpoint,
 ]
