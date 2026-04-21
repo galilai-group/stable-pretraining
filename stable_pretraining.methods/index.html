@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.methods package &#8212; stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</title>
+    <title>stable_pretraining.methods package &#8212; stable-pretraining 0.1.dev1+g749419f1f.d20260421 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=11df7697"></script>
+    <script src="../_static/documentation_options.js?v=1047d1e5"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9e2f96db5.d20260421 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g749419f1f.d20260421 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -714,7 +714,7 @@ an isotropic Gaussian.</p>
 Self-Supervised Learning Without the Heuristics.” 2025.
 <a class="reference external" href="https://arxiv.org/abs/2511.08544">https://arxiv.org/abs/2511.08544</a></p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.methods.lejepa</span><span class="w"> </span><span class="kn">import</span> <span class="n">LeJEPA</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.methods</span><span class="w"> </span><span class="kn">import</span> <span class="n">LeJEPA</span>
 
 <span class="n">model</span> <span class="o">=</span> <span class="n">LeJEPA</span><span class="p">(</span><span class="s2">&quot;vit_small_patch16_224&quot;</span><span class="p">)</span>
 
@@ -807,7 +807,7 @@ BN+ReLU MLP (<code class="docutils literal notranslate"><span class="pre">embed_
 </div>
 <p>Example with Lightning:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.methods.lejepa</span><span class="w"> </span><span class="kn">import</span> <span class="n">LeJEPA</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.methods</span><span class="w"> </span><span class="kn">import</span> <span class="n">LeJEPA</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">LeJEPALightning</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">LightningModule</span><span class="p">):</span>
@@ -922,7 +922,7 @@ projections so all DDP ranks sample identical directions.</p>
 <p>He et al. “Masked Autoencoders Are Scalable Vision Learners.” CVPR 2022.
 <a class="reference external" href="https://arxiv.org/abs/2111.06377">https://arxiv.org/abs/2111.06377</a></p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.backbone</span><span class="w"> </span><span class="kn">import</span> <span class="n">MAE</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.methods</span><span class="w"> </span><span class="kn">import</span> <span class="n">MAE</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
 
 <span class="c1"># Create model</span>
@@ -1466,7 +1466,7 @@ BN+ReLU MLP (<code class="docutils literal notranslate"><span class="pre">embed_
 </div>
 <p>Example with Lightning:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.methods.lejepa</span><span class="w"> </span><span class="kn">import</span> <span class="n">LeJEPA</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.methods</span><span class="w"> </span><span class="kn">import</span> <span class="n">LeJEPA</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">LeJEPALightning</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">LightningModule</span><span class="p">):</span>
