@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.utils.stats &#8212; stable-pretraining 0.1.dev1+g789ed4b52.d20260422 documentation</title>
+    <title>stable_pretraining.callbacks.hp_metric &#8212; stable-pretraining 0.1.dev1+g789ed4b52.d20260422 documentation</title>
   
   
   
@@ -46,7 +46,7 @@
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/stable_pretraining/utils/stats';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/stable_pretraining/callbacks/hp_metric';</script>
     <link rel="index" title="Index" href="../../../../genindex/" />
     <link rel="search" title="Search" href="../../../../search/" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -326,127 +326,28 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <h1>Source code for stable_pretraining.utils.stats</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch.distributed</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dist</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tensor</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">torch.distributed.nn.functional</span><span class="w"> </span><span class="kn">import</span> <span class="n">all_reduce</span> <span class="k">as</span> <span class="n">functional_all_reduce</span>
+  <h1>Source code for stable_pretraining.callbacks.hp_metric</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytorch_lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
 
 
-<div class="viewcode-block" id="mean_var">
-<a class="viewcode-back" href="../../../../stable_pretraining.utils/#stable_pretraining.utils.stats.mean_var">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">mean_var</span><span class="p">(</span>
-    <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
-    <span class="n">dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="n">keepdim</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="n">unbiased</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">sync</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">same_shape_across_devices</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute mean and std synchronized across DDP ranks.</span>
+<div class="viewcode-block" id="HPMetricLogger">
+<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.hp_metric.HPMetricLogger">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HPMetricLogger</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">Callback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Callback to log a specific metric for hyperparameter optimization.&quot;&quot;&quot;</span>
 
-<span class="sd">    Numerically stable for bf16/fp16 by using fp32 accumulation internally.</span>
-<span class="sd">    Supports variable batch sizes across ranks.</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metric_name</span> <span class="o">=</span> <span class="n">metric_name</span>
 
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    x : Tensor</span>
-<span class="sd">        Input tensor.</span>
-<span class="sd">    dim : int</span>
-<span class="sd">        Dimension to reduce.</span>
-<span class="sd">    keepdim : bool</span>
-<span class="sd">        Retain reduced dimension.</span>
-<span class="sd">    unbiased : bool</span>
-<span class="sd">        Apply Bessel&#39;s correction (N-1 denominator).</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">    -------</span>
-<span class="sd">    mean : Tensor</span>
-<span class="sd">        Global mean across all ranks.</span>
-<span class="sd">    std : Tensor</span>
-<span class="sd">        Global standard deviation across all ranks.</span>
-<span class="sd">    n_global : int</span>
-<span class="sd">        Total sample count across all ranks.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">n_local</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">sync</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">dist</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">():</span>
-        <span class="n">var</span><span class="p">,</span> <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">var_mean</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="n">keepdim</span><span class="p">,</span> <span class="n">unbiased</span><span class="o">=</span><span class="n">unbiased</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">mean</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">n_local</span>
-    <span class="k">elif</span> <span class="n">same_shape_across_devices</span><span class="p">:</span>
-        <span class="n">n_global</span> <span class="o">=</span> <span class="n">n_local</span> <span class="o">*</span> <span class="n">dist</span><span class="o">.</span><span class="n">get_world_size</span><span class="p">()</span>
-        <span class="c1"># E[X²] = Var + Mean²  →  single all_reduce</span>
-        <span class="n">mean</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="n">keepdim</span><span class="p">)</span>
-        <span class="n">ssq</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">square</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="n">keepdim</span><span class="p">)</span>
-        <span class="n">stats</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">mean</span><span class="p">,</span> <span class="n">ssq</span><span class="p">])</span>
-        <span class="n">stats</span> <span class="o">=</span> <span class="n">functional_all_reduce</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">dist</span><span class="o">.</span><span class="n">ReduceOp</span><span class="o">.</span><span class="n">AVG</span><span class="p">)</span>
-        <span class="n">global_mean</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">global_var</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">global_mean</span><span class="o">.</span><span class="n">square</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">unbiased</span><span class="p">:</span>
-            <span class="n">global_var</span> <span class="o">=</span> <span class="n">global_var</span> <span class="o">*</span> <span class="p">(</span><span class="n">n_global</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_global</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">global_mean</span><span class="p">,</span> <span class="n">global_var</span><span class="p">,</span> <span class="n">n_global</span>
-
-    <span class="n">input_dtype</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">dtype</span>
-    <span class="n">device</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">device</span>
-    <span class="n">use_fp32</span> <span class="o">=</span> <span class="n">input_dtype</span> <span class="ow">in</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">)</span>
-    <span class="n">acc_dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">use_fp32</span> <span class="k">else</span> <span class="kc">None</span>
-
-    <span class="c1"># Local statistics (fp32 accumulator via dtype arg)</span>
-    <span class="n">local_mean</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">acc_dtype</span><span class="p">)</span>
-    <span class="n">local_sq_mean</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">square</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">acc_dtype</span><span class="p">)</span>
-
-    <span class="c1"># Scale by count (single multiply, avoids accumulated sum)</span>
-    <span class="n">n_mean</span> <span class="o">=</span> <span class="n">n_local</span> <span class="o">*</span> <span class="n">local_mean</span>
-    <span class="n">n_sq_mean</span> <span class="o">=</span> <span class="n">n_local</span> <span class="o">*</span> <span class="n">local_sq_mean</span>
-
-    <span class="c1"># Fused all-reduce</span>
-    <span class="n">stacked</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">n_mean</span><span class="p">,</span> <span class="n">n_sq_mean</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="n">dim</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">use_fp32</span><span class="p">:</span>
-        <span class="n">stacked</span> <span class="o">=</span> <span class="n">stacked</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">input_dtype</span><span class="p">)</span>
-    <span class="n">stacked</span> <span class="o">=</span> <span class="n">functional_all_reduce</span><span class="p">(</span><span class="n">stacked</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">dist</span><span class="o">.</span><span class="n">ReduceOp</span><span class="o">.</span><span class="n">SUM</span><span class="p">)</span>
-
-    <span class="n">n_local_t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="n">n_local</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-    <span class="n">n_global_t</span> <span class="o">=</span> <span class="n">functional_all_reduce</span><span class="p">(</span><span class="n">n_local_t</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">dist</span><span class="o">.</span><span class="n">ReduceOp</span><span class="o">.</span><span class="n">SUM</span><span class="p">)</span>
-
-    <span class="c1"># Recover statistics</span>
-    <span class="n">stacked</span> <span class="o">=</span> <span class="n">stacked</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
-    <span class="n">n_mean</span><span class="p">,</span> <span class="n">n_sq_mean</span> <span class="o">=</span> <span class="n">stacked</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">dim</span><span class="p">)</span>
-
-    <span class="n">global_mean</span> <span class="o">=</span> <span class="n">n_mean</span> <span class="o">/</span> <span class="n">n_global_t</span>
-    <span class="n">global_sq_mean</span> <span class="o">=</span> <span class="n">n_sq_mean</span> <span class="o">/</span> <span class="n">n_global_t</span>
-    <span class="n">global_var</span> <span class="o">=</span> <span class="n">global_sq_mean</span> <span class="o">-</span> <span class="n">global_mean</span> <span class="o">*</span> <span class="n">global_mean</span>
-
-    <span class="n">n_global</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_global_t</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
-    <span class="k">if</span> <span class="n">unbiased</span> <span class="ow">and</span> <span class="n">n_global</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">global_var</span> <span class="o">=</span> <span class="n">global_var</span> <span class="o">*</span> <span class="p">(</span><span class="n">n_global</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_global</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
-
-    <span class="n">global_var</span> <span class="o">=</span> <span class="n">global_var</span>
-
-    <span class="k">if</span> <span class="n">use_fp32</span><span class="p">:</span>
-        <span class="n">global_mean</span> <span class="o">=</span> <span class="n">global_mean</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">input_dtype</span><span class="p">)</span>
-        <span class="n">global_var</span> <span class="o">=</span> <span class="n">global_var</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">input_dtype</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">keepdim</span><span class="p">:</span>
-        <span class="n">global_mean</span> <span class="o">=</span> <span class="n">global_mean</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span>
-        <span class="n">global_var</span> <span class="o">=</span> <span class="n">global_var</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">global_mean</span><span class="p">,</span> <span class="n">global_var</span><span class="p">,</span> <span class="n">n_global</span></div>
-
-
-
-<div class="viewcode-block" id="mean_std">
-<a class="viewcode-back" href="../../../../stable_pretraining.utils/#stable_pretraining.utils.stats.mean_std">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">mean_std</span><span class="p">(</span>
-    <span class="n">x</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
-    <span class="n">dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="n">keepdim</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="n">unbiased</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-8</span><span class="p">,</span>
-    <span class="n">sync</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">same_shape_across_devices</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
-    <span class="n">mean</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">bs</span> <span class="o">=</span> <span class="n">mean_var</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">keepdim</span><span class="p">,</span> <span class="n">unbiased</span><span class="p">,</span> <span class="n">sync</span><span class="p">,</span> <span class="n">same_shape_across_devices</span><span class="p">)</span>
-    <span class="n">std</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">mean</span><span class="p">,</span> <span class="n">std</span><span class="p">,</span> <span class="n">bs</span></div>
+<div class="viewcode-block" id="HPMetricLogger.on_validation_epoch_end">
+<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.hp_metric.HPMetricLogger.on_validation_epoch_end">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_validation_epoch_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">):</span>
+        <span class="n">hp_metric</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">callback_metrics</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">metric_name</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">pl_module</span><span class="p">,</span> <span class="s2">&quot;hp_metric&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pl_module</span><span class="o">.</span><span class="n">hp_metric</span> <span class="o">=</span> <span class="n">hp_metric</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pl_module</span><span class="o">.</span><span class="n">hp_metric</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">pl_module</span><span class="o">.</span><span class="n">hp_metric</span><span class="p">,</span> <span class="n">hp_metric</span><span class="p">)</span></div>
+</div>
 
 </pre></div>
 

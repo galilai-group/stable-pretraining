@@ -84,6 +84,14 @@ stable\_pretraining.callbacks.hf\_models module
    :show-inheritance:
    :undoc-members:
 
+stable\_pretraining.callbacks.hp\_metric module
+-----------------------------------------------
+
+.. automodule:: stable_pretraining.callbacks.hp_metric
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 stable\_pretraining.callbacks.image\_retrieval module
 -----------------------------------------------------
 

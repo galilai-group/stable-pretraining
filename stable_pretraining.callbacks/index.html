@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+g749419f1f.d20260421 documentation</title>
+    <title>stable_pretraining.callbacks package &#8212; stable-pretraining 0.1.dev1+g789ed4b52.d20260422 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=1047d1e5"></script>
+    <script src="../_static/documentation_options.js?v=81ae6d44"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g749419f1f.d20260421 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g789ed4b52.d20260422 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -470,6 +470,13 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback"><code class="docutils literal notranslate"><span class="pre">HuggingFaceCheckpointCallback</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">HuggingFaceCheckpointCallback.on_save_checkpoint()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback.on_train_start"><code class="docutils literal notranslate"><span class="pre">HuggingFaceCheckpointCallback.on_train_start()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.hp_metric">stable_pretraining.callbacks.hp_metric module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.hp_metric.HPMetricLogger"><code class="docutils literal notranslate"><span class="pre">HPMetricLogger</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.hp_metric.HPMetricLogger.on_validation_epoch_end"><code class="docutils literal notranslate"><span class="pre">HPMetricLogger.on_validation_epoch_end()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -1319,6 +1326,22 @@ Only rank 0 performs the export to avoid filesystem race conditions.</p>
 <dt class="sig sig-object py" id="stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback.on_train_start">
 <span class="sig-name descname"><span class="pre">on_train_start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">LightningModule</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/hf_models/#HuggingFaceCheckpointCallback.on_train_start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback.on_train_start" title="Link to this definition">#</a></dt>
 <dd><p>Discovers modules and logs the status table once at start.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-stable_pretraining.callbacks.hp_metric">
+<span id="stable-pretraining-callbacks-hp-metric-module"></span><h2>stable_pretraining.callbacks.hp_metric module<a class="headerlink" href="#module-stable_pretraining.callbacks.hp_metric" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.hp_metric.HPMetricLogger">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.callbacks.hp_metric.</span></span><span class="sig-name descname"><span class="pre">HPMetricLogger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metric_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/hp_metric/#HPMetricLogger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.hp_metric.HPMetricLogger" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Callback</span></code></p>
+<p>Callback to log a specific metric for hyperparameter optimization.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.callbacks.hp_metric.HPMetricLogger.on_validation_epoch_end">
+<span class="sig-name descname"><span class="pre">on_validation_epoch_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trainer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pl_module</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/callbacks/hp_metric/#HPMetricLogger.on_validation_epoch_end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.callbacks.hp_metric.HPMetricLogger.on_validation_epoch_end" title="Link to this definition">#</a></dt>
+<dd><p>Called when the val epoch ends.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2553,6 +2576,13 @@ loss returned from <code class="docutils literal notranslate"><span class="pre">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback"><code class="docutils literal notranslate"><span class="pre">HuggingFaceCheckpointCallback</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback.on_save_checkpoint"><code class="docutils literal notranslate"><span class="pre">HuggingFaceCheckpointCallback.on_save_checkpoint()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.hf_models.HuggingFaceCheckpointCallback.on_train_start"><code class="docutils literal notranslate"><span class="pre">HuggingFaceCheckpointCallback.on_train_start()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.callbacks.hp_metric">stable_pretraining.callbacks.hp_metric module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.hp_metric.HPMetricLogger"><code class="docutils literal notranslate"><span class="pre">HPMetricLogger</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.callbacks.hp_metric.HPMetricLogger.on_validation_epoch_end"><code class="docutils literal notranslate"><span class="pre">HPMetricLogger.on_validation_epoch_end()</span></code></a></li>
 </ul>
 </li>
 </ul>

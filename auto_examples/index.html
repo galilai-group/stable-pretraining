@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Examples &#8212; stable-pretraining 0.1.dev1+g749419f1f.d20260421 documentation</title>
+    <title>Examples &#8212; stable-pretraining 0.1.dev1+g789ed4b52.d20260422 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=1047d1e5"></script>
+    <script src="../_static/documentation_options.js?v=81ae6d44"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g749419f1f.d20260421 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g789ed4b52.d20260422 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -378,6 +378,39 @@
   <section id="examples">
 <h1>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h1>
 <p>Configuration examples for stable-pretraining.</p>
+<p># Bayesian Hyperparameter Search with Optuna
+Sweeping over a search space is very easy with Hydra and Optuna. <cite>hp_search.yaml</cite> provides an example configuration for performing hyperparameter optimization using Optuna’s TPE sampler (bayesian optimization).</p>
+<p>First, make sure to install Optuna if you haven’t already:
+<code class="docutils literal notranslate"><span class="pre">`</span>
+<span class="pre">pip</span> <span class="pre">install</span> <span class="pre">optuna</span>
+<span class="pre">`</span></code></p>
+<p>Then, make sure to register the callback HPMetricLogger, which will make sure your hyperparameter optimization metric is logged correctly. More complex logic can also be implemented in this callback.</p>
+<p><a href="#id1"><span class="problematic" id="id2">``</span></a>`
+from spt.callbacks import HPMetricLogger</p>
+<p>callbacks=[HPMetricLogger(metric_name=”eval/some_metric”)]
+<a href="#id3"><span class="problematic" id="id4">``</span></a><a href="#id5"><span class="problematic" id="id6">`</span></a></p>
+<p>Finally, make sure your train script contains this code to return the hp_metric to Optuna:
+<a href="#id7"><span class="problematic" id="id8">``</span></a>`
+…
+manager = spt.Manager(…)
+manager()</p>
+<dl>
+<dt>if hasattr(module, “hp_metric”):</dt><dd><p>result = module.hp_metric.item()
+if np.isnan(result):</p>
+<blockquote>
+<div><p>logger.warning(“HP Metric is NaN, returning inf for optimization.”)
+result = float(“inf”)</p>
+</div></blockquote>
+<p>logger.info(f”HP Metric: {result}”)
+return result</p>
+</dd>
+</dl>
+<p><a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a></p>
+<p>Now you can simply run the hyperparameter search and it will automatically run multiple trials:
+<code class="docutils literal notranslate"><span class="pre">`</span>
+<span class="pre">python</span> <span class="pre">train.py</span> <span class="pre">--config-name=hydra_hp_search</span>
+<span class="pre">`</span></code>
+It is recommended to use the EarlyStopping callback in combination with hyperparameter optimization to avoid wasting resources on bad trials.</p>
 <div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="This script demonstrates how to retrieve data from wandb using the stable_pretraining library."><img alt="" src="../_images/sphx_glr_wandb_reader_thumb.png" />
 <p><a class="reference internal" href="wandb_reader/"><span class="doc">&lt;no title&gt;</span></a></p>
   <div class="sphx-glr-thumbnail-title">This script demonstrates how to retrieve data from wandb using the stable_pretraining library.</div>
