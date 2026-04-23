@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; stable-pretraining 0.1.dev1+g789ed4b52.d20260422 documentation</title>
+    <title>Index &#8212; stable-pretraining 0.1.dev1+g2bce2bfdc.d20260423 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=81ae6d44"></script>
+    <script src="../_static/documentation_options.js?v=14d0fb4f"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g789ed4b52.d20260422 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g2bce2bfdc.d20260423 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -475,6 +475,12 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.flops.BudgetedFlopCounterMode">BudgetedFlopCounterMode (class in stable_pretraining.utils.flops)</a>
 </li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.build_lance_video_dataset">build_lance_video_dataset() (in module stable_pretraining.data)</a>
+
+      <ul>
+        <li><a href="../stable_pretraining.data/#stable_pretraining.data.video.build_lance_video_dataset">(in module stable_pretraining.data.video)</a>
+</li>
+      </ul></li>
       <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.pos_embed.build_rotary_pos_embed">build_rotary_pos_embed() (in module stable_pretraining.backbone.pos_embed)</a>
 </li>
       <li><a href="../api/gen_modules/stable_pretraining.data.bulk_download/#stable_pretraining.data.bulk_download">bulk_download() (in module stable_pretraining.data)</a>, <a href="../stable_pretraining.data/#stable_pretraining.data.bulk_download">[1]</a>
@@ -1527,6 +1533,12 @@
       </ul></li>
       <li><a href="../stable_pretraining.data/#stable_pretraining.data.transforms.Lambda">Lambda (class in stable_pretraining.data.transforms)</a>
 </li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.LanceVideoSegments">LanceVideoSegments (class in stable_pretraining.data)</a>
+
+      <ul>
+        <li><a href="../stable_pretraining.data/#stable_pretraining.data.video.LanceVideoSegments">(class in stable_pretraining.data.video)</a>
+</li>
+      </ul></li>
       <li><a href="../api/gen_modules/stable_pretraining.optim.LARS/#stable_pretraining.optim.LARS">LARS (class in stable_pretraining.optim)</a>
 
       <ul>
@@ -1880,6 +1892,8 @@
         <li><a href="../api/gen_modules/stable_pretraining.data.transforms/#module-stable_pretraining.data.transforms">stable_pretraining.data.transforms</a>, <a href="../stable_pretraining.data/#module-stable_pretraining.data.transforms">[1]</a>
 </li>
         <li><a href="../stable_pretraining.data/#module-stable_pretraining.data.utils">stable_pretraining.data.utils</a>
+</li>
+        <li><a href="../stable_pretraining.data/#module-stable_pretraining.data.video">stable_pretraining.data.video</a>
 </li>
         <li><a href="../api/forward/#module-stable_pretraining.forward">stable_pretraining.forward</a>, <a href="../stable_pretraining/#module-stable_pretraining.forward">[1]</a>
 </li>
@@ -2762,6 +2776,24 @@
         <li><a href="../stable_pretraining.data/#stable_pretraining.data.synthetic_data.GMM.score">(stable_pretraining.data.synthetic_data.GMM method)</a>
 </li>
       </ul></li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.LanceVideoSegments.segment_filename">segment_filename() (stable_pretraining.data.LanceVideoSegments method)</a>
+
+      <ul>
+        <li><a href="../stable_pretraining.data/#stable_pretraining.data.video.LanceVideoSegments.segment_filename">(stable_pretraining.data.video.LanceVideoSegments method)</a>
+</li>
+      </ul></li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.LanceVideoSegments.segment_filenames">segment_filenames (stable_pretraining.data.LanceVideoSegments property)</a>
+
+      <ul>
+        <li><a href="../stable_pretraining.data/#stable_pretraining.data.video.LanceVideoSegments.segment_filenames">(stable_pretraining.data.video.LanceVideoSegments property)</a>
+</li>
+      </ul></li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.LanceVideoSegments.segment_info">segment_info() (stable_pretraining.data.LanceVideoSegments method)</a>
+
+      <ul>
+        <li><a href="../stable_pretraining.data/#stable_pretraining.data.video.LanceVideoSegments.segment_info">(stable_pretraining.data.video.LanceVideoSegments method)</a>
+</li>
+      </ul></li>
       <li><a href="../stable_pretraining/#stable_pretraining.set">set() (in module stable_pretraining)</a>
 </li>
       <li><a href="../api/gen_modules/stable_pretraining.backbone.set_embedding_dim/#stable_pretraining.backbone.set_embedding_dim">set_embedding_dim() (in module stable_pretraining.backbone)</a>
@@ -3171,6 +3203,8 @@
         <li><a href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.utils">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     stable_pretraining.callbacks.wd_schedule
 
@@ -3178,8 +3212,6 @@
         <li><a href="../stable_pretraining.callbacks/#module-stable_pretraining.callbacks.wd_schedule">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     stable_pretraining.callbacks.writer
 
@@ -3276,6 +3308,13 @@
 
       <ul>
         <li><a href="../stable_pretraining.data/#module-stable_pretraining.data.utils">module</a>
+</li>
+      </ul></li>
+      <li>
+    stable_pretraining.data.video
+
+      <ul>
+        <li><a href="../stable_pretraining.data/#module-stable_pretraining.data.video">module</a>
 </li>
       </ul></li>
       <li>
@@ -3924,8 +3963,6 @@
         <li><a href="../stable_pretraining.losses/#stable_pretraining.losses.utils.VCRegLoss">(class in stable_pretraining.losses.utils)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../stable_pretraining.loggers/#stable_pretraining.loggers.trackio.TrackioLogger.version">version (stable_pretraining.loggers.trackio.TrackioLogger property)</a>
 
       <ul>
@@ -3934,12 +3971,20 @@
         <li><a href="../stable_pretraining/#stable_pretraining.TrackioLogger.version">(stable_pretraining.TrackioLogger property)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="../api/forward/#stable_pretraining.forward.vicreg_forward">vicreg_forward() (in module stable_pretraining.forward)</a>, <a href="../stable_pretraining/#stable_pretraining.forward.vicreg_forward">[1]</a>
 </li>
       <li><a href="../api/gen_modules/stable_pretraining.losses.VICRegLoss/#stable_pretraining.losses.VICRegLoss">VICRegLoss (class in stable_pretraining.losses)</a>, <a href="../stable_pretraining.losses/#stable_pretraining.losses.VICRegLoss">[1]</a>
 
       <ul>
         <li><a href="../stable_pretraining.losses/#stable_pretraining.losses.joint_embedding.VICRegLoss">(class in stable_pretraining.losses.joint_embedding)</a>
+</li>
+      </ul></li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.LanceVideoSegments.video_paths">video_paths (stable_pretraining.data.LanceVideoSegments property)</a>
+
+      <ul>
+        <li><a href="../stable_pretraining.data/#stable_pretraining.data.video.LanceVideoSegments.video_paths">(stable_pretraining.data.video.LanceVideoSegments property)</a>
 </li>
       </ul></li>
       <li><a href="../stable_pretraining.backbone/#stable_pretraining.backbone.patch_masking.MaskingOutput.visible">visible (stable_pretraining.backbone.patch_masking.MaskingOutput attribute)</a>
@@ -3970,6 +4015,12 @@
 
       <ul>
         <li><a href="../stable_pretraining.utils/#stable_pretraining.utils.error_handling.with_hf_retry_ratelimit">(in module stable_pretraining.utils.error_handling)</a>
+</li>
+      </ul></li>
+      <li><a href="../stable_pretraining.data/#stable_pretraining.data.LanceVideoSegments.worker_init">worker_init() (stable_pretraining.data.LanceVideoSegments static method)</a>
+
+      <ul>
+        <li><a href="../stable_pretraining.data/#stable_pretraining.data.video.LanceVideoSegments.worker_init">(stable_pretraining.data.video.LanceVideoSegments static method)</a>
 </li>
       </ul></li>
   </ul></td>

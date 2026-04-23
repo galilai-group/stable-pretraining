@@ -84,6 +84,14 @@ stable\_pretraining.data.utils module
    :show-inheritance:
    :undoc-members:
 
+stable\_pretraining.data.video module
+-------------------------------------
+
+.. automodule:: stable_pretraining.data.video
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 Module contents
 ---------------
 

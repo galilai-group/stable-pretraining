@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.data package &#8212; stable-pretraining 0.1.dev1+g789ed4b52.d20260422 documentation</title>
+    <title>stable_pretraining.data package &#8212; stable-pretraining 0.1.dev1+g2bce2bfdc.d20260423 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=81ae6d44"></script>
+    <script src="../_static/documentation_options.js?v=14d0fb4f"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
@@ -127,7 +127,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g789ed4b52.d20260422 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g2bce2bfdc.d20260423 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -562,6 +562,18 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.utils.random_split"><code class="docutils literal notranslate"><span class="pre">random_split()</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.data.video">stable_pretraining.data.video module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments.segment_filename"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_filename()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments.segment_filenames"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_filenames</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments.segment_info"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_info()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments.video_paths"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.video_paths</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments.worker_init"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.worker_init()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.build_lance_video_dataset"><code class="docutils literal notranslate"><span class="pre">build_lance_video_dataset()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.data">Module contents</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Categorical"><code class="docutils literal notranslate"><span class="pre">Categorical</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Categorical.sample"><code class="docutils literal notranslate"><span class="pre">Categorical.sample()</span></code></a></li>
@@ -598,6 +610,14 @@
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.HFDataset"><code class="docutils literal notranslate"><span class="pre">HFDataset()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments.segment_filename"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_filename()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments.segment_filenames"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_filenames</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments.segment_info"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_info()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments.video_paths"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.video_paths</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments.worker_init"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.worker_init()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset.NAMES"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset.NAMES</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset.column_names"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset.column_names</span></code></a></li>
@@ -619,6 +639,7 @@
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.SupervisedBatchSampler"><code class="docutils literal notranslate"><span class="pre">SupervisedBatchSampler</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.build_lance_video_dataset"><code class="docutils literal notranslate"><span class="pre">build_lance_video_dataset()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.bulk_download"><code class="docutils literal notranslate"><span class="pre">bulk_download()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.download"><code class="docutils literal notranslate"><span class="pre">download()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.fold_views"><code class="docutils literal notranslate"><span class="pre">fold_views()</span></code></a></li>
@@ -2271,6 +2292,169 @@ until there are no remainders left.</p>
 </dd></dl>
 
 </section>
+<section id="module-stable_pretraining.data.video">
+<span id="stable-pretraining-data-video-module"></span><h2>stable_pretraining.data.video module<a class="headerlink" href="#module-stable_pretraining.data.video" title="Link to this heading">#</a></h2>
+<p>Random-access video segment dataset backed by Lance.</p>
+<p>This module provides two things:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><a class="reference internal" href="#stable_pretraining.data.video.build_lance_video_dataset" title="stable_pretraining.data.video.build_lance_video_dataset"><code class="xref py py-func docutils literal notranslate"><span class="pre">build_lance_video_dataset()</span></code></a> converts a folder of video files into a
+Lance dataset of per-frame WebP-encoded rows, optimised for fast random
+contiguous-segment reads on slow filesystems (e.g. NFS).</p></li>
+<li><p><a class="reference internal" href="#stable_pretraining.data.video.LanceVideoSegments" title="stable_pretraining.data.video.LanceVideoSegments"><code class="xref py py-class docutils literal notranslate"><span class="pre">LanceVideoSegments</span></code></a> is a PyTorch <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a>
+that deterministically enumerates every valid <code class="docutils literal notranslate"><span class="pre">(window_length,</span>
+<span class="pre">frame_skip,</span> <span class="pre">hop_size)</span></code> segment across all videos. <code class="docutils literal notranslate"><span class="pre">len(dataset)</span></code> is
+the total number of segments; <a class="reference internal" href="#stable_pretraining.data.video.LanceVideoSegments.segment_filenames" title="stable_pretraining.data.video.LanceVideoSegments.segment_filenames"><code class="xref py py-attr docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_filenames</span></code></a>
+returns the source filename for every segment index.</p></li>
+</ul>
+</div></blockquote>
+<p>Benchmark (40 videos / 43 k frames / 224x224 / NFS; see <code class="docutils literal notranslate"><span class="pre">_video_bench/</span></code>):</p>
+<blockquote>
+<div><div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>reader</p></th>
+<th class="head"><p>disk</p></th>
+<th class="head"><p>fps</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>LanceVideoSegments (8 workers)</p></td>
+<td><p>55 M</p></td>
+<td><p>13 500</p></td>
+</tr>
+<tr class="row-odd"><td><p>mp4 H.265 + decord (8 workers)</p></td>
+<td><p>4.4 M</p></td>
+<td><p>5 190</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div></blockquote>
+<dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.data.video.LanceVideoSegments">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.video.</span></span><span class="sig-name descname"><span class="pre">LanceVideoSegments</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lance_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_skip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hop_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_video_frames</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/video/#LanceVideoSegments"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.video.LanceVideoSegments" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
+<p>Deterministic random-access video-segment dataset.</p>
+<p>Enumerates every valid <code class="docutils literal notranslate"><span class="pre">(window_length,</span> <span class="pre">frame_skip,</span> <span class="pre">hop_size)</span></code> segment
+across all videos in a Lance dataset built by
+<a class="reference internal" href="#stable_pretraining.data.video.build_lance_video_dataset" title="stable_pretraining.data.video.build_lance_video_dataset"><code class="xref py py-func docutils literal notranslate"><span class="pre">build_lance_video_dataset()</span></code></a>. <code class="docutils literal notranslate"><span class="pre">len(dataset)</span></code> is the total number
+of segments, computed at init time.</p>
+<p>For segment <code class="docutils literal notranslate"><span class="pre">i</span></code> the returned frames are those at positions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">s</span><span class="p">,</span> <span class="n">s</span> <span class="o">+</span> <span class="n">stride</span><span class="p">,</span> <span class="n">s</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">stride</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">s</span> <span class="o">+</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">stride</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">L</span> <span class="pre">=</span> <span class="pre">window_length</span></code>, <code class="docutils literal notranslate"><span class="pre">stride</span> <span class="pre">=</span> <span class="pre">frame_skip</span> <span class="pre">+</span> <span class="pre">1</span></code>, and <code class="docutils literal notranslate"><span class="pre">s</span></code> is
+a valid start frame <code class="docutils literal notranslate"><span class="pre">0,</span> <span class="pre">hop_size,</span> <span class="pre">2*hop_size,</span> <span class="pre">...</span></code></p>
+<p>For unbiased random sampling during training, wrap the dataset with
+<a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.RandomSampler" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.RandomSampler</span></code></a> or an equivalent. The dataset
+itself is deterministic so that you can also iterate it in order (e.g.
+for validation).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lance_path</strong> – Path to a <code class="docutils literal notranslate"><span class="pre">.lance</span></code> directory produced by
+<a class="reference internal" href="#stable_pretraining.data.video.build_lance_video_dataset" title="stable_pretraining.data.video.build_lance_video_dataset"><code class="xref py py-func docutils literal notranslate"><span class="pre">build_lance_video_dataset()</span></code></a>. The sidecar
+<code class="docutils literal notranslate"><span class="pre">&lt;lance_path&gt;.videos.json</span></code> must sit next to it.</p></li>
+<li><p><strong>window_length</strong> – Number of frames per returned segment.</p></li>
+<li><p><strong>frame_skip</strong> – Frames to skip between consecutive frames in the window.
+<code class="docutils literal notranslate"><span class="pre">0</span></code> (default) returns consecutive frames.</p></li>
+<li><p><strong>hop_size</strong> – Stride in source-frame units between consecutive segments
+of the same video. <code class="docutils literal notranslate"><span class="pre">1</span></code> (default) maximises the segment count.</p></li>
+<li><p><strong>min_video_frames</strong> – Skip any video shorter than this. Defaults to the
+window span <code class="docutils literal notranslate"><span class="pre">(L</span> <span class="pre">-</span> <span class="pre">1)</span> <span class="pre">*</span> <span class="pre">(frame_skip</span> <span class="pre">+</span> <span class="pre">1)</span> <span class="pre">+</span> <span class="pre">1</span></code>.</p></li>
+<li><p><strong>transform</strong> – Optional callable applied to each sample dict (the library
+standard). Receives a dict, returns a dict.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Returns per item (before optional <code class="docutils literal notranslate"><span class="pre">transform</span></code>):</dt><dd><p><code class="docutils literal notranslate"><span class="pre">video</span></code>          : uint8 tensor <code class="docutils literal notranslate"><span class="pre">(L,</span> <span class="pre">H,</span> <span class="pre">W,</span> <span class="pre">3)</span></code> RGB
+<code class="docutils literal notranslate"><span class="pre">video_idx</span></code>      : index into <a class="reference internal" href="#stable_pretraining.data.video.LanceVideoSegments.video_paths" title="stable_pretraining.data.video.LanceVideoSegments.video_paths"><code class="xref py py-attr docutils literal notranslate"><span class="pre">video_paths</span></code></a>
+<code class="docutils literal notranslate"><span class="pre">filename</span></code>       : source video path for this segment
+<code class="docutils literal notranslate"><span class="pre">start_frame</span></code>    : starting frame index in the source video
+<code class="docutils literal notranslate"><span class="pre">frame_indices</span></code>  : list of <code class="docutils literal notranslate"><span class="pre">L</span></code> frame indices read
+<code class="docutils literal notranslate"><span class="pre">sample_idx</span></code>     : segment index (same as <code class="docutils literal notranslate"><span class="pre">i</span></code>)</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.data.video.LanceVideoSegments.segment_filename">
+<span class="sig-name descname"><span class="pre">segment_filename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/data/video/#LanceVideoSegments.segment_filename"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.video.LanceVideoSegments.segment_filename" title="Link to this definition">#</a></dt>
+<dd><p>Source filename for segment <code class="docutils literal notranslate"><span class="pre">i</span></code> (O(1)).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="stable_pretraining.data.video.LanceVideoSegments.segment_filenames">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">segment_filenames</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#stable_pretraining.data.video.LanceVideoSegments.segment_filenames" title="Link to this definition">#</a></dt>
+<dd><p>Same length as <code class="xref py py-meth docutils literal notranslate"><span class="pre">__len__()</span></code> — source path for every segment.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.data.video.LanceVideoSegments.segment_info">
+<span class="sig-name descname"><span class="pre">segment_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/data/video/#LanceVideoSegments.segment_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.video.LanceVideoSegments.segment_info" title="Link to this definition">#</a></dt>
+<dd><p>Source video + start frame + frame indices for segment <code class="docutils literal notranslate"><span class="pre">i</span></code>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="stable_pretraining.data.video.LanceVideoSegments.video_paths">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">video_paths</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#stable_pretraining.data.video.LanceVideoSegments.video_paths" title="Link to this definition">#</a></dt>
+<dd><p>Source file paths, indexed by <code class="docutils literal notranslate"><span class="pre">video_id</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.data.video.LanceVideoSegments.worker_init">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">worker_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">worker_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/data/video/#LanceVideoSegments.worker_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.video.LanceVideoSegments.worker_init" title="Link to this definition">#</a></dt>
+<dd><p>Pass as <code class="docutils literal notranslate"><span class="pre">worker_init_fn=LanceVideoSegments.worker_init</span></code>.</p>
+<p>Lance is not fork-safe (its Rust/tokio runtime is inherited with a
+dead state on <code class="docutils literal notranslate"><span class="pre">fork</span></code>), so every worker must reset the module-level
+handle cache. Also pins cv2 to a single thread so N DataLoader
+workers × M OpenCV threads does not oversubscribe the CPU.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="stable_pretraining.data.video.build_lance_video_dataset">
+<span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.video.</span></span><span class="sig-name descname"><span class="pre">build_lance_video_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">quality</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">65</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">glob</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'*.mp4'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursive</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_corrupt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/data/video/#build_lance_video_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.video.build_lance_video_dataset" title="Link to this definition">#</a></dt>
+<dd><p>Build a random-access Lance video dataset from a folder of video files.</p>
+<p>Each frame is decoded once, optionally downsampled, then WebP-encoded and
+stored as one row <code class="docutils literal notranslate"><span class="pre">(video_id,</span> <span class="pre">frame_idx,</span> <span class="pre">bytes)</span></code>. A side-car file at
+<code class="docutils literal notranslate"><span class="pre">&lt;output_path&gt;.videos.json</span></code> stores per-video metadata (<code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">T</span></code>,
+<code class="docutils literal notranslate"><span class="pre">H</span></code>, <code class="docutils literal notranslate"><span class="pre">W</span></code>, <code class="docutils literal notranslate"><span class="pre">start_row</span></code>) so the matching <a class="reference internal" href="#stable_pretraining.data.video.LanceVideoSegments" title="stable_pretraining.data.video.LanceVideoSegments"><code class="xref py py-class docutils literal notranslate"><span class="pre">LanceVideoSegments</span></code></a>
+reader can map <code class="docutils literal notranslate"><span class="pre">(video,</span> <span class="pre">frame)</span> <span class="pre">→</span> <span class="pre">row</span></code> without rescanning files.</p>
+<p>The build streams frames from worker processes directly into Lance, so
+memory usage is bounded by a single video’s worth of encoded frames
+(plus per-worker prefetch buffer).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_dir</strong> – Folder containing the video files.</p></li>
+<li><p><strong>output_path</strong> – Target path for the <code class="docutils literal notranslate"><span class="pre">.lance</span></code> dataset directory.</p></li>
+<li><p><strong>quality</strong> – WebP quality in <code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">100]</span></code>. The benchmark sweet-spot for
+random segment reads at 224x224 on NFS is 65; raise to 80 if you
+care about fine texture preservation.</p></li>
+<li><p><strong>resize</strong> – If set and a video’s <code class="docutils literal notranslate"><span class="pre">max(H,</span> <span class="pre">W)</span> <span class="pre">&gt;</span> <span class="pre">resize</span></code>, each frame is
+resized to <code class="docutils literal notranslate"><span class="pre">(resize,</span> <span class="pre">resize)</span></code> with <code class="xref py py-func docutils literal notranslate"><span class="pre">cv2.resize()</span></code> (area
+interpolation). Videos whose native resolution is already at or
+below <code class="docutils literal notranslate"><span class="pre">resize</span></code> are stored without resampling. <code class="docutils literal notranslate"><span class="pre">None</span></code> (default)
+keeps every video at its native resolution — in which case you
+must provide a custom collate function if resolutions differ.</p></li>
+<li><p><strong>workers</strong> – Number of decode processes. Defaults to <code class="docutils literal notranslate"><span class="pre">os.cpu_count()</span></code>.</p></li>
+<li><p><strong>glob</strong> – File pattern for discovery (default <code class="docutils literal notranslate"><span class="pre">&quot;*.mp4&quot;</span></code>).</p></li>
+<li><p><strong>recursive</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default) walk <code class="docutils literal notranslate"><span class="pre">source_dir</span></code> recursively.</p></li>
+<li><p><strong>overwrite</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, remove any existing dataset at
+<code class="docutils literal notranslate"><span class="pre">output_path</span></code>. Otherwise raises if the target already exists.</p></li>
+<li><p><strong>skip_corrupt</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default), videos that fail to decode are
+logged and skipped. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, the first failure aborts the
+build.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path to the <code class="docutils literal notranslate"><span class="pre">.lance</span></code> dataset directory that was written.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
 <section id="module-stable_pretraining.data">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-stable_pretraining.data" title="Link to this heading">#</a></h2>
 <p>Data module for stable-pretraining.</p>
@@ -2593,6 +2777,88 @@ the box.</p>
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="stable_pretraining.data.LanceVideoSegments">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">LanceVideoSegments</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lance_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_skip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hop_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_video_frames</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/video/#LanceVideoSegments"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.LanceVideoSegments" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#stable_pretraining.data.datasets.Dataset" title="stable_pretraining.data.datasets.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
+<p>Deterministic random-access video-segment dataset.</p>
+<p>Enumerates every valid <code class="docutils literal notranslate"><span class="pre">(window_length,</span> <span class="pre">frame_skip,</span> <span class="pre">hop_size)</span></code> segment
+across all videos in a Lance dataset built by
+<a class="reference internal" href="#stable_pretraining.data.build_lance_video_dataset" title="stable_pretraining.data.build_lance_video_dataset"><code class="xref py py-func docutils literal notranslate"><span class="pre">build_lance_video_dataset()</span></code></a>. <code class="docutils literal notranslate"><span class="pre">len(dataset)</span></code> is the total number
+of segments, computed at init time.</p>
+<p>For segment <code class="docutils literal notranslate"><span class="pre">i</span></code> the returned frames are those at positions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">s</span><span class="p">,</span> <span class="n">s</span> <span class="o">+</span> <span class="n">stride</span><span class="p">,</span> <span class="n">s</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">stride</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">s</span> <span class="o">+</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">stride</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">L</span> <span class="pre">=</span> <span class="pre">window_length</span></code>, <code class="docutils literal notranslate"><span class="pre">stride</span> <span class="pre">=</span> <span class="pre">frame_skip</span> <span class="pre">+</span> <span class="pre">1</span></code>, and <code class="docutils literal notranslate"><span class="pre">s</span></code> is
+a valid start frame <code class="docutils literal notranslate"><span class="pre">0,</span> <span class="pre">hop_size,</span> <span class="pre">2*hop_size,</span> <span class="pre">...</span></code></p>
+<p>For unbiased random sampling during training, wrap the dataset with
+<a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.RandomSampler" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.utils.data.RandomSampler</span></code></a> or an equivalent. The dataset
+itself is deterministic so that you can also iterate it in order (e.g.
+for validation).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lance_path</strong> – Path to a <code class="docutils literal notranslate"><span class="pre">.lance</span></code> directory produced by
+<a class="reference internal" href="#stable_pretraining.data.build_lance_video_dataset" title="stable_pretraining.data.build_lance_video_dataset"><code class="xref py py-func docutils literal notranslate"><span class="pre">build_lance_video_dataset()</span></code></a>. The sidecar
+<code class="docutils literal notranslate"><span class="pre">&lt;lance_path&gt;.videos.json</span></code> must sit next to it.</p></li>
+<li><p><strong>window_length</strong> – Number of frames per returned segment.</p></li>
+<li><p><strong>frame_skip</strong> – Frames to skip between consecutive frames in the window.
+<code class="docutils literal notranslate"><span class="pre">0</span></code> (default) returns consecutive frames.</p></li>
+<li><p><strong>hop_size</strong> – Stride in source-frame units between consecutive segments
+of the same video. <code class="docutils literal notranslate"><span class="pre">1</span></code> (default) maximises the segment count.</p></li>
+<li><p><strong>min_video_frames</strong> – Skip any video shorter than this. Defaults to the
+window span <code class="docutils literal notranslate"><span class="pre">(L</span> <span class="pre">-</span> <span class="pre">1)</span> <span class="pre">*</span> <span class="pre">(frame_skip</span> <span class="pre">+</span> <span class="pre">1)</span> <span class="pre">+</span> <span class="pre">1</span></code>.</p></li>
+<li><p><strong>transform</strong> – Optional callable applied to each sample dict (the library
+standard). Receives a dict, returns a dict.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Returns per item (before optional <code class="docutils literal notranslate"><span class="pre">transform</span></code>):</dt><dd><p><code class="docutils literal notranslate"><span class="pre">video</span></code>          : uint8 tensor <code class="docutils literal notranslate"><span class="pre">(L,</span> <span class="pre">H,</span> <span class="pre">W,</span> <span class="pre">3)</span></code> RGB
+<code class="docutils literal notranslate"><span class="pre">video_idx</span></code>      : index into <a class="reference internal" href="#stable_pretraining.data.LanceVideoSegments.video_paths" title="stable_pretraining.data.LanceVideoSegments.video_paths"><code class="xref py py-attr docutils literal notranslate"><span class="pre">video_paths</span></code></a>
+<code class="docutils literal notranslate"><span class="pre">filename</span></code>       : source video path for this segment
+<code class="docutils literal notranslate"><span class="pre">start_frame</span></code>    : starting frame index in the source video
+<code class="docutils literal notranslate"><span class="pre">frame_indices</span></code>  : list of <code class="docutils literal notranslate"><span class="pre">L</span></code> frame indices read
+<code class="docutils literal notranslate"><span class="pre">sample_idx</span></code>     : segment index (same as <code class="docutils literal notranslate"><span class="pre">i</span></code>)</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.data.LanceVideoSegments.segment_filename">
+<span class="sig-name descname"><span class="pre">segment_filename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/data/video/#LanceVideoSegments.segment_filename"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.LanceVideoSegments.segment_filename" title="Link to this definition">#</a></dt>
+<dd><p>Source filename for segment <code class="docutils literal notranslate"><span class="pre">i</span></code> (O(1)).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="stable_pretraining.data.LanceVideoSegments.segment_filenames">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">segment_filenames</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#stable_pretraining.data.LanceVideoSegments.segment_filenames" title="Link to this definition">#</a></dt>
+<dd><p>Same length as <code class="xref py py-meth docutils literal notranslate"><span class="pre">__len__()</span></code> — source path for every segment.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.data.LanceVideoSegments.segment_info">
+<span class="sig-name descname"><span class="pre">segment_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/data/video/#LanceVideoSegments.segment_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.LanceVideoSegments.segment_info" title="Link to this definition">#</a></dt>
+<dd><p>Source video + start frame + frame indices for segment <code class="docutils literal notranslate"><span class="pre">i</span></code>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="stable_pretraining.data.LanceVideoSegments.video_paths">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">video_paths</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#stable_pretraining.data.LanceVideoSegments.video_paths" title="Link to this definition">#</a></dt>
+<dd><p>Source file paths, indexed by <code class="docutils literal notranslate"><span class="pre">video_id</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.data.LanceVideoSegments.worker_init">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">worker_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">worker_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/data/video/#LanceVideoSegments.worker_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.LanceVideoSegments.worker_init" title="Link to this definition">#</a></dt>
+<dd><p>Pass as <code class="docutils literal notranslate"><span class="pre">worker_init_fn=LanceVideoSegments.worker_init</span></code>.</p>
+<p>Lance is not fork-safe (its Rust/tokio runtime is inherited with a
+dead state on <code class="docutils literal notranslate"><span class="pre">fork</span></code>), so every worker must reset the module-level
+handle cache. Also pins cv2 to a single thread so N DataLoader
+workers × M OpenCV threads does not oversubscribe the CPU.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="stable_pretraining.data.MinariEpisodeDataset">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">MinariEpisodeDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/stable_pretraining/data/synthetic_data/#MinariEpisodeDataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.MinariEpisodeDataset" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a></p>
@@ -2764,6 +3030,48 @@ its size would be less than <code class="docutils literal notranslate"><span cla
 <span class="go">[[0, 1, 2], [3, 4, 5], [6, 7, 8]]</span>
 </pre></div>
 </div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="stable_pretraining.data.build_lance_video_dataset">
+<span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">build_lance_video_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">quality</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">65</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">glob</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'*.mp4'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursive</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_corrupt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/stable_pretraining/data/video/#build_lance_video_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.build_lance_video_dataset" title="Link to this definition">#</a></dt>
+<dd><p>Build a random-access Lance video dataset from a folder of video files.</p>
+<p>Each frame is decoded once, optionally downsampled, then WebP-encoded and
+stored as one row <code class="docutils literal notranslate"><span class="pre">(video_id,</span> <span class="pre">frame_idx,</span> <span class="pre">bytes)</span></code>. A side-car file at
+<code class="docutils literal notranslate"><span class="pre">&lt;output_path&gt;.videos.json</span></code> stores per-video metadata (<code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">T</span></code>,
+<code class="docutils literal notranslate"><span class="pre">H</span></code>, <code class="docutils literal notranslate"><span class="pre">W</span></code>, <code class="docutils literal notranslate"><span class="pre">start_row</span></code>) so the matching <a class="reference internal" href="#stable_pretraining.data.LanceVideoSegments" title="stable_pretraining.data.LanceVideoSegments"><code class="xref py py-class docutils literal notranslate"><span class="pre">LanceVideoSegments</span></code></a>
+reader can map <code class="docutils literal notranslate"><span class="pre">(video,</span> <span class="pre">frame)</span> <span class="pre">→</span> <span class="pre">row</span></code> without rescanning files.</p>
+<p>The build streams frames from worker processes directly into Lance, so
+memory usage is bounded by a single video’s worth of encoded frames
+(plus per-worker prefetch buffer).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_dir</strong> – Folder containing the video files.</p></li>
+<li><p><strong>output_path</strong> – Target path for the <code class="docutils literal notranslate"><span class="pre">.lance</span></code> dataset directory.</p></li>
+<li><p><strong>quality</strong> – WebP quality in <code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">100]</span></code>. The benchmark sweet-spot for
+random segment reads at 224x224 on NFS is 65; raise to 80 if you
+care about fine texture preservation.</p></li>
+<li><p><strong>resize</strong> – If set and a video’s <code class="docutils literal notranslate"><span class="pre">max(H,</span> <span class="pre">W)</span> <span class="pre">&gt;</span> <span class="pre">resize</span></code>, each frame is
+resized to <code class="docutils literal notranslate"><span class="pre">(resize,</span> <span class="pre">resize)</span></code> with <code class="xref py py-func docutils literal notranslate"><span class="pre">cv2.resize()</span></code> (area
+interpolation). Videos whose native resolution is already at or
+below <code class="docutils literal notranslate"><span class="pre">resize</span></code> are stored without resampling. <code class="docutils literal notranslate"><span class="pre">None</span></code> (default)
+keeps every video at its native resolution — in which case you
+must provide a custom collate function if resolutions differ.</p></li>
+<li><p><strong>workers</strong> – Number of decode processes. Defaults to <code class="docutils literal notranslate"><span class="pre">os.cpu_count()</span></code>.</p></li>
+<li><p><strong>glob</strong> – File pattern for discovery (default <code class="docutils literal notranslate"><span class="pre">&quot;*.mp4&quot;</span></code>).</p></li>
+<li><p><strong>recursive</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default) walk <code class="docutils literal notranslate"><span class="pre">source_dir</span></code> recursively.</p></li>
+<li><p><strong>overwrite</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, remove any existing dataset at
+<code class="docutils literal notranslate"><span class="pre">output_path</span></code>. Otherwise raises if the target already exists.</p></li>
+<li><p><strong>skip_corrupt</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default), videos that fail to decode are
+logged and skipped. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, the first failure aborts the
+build.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path to the <code class="docutils literal notranslate"><span class="pre">.lance</span></code> dataset directory that was written.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -3139,6 +3447,18 @@ until there are no remainders left.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.utils.random_split"><code class="docutils literal notranslate"><span class="pre">random_split()</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.data.video">stable_pretraining.data.video module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments.segment_filename"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_filename()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments.segment_filenames"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_filenames</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments.segment_info"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_info()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments.video_paths"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.video_paths</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.LanceVideoSegments.worker_init"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.worker_init()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.video.build_lance_video_dataset"><code class="docutils literal notranslate"><span class="pre">build_lance_video_dataset()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-stable_pretraining.data">Module contents</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Categorical"><code class="docutils literal notranslate"><span class="pre">Categorical</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.Categorical.sample"><code class="docutils literal notranslate"><span class="pre">Categorical.sample()</span></code></a></li>
@@ -3175,6 +3495,14 @@ until there are no remainders left.</p>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.HFDataset"><code class="docutils literal notranslate"><span class="pre">HFDataset()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments.segment_filename"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_filename()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments.segment_filenames"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_filenames</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments.segment_info"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.segment_info()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments.video_paths"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.video_paths</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.LanceVideoSegments.worker_init"><code class="docutils literal notranslate"><span class="pre">LanceVideoSegments.worker_init()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset.NAMES"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset.NAMES</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.MinariEpisodeDataset.column_names"><code class="docutils literal notranslate"><span class="pre">MinariEpisodeDataset.column_names</span></code></a></li>
@@ -3196,6 +3524,7 @@ until there are no remainders left.</p>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.SupervisedBatchSampler"><code class="docutils literal notranslate"><span class="pre">SupervisedBatchSampler</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.build_lance_video_dataset"><code class="docutils literal notranslate"><span class="pre">build_lance_video_dataset()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.bulk_download"><code class="docutils literal notranslate"><span class="pre">bulk_download()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.download"><code class="docutils literal notranslate"><span class="pre">download()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.data.fold_views"><code class="docutils literal notranslate"><span class="pre">fold_views()</span></code></a></li>
