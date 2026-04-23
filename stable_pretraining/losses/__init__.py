@@ -29,6 +29,7 @@ from .utils import (
     sinkhorn_knopp,
     off_diagonal,
     NegativeCosineSimilarity,
+    VCRegLoss,
 )
 
 __all__ = [
@@ -48,4 +49,5 @@ __all__ = [
     "sinkhorn_knopp",
     "off_diagonal",
     "NegativeCosineSimilarity",
+    "VCRegLoss",
 ]

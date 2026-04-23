@@ -1,7 +1,20 @@
 from unittest.mock import Mock, patch
 import pytest
 import torch
+from stable_pretraining.data.transforms import MultiViewTransform
 from stable_pretraining.forward import nnclr_forward
+
+
+def create_batch():
+    import stable_pretraining.data.transforms as transforms
+
+    transfomrs_ = MultiViewTransform(
+        transforms=[
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomRotation(degrees=90),
+        ]
+    )
+    return transfomrs_({"image": torch.randn(8, 3, 32, 32), "label": torch.tensor([0])})
 
 
 @pytest.mark.unit
@@ -31,11 +44,7 @@ class TestNNCLRUnit:
 
         nnclr_forward_bound = nnclr_forward.__get__(mock_module, type(mock_module))
 
-        # Create a batch with list of view dicts (new MultiViewTransform format)
-        batch = [
-            {"image": torch.randn(8, 3, 32, 32)},
-            {"image": torch.randn(8, 3, 32, 32)},
-        ]
+        batch = create_batch()
         outputs = nnclr_forward_bound(batch, "train")
 
         assert mock_module.backbone.call_count == 2  # Called for both views
@@ -65,11 +74,8 @@ class TestNNCLRUnit:
 
         nnclr_forward_bound = nnclr_forward.__get__(mock_module, type(mock_module))
 
-        # Create a batch with list of view dicts (new MultiViewTransform format)
-        batch = [
-            {"image": torch.randn(8, 3, 32, 32)},
-            {"image": torch.randn(8, 3, 32, 32)},
-        ]
+        batch = create_batch()
+
         outputs = nnclr_forward_bound(batch, "train")
 
         mock_module.predictor.assert_not_called()

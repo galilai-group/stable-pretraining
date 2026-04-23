@@ -10,6 +10,7 @@ from typing import Any, Dict
 import lightning.pytorch as pl
 from loguru import logger
 
+from .utils import log_header
 from .. import SKLEARN_AVAILABLE
 
 if SKLEARN_AVAILABLE:
@@ -47,12 +48,12 @@ class SklearnCheckpoint(Callback):
         for name, module in sklearn_modules.items():
             stats.append((name, module.__str__(), type(module)))
         headers = ["Module", "Name", "Type"]
-        logging.info("Setting up SklearnCheckpoint callback!")
-        logging.info("Sklearn Modules:")
+        log_header("SklearnCheckpoint")
+        logging.info("  Sklearn Modules:")
         logging.info(f"\n{tabulate(stats, headers, tablefmt='heavy_outline')}")
 
     def on_save_checkpoint(self, trainer, pl_module, checkpoint):
-        logging.info("Checking for non PyTorch modules to save... 🔧")
+        logging.info("  Checking for non PyTorch modules to save")
         modules = _get_sklearn_modules(pl_module)
         for name, module in modules.items():
             if name in checkpoint:
@@ -60,16 +61,16 @@ class SklearnCheckpoint(Callback):
                     f"Can't pickle {name}, already present in checkpoint"
                 )
             checkpoint[name] = module
-            logging.info(f"Saving non PyTorch system: {name} 🔧")
+            logging.info(f"  Saving non PyTorch system: {name}")
 
     def on_load_checkpoint(self, trainer, pl_module, checkpoint):
-        logging.info("Checking for non PyTorch modules to load... 🔧")
+        logging.info("  Checking for non PyTorch modules to load")
         if not SKLEARN_AVAILABLE:
             return
         for name, item in checkpoint.items():
             if isinstance(item, RegressorMixin) or isinstance(item, ClassifierMixin):
                 setattr(pl_module, name, item)
-                logging.info(f"Loading non PyTorch system: {name} 🔧")
+                logging.info(f"  Loading non PyTorch system: {name}")
 
 
 def _contains_sklearn_module(item):
@@ -101,7 +102,7 @@ class StrictCheckpointCallback(Callback):
     def __init__(self, strict: bool = True):
         super().__init__()
         self.strict = strict
-        logger.info(f"StrictCheckpointCallback initialized with strict={self.strict}")
+        logger.info(f"  StrictCheckpointCallback initialized with strict={self.strict}")
 
     def on_load_checkpoint(
         self,
@@ -113,12 +114,11 @@ class StrictCheckpointCallback(Callback):
         if self.strict:
             return
 
-        logger.info("=" * 80)
-        logger.info("Processing checkpoint with strict=False")
-        logger.info("=" * 80)
+        log_header("StrictCheckpointCallback")
+        logger.info("  Processing checkpoint with strict=False")
 
         if "state_dict" not in checkpoint:
-            logger.warning("No 'state_dict' found in checkpoint.")
+            logger.warning("! No 'state_dict' found in checkpoint.")
             return
 
         checkpoint_state_dict = checkpoint["state_dict"]
@@ -152,7 +152,7 @@ class StrictCheckpointCallback(Callback):
                         }
                     )
                     logger.warning(
-                        f"❌ Shape mismatch for '{key}': "
+                        f"! Shape mismatch for '{key}': "
                         f"checkpoint={checkpoint_state_dict[key].shape}, "
                         f"model={model_state_dict[key].shape} - Using model's current value"
                     )
@@ -161,7 +161,7 @@ class StrictCheckpointCallback(Callback):
                 filtered_state_dict[key] = model_state_dict[key]
                 missing_in_checkpoint.append(key)
                 logger.warning(
-                    f"⚠️  Parameter missing in checkpoint: '{key}' - Using model's current value"
+                    f"! Parameter missing in checkpoint: '{key}' - Using model's current value"
                 )
 
         # 2. Check for extra keys in checkpoint
@@ -169,7 +169,7 @@ class StrictCheckpointCallback(Callback):
             if key not in model_state_dict:
                 missing_in_model.append(key)
                 logger.warning(
-                    f"⚠️  Parameter in checkpoint but not in model: '{key}' - SKIPPING"
+                    f"! Parameter in checkpoint but not in model: '{key}' - SKIPPING"
                 )
 
         # Update checkpoint with filtered state dict
@@ -179,12 +179,12 @@ class StrictCheckpointCallback(Callback):
         if missing_in_model or shape_mismatches or missing_in_checkpoint:
             if "optimizer_states" in checkpoint:
                 logger.warning(
-                    "🗑️  Clearing optimizer states due to parameter mismatches."
+                    "! Clearing optimizer states due to parameter mismatches."
                 )
                 checkpoint.pop("optimizer_states", None)
 
             if "lr_schedulers" in checkpoint:
-                logger.warning("🗑️  Clearing learning rate scheduler states.")
+                logger.warning("! Clearing learning rate scheduler states.")
                 checkpoint.pop("lr_schedulers", None)
 
         # Print summary
@@ -204,21 +204,18 @@ class StrictCheckpointCallback(Callback):
         shape_mismatches,
         total_model_params,
     ):
-        logger.info("-" * 80)
-        logger.info(f"✅ Successfully matched parameters: {len(matched_keys)}")
+        logger.success(f"✓ Successfully matched parameters: {len(matched_keys)}")
 
         if missing_in_checkpoint:
             logger.warning(
-                f"⚠️  Parameters missing in checkpoint: {len(missing_in_checkpoint)}"
+                f"! Parameters missing in checkpoint: {len(missing_in_checkpoint)}"
             )
 
         if missing_in_model:
-            logger.warning(
-                f"⚠️  Extra parameters in checkpoint: {len(missing_in_model)}"
-            )
+            logger.warning(f"! Extra parameters in checkpoint: {len(missing_in_model)}")
 
         if shape_mismatches:
-            logger.warning(f"❌ Shape mismatches found: {len(shape_mismatches)}")
+            logger.warning(f"! Shape mismatches found: {len(shape_mismatches)}")
 
         loaded_percentage = (
             (len(matched_keys) / total_model_params * 100)
@@ -226,89 +223,110 @@ class StrictCheckpointCallback(Callback):
             else 0
         )
         logger.info(
-            f"📊 Checkpoint loading coverage: {loaded_percentage:.2f}% ({len(matched_keys)}/{total_model_params})"
+            f"  Checkpoint loading coverage: {loaded_percentage:.2f}% ({len(matched_keys)}/{total_model_params})"
         )
-        logger.info("=" * 80)
+
+
+_WANDB_RESUME_FILENAME = "wandb_resume.json"
+
+
+def find_wandb_logger(trainer: Trainer) -> Optional[WandbLogger]:
+    """Find the unique WandbLogger among all trainer loggers.
+
+    Returns:
+        The WandbLogger instance, or ``None`` if no WandbLogger is configured.
+
+    Raises:
+        RuntimeError: If more than one WandbLogger is attached (ambiguous resume target).
+    """
+    found = [lg for lg in trainer.loggers if isinstance(lg, WandbLogger)]
+    if len(found) == 0:
+        return None
+    if len(found) > 1:
+        raise RuntimeError(
+            f"Found {len(found)} WandbLoggers attached to the Trainer. "
+            "Only one is supported for run resume across requeues."
+        )
+    return found[0]
 
 
 class WandbCheckpoint(Callback):
-    """Callback for saving and loading sklearn models in PyTorch Lightning checkpoints.
+    """Persist the wandb run ID across checkpoint save/load for seamless requeue resume.
 
-    This callback automatically detects sklearn models (Regressors and Classifiers)
-    attached to the Lightning module and handles their serialization/deserialization
-    during checkpoint save/load operations. This is necessary because sklearn models
-    are not natively supported by PyTorch's checkpoint system.
+    On save:
+        - Stores ``{"id": ..., "project": ..., "entity": ...}`` in the checkpoint dict.
+        - Writes a small ``wandb_resume.json`` sidecar in CWD so the Manager can
+          inject the run ID *before* ``wandb.init()`` fires on the next job.
 
-    The callback will:
-    1. Automatically discover sklearn models attached to the Lightning module
-    2. Save them to the checkpoint dictionary during checkpoint saving
-    3. Restore them from the checkpoint during checkpoint loading
-    4. Log information about discovered sklearn modules during setup
-
-    Note:
-        - Only attributes that are sklearn RegressorMixin or ClassifierMixin instances are saved
-        - Private attributes (starting with '_') are ignored
-        - The callback will raise an error if a sklearn model name conflicts with existing checkpoint keys
+    On load:
+        - Verifies the active wandb run matches the checkpoint (early injection in
+          the Manager should have already set the correct ID).
     """
 
     def setup(
         self, trainer: Trainer, pl_module: LightningModule, stage: Optional[str] = None
     ) -> None:
-        logging.info("Setting up WandbCheckpoint callback!")
+        log_header("WandbCheckpoint")
 
     def on_save_checkpoint(self, trainer, pl_module, checkpoint):
-        logging.info("Checking for Wandb params to save... 🔧")
-        if isinstance(trainer.logger, WandbLogger):
-            checkpoint["wandb"] = {"id": trainer.logger.version}
-            # checkpoint["wandb_checkpoint_name"] = trainer.logger._checkpoint_name
-            logging.info(f"Saving Wandb params {checkpoint['wandb']}")
-        logging.info("Checking for Wandb params to save... Done!")
+        import json
+        from pathlib import Path
+
+        wandb_logger = find_wandb_logger(trainer)
+        if wandb_logger is None:
+            return
+
+        run_id = wandb_logger.version
+        project = wandb_logger._wandb_init.get("project")
+        entity = wandb_logger._wandb_init.get("entity")
+
+        resume_info = {"id": run_id, "project": project, "entity": entity}
+        checkpoint["wandb"] = resume_info
+        logging.info(f"  Saved wandb resume info to checkpoint: {resume_info}")
+
+        # Write sidecar so the Manager can inject the ID before wandb.init()
+        # Prefer trainer.default_root_dir (cache_dir mode), also write to CWD for compat
+        if trainer.is_global_zero:
+            root = Path(trainer.default_root_dir)
+            sidecar = root / _WANDB_RESUME_FILENAME
+            sidecar.parent.mkdir(parents=True, exist_ok=True)
+            sidecar.write_text(json.dumps(resume_info))
+            logging.info(f"  Wrote {sidecar.resolve()}")
+            # Also write to CWD if it differs (backward compat),
+            # but skip when cache_dir is active to avoid polluting CWD.
+            from stable_pretraining._config import get_config
+
+            if get_config().cache_dir is None:
+                cwd_sidecar = Path(_WANDB_RESUME_FILENAME)
+                if cwd_sidecar.resolve() != sidecar.resolve():
+                    cwd_sidecar.write_text(json.dumps(resume_info))
+                    logging.info(f"  Wrote {cwd_sidecar.resolve()} (compat)")
 
     def on_load_checkpoint(self, trainer, pl_module, checkpoint):
-        logging.info("Checking for Wandb init params... 🔧")
-        if "wandb" in checkpoint:
-            logging.info("Wandb info in checkpoint!!! Restoring same run... 🔧")
-            if not hasattr(trainer, "logger"):
-                logging.warning("Expected Trainer to have a logger, leaving...")
-                return
-            elif not isinstance(trainer.logger, WandbLogger):
-                logging.warning(
-                    f"Expected WandbLogger, got {trainer.logger}, leaving..."
-                )
-                return
-            else:
-                logging.info("Trainer has a WandbLogger!")
-            import wandb
+        if "wandb" not in checkpoint:
+            return
 
-            if wandb.run is None and trainer.global_rank > 0:
-                logging.info(
-                    "Run not initialized yet, skipping since this is a slave process!"
-                )
-                return
-            logging.info(
-                f"Deleting current run {wandb.run.entity}/{wandb.run.project}/{wandb.run.id}... 🔧"
+        expected_id = checkpoint["wandb"]["id"]
+        wandb_logger = find_wandb_logger(trainer)
+        if wandb_logger is None:
+            logging.warning(
+                f"! Checkpoint contains wandb run ID '{expected_id}' but no "
+                "WandbLogger is configured — wandb resume will not happen."
             )
-            api = wandb.Api()
-            run = api.run(f"{wandb.run.entity}/{wandb.run.project}/{wandb.run.id}")
-            wandb.finish()
-            run.delete()
-            trainer.logger._experiment = None
-            wandb_id = checkpoint["wandb"]["id"]
-            trainer.logger._wandb_init["id"] = wandb_id
-            trainer.logger._id = wandb_id
-            # to reset the run
-            trainer.logger.experiment
-            logging.info(
-                f"New run {wandb.run.entity}/{wandb.run.project}/{wandb.run.id}... 🔧"
-            )
+            return
 
-            # trainer.logger._wandb_init = wandb_init
-            # trainer.logger._project = trainer.logger._wandb_init.get("project")
-            # trainer.logger._save_dir = trainer.logger._wandb_init.get("dir")
-            # trainer.logger._name = trainer.logger._wandb_init.get("name")
-            # trainer.logger._checkpoint_name = checkpoint["wandb_checkpoint_name"]
-            # logging.info("Updated Wandb parameters: ")
-            # logging.info(f"\t- project={trainer.logger._project}")
-            # logging.info(f"\t- _save_dir={trainer.logger._save_dir}")
-            # logging.info(f"\t- name={trainer.logger._name}")
-            # logging.info(f"\t- id={trainer.logger._id}")
+        # At this point the Manager should have already injected the ID via
+        # _maybe_restore_wandb_run_id, so the logger's _wandb_init["id"]
+        # should match.  We verify here as a safety net.
+        configured_id = wandb_logger._wandb_init.get("id")
+        if configured_id == expected_id:
+            logging.info(
+                f"  Wandb run ID '{expected_id}' matches — resume is set up correctly."
+            )
+        else:
+            logging.error(
+                f"! Wandb run ID mismatch: checkpoint expects '{expected_id}' "
+                f"but the logger is configured with '{configured_id}'. "
+                "The run may not resume correctly. This can happen if wandb.init() "
+                "was called before the Manager had a chance to inject the ID."
+            )

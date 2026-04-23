@@ -132,7 +132,7 @@ linear_probe = spt.callbacks.OnlineProbe(
     input="embedding",
     target="label",
     probe=nn.Linear(512, 10),
-    loss_fn=nn.CrossEntropyLoss(),
+    loss=nn.CrossEntropyLoss(),
     metrics={
         "top1": torchmetrics.classification.MulticlassAccuracy(10),
         "top5": torchmetrics.classification.MulticlassAccuracy(10, top_k=5),

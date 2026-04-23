@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import MagicMock
 from pathlib import Path
 import lightning as pl
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -202,3 +203,105 @@ class TestConfigureCheckpointing:
         assert not any(
             isinstance(cb, ModelCheckpoint) for cb in manager._trainer.callbacks
         )
+
+
+@pytest.mark.unit
+class TestResumeWeightsOnly:
+    """Tests resume weights_only forwarding behavior in Manager."""
+
+    @pytest.mark.parametrize("resume_weights_only", [False, True])
+    def test_forward_resume_weights_only_when_supported(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        resume_weights_only: bool,
+    ):
+        ckpt_path = tmp_path / "resume.ckpt"
+        ckpt_path.touch()
+
+        trainer = BoringTrainer(
+            default_root_dir=str(tmp_path),
+            enable_checkpointing=False,
+            logger=False,
+        )
+
+        captured = {}
+
+        def fit_with_weights_only(
+            module,
+            datamodule=None,
+            ckpt_path=None,
+            weights_only=None,
+        ):
+            captured["module"] = module
+            captured["datamodule"] = datamodule
+            captured["ckpt_path"] = ckpt_path
+            captured["weights_only"] = weights_only
+
+        trainer.fit = fit_with_weights_only
+
+        manager = Manager(
+            trainer=trainer,
+            module=BoringModule(),
+            data=BoringDataModule(),
+            ckpt_path=str(ckpt_path),
+            resume_weights_only=resume_weights_only,
+        )
+
+        monkeypatch.setattr(manager, "init_and_sync_wandb", lambda: None)
+        monkeypatch.setattr(manager, "_configure_checkpointing", lambda: None)
+        monkeypatch.setattr(
+            "stable_pretraining.manager.print_logger_info", lambda _: None
+        )
+        monkeypatch.setattr(
+            "stable_pretraining.manager.print_signal_info", lambda: None
+        )
+
+        manager()
+
+        assert captured["module"] is manager.instantiated_module
+        assert captured["datamodule"] is manager.instantiated_data
+        assert captured["ckpt_path"] == str(ckpt_path.resolve())
+        assert captured["weights_only"] is resume_weights_only
+
+    def test_ignore_resume_weights_only_when_trainer_fit_does_not_support_it(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        ckpt_path = tmp_path / "resume.ckpt"
+        ckpt_path.touch()
+
+        trainer = BoringTrainer(
+            default_root_dir=str(tmp_path),
+            enable_checkpointing=False,
+            logger=False,
+        )
+
+        fit_no_weights_only = MagicMock()
+        trainer.fit = fit_no_weights_only
+
+        manager = Manager(
+            trainer=trainer,
+            module=BoringModule(),
+            data=BoringDataModule(),
+            ckpt_path=str(ckpt_path),
+            resume_weights_only=True,
+        )
+
+        monkeypatch.setattr(manager, "init_and_sync_wandb", lambda: None)
+        monkeypatch.setattr(manager, "_configure_checkpointing", lambda: None)
+        monkeypatch.setattr(
+            "stable_pretraining.manager.print_logger_info", lambda _: None
+        )
+        monkeypatch.setattr(
+            "stable_pretraining.manager.print_signal_info", lambda: None
+        )
+
+        manager()
+
+        fit_no_weights_only.assert_called_once()
+        call_kwargs = fit_no_weights_only.call_args.kwargs
+        assert call_kwargs["datamodule"] is manager.instantiated_data
+        assert call_kwargs["ckpt_path"] == str(ckpt_path.resolve())
+        assert "weights_only" not in call_kwargs

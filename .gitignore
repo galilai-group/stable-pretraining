@@ -1,9 +1,17 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 logs/
+.nfs*
+.claude
 *.py[cod]
 *.jsonl
 *$py.class
+
+# Training artifacts (EnvironmentDumpCallback)
+environment*.json
+requirements_frozen*.txt
+spt_fidelity_artifacts/
+hf_exports/
 
 # C extensions
 *.so

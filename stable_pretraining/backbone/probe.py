@@ -171,6 +171,7 @@ class AutoLinearClassifier(torch.nn.Module):
             "mean",
             None,
         ), "pooling must be 'cls' or 'mean' or None"
+        self.pooling = pooling
         self.fc = torch.nn.ModuleDict()
         self.losses = torch.nn.ModuleDict()
         metrics = {}
@@ -230,7 +231,7 @@ class AutoLinearClassifier(torch.nn.Module):
                 self.metrics,
                 on_step=False,
                 on_epoch=True,
-                sync_dist=True,
+                sync_dist=False,  # torchmetrics handles its own distributed sync
             )
         return sum(loss.values())
 

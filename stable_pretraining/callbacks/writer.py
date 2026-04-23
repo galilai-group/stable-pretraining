@@ -5,6 +5,8 @@ import torch
 from lightning.pytorch import Callback, LightningModule
 from loguru import logger as logging
 
+from .utils import log_header
+
 
 class OnlineWriter(Callback):
     """Writes specified batch data to disk during training and validation.
@@ -42,14 +44,14 @@ class OnlineWriter(Callback):
         all_gather: bool = True,
     ) -> None:
         super().__init__()
-        logging.info("Setting up OnlineWriter callback")
-        logging.info(f"\t- {names=}")
-        logging.info(f"\t- {path=}")
-        logging.info(f"\t- {during=}")
-        logging.info(f"\t- {every_k_epochs=}")
-        logging.info(f"\t- {save_last_epoch=}")
-        logging.info(f"\t- {save_sanity_check=}")
-        logging.info(f"\t- {all_gather=}")
+        log_header("OnlineWriter")
+        logging.info(f"  names: {names}")
+        logging.info(f"  path: {path}")
+        logging.info(f"  during: {during}")
+        logging.info(f"  every_k_epochs: {every_k_epochs}")
+        logging.info(f"  save_last_epoch: {save_last_epoch}")
+        logging.info(f"  save_sanity_check: {save_sanity_check}")
+        logging.info(f"  all_gather: {all_gather}")
 
         path = Path(path)
         if type(names) is str:
@@ -69,14 +71,28 @@ class OnlineWriter(Callback):
         self.all_gather = all_gather
 
         if not path.is_dir():
-            logging.warning(f"{path=} does not exist, creating it!")
-            path.mkdir(parents=True, exist_ok=False)
+            logging.warning(f"! path {path} does not exist, creating it")
+            path.mkdir(parents=True, exist_ok=True)
+
+    def setup(self, trainer, pl_module, stage=None):
+        # Resolve relative paths against trainer.default_root_dir.
+        # Prefer cache_dir when default_root_dir is CWD (outside Manager).
+        if not self.path.is_absolute():
+            from stable_pretraining._config import get_config
+
+            root = trainer.default_root_dir
+            cfg = get_config()
+            if cfg.cache_dir is not None and root == str(Path().resolve()):
+                root = cfg.cache_dir
+            self.path = Path(root) / self.path
+            if not self.path.is_dir():
+                self.path.mkdir(parents=True, exist_ok=True)
 
     def on_sanity_check_start(self, trainer, pl_module):
         self.is_sanity_check = True
 
         if not self.save_sanity_check:
-            logging.warning("OnlineWriter: skipping sanity check writing")
+            logging.warning("! skipping sanity check writing")
 
     def on_sanity_check_end(self, trainer, pl_module):
         self.is_sanity_check = False

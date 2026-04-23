@@ -1,0 +1,9 @@
+# Pin key packages for deterministic integration tests.
+# These versions must match the local dev environment so that
+# seeded loss values stay consistent across CI and local runs.
+torch==2.11.0
+torchvision==0.26.0
+numpy==2.1.2
+timm==1.0.15
+transformers==4.55.4
+lightning==2.6.1

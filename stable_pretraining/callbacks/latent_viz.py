@@ -14,10 +14,12 @@ from lightning.pytorch import LightningModule, Trainer
 from loguru import logger as logging
 from torch import Tensor
 
+from .registry import log as _spt_log
+
 from ..utils.distance_metrics import compute_pairwise_distances_chunked
 
 from .queue import find_or_create_queue_callback
-from .utils import TrainableCallback
+from .utils import TrainableCallback, log_header
 
 
 class LatentViz(TrainableCallback):
@@ -79,6 +81,7 @@ class LatentViz(TrainableCallback):
         plot_interval: int = 10,
         save_dir: Optional[str] = None,
         input_dim: Optional[Union[int, tuple, list]] = None,
+        verbose: bool = None,
     ):
         super().__init__(
             name=name,
@@ -105,23 +108,27 @@ class LatentViz(TrainableCallback):
             input_dim = int(np.prod(input_dim))
         self.input_dim = input_dim
 
+        from .utils import resolve_verbose
+
         self._projection_config = projection
+        self.verbose = resolve_verbose(verbose)
 
         # Will be initialized in setup
         self._input_queue = None
         self._target_queue = None
 
-        logging.info(f"Initialized LatentViz callback: {name}")
-        logging.info(f"  - Input: {input}")
+        log_header("LatentViz")
+        logging.info(f"  name: {name}")
+        logging.info(f"  input: {input}")
         logging.info(
-            f"  - Target: {target if target else 'None (no labels for coloring)'}"
+            f"  target: {target if target else 'None (no labels for coloring)'}"
         )
-        logging.info(f"  - Queue length: {queue_length}")
-        logging.info(f"  - K neighbors: {k_neighbors}")
-        logging.info(f"  - Negative samples: {n_negatives}")
-        logging.info(f"  - Update interval: {update_interval} batches")
-        logging.info(f"  - Warmup epochs: {warmup_epochs}")
-        logging.info(f"  - Accumulate grad batches: {accumulate_grad_batches}")
+        logging.info(f"  queue_length: {queue_length}")
+        logging.info(f"  k_neighbors: {k_neighbors}")
+        logging.info(f"  negative_samples: {n_negatives}")
+        logging.info(f"  update_interval: {update_interval} batches")
+        logging.info(f"  warmup_epochs: {warmup_epochs}")
+        logging.info(f"  accumulate_grad_batches: {accumulate_grad_batches}")
 
     def _initialize_module(self, pl_module: LightningModule) -> torch.nn.Module:
         """Initialize the projection module from configuration."""
@@ -138,9 +145,7 @@ class LatentViz(TrainableCallback):
         """Initialize optimizer - default to AdamW for dimensionality reduction tasks."""
         if self._optimizer_config is None:
             # Use AdamW by default for LatentViz (better weight decay handling)
-            logging.info(
-                f"{self.name}: Using default AdamW optimizer for dimensionality reduction"
-            )
+            logging.info("  using default AdamW optimizer for dimensionality reduction")
             self.optimizer = torch.optim.AdamW(
                 self.module.parameters(),
                 lr=1e-3,  # Good default for AdamW
@@ -172,7 +177,7 @@ class LatentViz(TrainableCallback):
             gather_distributed=True,
             create_if_missing=True,
         )
-        logging.info(f"{self.name}: Using queue for input '{self.input}'")
+        logging.info(f"  input queue: {self.input}")
 
         # Only create target queue if target is specified
         if self.target is not None:
@@ -185,7 +190,7 @@ class LatentViz(TrainableCallback):
                 gather_distributed=True,
                 create_if_missing=True,
             )
-            logging.info(f"{self.name}: Using queue for target '{self.target}'")
+            logging.info(f"  target queue: {self.target}")
 
     def on_train_batch_end(
         self,
@@ -200,7 +205,7 @@ class LatentViz(TrainableCallback):
         if trainer.current_epoch < self.warmup_epochs:
             if batch_idx == 0:  # Log once per epoch
                 logging.info(
-                    f"{self.name}: Warmup period - skipping projection training "
+                    f"  warmup period, skipping projection training "
                     f"(epoch {trainer.current_epoch + 1}/{self.warmup_epochs})"
                 )
             return
@@ -245,6 +250,21 @@ class LatentViz(TrainableCallback):
             prog_bar=True,
             sync_dist=True,
         )
+        if self.verbose:
+            _spt_log(
+                f"train/{self.name}_attraction_loss",
+                self._last_attraction_loss,
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+            )
+            _spt_log(
+                f"train/{self.name}_repulsion_loss",
+                self._last_repulsion_loss,
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+            )
 
         self.optimizer_step(batch_idx, trainer)
 
@@ -310,6 +330,10 @@ class LatentViz(TrainableCallback):
 
         total_loss = attraction_loss + repulsion_loss
 
+        # Store components for verbose logging
+        self._last_attraction_loss = attraction_loss.item()
+        self._last_repulsion_loss = repulsion_loss.item()
+
         return total_loss
 
     def on_validation_epoch_end(
@@ -319,7 +343,7 @@ class LatentViz(TrainableCallback):
         # Skip visualization during warmup period
         if trainer.current_epoch < self.warmup_epochs:
             logging.info(
-                f"{self.name}: Warmup period - skipping visualization "
+                f"  warmup period, skipping visualization "
                 f"(epoch {trainer.current_epoch + 1}/{self.warmup_epochs})"
             )
             return
@@ -350,8 +374,11 @@ class LatentViz(TrainableCallback):
 
             z_2d = self.module(cached_features)
 
-        # Create visualization
-        self._plot_2d_embeddings(z_2d, cached_labels, trainer.current_epoch, trainer)
+        # Create visualization (only rank 0 writes files / logs to wandb)
+        if trainer.global_rank == 0:
+            self._plot_2d_embeddings(
+                z_2d, cached_labels, trainer.current_epoch, trainer
+            )
 
     def _plot_2d_embeddings(
         self, z_2d: Tensor, labels: Optional[Tensor], epoch: int, trainer: Trainer
@@ -366,6 +393,18 @@ class LatentViz(TrainableCallback):
             save_dir = self.save_dir
         else:
             save_dir = f"latent_viz_{self.name}"
+        # Resolve relative paths against trainer.default_root_dir.
+        # Prefer cache_dir when default_root_dir is CWD (outside Manager).
+        if not os.path.isabs(save_dir):
+            from pathlib import Path as _Path
+
+            from stable_pretraining._config import get_config
+
+            root = trainer.default_root_dir
+            cfg = get_config()
+            if cfg.cache_dir is not None and root == str(_Path().resolve()):
+                root = cfg.cache_dir
+            save_dir = os.path.join(root, save_dir)
         os.makedirs(save_dir, exist_ok=True)
 
         save_path = os.path.join(save_dir, f"epoch_{epoch:04d}.npz")
@@ -374,42 +413,12 @@ class LatentViz(TrainableCallback):
             save_data["labels"] = labels_np
         np.savez_compressed(save_path, **save_data)
 
-        logging.info(f"{self.name}: Saved 2D coordinates to {save_path}")
+        logging.info(f"  saved 2D coordinates to {save_path}")
 
-        # Log to experiment tracker if available
-        try:
-            from lightning.pytorch.loggers import WandbLogger
-
-            if isinstance(trainer.logger, WandbLogger):
-                import wandb
-
-                # Create WandB-specific table only (no direct scatter logging)
-                if labels_np is not None:
-                    data = np.column_stack([z_2d_np, labels_np.astype(int)])
-                    columns = ["x", "y", "class"]
-                else:
-                    data = z_2d_np
-                    columns = ["x", "y"]
-
-                table = wandb.Table(columns=columns, data=data.tolist())
-
-                # Log table - will overwrite previous epoch's table
-                wandb.log(
-                    {
-                        f"{self.name}/2d_latent_table": table,
-                        f"{self.name}/current_epoch": epoch,
-                    }
-                )
-
-                logging.info(
-                    f"{self.name}: Logged latent table to experiment tracker at epoch {epoch}"
-                )
-        except ImportError:
-            logging.debug(
-                f"{self.name}: WandB not installed, skipping visualization logging"
-            )
-        except Exception as e:
-            logging.error(f"{self.name}: Failed to log visualization: {e}")
+        logging.info(
+            f"  2D coordinates saved to disk at epoch {epoch} "
+            f"(visualization data in {save_path})"
+        )
 
     @property
     def projection_module(self):

@@ -1062,13 +1062,13 @@ if __name__ == "__main__":
     # add last 3 blocks as separate output
     names = spt.static.TIMM_EMBEDDINGS["resnet34"][-3:]
     # names = ['layers.2.blocks.17', 'layers.3.blocks.0', 'layers.3.blocks.1']
-    model = spt.backbone.utils.ReturnEmbedding(model, names)
+    model = spt.backbone.utils.HiddenStateExtractor(model, names)
     # if you need shapes e.g. for probing definition
     image = torch.zeros((10, 3, 224, 224))
     output_shape, embedding_shapes = spt.backbone.utils.get_output_shape(model, image)
     # embedding_shapes = {'layers.2.blocks.17': torch.Size([10, 14, 14, 768]),
     # 'layers.3.blocks.0': torch.Size([10, 7, 7, 1536]),
     # 'layers.3.blocks.1': torch.Size([10, 7, 7, 1536])}
-    output, embeddings = model(image)
+    output = model(image)
     # output = tensor([[ 1.1009 ...
     # embeddings = {'layers.3.blocks.1': tensor([[[[-0.6236, ...}

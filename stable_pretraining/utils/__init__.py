@@ -51,6 +51,10 @@ from .nn_modules import (
     UnsortedQueue,
 )
 from .visualization import format_df_to_latex
+from . import flops, solver
+from .stats import mean_std, mean_var
+from .mae_loss import MAELoss, unpatchify, patchify
+from .online_topk import StreamingTopKEigen
 
 __all__ = [
     "detach_tensors",
@@ -107,4 +111,12 @@ __all__ = [
     "load_hparams_from_ckpt",
     "CSVLogAutoSummarizer",
     "format_df_to_latex",
+    "flops",
+    "mean_std",
+    "mean_var",
+    "MAELoss",
+    "patchify",
+    "unpatchify",
+    "solver",
+    "StreamingTopKEigen",
 ]

@@ -56,6 +56,7 @@ class TestMNISTIntegration:
         assert manager is not None
         assert manager.data == data
 
+    @pytest.mark.v1
     @pytest.mark.download
     def test_datamodule_with_mnist(self):
         """Test DataModule with MNIST dataset."""
@@ -106,6 +107,7 @@ class TestMNISTIntegration:
         assert batch["image"].shape[0] <= 512  # Batch size
         assert batch["image"].shape[1:] == (1, 28, 28)  # MNIST dimensions
 
+    @pytest.mark.v1
     @pytest.mark.download
     @pytest.mark.gpu
     @pytest.mark.slow

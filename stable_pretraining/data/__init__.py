@@ -22,6 +22,7 @@ from .synthetic_data import (
     swiss_roll,
 )
 from .utils import fold_views, random_split
+from .video import LanceVideoSegments, build_lance_video_dataset
 
 # Backward compatibility
 static = dataset_stats
@@ -67,4 +68,7 @@ __all__ = [
     # Legacy compatibility
     "noise",
     "manifold",
+    # Video (Lance-backed random-access segment dataset)
+    "LanceVideoSegments",
+    "build_lance_video_dataset",
 ]

@@ -7,6 +7,7 @@ from omegaconf import OmegaConf
 import stable_pretraining as spt
 
 
+@pytest.mark.v1
 @pytest.mark.integration
 @pytest.mark.download
 @pytest.mark.parametrize("n_views", [1, 2, 4])
@@ -53,6 +54,7 @@ def test_repeated_sampler_with_dataloader(n_views):
         assert len(unique_indices) < len(indices)
 
 
+@pytest.mark.v1
 @pytest.mark.integration
 @pytest.mark.download
 def test_samplers_with_partial_config():

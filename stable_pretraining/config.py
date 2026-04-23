@@ -174,6 +174,7 @@ def instantiate_from_config(cfg: Union[dict, omegaconf.DictConfig]) -> Any:
             data=components["data"],
             seed=components.get("seed", None),
             ckpt_path=components.get("ckpt_path", None),
+            resume_weights_only=components.get("resume_weights_only", False),
         )
         return manager
 

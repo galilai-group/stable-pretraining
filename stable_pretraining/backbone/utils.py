@@ -6,6 +6,8 @@ import torch
 import torchvision
 from loguru import logger as logging
 from torch import nn
+from dataclasses import dataclass
+from transformers.utils import ModelOutput
 
 # Try to import optional dependencies
 try:
@@ -165,9 +167,21 @@ class EvalOnly(nn.Module):
         self.backbone = backbone
         self.backbone.train(False)
         self.requires_grad_(False)
+        self.training = False  # Also set wrapper to eval mode
         assert not self.backbone.training
 
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            # Delegate to backbone if not found on self
+            backbone = self._modules.get("backbone")
+            if backbone is not None:
+                return getattr(backbone, name)
+            raise
+
     def train(self, mode):
+        self.training = False
         return self
 
     def forward(self, *args, **kwargs):
@@ -228,51 +242,95 @@ class FeaturesConcat(nn.Module):
         return out.shape
 
 
-class ReturnEmbedding(nn.Module):
-    """Cache embedding from a module given their names.
+@dataclass
+class EmbeddingOutput(ModelOutput):
+    """HuggingFace-style output container for model embeddings.
 
-    Example:
-    stable_pretraining.backbone.utils.ReturnEmbedding(
-        torchvision.models.swin_v2_s(),
-        stable_pretraining.static.EMBEDDINGS["swin_v2_s"]
-        )
-
-    Args:
-    module_names (list of str): List of module names to hook (e.g., ['layer1', 'encoder.block1']).
-    add_to_forward_output (bool): If True, enables merging cached outputs into the dict returned by forward.
+    Attributes:
+        last_hidden_state: The final output from the backbone model.
+        hidden_states: Dictionary mapping layer names to their intermediate outputs.
     """
 
-    def __init__(self, backbone: nn.Module, module_names: list[str]):
+    last_hidden_state: Any = None
+    hidden_states: dict[str, torch.Tensor] = None
+
+
+class HiddenStateExtractor(nn.Module):
+    """Wrapper that captures intermediate embeddings from specified layers.
+
+    Returns outputs in HuggingFace Transformers style with `last_hidden_state`
+    for the final backbone output and `hidden_states` for intermediate layers.
+
+    Args:
+        backbone: The neural network module to wrap.
+        module_names: List of module names to capture (e.g., ['layer1', 'encoder.block1']).
+            Supports nested modules using dot notation.
+
+    Returns:
+        EmbeddingOutput with:
+            - last_hidden_state: Final backbone output
+            - hidden_states: Dict mapping module names to their outputs
+
+    Example:
+        >>> model = ReturnEmbedding(
+        ...     torchvision.models.swin_v2_s(),
+        ...     ["features.0", "features.2", "features.4"],
+        ... )
+        >>> output = model(images)
+        >>> output.last_hidden_state  # final output
+        >>> output.hidden_states["features.2"]  # intermediate layer
+
+    Raises:
+        ValueError: If any module name is not found in the backbone.
+    """
+
+    def __init__(self, backbone: nn.Module, module_names: list[str]) -> None:
         super().__init__()
-        logging.info("Init of ReturnEmbedding module")
-        logging.info(f"\t - {len(module_names)} module names")
         self.backbone = backbone
-        self.module_names = module_names
-        self.hooks = []
-        self.embedding_cache = {}
+        self.module_names = list(module_names)
+        self._hooks: list[torch.utils.hooks.RemovableHandle] = []
+        self._cache: dict[str, torch.Tensor] = {}
+
+        logging.info(f"ReturnEmbedding: hooking {len(module_names)} modules")
+
         for name in self.module_names:
-            module = self._get_module_by_name(backbone, name)
+            module = self._get_nested_module(name)
             if module is None:
                 raise ValueError(f"Module '{name}' not found in backbone.")
-            hook = module.register_forward_hook(self._make_hook(name, backbone))
-            self.hooks.append(hook)
+            hook = module.register_forward_hook(self._create_hook(name))
+            self._hooks.append(hook)
 
-    def forward(self, *args, **kwargs):
-        return self.backbone(*args, **kwargs), self.embedding_cache
+    def forward(self, *args, **kwargs) -> EmbeddingOutput:
+        """Run forward pass and return embeddings in HuggingFace style."""
+        self._cache.clear()
+        output = self.backbone(*args, **kwargs)
+        return EmbeddingOutput(
+            last_hidden_state=output,
+            hidden_states=dict(self._cache),
+        )
 
-    def _make_hook(self, name, pl_module):
-        def hook(module, input, output):
-            self.embedding_cache[name] = output
+    def _create_hook(self, name: str):
+        """Create a forward hook that caches the output under the given name."""
+
+        def hook(module: nn.Module, input: tuple, output: torch.Tensor) -> None:
+            self._cache[name] = output
 
         return hook
 
-    def _get_module_by_name(self, pl_module, name):
-        module = pl_module
+    def _get_nested_module(self, name: str) -> nn.Module | None:
+        """Retrieve a nested module by dot-separated path."""
+        module = self.backbone
         for attr in name.split("."):
-            if not hasattr(module, attr):
+            module = getattr(module, attr, None)
+            if module is None:
                 return None
-            module = getattr(module, attr)
         return module
+
+    def remove_hooks(self) -> None:
+        """Remove all registered hooks to free resources."""
+        for hook in self._hooks:
+            hook.remove()
+        self._hooks.clear()
 
 
 class TeacherStudentWrapper(nn.Module):
@@ -344,8 +402,8 @@ class TeacherStudentWrapper(nn.Module):
             self.register_buffer("ema_coefficient", self.base_ema_coefficient.clone())
         else:
             # Create a teacher network with the same architecture as the student.
-            if isinstance(student, ReturnEmbedding):
-                self.teacher = ReturnEmbedding(
+            if isinstance(student, HiddenStateExtractor):
+                self.teacher = HiddenStateExtractor(
                     copy.deepcopy(student.backbone), student.module_names
                 )
             else:

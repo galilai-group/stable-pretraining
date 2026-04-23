@@ -11,6 +11,7 @@ import stable_pretraining
 class TestVideoLoadingIntegration:
     """Integration tests for video loading with actual video data."""
 
+    @pytest.mark.v1
     @pytest.mark.download
     def test_clip_extract(self):
         """Test video clip extraction with temporal sampling."""
@@ -35,6 +36,7 @@ class TestVideoLoadingIntegration:
         assert sample["frames"].size(0) == 10  # num_frames
         assert sample["frames"].size(1) == 3  # RGB channels
 
+    @pytest.mark.v1
     @pytest.mark.download
     @pytest.mark.slow
     def test_clip_dataset_with_dataloader(self):
@@ -67,6 +69,7 @@ class TestVideoLoadingIntegration:
             assert data["video"].shape == (4, 10, 3, 128, 128)
             break  # Test only first batch
 
+    @pytest.mark.v1
     @pytest.mark.download
     @pytest.mark.gpu
     def test_embedding_from_video_frames(self):
@@ -108,6 +111,7 @@ class TestVideoLoadingIntegration:
             assert features.shape == (4, 10, 1000)  # [batch, frames, features]
             break  # Test only first batch
 
+    @pytest.mark.v1
     @pytest.mark.download
     def test_video_transform_pipeline(self):
         """Test complete video transform pipeline."""
@@ -189,6 +193,7 @@ class TestVideoLoadingIntegration:
             assert features.shape[1] == 8  # num frames
             # Feature dimension varies by architecture
 
+    @pytest.mark.v1
     def test_video_data_types(self):
         """Test video data type handling."""
         dataset = stable_pretraining.data.HFDataset(
@@ -206,6 +211,7 @@ class TestVideoLoadingIntegration:
         assert isinstance(sample["frames"], torch.Tensor)
         assert sample["frames"].dtype in [torch.float32, torch.uint8]
 
+    @pytest.mark.v1
     @pytest.mark.slow
     def test_video_batch_processing_efficiency(self):
         """Test efficient batch processing of video data."""

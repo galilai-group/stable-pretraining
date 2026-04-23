@@ -1,0 +1,46 @@
+defaults:
+  - _self_
+  - mymodel
+  - override hydra/launcher: submitit_slurm
+  - override hydra/sweeper: optuna
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    _target_: hydra_plugins.hydra_optuna_sweeper.optuna_sweeper.OptunaSweeper
+    direction: minimize
+    n_trials: 300  # The number of trials for hyperparameter optimization
+    n_jobs: 15  # Number of parallel jobs to run for hyperparameter optimization
+    max_failure_rate: 0.3 # Maximum allowed failure rate for trials (e.g., due to out-of-memory errors)
+    sampler:
+      _target_: optuna.samplers.TPESampler
+      seed: 42
+      n_startup_trials: 10  # Number of initial random trials before using the TPE sampler
+      multivariate: True
+      consider_prior: True
+    # Some example hyperparameters to search over
+    params:
+      module.optimizer.lr: choice(0.01, 0.005, 0.001, 0.0005)
+      module.masking_ratio: choice(0.0, 0.1, 0.3, 0.6, 0.9)
+      module.layers: choice(1, 2, 3)
+      module.activation_function: choice("relu", "gelu")
+      data.batch_size: choice(32, 64, 128)
+  sweep:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
+
+  launcher:
+    partition: gpu
+    timeout_min: 43200
+    cpus_per_task: 8
+    mem_gb: 128
+    gpus_per_node: 1
+
+
+# --- Use this section to override any default settings from your config.yaml ---
+trainer:
+  logger:
+    version: hp_${hydra:job.num}
+
+data:
+  some_property: override_value

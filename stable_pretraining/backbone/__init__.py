@@ -1,12 +1,3 @@
-# Try to import mae if timm is available
-try:
-    from . import mae
-
-    _MAE_AVAILABLE = True
-except ImportError:
-    mae = None
-    _MAE_AVAILABLE = False
-
 from .convmixer import ConvMixer
 from .mlp import MLP
 from .resnet9 import Resnet9
@@ -15,6 +6,12 @@ from .probe import (
     LinearProbe,
     AutoLinearClassifier,
     AutoTuneMLP,
+)
+from .patch_masking import (
+    PatchMasking,
+    IJEPAMasking,
+    IJEPAMaskOutput,
+    MultiBlockMasking,
 )
 from .utils import (
     EvalOnly,
@@ -26,6 +23,17 @@ from .utils import (
     vit_hf,
     EfficientMaskedTimmViT,
     register_lr_scale_hook,
+    HiddenStateExtractor,
+)
+from .vit import (
+    MAEDecoder,
+    MaskedEncoder,
+    MaskedEncoderOutput,
+    Attention,
+    CrossAttention,
+    TransformerBlock,
+    FlexibleTransformer,
+    modulate,
 )
 
 from .aggregator import TensorAggregator
@@ -48,7 +56,17 @@ __all__ = [
     EfficientMaskedTimmViT,
     register_lr_scale_hook,
     AutoTuneMLP,
+    HiddenStateExtractor,
+    PatchMasking,
+    MAEDecoder,
+    MaskedEncoder,
+    MaskedEncoderOutput,
+    Attention,
+    CrossAttention,
+    TransformerBlock,
+    FlexibleTransformer,
+    IJEPAMasking,
+    IJEPAMaskOutput,
+    MultiBlockMasking,
+    modulate,
 ]
-
-if _MAE_AVAILABLE:
-    __all__.append("mae")

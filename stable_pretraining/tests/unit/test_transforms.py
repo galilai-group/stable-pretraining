@@ -940,3 +940,69 @@ class TestReproducibility:
             assert torch.equal(orig_img, unshuf_img), (
                 f"Augmentation for idx {i} changed after shuffle"
             )
+
+
+@pytest.mark.unit
+class TestMultiViewTransform:
+    """Test suite for MultiViewTransform."""
+
+    @pytest.fixture
+    def sample(self):
+        """Create a sample dict with PIL image."""
+        img = Image.new("RGB", (32, 32), color=(255, 128, 64))
+        return {"image": img, "label": 1}
+
+    def test_list_input_returns_dict_with_views_list(self, sample):
+        """Test that list input returns dict with 'views' key and correct length."""
+        # Use two different transforms to verify they are both applied
+        t1 = transforms.RandomHorizontalFlip(p=0.5)
+        t2 = transforms.RandomRotation(degrees=90)
+
+        transform_list = [t1, t2]
+        mv_transform = transforms.MultiViewTransform(transform_list)
+
+        output = mv_transform(sample.copy())
+
+        # 1. Output remains a dict
+        assert isinstance(output, dict), "Output must be a dictionary"
+
+        # 2. Check keys per documentation (list input -> "views" key)
+        assert "views" in output, "Output dict must contain 'views' key for list input"
+
+        # 3. Check length of list matches length of input transforms
+        views = output["views"]
+        assert isinstance(views, list), "'views' must be a list"
+        assert len(views) == len(transform_list), (
+            f"Expected {len(transform_list)} views, got {len(views)}"
+        )
+
+        # Verify content validity
+        for view in views:
+            assert isinstance(view, dict)
+            assert "image" in view
+
+    def test_dict_input_returns_dict_with_matching_keys(self, sample):
+        """Test that dict input returns dict with matching keys."""
+        t1 = transforms.RandomHorizontalFlip(p=0.5)
+        t2 = transforms.RandomRotation(degrees=90)
+
+        transform_dict = {"view1": t1, "view2": t2, "aug_view": t1}
+
+        mv_transform = transforms.MultiViewTransform(transform_dict)
+
+        output = mv_transform(sample.copy())
+
+        # 1. Output remains a dict
+        assert isinstance(output, dict), "Output must be a dictionary"
+
+        # 2. Check keys line up per documentation
+        # Keys in output should match keys in input dict
+        assert set(output.keys()) == set(transform_dict.keys()), (
+            "Output keys must match input transform keys"
+        )
+
+        # Verify content validity
+        for key in transform_dict.keys():
+            view = output[key]
+            assert isinstance(view, dict)
+            assert "image" in view

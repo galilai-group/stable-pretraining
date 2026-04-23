@@ -7,6 +7,7 @@ from lightning.pytorch import Callback, LightningModule, Trainer
 from loguru import logger as logging
 from torchmetrics.retrieval.base import RetrievalMetric
 
+from .registry import log_dict as _spt_log_dict
 from .utils import format_metrics_as_dict
 
 
@@ -186,7 +187,7 @@ class ImageRetrieval(Callback):
                 res = metric(preds, targets, indexes=indexes)
                 logs[f"eval/{self.name}_{k}"] = res.item() * 100
 
-            self.log_dict(logs, on_epoch=True, rank_zero_only=True)
+            _spt_log_dict(logs, on_epoch=True, rank_zero_only=True)
 
             logging.info(f"Finished computing results for {self.name} callback")
 

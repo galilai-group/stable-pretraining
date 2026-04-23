@@ -4,6 +4,8 @@ import torch
 from lightning.pytorch import Callback, LightningModule, Trainer
 from loguru import logger as logging
 
+from .registry import log as _spt_log
+
 from .queue import find_or_create_queue_callback
 
 
@@ -27,6 +29,7 @@ class RankMe(Callback):
         target: str,
         queue_length: int,
         target_shape: Union[int, Iterable[int]],
+        verbose: bool = None,
     ) -> None:
         super().__init__()
 
@@ -40,6 +43,9 @@ class RankMe(Callback):
         self.target = target
         self.queue_length = queue_length
         self.target_shape = target_shape
+        from .utils import resolve_verbose
+
+        self.verbose = resolve_verbose(verbose)
 
         self._target_queue = None
 
@@ -60,7 +66,7 @@ class RankMe(Callback):
                 gather_distributed=True,
                 create_if_missing=True,
             )
-            logging.info(f"{self.name}: Using queue for target '{self.target}'")
+            logging.info(f"  target queue: {self.target}")
 
     def on_validation_batch_end(
         self,
@@ -75,19 +81,19 @@ class RankMe(Callback):
         if batch_idx > 0:
             return
 
-        logging.info(f"{self.name}: Computing RankMe on first validation batch")
+        logging.info("  computing RankMe on first validation batch")
 
         embeddings = self._target_queue.data
 
         if embeddings is None:
             logging.warning(
-                f"{self.name}: Queue data not available (not in validation?)"
+                f"! {self.name}: queue data not available (not in validation?)"
             )
             return
 
         if embeddings.numel() == 0:
             logging.warning(
-                f"{self.name}: Queue data is empty, skipping RankMe computation"
+                f"! {self.name}: queue data is empty, skipping RankMe computation"
             )
             return
 
@@ -102,3 +108,10 @@ class RankMe(Callback):
                 rankme = torch.exp(entropy)
 
                 pl_module.log(self.name, rankme.item())
+                if self.verbose:
+                    _spt_log(f"{self.name}/entropy", entropy.item())
+                    _spt_log(f"{self.name}/top_singular_value", s[0].item())
+                    _spt_log(
+                        f"{self.name}/condition_number",
+                        (s[0] / s[-1].clamp(min=1e-10)).item(),
+                    )

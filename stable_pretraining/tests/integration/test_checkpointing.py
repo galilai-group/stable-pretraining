@@ -17,6 +17,7 @@ class TestCheckpointingIntegration:
         yield temp_dir
         shutil.rmtree(temp_dir)
 
+    @pytest.mark.v1
     def test_sklearn_module_checkpointing(self, temp_dir):
         """Test sklearn module checkpointing with SklearnCheckpoint callback."""
         import stable_pretraining as ssl

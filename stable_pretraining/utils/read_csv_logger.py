@@ -12,65 +12,44 @@ import concurrent.futures
 
 
 def _optimize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    """Optimize DataFrame memory usage by downcasting numeric types and converting to categories.
-
-    This function reduces DataFrame memory footprint through several strategies:
-    - Downcast float columns to the smallest float dtype that can represent the values
-    - Downcast integer columns to the smallest integer dtype that can represent the values
-    - Convert Path objects to strings for serialization compatibility
-    - Convert low-cardinality object columns (< 50% unique values) to categorical dtype
-
-    Args:
-        df: Input DataFrame to optimize.
-
-    Returns:
-        Optimized copy of the DataFrame with reduced memory usage.
-
-    Notes:
-        - Creates a copy of the input DataFrame; original is not modified
-        - Path object conversion is logged as a warning
-        - Categorical conversion threshold is 50% unique values ratio
-        - Optimization progress is logged at INFO level
-        - Handles empty DataFrames gracefully
-
-    Example:
-        >>> df = pd.DataFrame(
-        ...     {
-        ...         "float_col": [1.0, 2.0, 3.0],
-        ...         "int_col": [1, 2, 3],
-        ...         "category_col": ["a", "b", "a", "b", "a"],
-        ...     }
-        ... )
-        >>> df_optimized = _optimize_dataframe(df)
-        >>> df_optimized.memory_usage(deep=True).sum() < df.memory_usage(
-        ...     deep=True
-        ... ).sum()
-        True
-    """
     logger.info("Optimizing DataFrame dtypes...")
     df_opt = df.copy()
 
-    # Handle empty DataFrames early
     if len(df_opt) == 0:
-        logger.info("DataFrame is empty, skipping optimization.")
         return df_opt
 
-    for col in df_opt.select_dtypes(include=["float"]):
+    # 1. Downcast Numerics
+    for col in df_opt.select_dtypes(include=["float"]).columns:
         df_opt[col] = pd.to_numeric(df_opt[col], downcast="float")
-    for col in df_opt.select_dtypes(include=["integer"]):
+    for col in df_opt.select_dtypes(include=["integer"]).columns:
         df_opt[col] = pd.to_numeric(df_opt[col], downcast="integer")
+
+    # 2. Handle Objects, Strings, and Paths
     for col in df_opt.columns:
-        # Convert PosixPath or WindowsPath to str
-        if df_opt[col].apply(lambda x: isinstance(x, Path)).any():
+        # Use a more efficient check for Path objects
+        sample_val = df_opt[col].iloc[0] if not df_opt[col].empty else None
+
+        # Check for Path objects (PosixPath/WindowsPath)
+        if (
+            isinstance(sample_val, Path)
+            or df_opt[col].apply(lambda x: isinstance(x, Path)).any()
+        ):
             logger.warning(f"Column '{col}' contains Path objects, converting to str.")
             df_opt[col] = df_opt[col].astype(str)
-        # Now handle categoricals
-        if df_opt[col].dtype == "object":
+
+        # Handle Categorical conversion for low-cardinality strings/objects
+        if pd.api.types.is_object_dtype(df_opt[col]) or pd.api.types.is_string_dtype(
+            df_opt[col]
+        ):
+            # Skip if it's already a category
+            if pd.api.types.is_categorical_dtype(df_opt[col]):
+                continue
+
             num_unique = df_opt[col].nunique()
-            num_total = len(df_opt[col])
-            # FIXED: Check for zero length before dividing
-            if num_total > 0 and num_unique / num_total < 0.5:
+            num_total = len(df_opt)
+            if num_total > 0 and (num_unique / num_total) < 0.5:
                 df_opt[col] = df_opt[col].astype("category")
+
     logger.info("Optimization complete.")
     return df_opt
 

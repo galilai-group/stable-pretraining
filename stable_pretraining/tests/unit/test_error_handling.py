@@ -1,7 +1,6 @@
 import sys
 import os
 from io import StringIO
-from unittest.mock import MagicMock, patch
 import tempfile
 
 import pytest
@@ -165,81 +164,6 @@ def test_rank_3_has_prefix(temp_log_file, clean_env):
 
 
 @pytest.mark.unit
-def test_wandb_logging_main_process(temp_log_file, clean_env):
-    """Test wandb logging on main process."""
-    os.environ["RANK"] = "0"
-
-    # Create mock wandb
-    mock_wandb = MagicMock()
-    mock_wandb.run = MagicMock()  # Non-None run
-
-    # Patch wandb in the error_handling module
-    with patch("stable_pretraining.utils.error_handling.wandb", mock_wandb):
-        with pytest.raises(ValueError):
-            with catch_errors():
-                raise ValueError("Wandb test error")
-
-        # Check wandb.log was called
-        mock_wandb.log.assert_called_once()
-        call_args = mock_wandb.log.call_args[0][0]
-        assert call_args["error_type"] == "ValueError"
-        assert call_args["error_message"] == "Wandb test error"
-        assert "traceback" in call_args
-
-        # Check wandb.finish was called
-        mock_wandb.finish.assert_called_once_with(exit_code=1)
-
-
-@pytest.mark.unit
-def test_wandb_not_called_worker_process(temp_log_file, clean_env):
-    """Test wandb NOT called on worker processes."""
-    os.environ["RANK"] = "2"
-
-    mock_wandb = MagicMock()
-    mock_wandb.run = MagicMock()
-
-    with patch("stable_pretraining.utils.error_handling.wandb", mock_wandb):
-        with pytest.raises(ValueError):
-            with catch_errors():
-                raise ValueError("Worker error")
-
-        # Wandb should NOT be called from worker
-        mock_wandb.log.assert_not_called()
-        mock_wandb.finish.assert_not_called()
-
-
-@pytest.mark.unit
-def test_wandb_error_doesnt_hide_original(temp_log_file, clean_env):
-    """Test that wandb errors don't hide the original error."""
-    os.environ["RANK"] = "0"
-
-    captured_stderr = StringIO()
-    old_stderr = sys.stderr
-    sys.stderr = captured_stderr
-
-    # Create mock that raises on log
-    mock_wandb = MagicMock()
-    mock_wandb.run = MagicMock()
-    mock_wandb.log.side_effect = Exception("Wandb connection failed")
-
-    try:
-        with patch("stable_pretraining.utils.error_handling.wandb", mock_wandb):
-            # Original error should still be raised
-            with pytest.raises(ValueError, match="Original error"):
-                with catch_errors():
-                    raise ValueError("Original error")
-
-            # Check that wandb warning was printed
-            stderr_content = captured_stderr.getvalue()
-            assert "Warning: Failed to log to wandb" in stderr_content
-            assert "Wandb connection failed" in stderr_content
-            assert "Original error" in stderr_content
-
-    finally:
-        sys.stderr = old_stderr
-
-
-@pytest.mark.unit
 def test_traceback_included(temp_log_file):
     """Test that full traceback is included in error message."""
     captured_stderr = StringIO()
@@ -278,14 +202,12 @@ def test_get_rank_default(clean_env):
 
 
 @pytest.mark.unit
-def test_wandb_none_no_crash(temp_log_file, clean_env):
-    """Test that code doesn't crash when wandb is None."""
+def test_error_no_wandb_dependency(temp_log_file, clean_env):
+    """Test that error handling has no wandb dependency."""
     os.environ["RANK"] = "0"
 
-    # Patch wandb as None
-    with patch("stable_pretraining.utils.error_handling.wandb", None):
-        with pytest.raises(ValueError):
-            with catch_errors():
-                raise ValueError("Test with no wandb")
+    with pytest.raises(ValueError):
+        with catch_errors():
+            raise ValueError("Test with no wandb")
 
-        # Should complete without crashing
+    # Should complete without crashing - no wandb involved
