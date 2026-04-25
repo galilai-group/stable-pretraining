@@ -16,6 +16,7 @@ Subpackages
    stable_pretraining.optim
    stable_pretraining.registry
    stable_pretraining.utils
+   stable_pretraining.web
 
 Submodules
 ----------
