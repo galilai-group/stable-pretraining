@@ -148,10 +148,13 @@ def test_spt_hf_fidelity_flow(tmp_path):
         logger=False,
     )
 
-    # Inject/Redirect Callback
+    # Inject/Redirect Callback. The default is now per_step=False (writes
+    # to ``last/`` and overwrites). This test asserts against a per-step
+    # path (``step_{N}/hf_backbone``), so opt it back into per-step mode.
     for cb in trainer.callbacks:
         if "HuggingFaceCheckpointCallback" in cb.__class__.__name__:
             cb.save_dir = hf_save_dir
+            cb.per_step = True
 
     # DataLoader with dict-based batches
     dl = torch.utils.data.DataLoader(
