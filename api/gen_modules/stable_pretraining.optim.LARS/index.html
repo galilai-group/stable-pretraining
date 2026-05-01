@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>LARS &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>LARS &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -132,7 +132,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -150,6 +150,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="current nav bd-sidenav">
@@ -229,6 +234,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -430,19 +447,18 @@ parameter groups</p></li>
 <p class="admonition-title">Note</p>
 <p>The application of momentum in the SGD part is modified according to
 the PyTorch standards. LARS scaling fits into the equation in the
-following fashion.
-.. math:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>\<span class="n">begin</span><span class="p">{</span><span class="n">aligned</span><span class="p">}</span>
-    <span class="n">g_</span><span class="p">{</span><span class="n">t</span><span class="o">+</span><span class="mi">1</span><span class="p">}</span> <span class="o">&amp;</span> <span class="o">=</span> \<span class="n">text</span><span class="p">{</span><span class="n">lars_lr</span><span class="p">}</span> <span class="o">*</span> <span class="p">(</span>\<span class="n">beta</span> <span class="o">*</span> <span class="n">p_</span><span class="p">{</span><span class="n">t</span><span class="p">}</span> <span class="o">+</span> <span class="n">g_</span><span class="p">{</span><span class="n">t</span><span class="o">+</span><span class="mi">1</span><span class="p">}),</span> \\
-    <span class="n">v_</span><span class="p">{</span><span class="n">t</span><span class="o">+</span><span class="mi">1</span><span class="p">}</span> <span class="o">&amp;</span> <span class="o">=</span> \\<span class="n">mu</span> <span class="o">*</span> <span class="n">v_</span><span class="p">{</span><span class="n">t</span><span class="p">}</span> <span class="o">+</span> <span class="n">g_</span><span class="p">{</span><span class="n">t</span><span class="o">+</span><span class="mi">1</span><span class="p">},</span> \\
-    <span class="n">p_</span><span class="p">{</span><span class="n">t</span><span class="o">+</span><span class="mi">1</span><span class="p">}</span> <span class="o">&amp;</span> <span class="o">=</span> <span class="n">p_</span><span class="p">{</span><span class="n">t</span><span class="p">}</span> <span class="o">-</span> \<span class="n">text</span><span class="p">{</span><span class="n">lr</span><span class="p">}</span> <span class="o">*</span> <span class="n">v_</span><span class="p">{</span><span class="n">t</span><span class="o">+</span><span class="mi">1</span><span class="p">},</span>
-\\<span class="n">end</span><span class="p">{</span><span class="n">aligned</span><span class="p">}</span>
-</pre></div>
-</div>
-<p>where <span class="math notranslate nohighlight">\(p\)</span>, <span class="math notranslate nohighlight">\(g\)</span>, <span class="math notranslate nohighlight">\(v\)</span>, <span class="math notranslate nohighlight">\(\\mu\)</span> and <span class="math notranslate nohighlight">\(\beta\)</span> denote the
-parameters, gradient, velocity, momentum, and weight decay respectively.
-The <span class="math notranslate nohighlight">\(lars_lr\)</span> is defined by Eq. 6 in the paper.
-The Nesterov version is analogously modified.</p>
+following fashion.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+    g_{t+1} &amp; = \text{lars\_lr} * (\beta * p_{t} + g_{t+1}), \\
+    v_{t+1} &amp; = \mu * v_{t} + g_{t+1}, \\
+    p_{t+1} &amp; = p_{t} - \text{lr} * v_{t+1},
+\end{aligned}\end{split}\]</div>
+<p>where <span class="math notranslate nohighlight">\(p\)</span>, <span class="math notranslate nohighlight">\(g\)</span>, <span class="math notranslate nohighlight">\(v\)</span>, <span class="math notranslate nohighlight">\(\mu\)</span> and
+<span class="math notranslate nohighlight">\(\beta\)</span> denote the parameters, gradient, velocity, momentum,
+and weight decay respectively. The <span class="math notranslate nohighlight">\(\text{lars\_lr}\)</span> is
+defined by Eq. 6 in the paper. The Nesterov version is
+analogously modified.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>

@@ -17,9 +17,13 @@
 
 .. _sphx_glr_auto_examples_wandb_reader.py:
 
-This script demonstrates how to retrieve data from wandb using the stable_pretraining library.
 
-.. GENERATED FROM PYTHON SOURCE LINES 2-11
+Reading WandB Runs
+==================
+
+Retrieve run data from wandb using the stable_pretraining library.
+
+.. GENERATED FROM PYTHON SOURCE LINES 7-16
 
 .. code-block:: Python
 

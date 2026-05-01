@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.registry.logger &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable_pretraining.registry.logger &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -147,6 +147,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -226,6 +231,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -426,7 +443,7 @@
 
 
 <div class="viewcode-block" id="RegistryLogger">
-<a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.RegistryLogger">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/#stable_pretraining.registry.RegistryLogger">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RegistryLogger</span><span class="p">(</span><span class="n">CSVLogger</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;CSV logger with a filesystem-indexable sidecar.</span>
 
@@ -510,7 +527,7 @@
     <span class="c1"># -- lightning hooks --------------------------------------------------------</span>
 
 <div class="viewcode-block" id="RegistryLogger.log_hyperparams">
-<a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.RegistryLogger.log_hyperparams">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/#stable_pretraining.registry.RegistryLogger.log_hyperparams">[docs]</a>
     <span class="nd">@rank_zero_only</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">log_hyperparams</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">:</span> <span class="n">Any</span>
@@ -522,7 +539,7 @@
 
 
 <div class="viewcode-block" id="RegistryLogger.log_metrics">
-<a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.RegistryLogger.log_metrics">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/#stable_pretraining.registry.RegistryLogger.log_metrics">[docs]</a>
     <span class="nd">@rank_zero_only</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">log_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">step</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># CSV-side: write the raw per-step row.</span>
@@ -542,7 +559,7 @@
 
 
 <div class="viewcode-block" id="RegistryLogger.save">
-<a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.RegistryLogger.save">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/#stable_pretraining.registry.RegistryLogger.save">[docs]</a>
     <span class="nd">@rank_zero_only</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
@@ -550,7 +567,7 @@
 
 
 <div class="viewcode-block" id="RegistryLogger.finalize">
-<a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.RegistryLogger.finalize">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/#stable_pretraining.registry.RegistryLogger.finalize">[docs]</a>
     <span class="nd">@rank_zero_only</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># Map Lightning status strings to our canonical vocabulary.</span>
@@ -563,7 +580,7 @@
 
 
 <div class="viewcode-block" id="RegistryLogger.after_save_checkpoint">
-<a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.RegistryLogger.after_save_checkpoint">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/#stable_pretraining.registry.RegistryLogger.after_save_checkpoint">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">after_save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">checkpoint_callback</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># This callback fires on every rank; we gate on rank_zero via</span>
         <span class="c1"># the helper write (which is rank-zero-only upstream).</span>
@@ -580,7 +597,7 @@
     <span class="c1"># -- media (images / videos) -----------------------------------------------</span>
 
 <div class="viewcode-block" id="RegistryLogger.log_image">
-<a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.RegistryLogger.log_image">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/#stable_pretraining.registry.RegistryLogger.log_image">[docs]</a>
     <span class="nd">@rank_zero_only</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">log_image</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -625,7 +642,7 @@
 
 
 <div class="viewcode-block" id="RegistryLogger.log_video">
-<a class="viewcode-back" href="../../../../stable_pretraining.registry/#stable_pretraining.RegistryLogger.log_video">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/#stable_pretraining.registry.RegistryLogger.log_video">[docs]</a>
     <span class="nd">@rank_zero_only</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">log_video</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>

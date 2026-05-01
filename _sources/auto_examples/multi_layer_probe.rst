@@ -17,9 +17,14 @@
 
 .. _sphx_glr_auto_examples_multi_layer_probe.py:
 
-Multi-layer probe for vision models.
 
-.. GENERATED FROM PYTHON SOURCE LINES 2-290
+Multi-layer Probe for Vision Models
+===================================
+
+Train probes attached to multiple layers of a frozen backbone to monitor
+representation quality across depth.
+
+.. GENERATED FROM PYTHON SOURCE LINES 8-296
 
 .. code-block:: Python
 

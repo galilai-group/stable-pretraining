@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.probe &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable_pretraining.callbacks.probe &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -147,6 +147,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -226,6 +231,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -342,7 +359,7 @@
 
 
 <div class="viewcode-block" id="OnlineProbe">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.OnlineProbe">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.callbacks.OnlineProbe/#stable_pretraining.callbacks.OnlineProbe">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">OnlineProbe</span><span class="p">(</span><span class="n">TrainableCallback</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Online probe for evaluating learned representations during self-supervised training.</span>
 
@@ -352,46 +369,45 @@
 <span class="sd">    and training loop. This allows monitoring representation quality throughout training</span>
 <span class="sd">    without modifying the base model.</span>
 
-<span class="sd">    Key features:</span>
-<span class="sd">    - Automatic gradient detachment to prevent probe gradients affecting the main model</span>
-<span class="sd">    - Independent optimizer and scheduler management</span>
-<span class="sd">    - Support for gradient accumulation</span>
-<span class="sd">    - Mixed precision training compatibility through automatic dtype conversion</span>
-<span class="sd">    - Metric tracking and logging</span>
+<span class="sd">    **Key features**</span>
+
+<span class="sd">    * Automatic gradient detachment to prevent probe gradients affecting the main model.</span>
+<span class="sd">    * Independent optimizer and scheduler management.</span>
+<span class="sd">    * Support for gradient accumulation.</span>
+<span class="sd">    * Mixed precision training compatibility through automatic dtype conversion.</span>
+<span class="sd">    * Metric tracking and logging.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        module: The spt.LightningModule to probe.</span>
+<span class="sd">        module: The ``spt.LightningModule`` to probe.</span>
 <span class="sd">        name: Unique identifier for this probe instance. Used for logging and storing</span>
 <span class="sd">            metrics/modules.</span>
 <span class="sd">        input: Key in batch dict or outputs dict containing input features to probe.</span>
 <span class="sd">        target: Key in batch dict containing ground truth target labels.</span>
-<span class="sd">        probe: The probe module to train. Can be a nn.Module instance, callable that</span>
+<span class="sd">        probe: The probe module to train. Can be a ``nn.Module`` instance, callable that</span>
 <span class="sd">            returns a module, or Hydra config to instantiate.</span>
-<span class="sd">        loss: Loss function for probe training (e.g., nn.CrossEntropyLoss()).</span>
-<span class="sd">        optimizer: Optimizer configuration for the probe. Can be:</span>
-<span class="sd">            - str: optimizer name (e.g., &quot;AdamW&quot;, &quot;SGD&quot;, &quot;LARS&quot;)</span>
-<span class="sd">            - dict: {&quot;type&quot;: &quot;AdamW&quot;, &quot;lr&quot;: 1e-3, ...}</span>
-<span class="sd">            - partial: pre-configured optimizer factory</span>
-<span class="sd">            - optimizer instance or callable</span>
-<span class="sd">            - None: uses LARS(lr=0.1, clip_lr=True, eta=0.02, exclude_bias_n_norm=True,</span>
-<span class="sd">              weight_decay=0), which is the standard for SSL linear probes (default)</span>
-<span class="sd">        scheduler: Learning rate scheduler configuration. Can be:</span>
-<span class="sd">            - str: scheduler name (e.g., &quot;CosineAnnealingLR&quot;, &quot;StepLR&quot;)</span>
-<span class="sd">            - dict: {&quot;type&quot;: &quot;CosineAnnealingLR&quot;, &quot;T_max&quot;: 1000, ...}</span>
-<span class="sd">            - partial: pre-configured scheduler factory</span>
-<span class="sd">            - scheduler instance or callable</span>
-<span class="sd">            - None: uses ConstantLR(factor=1.0), maintaining constant learning rate (default)</span>
+<span class="sd">        loss: Loss function for probe training (e.g., ``nn.CrossEntropyLoss()``).</span>
+<span class="sd">        optimizer: Optimizer configuration for the probe. Accepted forms — string name</span>
+<span class="sd">            (``&quot;AdamW&quot;``, ``&quot;SGD&quot;``, ``&quot;LARS&quot;``), a dict like</span>
+<span class="sd">            ``{&quot;type&quot;: &quot;AdamW&quot;, &quot;lr&quot;: 1e-3, ...}``, a pre-configured ``functools.partial``,</span>
+<span class="sd">            an optimizer instance, or a callable. ``None`` uses</span>
+<span class="sd">            ``LARS(lr=0.1, clip_lr=True, eta=0.02, exclude_bias_n_norm=True, weight_decay=0)``</span>
+<span class="sd">            (the standard for SSL linear probes, default).</span>
+<span class="sd">        scheduler: Learning rate scheduler configuration. Accepted forms — string name</span>
+<span class="sd">            (``&quot;CosineAnnealingLR&quot;``, ``&quot;StepLR&quot;``), a dict</span>
+<span class="sd">            ``{&quot;type&quot;: &quot;CosineAnnealingLR&quot;, &quot;T_max&quot;: 1000, ...}``, a partial, a scheduler</span>
+<span class="sd">            instance, or a callable. ``None`` uses ``ConstantLR(factor=1.0)``</span>
+<span class="sd">            (constant LR, default).</span>
 <span class="sd">        accumulate_grad_batches: Number of batches to accumulate gradients before</span>
 <span class="sd">            optimizer step. Default is 1 (no accumulation).</span>
 <span class="sd">        metrics: Metrics to track during training/validation. Can be dict, list, tuple,</span>
 <span class="sd">            or single metric instance.</span>
 
 <span class="sd">    Note:</span>
-<span class="sd">        - The probe module is stored in pl_module.callbacks_modules[name]</span>
-<span class="sd">        - Metrics are stored in pl_module.callbacks_metrics[name]</span>
-<span class="sd">        - Predictions are stored in batch dict with key &#39;{name}_preds&#39;</span>
-<span class="sd">        - Loss is logged as &#39;train/{name}_loss&#39;</span>
-<span class="sd">        - Metrics are logged with prefix &#39;train/{name}_&#39; and &#39;eval/{name}_&#39;</span>
+<span class="sd">        * The probe module is stored in ``pl_module.callbacks_modules[name]``.</span>
+<span class="sd">        * Metrics are stored in ``pl_module.callbacks_metrics[name]``.</span>
+<span class="sd">        * Predictions are stored in batch dict with key ``&#39;{name}_preds&#39;``.</span>
+<span class="sd">        * Loss is logged as ``&#39;train/{name}_loss&#39;``.</span>
+<span class="sd">        * Metrics are logged with prefix ``&#39;train/{name}_&#39;`` and ``&#39;eval/{name}_&#39;``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -447,7 +463,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">wrap_forward</span><span class="p">(</span><span class="n">pl_module</span><span class="o">=</span><span class="n">module</span><span class="p">)</span>
 
 <div class="viewcode-block" id="OnlineProbe.configure_model">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.OnlineProbe.configure_model">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.callbacks.OnlineProbe/#stable_pretraining.callbacks.OnlineProbe.configure_model">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">configure_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the probe module from configuration.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_probe_config</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
@@ -459,8 +475,6 @@
         <span class="k">return</span> <span class="n">probe_module</span></div>
 
 
-<div class="viewcode-block" id="OnlineProbe.wrap_forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.OnlineProbe.wrap_forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">wrap_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">):</span>
         <span class="n">fn</span> <span class="o">=</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">forward</span>
 
@@ -526,7 +540,6 @@
 
         <span class="c1"># Bind the new method to the instance</span>
         <span class="n">pl_module</span><span class="o">.</span><span class="n">forward</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">MethodType</span><span class="p">(</span><span class="n">new_forward</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span></div>
-</div>
 
 </pre></div>
 

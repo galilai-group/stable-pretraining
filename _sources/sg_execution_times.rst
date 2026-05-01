@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:00.000** total execution time for 4 files **from all galleries**:
+**00:00.000** total execution time for 5 files **from all galleries**:
 
 .. container::
 
@@ -32,13 +32,16 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
-   * - :ref:`sphx_glr_auto_examples_custom_supervised.py` (``../../examples/custom_supervised.py``)
-     - 00:00.000
-     - 0.0
    * - :ref:`sphx_glr_auto_examples_imbalance_supervised_learning.py` (``../../examples/imbalance_supervised_learning.py``)
      - 00:00.000
      - 0.0
-   * - :ref:`sphx_glr_auto_examples_train.py` (``../../examples/train.py``)
+   * - :ref:`sphx_glr_auto_examples_multi_layer_probe.py` (``../../examples/multi_layer_probe.py``)
+     - 00:00.000
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_supervised_learning.py` (``../../examples/supervised_learning.py``)
+     - 00:00.000
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_wandb_figures.py` (``../../examples/wandb_figures.py``)
      - 00:00.000
      - 0.0
    * - :ref:`sphx_glr_auto_examples_wandb_reader.py` (``../../examples/wandb_reader.py``)

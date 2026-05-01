@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -147,6 +147,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -226,6 +231,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -333,6 +350,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -366,8 +384,6 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.utils.error_handling</span><span class="w"> </span><span class="kn">import</span> <span class="n">catch_errors_class</span>
 
 
-<div class="viewcode-block" id="print_logger_info">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.manager.print_logger_info">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">print_logger_info</span><span class="p">(</span><span class="n">logger</span><span class="p">):</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">lightning</span><span class="o">.</span><span class="n">pytorch</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">DummyLogger</span><span class="p">):</span>
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;DummyLogger&quot;</span><span class="p">)</span>
@@ -418,43 +434,114 @@
             <span class="k">if</span> <span class="n">init_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mode&quot;</span><span class="p">):</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  mode:            </span><span class="si">{</span><span class="n">init_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mode&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! Unrecognized logger!&quot;</span><span class="p">)</span></div>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! Unrecognized logger!&quot;</span><span class="p">)</span>
 
 
-
-<div class="viewcode-block" id="print_signal_info">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.manager.print_signal_info">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">print_signal_info</span><span class="p">():</span>
     <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;SignalHandlers&quot;</span><span class="p">)</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SIGUSR1: `</span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGUSR1</span><span class="p">)</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SIGUSR2: `</span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGUSR2</span><span class="p">)</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SIGCONT: `</span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGCONT</span><span class="p">)</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SIGTERM: `</span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span></div>
-
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SIGTERM: `</span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span>
 
 
 <span class="n">_RUN_META_FILENAME</span> <span class="o">=</span> <span class="s2">&quot;run_meta.json&quot;</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_generate_run_id</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a deterministic run ID that all ranks in the same job agree on.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Always return a fresh uuid4 hex (12 chars).</span>
 
-<span class="sd">    Priority:</span>
-<span class="sd">        1. ``SLURM_JOB_ID`` (+ ``SLURM_ARRAY_TASK_ID`` if array job) — same</span>
-<span class="sd">           for every rank in the same SLURM job/task.</span>
-<span class="sd">        2. ``TORCHELASTIC_RUN_ID`` — same for every rank under ``torchrun``.</span>
-<span class="sd">        3. Random ``uuid4`` hex (12 chars) — single-process fallback.</span>
+<span class="sd">    Run dirs are now uniquely identified by uuid regardless of execution</span>
+<span class="sd">    context (interactive shell, batch, array task, torchrun, ...). SLURM</span>
+<span class="sd">    preempt/requeue resume is handled separately by ``_resolve_run_dir``,</span>
+<span class="sd">    which records ``SLURM_JOB_ID[_SLURM_ARRAY_TASK_ID] → run_dir`` in</span>
+<span class="sd">    ``cache_dir/.slurm_index/`` and looks the value up when</span>
+<span class="sd">    ``SLURM_RESTART_COUNT &gt; 0`` on a re-run.</span>
+
+<span class="sd">    This sidesteps the historical trap where every consecutive ``python``</span>
+<span class="sd">    invocation inside ``srun --pty`` would land in the same run dir</span>
+<span class="sd">    because ``SLURM_JOB_ID`` is shared across them.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">slurm_job</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_JOB_ID&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">slurm_job</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">array_task</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_ARRAY_TASK_ID&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">array_task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">slurm_job</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">array_task</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="k">return</span> <span class="n">slurm_job</span>
-    <span class="n">elastic_run</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;TORCHELASTIC_RUN_ID&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">elastic_run</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">elastic_run</span>
     <span class="k">return</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">12</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_slurm_session_key</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stable per-SLURM-task key for requeue lookup, or ``None`` outside SLURM.</span>
+
+<span class="sd">    Form: ``&quot;&lt;SLURM_JOB_ID&gt;&quot;`` or ``&quot;&lt;SLURM_JOB_ID&gt;_&lt;SLURM_ARRAY_TASK_ID&gt;&quot;``.</span>
+<span class="sd">    Same value across preempt/requeue cycles (SLURM keeps job/task ids</span>
+<span class="sd">    stable on requeue), so a requeued process can find the run_dir of</span>
+<span class="sd">    the original invocation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">job</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_JOB_ID&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">job</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">task</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_ARRAY_TASK_ID&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">job</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">job</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_slurm_requeue</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;SLURM exports ``SLURM_RESTART_COUNT &gt;= 1`` only on requeue.</span>
+
+<span class="sd">    Interactive ``srun --pty`` reruns share ``SLURM_JOB_ID`` but never bump</span>
+<span class="sd">    ``SLURM_RESTART_COUNT`` — so checking it lets us distinguish a real</span>
+<span class="sd">    preempt-resume from an interactive re-invocation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_RESTART_COUNT&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="mi">1</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ddp_launch_key</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Identifier shared by every rank in the same DDP launch, or ``None``.</span>
+
+<span class="sd">    Used as the filename under ``{cache_dir}/.rank_handoff/`` so rank-0 can</span>
+<span class="sd">    publish its chosen ``run_dir`` and other ranks can read the same value</span>
+<span class="sd">    instead of each generating their own.</span>
+
+<span class="sd">    Returns ``None`` for single-process invocations (no DDP env vars set) —</span>
+<span class="sd">    in that case no handoff is needed.</span>
+
+<span class="sd">    The key is intentionally identical for every rank in the same launch</span>
+<span class="sd">    AND distinct between concurrent launches:</span>
+
+<span class="sd">    * SLURM (batch / array) — keyed on ``SLURM_JOB_ID[_TASK_ID]``.</span>
+<span class="sd">    * ``torchrun`` / torchelastic — keyed on ``TORCHELASTIC_RUN_ID``.</span>
+<span class="sd">    * Local DDP via Lightning&#39;s ``SubprocessScriptLauncher`` — keyed on</span>
+<span class="sd">      ``MASTER_ADDR:MASTER_PORT`` plus the launcher&#39;s process group id, so</span>
+<span class="sd">      two parallel local-DDP launches on the same machine don&#39;t collide</span>
+<span class="sd">      even if they happen to pick the same MASTER_PORT.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">job</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_JOB_ID&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">job</span><span class="p">:</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_ARRAY_TASK_ID&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;slurm-</span><span class="si">{</span><span class="n">job</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;slurm-</span><span class="si">{</span><span class="n">job</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">er</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;TORCHELASTIC_RUN_ID&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">er</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;elastic-</span><span class="si">{</span><span class="n">er</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">addr</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;MASTER_ADDR&quot;</span><span class="p">)</span>
+    <span class="n">port</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;MASTER_PORT&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">addr</span> <span class="ow">and</span> <span class="n">port</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">pgid</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpgid</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">pgid</span> <span class="o">=</span> <span class="s2">&quot;nopgid&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;local-</span><span class="si">{</span><span class="n">addr</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">pgid</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="c1"># Rank-N waits up to this many seconds for rank-0 to publish run_dir before</span>
+<span class="c1"># falling back to local resolution. Generous to absorb slow NFS mkdir + the</span>
+<span class="c1"># actual time rank-0 spends in `_try_restore_run_dir`. Override via env var</span>
+<span class="c1"># `SPT_RANK_HANDOFF_TIMEOUT_S` if the cluster&#39;s NFS is unusually slow.</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">_RANK_HANDOFF_TIMEOUT_S</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SPT_RANK_HANDOFF_TIMEOUT_S&quot;</span><span class="p">,</span> <span class="s2">&quot;60.0&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+<span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+    <span class="n">_RANK_HANDOFF_TIMEOUT_S</span> <span class="o">=</span> <span class="mf">60.0</span>
+<span class="n">_RANK_HANDOFF_POLL_S</span> <span class="o">=</span> <span class="mf">0.05</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">_RunDirCallback</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
@@ -468,7 +555,7 @@
 
 
 <div class="viewcode-block" id="Manager">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.manager.Manager">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.manager.Manager/#stable_pretraining.manager.Manager">[docs]</a>
 <span class="nd">@catch_errors_class</span><span class="p">()</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Manager</span><span class="p">(</span><span class="n">submitit</span><span class="o">.</span><span class="n">helpers</span><span class="o">.</span><span class="n">Checkpointable</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages training with logging, scheduling, and checkpointing support.</span>
@@ -729,11 +816,57 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cfg</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;  cache_dir is not configured — falling back to &quot;</span>
+                <span class="s2">&quot;Trainer.default_root_dir for run_dir.&quot;</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span>
 
         <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">))</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  cache_dir = </span><span class="si">{</span><span class="n">cache_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Try to restore from a previous run (requeue)</span>
+        <span class="c1"># ----- DDP coordination ------------------------------------------------</span>
+        <span class="c1"># `_resolve_run_dir` runs once per rank (each rank is its own process at</span>
+        <span class="c1"># this point — Trainer/Strategy aren&#39;t built yet). To avoid every rank</span>
+        <span class="c1"># generating its own uuid (and writing its own .slurm_index entry,</span>
+        <span class="c1"># last-writer-wins), rank-0 picks the dir and publishes it to a shared</span>
+        <span class="c1"># handoff file; non-zero ranks block on that file and adopt it.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Lightning&#39;s `rank_zero_only.rank` is the source of truth: it&#39;s</span>
+        <span class="c1"># initialised at import time from the same env vars (`RANK`,</span>
+        <span class="c1"># `SLURM_PROCID`, ...) that DDP launchers set, and reused by every</span>
+        <span class="c1"># `@rank_zero_only`-gated logger we ship — keeping detection consistent.</span>
+        <span class="n">launch_key</span> <span class="o">=</span> <span class="n">_ddp_launch_key</span><span class="p">()</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">rank_zero_only</span><span class="p">,</span> <span class="s2">&quot;rank&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">is_rank_zero</span> <span class="o">=</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  ddp: launch_key=</span><span class="si">{</span><span class="n">launch_key</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(single-process)&#39;</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;rank=</span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2"> is_rank_zero=</span><span class="si">{</span><span class="n">is_rank_zero</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">launch_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_rank_zero</span><span class="p">:</span>
+            <span class="n">adopted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wait_for_rank_zero_handoff</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">adopted</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">=</span> <span class="n">adopted</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span> <span class="o">=</span> <span class="n">adopted</span><span class="o">.</span><span class="n">name</span>
+                <span class="n">log_header</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;RunDirectory (rank </span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">, adopted from rank-0)&quot;</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
+            <span class="c1"># Timeout — fall through. We log loudly inside the helper. Falling</span>
+            <span class="c1"># back to local resolution is safer than crashing because only</span>
+            <span class="c1"># rank-0 actually writes via @rank_zero_only loggers; the worst</span>
+            <span class="c1"># case is an orphaned empty rank-N dir.</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;! Falling back to local run_dir resolution on rank </span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2"> — &quot;</span>
+                <span class="s2">&quot;metrics/sidecar/media won&#39;t write here (rank-0 handles those) &quot;</span>
+                <span class="s2">&quot;but ModelCheckpoint paths may diverge.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Try to restore from a previous run. Raises RuntimeError if SLURM</span>
+        <span class="c1"># signals a requeue but the index is missing or stale (caller should</span>
+        <span class="c1"># propagate — silent fallback would lose history).</span>
         <span class="n">restored</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_try_restore_run_dir</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">restored</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">=</span> <span class="n">restored</span>
@@ -741,9 +874,11 @@
             <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory (restored)&quot;</span><span class="p">)</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">launch_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">is_rank_zero</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_publish_rank_zero_handoff</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">,</span> <span class="n">restored</span><span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
 
-        <span class="c1"># Fresh run</span>
+        <span class="c1"># Fresh run — generate a new uuid and create the dir.</span>
         <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
         <span class="n">run_id</span> <span class="o">=</span> <span class="n">_generate_run_id</span><span class="p">()</span>
         <span class="n">run_dir</span> <span class="o">=</span> <span class="p">(</span>
@@ -755,45 +890,211 @@
         <span class="p">)</span>
         <span class="n">run_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-        <span class="c1"># Write sidecar so requeue can find this directory later</span>
+        <span class="c1"># Write sidecar so a future invocation that explicitly receives</span>
+        <span class="c1"># the ckpt_path can find this directory via Strategy 1.</span>
         <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;run_dir&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">),</span> <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="n">run_id</span><span class="p">}</span>
         <span class="p">(</span><span class="n">run_dir</span> <span class="o">/</span> <span class="n">_RUN_META_FILENAME</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">meta</span><span class="p">))</span>
 
+        <span class="c1"># Record SLURM-key → run_dir mapping so a SLURM-requeued process</span>
+        <span class="c1"># finds us via Strategy 2. The index is overwritten on each fresh</span>
+        <span class="c1"># run, but the LOOKUP is gated on SLURM_RESTART_COUNT ≥ 1, so</span>
+        <span class="c1"># interactive re-invocations write but never read — and therefore</span>
+        <span class="c1"># always get fresh dirs.</span>
+        <span class="n">slurm_key</span> <span class="o">=</span> <span class="n">_slurm_session_key</span><span class="p">()</span>
+        <span class="n">index_msg</span> <span class="o">=</span> <span class="s2">&quot;(no SLURM, skipped)&quot;</span>
+        <span class="k">if</span> <span class="n">slurm_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">idx_dir</span> <span class="o">=</span> <span class="n">cache_dir</span> <span class="o">/</span> <span class="s2">&quot;.slurm_index&quot;</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">idx_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="p">(</span><span class="n">idx_dir</span> <span class="o">/</span> <span class="n">slurm_key</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">))</span>
+                <span class="n">index_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">idx_dir</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">slurm_key</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="n">index_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;FAILED to write index: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! Could not record SLURM index: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">=</span> <span class="n">run_dir</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span> <span class="o">=</span> <span class="n">run_id</span>
-        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Publish for non-zero ranks waiting on us. Done LAST so the published</span>
+        <span class="c1"># path is fully usable (mkdir done, run_meta.json written, .slurm_index</span>
+        <span class="c1"># updated) by the time another rank picks it up.</span>
+        <span class="k">if</span> <span class="n">launch_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">is_rank_zero</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_publish_rank_zero_handoff</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">)</span>
+
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory: fresh&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir          = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id (uuid)    = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM index      = </span><span class="si">{</span><span class="n">index_msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">&quot;  → future SLURM requeue (SLURM_RESTART_COUNT ≥ 1) for the same &quot;</span>
+            <span class="s2">&quot;job/task will resume into this directory.&quot;</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
+
+    <span class="c1"># -- DDP rank-0 handoff (used by `_resolve_run_dir`) -----------------------</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_handoff_path</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cache_dir</span> <span class="o">/</span> <span class="s2">&quot;.rank_handoff&quot;</span> <span class="o">/</span> <span class="n">launch_key</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_publish_rank_zero_handoff</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Atomically write rank-0&#39;s chosen ``run_dir`` for non-zero ranks.</span>
+
+<span class="sd">        Atomic via temp+``replace`` so a rank-N reader never observes a</span>
+<span class="sd">        partially-written file. The target path is naturally idempotent: if a</span>
+<span class="sd">        previous launch with the same key crashed, this rewrite stomps it.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">handoff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handoff_path</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">handoff</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">handoff</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="n">handoff</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;.tmp&quot;</span><span class="p">)</span>
+            <span class="n">tmp</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">))</span>
+            <span class="n">tmp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">handoff</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  rank-0 published handoff → </span><span class="si">{</span><span class="n">handoff</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! Could not publish rank-handoff to </span><span class="si">{</span><span class="n">handoff</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_wait_for_rank_zero_handoff</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Block (poll) until rank-0 has published a usable ``run_dir``.</span>
+
+<span class="sd">        Returns the published path, or ``None`` on timeout. The validity check</span>
+<span class="sd">        (``is_dir()``) means rank-N never adopts a dangling pointer left over</span>
+<span class="sd">        from a stale prior launch with the same key.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">handoff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handoff_path</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">)</span>
+        <span class="n">deadline</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">+</span> <span class="n">_RANK_HANDOFF_TIMEOUT_S</span>
+        <span class="n">logged_waiting</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">while</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">deadline</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">handoff</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                    <span class="n">candidate</span> <span class="o">=</span> <span class="n">handoff</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">candidate</span> <span class="ow">and</span> <span class="n">Path</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span>
+                    <span class="c1"># Pointer present but invalid (rank-0 still mid-write or</span>
+                    <span class="c1"># stale crashed launch). Keep polling — rank-0 may rewrite.</span>
+            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">logged_waiting</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;  waiting for rank-0 handoff at </span><span class="si">{</span><span class="n">handoff</span><span class="si">}</span><span class="s2"> &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;(timeout </span><span class="si">{</span><span class="n">_RANK_HANDOFF_TIMEOUT_S</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s)&quot;</span>
+                <span class="p">)</span>
+                <span class="n">logged_waiting</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">_RANK_HANDOFF_POLL_S</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;! rank-0 handoff timed out after </span><span class="si">{</span><span class="n">_RANK_HANDOFF_TIMEOUT_S</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">handoff</span><span class="si">}</span><span class="s2"> never appeared with a valid dir)&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_try_restore_run_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Attempt to find a previous run directory for this job.</span>
 
-<span class="sd">        Checks two strategies:</span>
+<span class="sd">        Two strategies, each loudly logged so the user can follow exactly</span>
+<span class="sd">        what&#39;s happening at startup:</span>
+
 <span class="sd">            1. Sidecar next to ``ckpt_path`` (explicit checkpoint from user).</span>
-<span class="sd">            2. Glob for the deterministic run_id in the cache_dir (requeue</span>
-<span class="sd">               with SLURM_JOB_ID / TORCHELASTIC_RUN_ID — no ckpt_path needed).</span>
+<span class="sd">            2. SLURM requeue lookup, fires only when ``SLURM_RESTART_COUNT ≥ 1``.</span>
+<span class="sd">               The lookup key is the SLURM job/array-task id; the value is</span>
+<span class="sd">               the run dir recorded by the original invocation in</span>
+<span class="sd">               ``cache_dir/.slurm_index/&lt;key&gt;``. Interactive ``srun --pty``</span>
+<span class="sd">               reruns never bump RESTART_COUNT so they don&#39;t even consult</span>
+<span class="sd">               the index — each invocation gets a fresh dir.</span>
+
+<span class="sd">        Raises ``RuntimeError`` if SLURM signals a requeue</span>
+<span class="sd">        (``SLURM_RESTART_COUNT ≥ 1``) but the index file is missing or</span>
+<span class="sd">        points at a directory that no longer exists. Silently falling back</span>
+<span class="sd">        to a fresh dir in this case would lose the prior training history</span>
+<span class="sd">        and produce surprising re-trains, so we surface it loudly instead.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory: restoration probe&quot;</span><span class="p">)</span>
+        <span class="n">slurm_key</span> <span class="o">=</span> <span class="n">_slurm_session_key</span><span class="p">()</span>
+        <span class="n">restart</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_RESTART_COUNT&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM_RESTART_COUNT = </span><span class="si">{</span><span class="n">restart</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM session key   = </span><span class="si">{</span><span class="n">slurm_key</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(no SLURM)&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ckpt_path           = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
         <span class="c1"># Strategy 1: sidecar next to ckpt_path</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
             <span class="n">meta_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">_RUN_META_FILENAME</span>
             <span class="k">if</span> <span class="n">meta_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Strategy 1: ckpt-sidecar found at </span><span class="si">{</span><span class="n">meta_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">meta_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
                     <span class="n">run_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;run_dir&quot;</span><span class="p">])</span>
                     <span class="k">if</span> <span class="n">run_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;  → reusing run_dir from ckpt sidecar: </span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
                         <span class="k">return</span> <span class="n">run_dir</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;  ! Sidecar pointed at </span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2"> but the directory &quot;</span>
+                        <span class="s2">&quot;is gone; falling through to next strategy.&quot;</span>
+                    <span class="p">)</span>
                 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! Could not read </span><span class="si">{</span><span class="n">meta_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;  ! Could not parse </span><span class="si">{</span><span class="n">meta_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">; &quot;</span>
+                        <span class="s2">&quot;falling through to next strategy.&quot;</span>
+                    <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;  Strategy 1: no run_meta.json next to ckpt_path; skipping.&quot;</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Strategy 1: no usable ckpt_path; skipping.&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Strategy 2: search by deterministic run_id (SLURM/torchrun requeue)</span>
-        <span class="n">run_id</span> <span class="o">=</span> <span class="n">_generate_run_id</span><span class="p">()</span>
-        <span class="n">matches</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cache_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;runs/*/*/</span><span class="si">{</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span>
-        <span class="k">if</span> <span class="n">matches</span><span class="p">:</span>
-            <span class="c1"># Take the most recent (last sorted by date/time path)</span>
-            <span class="k">return</span> <span class="n">matches</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># Strategy 2: SLURM requeue index lookup</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_slurm_requeue</span><span class="p">():</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;  Strategy 2: skipped — SLURM_RESTART_COUNT &lt; 1, this is a &quot;</span>
+                <span class="s2">&quot;fresh invocation (or non-SLURM).&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
 
-        <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">slurm_key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;  Strategy 2: SLURM_RESTART_COUNT ≥ 1 but SLURM_JOB_ID is &quot;</span>
+                <span class="s2">&quot;not set. Cannot resolve a requeue without a session key — &quot;</span>
+                <span class="s2">&quot;treating as fresh run.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">idx_file</span> <span class="o">=</span> <span class="n">cache_dir</span> <span class="o">/</span> <span class="s2">&quot;.slurm_index&quot;</span> <span class="o">/</span> <span class="n">slurm_key</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Strategy 2: checking SLURM index → </span><span class="si">{</span><span class="n">idx_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">idx_file</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;SLURM reports this is a requeue (SLURM_RESTART_COUNT=&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">restart</span><span class="si">}</span><span class="s2">) for job key &#39;</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">&#39;, but no index file &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;exists at </span><span class="si">{</span><span class="n">idx_file</span><span class="si">}</span><span class="s2">. The original run&#39;s index entry was &quot;</span>
+                <span class="s2">&quot;never written (or was deleted). Refusing to silently start &quot;</span>
+                <span class="s2">&quot;a fresh run — that would lose the prior training history. &quot;</span>
+                <span class="s2">&quot;If you intended a fresh run, manually clear &quot;</span>
+                <span class="s2">&quot;SLURM_RESTART_COUNT or remove the requeue checkpoint.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">recorded</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">idx_file</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;SLURM requeue (key=&#39;</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">&#39;): index file </span><span class="si">{</span><span class="n">idx_file</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;exists but could not be read: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">recorded</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;SLURM requeue (key=&#39;</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">&#39;): index points at &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">recorded</span><span class="si">}</span><span class="s2">, but that directory no longer exists. Manual &quot;</span>
+                <span class="s2">&quot;deletion or a stale index entry. Either restore the dir &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;or delete the index entry (</span><span class="si">{</span><span class="n">idx_file</span><span class="si">}</span><span class="s2">) to start fresh.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  → reusing run_dir from SLURM index (</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">recorded</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">recorded</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_inject_run_dir_into_trainer_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Set ``default_root_dir`` in the trainer config before instantiation.</span>
@@ -972,8 +1273,12 @@
             <span class="n">run_dir</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">default_root_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
             <span class="n">run_id</span> <span class="o">=</span> <span class="n">_generate_run_id</span><span class="p">()</span>
 
-        <span class="c1"># Drop any pre-existing CSVLogger — RegistryLogger *is* a</span>
-        <span class="c1"># CSVLogger and would otherwise race on metrics.csv.</span>
+        <span class="c1"># Drop only ``CSVLogger`` instances that aren&#39;t us — RegistryLogger</span>
+        <span class="c1"># *is* a CSVLogger and the two would otherwise race on the same</span>
+        <span class="c1"># ``metrics.csv``. Anything else is kept as-is: a user who passes</span>
+        <span class="c1"># ``TensorBoardLogger`` (or ``logger=True`` which auto-creates one)</span>
+        <span class="c1"># gets to keep TB writing to its own ``lightning_logs/`` dir;</span>
+        <span class="c1"># ``WandbLogger``/``TrackioLogger``/etc. are obviously kept.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">lgr</span>
             <span class="k">for</span> <span class="n">lgr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span>
@@ -984,7 +1289,12 @@
         <span class="p">]</span>
 
         <span class="n">registry_logger</span> <span class="o">=</span> <span class="n">RegistryLogger</span><span class="p">(</span><span class="n">run_dir</span><span class="o">=</span><span class="n">run_dir</span><span class="p">,</span> <span class="n">run_id</span><span class="o">=</span><span class="n">run_id</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">registry_logger</span><span class="p">)</span>
+        <span class="c1"># Insert at index 0 so ``trainer.logger`` (the singular alias for</span>
+        <span class="c1"># ``loggers[0]``) resolves to RegistryLogger. Callbacks gating on</span>
+        <span class="c1"># ``hasattr(trainer.logger, &quot;log_image&quot;)`` then route media through</span>
+        <span class="c1"># us, not whatever Lightning happens to put first (e.g. an</span>
+        <span class="c1"># auto-created ``TensorBoardLogger`` when ``logger`` was left unset).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">loggers</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">registry_logger</span><span class="p">)</span>
 
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RegistryLogger&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir: </span><span class="si">{</span><span class="n">registry_logger</span><span class="o">.</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -1041,7 +1351,7 @@
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Injected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">flat</span><span class="p">)</span><span class="si">}</span><span class="s2"> config keys into module.hparams&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Manager.init_and_sync_wandb">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.manager.Manager.init_and_sync_wandb">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.manager.Manager/#stable_pretraining.manager.Manager.init_and_sync_wandb">[docs]</a>
     <span class="nd">@rank_zero_only</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">init_and_sync_wandb</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Handles some utilities for WandB.&quot;&quot;&quot;</span>
@@ -1229,42 +1539,61 @@
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrainerFit&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ckpt_path: </span><span class="si">{</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  resume_weights_only: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">resume_weights_only</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">instantiated_module</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">fit_kwargs</span><span class="p">,</span>
-        <span class="p">)</span>
+        <span class="c1"># Wrap fit() so any callback/model error gets a full, flushed,</span>
+        <span class="c1"># multi-stream traceback in stdout BEFORE it climbs the</span>
+        <span class="c1"># Hydra/submitit chain (those layers can swallow tracebacks into</span>
+        <span class="c1"># result.pkl files that never reach SLURM .out logs). We re-raise</span>
+        <span class="c1"># so the process still exits with a nonzero status — the goal is</span>
+        <span class="c1"># visibility, not silent recovery.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">instantiated_module</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">fit_kwargs</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">BaseException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_sys</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_tb</span>
+
+            <span class="n">_msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">!!! TRAINER FIT FAILED — </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;    epoch=</span><span class="si">{</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;current_epoch&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;?&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">/&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;max_epochs&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;?&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;global_step=</span><span class="si">{</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;global_step&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;?&#39;</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="c1"># Print to BOTH streams + flush so log captures see it.</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">_msg</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">_tb</span><span class="o">.</span><span class="n">format_exc</span><span class="p">(),</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">_sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">_msg</span><span class="p">)</span>
+            <span class="n">_sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">_tb</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
+            <span class="n">_sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Trainer.fit raised — re-raising after loud log&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">raise</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_dump_wandb_data</span><span class="p">()</span>
 
-<div class="viewcode-block" id="Manager.validate">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.manager.Manager.validate">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrainerValidate&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">instantiated_module</span><span class="p">,</span> <span class="n">datamodule</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">instantiated_data</span>
         <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_dump_wandb_data</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dump_wandb_data</span><span class="p">()</span>
 
-
-<div class="viewcode-block" id="Manager.predict">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.manager.Manager.predict">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrainerPredict&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">instantiated_module</span><span class="p">,</span> <span class="n">datamodule</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">instantiated_data</span>
         <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_dump_wandb_data</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dump_wandb_data</span><span class="p">()</span>
 
-
-<div class="viewcode-block" id="Manager.test">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.manager.Manager.test">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrainerTest&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">test</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">instantiated_module</span><span class="p">,</span> <span class="n">datamodule</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">instantiated_data</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_dump_wandb_data</span><span class="p">()</span></div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dump_wandb_data</span><span class="p">()</span>
         <span class="c1"># wandb.finish()</span>
         <span class="c1"># logging.info(f&quot;closing wandb 🗑️&quot;)</span>
         <span class="c1"># cfg = wandb.run.config.as_dict()</span>
@@ -1310,8 +1639,6 @@
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">runs</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
 
-<div class="viewcode-block" id="Manager.save_checkpoint">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.manager.Manager.save_checkpoint">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_checkpoint</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">upload_wandb</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
     <span class="p">):</span>
@@ -1335,8 +1662,7 @@
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  checkpoint saved&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">upload_wandb</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_upload_checkpoint_for_requeue</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
-
+            <span class="bp">self</span><span class="o">.</span><span class="n">_upload_checkpoint_for_requeue</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 
     <span class="nd">@rank_zero_only</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_upload_checkpoint_for_requeue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ckpt_path</span><span class="p">):</span>

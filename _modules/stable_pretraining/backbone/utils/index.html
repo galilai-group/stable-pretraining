@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.utils &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable_pretraining.backbone.utils &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -147,6 +147,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -226,6 +231,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -359,8 +376,6 @@
     <span class="n">_TRANSFORMERS_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
 
 
-<div class="viewcode-block" id="register_lr_scale_hook">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.register_lr_scale_hook">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">register_lr_scale_hook</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">lr_scale</span><span class="p">,</span> <span class="n">weight_decay</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Registers a hook that scales gradients and applies weight decay during backward pass.</span>
 
@@ -386,12 +401,9 @@
     <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">module</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
         <span class="n">param</span><span class="o">.</span><span class="n">register_hook</span><span class="p">(</span><span class="n">make_hook</span><span class="p">(</span><span class="n">param</span><span class="p">))</span>
 
-    <span class="k">return</span> <span class="n">module</span></div>
+    <span class="k">return</span> <span class="n">module</span>
 
 
-
-<div class="viewcode-block" id="vit_hf">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.vit_hf">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">vit_hf</span><span class="p">(</span>
     <span class="n">size</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tiny&quot;</span><span class="p">,</span>
     <span class="n">patch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
@@ -491,12 +503,11 @@
     <span class="c1"># Must be set as instance attribute, not in config</span>
     <span class="n">model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">interpolate_pos_encoding</span> <span class="o">=</span> <span class="kc">True</span>
 
-    <span class="k">return</span> <span class="n">model</span></div>
-
+    <span class="k">return</span> <span class="n">model</span>
 
 
 <div class="viewcode-block" id="EvalOnly">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.EvalOnly">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.EvalOnly/#stable_pretraining.backbone.EvalOnly">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">EvalOnly</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrapper that forces a module to remain in evaluation mode.&quot;&quot;&quot;</span>
 
@@ -519,14 +530,14 @@
             <span class="k">raise</span>
 
 <div class="viewcode-block" id="EvalOnly.train">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.EvalOnly.train">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.EvalOnly/#stable_pretraining.backbone.EvalOnly.train">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">training</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">return</span> <span class="bp">self</span></div>
 
 
 <div class="viewcode-block" id="EvalOnly.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.EvalOnly.forward">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.EvalOnly/#stable_pretraining.backbone.EvalOnly.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">backbone</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;EvalOnly module is in training mode&quot;</span><span class="p">)</span>
@@ -535,8 +546,6 @@
 
 
 
-<div class="viewcode-block" id="FeaturesConcat">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.FeaturesConcat">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FeaturesConcat</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Aggregates and concatenates features from a dictionary input, then classifies.</span>
 
@@ -552,8 +561,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="n">names</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">agg</span> <span class="o">=</span> <span class="n">agg</span>
 
-<div class="viewcode-block" id="FeaturesConcat.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.FeaturesConcat.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">]):</span>
         <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">dict</span><span class="p">:</span>
             <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
@@ -564,11 +571,8 @@
         <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tensors</span><span class="p">:</span>
             <span class="n">reps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
         <span class="n">concat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">reps</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">concat</span></div>
+        <span class="k">return</span> <span class="n">concat</span>
 
-
-<div class="viewcode-block" id="FeaturesConcat.get_output_shape">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.FeaturesConcat.get_output_shape">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_output_shape</span><span class="p">(</span>
         <span class="n">agg</span><span class="p">:</span> <span class="nb">callable</span><span class="p">,</span> <span class="n">shapes</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]</span>
@@ -591,13 +595,9 @@
         <span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;meta&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">shape</span> <span class="ow">in</span> <span class="n">shapes</span><span class="p">]</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="n">FeaturesConcat</span><span class="p">(</span><span class="n">agg</span><span class="p">)</span>
         <span class="n">out</span> <span class="o">=</span> <span class="n">obj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">out</span><span class="o">.</span><span class="n">shape</span></div>
-</div>
+        <span class="k">return</span> <span class="n">out</span><span class="o">.</span><span class="n">shape</span>
 
 
-
-<div class="viewcode-block" id="EmbeddingOutput">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.EmbeddingOutput">[docs]</a>
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">EmbeddingOutput</span><span class="p">(</span><span class="n">ModelOutput</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;HuggingFace-style output container for model embeddings.</span>
@@ -608,12 +608,9 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">last_hidden_state</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">hidden_states</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+    <span class="n">hidden_states</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
 
-
-<div class="viewcode-block" id="HiddenStateExtractor">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.HiddenStateExtractor">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">HiddenStateExtractor</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrapper that captures intermediate embeddings from specified layers.</span>
 
@@ -659,8 +656,6 @@
             <span class="n">hook</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">register_forward_hook</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_create_hook</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_hooks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">hook</span><span class="p">)</span>
 
-<div class="viewcode-block" id="HiddenStateExtractor.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.HiddenStateExtractor.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EmbeddingOutput</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Run forward pass and return embeddings in HuggingFace style.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
@@ -668,8 +663,7 @@
         <span class="k">return</span> <span class="n">EmbeddingOutput</span><span class="p">(</span>
             <span class="n">last_hidden_state</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
             <span class="n">hidden_states</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">),</span>
-        <span class="p">)</span></div>
-
+        <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_create_hook</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a forward hook that caches the output under the given name.&quot;&quot;&quot;</span>
@@ -688,19 +682,15 @@
                 <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">module</span>
 
-<div class="viewcode-block" id="HiddenStateExtractor.remove_hooks">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.HiddenStateExtractor.remove_hooks">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">remove_hooks</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove all registered hooks to free resources.&quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">hook</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hooks</span><span class="p">:</span>
             <span class="n">hook</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_hooks</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
-</div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hooks</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
 
 <div class="viewcode-block" id="TeacherStudentWrapper">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.TeacherStudentWrapper">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/#stable_pretraining.backbone.TeacherStudentWrapper">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TeacherStudentWrapper</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Backbone wrapper that implements teacher-student distillation via EMA.</span>
 
@@ -713,7 +703,8 @@
 <span class="sd">    are literally the same object, saving memory but forward passes through the teacher</span>
 <span class="sd">    will not produce any gradients.</span>
 
-<span class="sd">    Usage example:</span>
+<span class="sd">    Usage example::</span>
+
 <span class="sd">        backbone = ResNet18()</span>
 <span class="sd">        wrapped_backbone = TeacherStudentWrapper(backbone)</span>
 <span class="sd">        module = ssl.Module(</span>
@@ -790,7 +781,7 @@
                 <span class="p">)</span>
 
 <div class="viewcode-block" id="TeacherStudentWrapper.update_teacher">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.TeacherStudentWrapper.update_teacher">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/#stable_pretraining.backbone.TeacherStudentWrapper.update_teacher">[docs]</a>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">update_teacher</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform one EMA update step on the teacher’s parameters.</span>
@@ -822,7 +813,7 @@
 
 
 <div class="viewcode-block" id="TeacherStudentWrapper.update_ema_coefficient">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.TeacherStudentWrapper.update_ema_coefficient">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/#stable_pretraining.backbone.TeacherStudentWrapper.update_ema_coefficient">[docs]</a>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">update_ema_coefficient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epoch</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">total_epochs</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the EMA coefficient following a cosine schedule.</span>
@@ -844,14 +835,14 @@
 
 
 <div class="viewcode-block" id="TeacherStudentWrapper.forward_student">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.TeacherStudentWrapper.forward_student">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/#stable_pretraining.backbone.TeacherStudentWrapper.forward_student">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward_student</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass through the student network. Gradients will flow normally.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TeacherStudentWrapper.forward_teacher">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.TeacherStudentWrapper.forward_teacher">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/#stable_pretraining.backbone.TeacherStudentWrapper.forward_teacher">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward_teacher</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass through the teacher network.</span>
 
@@ -864,7 +855,7 @@
 
 
 <div class="viewcode-block" id="TeacherStudentWrapper.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.TeacherStudentWrapper.forward">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/#stable_pretraining.backbone.TeacherStudentWrapper.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass through either the student or teacher network.</span>
 
@@ -877,7 +868,7 @@
 
 
 <div class="viewcode-block" id="from_torchvision">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.from_torchvision">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.from_torchvision/#stable_pretraining.backbone.from_torchvision">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_torchvision</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">low_resolution</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a backbone model.</span>
 
@@ -885,14 +876,16 @@
 <span class="sd">    output size num_classes. Otherwise, the last layer is replaced by an identity layer.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        model_name (str): Name of the backbone model. Supported models are:</span>
-<span class="sd">            - Any model from torchvision.models</span>
-<span class="sd">            - &quot;Resnet9&quot;</span>
-<span class="sd">            - &quot;ConvMixer&quot;</span>
+<span class="sd">        model_name (str): Name of the backbone model. Supported models:</span>
+
+<span class="sd">            * Any model from ``torchvision.models``</span>
+<span class="sd">            * ``&quot;Resnet9&quot;``</span>
+<span class="sd">            * ``&quot;ConvMixer&quot;``</span>
 <span class="sd">        low_resolution (bool, optional): Whether to adapt the resolution of the model (for CIFAR typically).</span>
 <span class="sd">            By default False.</span>
 <span class="sd">        **kwargs: Additional keyword arguments for the model. Special handling:</span>
-<span class="sd">            - in_channels (int): Number of input channels. If provided for ResNet models, the first</span>
+
+<span class="sd">            * ``in_channels`` (int): Number of input channels. If provided for ResNet models, the first</span>
 <span class="sd">              conv layer will be modified to accept this many channels. Default is 3.</span>
 
 <span class="sd">    Returns:</span>
@@ -960,8 +953,6 @@
 
 
 
-<div class="viewcode-block" id="from_huggingface">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.from_huggingface">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_huggingface</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">pretrained</span><span class="p">,</span> <span class="n">attn_implementation</span><span class="o">=</span><span class="s2">&quot;sdpa&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Loads a Hugging Face Transformers base model, optionally with pretrained weights, and returns the backbone model.</span>
 
@@ -1035,12 +1026,11 @@
             <span class="n">config</span><span class="p">,</span>
             <span class="n">attn_implementation</span><span class="o">=</span><span class="n">attn_implementation</span><span class="p">,</span>
         <span class="p">)</span>
-    <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">base_model</span></div>
-
+    <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">base_model</span>
 
 
 <div class="viewcode-block" id="from_timm">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.from_timm">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.from_timm/#stable_pretraining.backbone.from_timm">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_timm</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">low_resolution</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">timm</span>
 
@@ -1095,8 +1085,6 @@
         <span class="k">return</span> <span class="n">obj</span>
 
 
-<div class="viewcode-block" id="get_output_shape">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.get_output_shape">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_output_shape</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">*</span><span class="n">inputs</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Infers the output shapes of a PyTorch nn.Module by forwarding fake inputs on the &#39;meta&#39; device using FakeTensorMode.</span>
 
@@ -1186,12 +1174,11 @@
         <span class="n">output</span> <span class="o">=</span> <span class="n">functional_call</span><span class="p">(</span>
             <span class="n">model</span><span class="p">,</span> <span class="n">fake_params_and_buffers</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">fake_inputs</span><span class="p">),</span> <span class="n">fake_kwargs</span>
         <span class="p">)</span>
-    <span class="k">return</span> <span class="n">_map_shapes</span><span class="p">(</span><span class="n">output</span><span class="p">)</span></div>
-
+    <span class="k">return</span> <span class="n">_map_shapes</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="set_embedding_dim">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.set_embedding_dim">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.set_embedding_dim/#stable_pretraining.backbone.set_embedding_dim">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">set_embedding_dim</span><span class="p">(</span>
     <span class="n">module</span><span class="p">,</span>
     <span class="n">dim</span><span class="p">,</span>
@@ -1272,8 +1259,6 @@
 
 
 
-<div class="viewcode-block" id="get_children_modules">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.get_children_modules">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_children_modules</span><span class="p">(</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">parent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">L</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">partial_match</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
@@ -1317,12 +1302,9 @@
                     <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">truncated</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
                     <span class="k">continue</span>
-    <span class="k">return</span> <span class="n">result</span></div>
+    <span class="k">return</span> <span class="n">result</span>
 
 
-
-<div class="viewcode-block" id="EfficientMaskedTimmViT">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.EfficientMaskedTimmViT">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">EfficientMaskedTimmViT</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Optimized Vision Transformer wrapper that efficiently handles NaN patches.</span>
 
@@ -1680,8 +1662,6 @@
             <span class="c1"># No head - return raw features</span>
             <span class="k">return</span> <span class="n">x</span>
 
-<div class="viewcode-block" id="EfficientMaskedTimmViT.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.EfficientMaskedTimmViT.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Forward pass through the masked ViT.</span>
 
@@ -1807,19 +1787,15 @@
             <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
 
         <span class="c1"># Apply head and return</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_head</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_head</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="EfficientMaskedTimmViT.clear_cache">
-<a class="viewcode-back" href="../../../../stable_pretraining.backbone/#stable_pretraining.backbone.EfficientMaskedTimmViT.clear_cache">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">clear_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Clear the cached batch indices.</span>
 
 <span class="sd">        Useful if you want to free memory after processing different batch sizes.</span>
 <span class="sd">        The cache will be rebuilt as needed during forward passes.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_batch_indices_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">_batch_indices_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_keep_indices_vectorized</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">nan_mask</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">num_keep</span><span class="p">:</span> <span class="nb">int</span>
@@ -1957,8 +1933,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">pos_embed</span> <span class="o">=</span> <span class="n">patch_pos_embed</span>
 
-        <span class="k">return</span> <span class="n">pos_embed</span></div>
-
+        <span class="k">return</span> <span class="n">pos_embed</span>
 </pre></div>
 
                 </article>

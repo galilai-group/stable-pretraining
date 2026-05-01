@@ -1,4 +1,9 @@
-"""This script demonstrates how to retrieve data from wandb using the stable_pretraining library."""
+"""
+Reading WandB Runs
+==================
+
+Retrieve run data from wandb using the stable_pretraining library.
+"""
 
 import stable_pretraining as spt
 

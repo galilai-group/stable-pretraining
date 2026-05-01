@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Module &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>Module &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -148,6 +148,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="current nav bd-sidenav">
@@ -227,6 +232,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -402,70 +419,82 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="stable_pretraining.module.Module">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.module.</span></span><span class="sig-name descname"><span class="pre">Module</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">callable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hparams</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">LightningModule</span></code></p>
+<dd><p>Bases: <a class="reference external" href="https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.LightningModule.html#lightning.pytorch.core.LightningModule" title="(in PyTorch Lightning v2.6.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">LightningModule</span></code></a></p>
 <p>PyTorch Lightning module using manual optimization with multi-optimizer support.</p>
-<p>Core usage
-- Provide a custom <cite>forward(self, batch, stage)</cite> via the <cite>forward</cite> argument at init.
-- During training, <cite>forward</cite> must return a dict with <cite>state[“loss”]</cite> (a single joint loss).</p>
-<blockquote>
-<div><p>When multiple optimizers are configured, this joint loss is used for all optimizers.</p>
-</div></blockquote>
-<p>Optimizer configuration (<cite>self.optim</cite>)
-- Single optimizer:</p>
-<blockquote>
-<div><p>{“optimizer”: str|dict|partial|Class, “scheduler”: &lt;see below&gt;, “interval”: “step”|”epoch”, “frequency”: int}
-- Optimizer accepted forms:</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>string name (e.g., “AdamW”, “SGD”) from torch.optim</p></li>
-<li><p>dict: {“type”: “AdamW”, “lr”: 1e-3, …}</p></li>
-<li><p>functools.partial: partial(torch.optim.AdamW, lr=1e-3)</p></li>
-<li><p>optimizer class: torch.optim.AdamW</p></li>
+<p><strong>Core usage</strong></p>
+<ul class="simple">
+<li><p>Provide a custom <code class="docutils literal notranslate"><span class="pre">forward(self,</span> <span class="pre">batch,</span> <span class="pre">stage)</span></code> via the <code class="docutils literal notranslate"><span class="pre">forward</span></code>
+argument at init.</p></li>
+<li><p>During training, <code class="docutils literal notranslate"><span class="pre">forward</span></code> must return a dict with <code class="docutils literal notranslate"><span class="pre">state[&quot;loss&quot;]</span></code>
+(a single joint loss). When multiple optimizers are configured, this
+joint loss is used for all optimizers.</p></li>
 </ul>
-</div></blockquote>
-</div></blockquote>
+<p><strong>Optimizer configuration</strong> (<code class="docutils literal notranslate"><span class="pre">self.optim</span></code>)</p>
 <ul>
-<li><p>Multiple optimizers:
-{</p>
-<blockquote>
-<div><dl class="simple">
-<dt>name: {</dt><dd><p>“modules”: “regex”,                # assign params by module-name pattern (children inherit)
-“optimizer”: str|dict|partial|Class, # optimizer factory (same accepted forms as above)
-“scheduler”: str|dict|partial|Class, # flexible scheduler config (see below)
-“interval”: “step”|”epoch”,       # scheduler interval
-“frequency”: int,                   # optimizer step frequency
-“monitor”: str                      # (optional) for ReduceLROnPlateau; alternatively set inside scheduler dict</p>
-</dd>
-</dl>
-<p>}, …</p>
-</div></blockquote>
-<p>}</p>
+<li><p>Single optimizer:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">&quot;optimizer&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="o">|</span><span class="nb">dict</span><span class="o">|</span><span class="n">partial</span><span class="o">|</span><span class="n">Class</span><span class="p">,</span>
+ <span class="s2">&quot;scheduler&quot;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">see</span> <span class="n">below</span><span class="o">&gt;</span><span class="p">,</span>
+ <span class="s2">&quot;interval&quot;</span><span class="p">:</span> <span class="s2">&quot;step&quot;</span><span class="o">|</span><span class="s2">&quot;epoch&quot;</span><span class="p">,</span>
+ <span class="s2">&quot;frequency&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Optimizer accepted forms:</p>
+<ul class="simple">
+<li><p>string name (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;AdamW&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;SGD&quot;</span></code>) from <code class="docutils literal notranslate"><span class="pre">torch.optim</span></code></p></li>
+<li><p>dict: <code class="docutils literal notranslate"><span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;AdamW&quot;,</span> <span class="pre">&quot;lr&quot;:</span> <span class="pre">1e-3,</span> <span class="pre">...}</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">functools.partial</span></code>: <code class="docutils literal notranslate"><span class="pre">partial(torch.optim.AdamW,</span> <span class="pre">lr=1e-3)</span></code></p></li>
+<li><p>optimizer class: <code class="docutils literal notranslate"><span class="pre">torch.optim.AdamW</span></code></p></li>
+</ul>
+</li>
+<li><p>Multiple optimizers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="n">name</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">&quot;modules&quot;</span><span class="p">:</span> <span class="s2">&quot;regex&quot;</span><span class="p">,</span>                  <span class="c1"># assign params by module-name pattern (children inherit)</span>
+    <span class="s2">&quot;optimizer&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="o">|</span><span class="nb">dict</span><span class="o">|</span><span class="n">partial</span><span class="o">|</span><span class="n">Class</span><span class="p">,</span> <span class="c1"># optimizer factory (same accepted forms as above)</span>
+    <span class="s2">&quot;scheduler&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="o">|</span><span class="nb">dict</span><span class="o">|</span><span class="n">partial</span><span class="o">|</span><span class="n">Class</span><span class="p">,</span> <span class="c1"># flexible scheduler config (see below)</span>
+    <span class="s2">&quot;interval&quot;</span><span class="p">:</span> <span class="s2">&quot;step&quot;</span><span class="o">|</span><span class="s2">&quot;epoch&quot;</span><span class="p">,</span>          <span class="c1"># scheduler interval</span>
+    <span class="s2">&quot;frequency&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>                    <span class="c1"># optimizer step frequency</span>
+    <span class="s2">&quot;monitor&quot;</span><span class="p">:</span> <span class="nb">str</span>                       <span class="c1"># (optional) for ReduceLROnPlateau</span>
+  <span class="p">},</span> <span class="o">...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
 </li>
 </ul>
-<p>Parameter assignment (multi-optimizer)
-- Modules are matched by regex on their qualified name. Children inherit the parent’s assignment</p>
-<blockquote>
-<div><p>unless they match a more specific pattern. Only direct parameters of each module are collected
-to avoid duplication.</p>
-</div></blockquote>
-<p>Schedulers (flexible)
-- Accepted forms: string name (e.g., “CosineAnnealingLR”, “StepLR”), dict with {“type”: “…”, …},</p>
-<blockquote>
-<div><p>functools.partial, or a scheduler class. Smart defaults are applied when params are omitted for
-common schedulers (CosineAnnealingLR, OneCycleLR, StepLR, ExponentialLR, ReduceLROnPlateau,
-LinearLR, ConstantLR). For ReduceLROnPlateau, a <cite>monitor</cite> key is added (default: “val_loss”).
-You may specify <cite>monitor</cite> either alongside the optimizer config (top level) or inside the
-scheduler dict itself.</p>
-</div></blockquote>
+<p><strong>Parameter assignment</strong> (multi-optimizer)</p>
 <ul class="simple">
-<li><p>The resulting Lightning scheduler dict includes <cite>interval</cite> and <cite>frequency</cite> (or <cite>scheduler_frequency</cite>).</p></li>
+<li><p>Modules are matched by regex on their qualified name. Children
+inherit the parent’s assignment unless they match a more specific
+pattern. Only direct parameters of each module are collected to
+avoid duplication.</p></li>
 </ul>
-<p>Training loop behavior
-- Manual optimization (<cite>automatic_optimization = False</cite>).
-- Gradient accumulation: scales loss by 1/N where N = Trainer.accumulate_grad_batches and steps on the boundary.
-- Per-optimizer step frequency: each optimizer steps only when its frequency boundary is met (in addition to accumulation boundary).
-- Gradient clipping: uses Trainer’s <cite>gradient_clip_val</cite> and <cite>gradient_clip_algorithm</cite> before each step.
-- Returns the <cite>state</cite> dict from <cite>forward</cite> unchanged for logging/inspection.</p>
+<p><strong>Schedulers</strong> (flexible)</p>
+<ul class="simple">
+<li><p>Accepted forms: string name (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;CosineAnnealingLR&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;StepLR&quot;</span></code>), dict with <code class="docutils literal notranslate"><span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;...&quot;,</span> <span class="pre">...}</span></code>,
+<code class="docutils literal notranslate"><span class="pre">functools.partial</span></code>, or a scheduler class. Smart defaults are
+applied when params are omitted for common schedulers
+(<code class="docutils literal notranslate"><span class="pre">CosineAnnealingLR</span></code>, <code class="docutils literal notranslate"><span class="pre">OneCycleLR</span></code>, <code class="docutils literal notranslate"><span class="pre">StepLR</span></code>,
+<code class="docutils literal notranslate"><span class="pre">ExponentialLR</span></code>, <code class="docutils literal notranslate"><span class="pre">ReduceLROnPlateau</span></code>, <code class="docutils literal notranslate"><span class="pre">LinearLR</span></code>,
+<code class="docutils literal notranslate"><span class="pre">ConstantLR</span></code>). For <code class="docutils literal notranslate"><span class="pre">ReduceLROnPlateau</span></code>, a <code class="docutils literal notranslate"><span class="pre">monitor</span></code> key is
+added (default: <code class="docutils literal notranslate"><span class="pre">&quot;val_loss&quot;</span></code>). You may specify <code class="docutils literal notranslate"><span class="pre">monitor</span></code> either
+alongside the optimizer config (top level) or inside the scheduler
+dict itself.</p></li>
+<li><p>The resulting Lightning scheduler dict includes <code class="docutils literal notranslate"><span class="pre">interval</span></code> and
+<code class="docutils literal notranslate"><span class="pre">frequency</span></code> (or <code class="docutils literal notranslate"><span class="pre">scheduler_frequency</span></code>).</p></li>
+</ul>
+<p><strong>Training loop behavior</strong></p>
+<ul class="simple">
+<li><p>Manual optimization (<code class="docutils literal notranslate"><span class="pre">automatic_optimization</span> <span class="pre">=</span> <span class="pre">False</span></code>).</p></li>
+<li><p>Gradient accumulation: scales loss by <code class="docutils literal notranslate"><span class="pre">1/N</span></code> where
+<code class="docutils literal notranslate"><span class="pre">N</span> <span class="pre">=</span> <span class="pre">Trainer.accumulate_grad_batches</span></code> and steps on the boundary.</p></li>
+<li><p>Per-optimizer step frequency: each optimizer steps only when its
+frequency boundary is met (in addition to accumulation boundary).</p></li>
+<li><p>Gradient clipping: uses Trainer’s <code class="docutils literal notranslate"><span class="pre">gradient_clip_val</span></code> and
+<code class="docutils literal notranslate"><span class="pre">gradient_clip_algorithm</span></code> before each step.</p></li>
+<li><p>Returns the <code class="docutils literal notranslate"><span class="pre">state</span></code> dict from <code class="docutils literal notranslate"><span class="pre">forward</span></code> unchanged for
+logging/inspection.</p></li>
+</ul>
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.module.Module.configure_optimizers">
 <span class="sig-name descname"><span class="pre">configure_optimizers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module.configure_optimizers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module.configure_optimizers" title="Link to this definition">#</a></dt>
@@ -595,13 +624,13 @@ If False, yields only direct parameters. Defaults to True.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.module.Module.predict_step">
 <span class="sig-name descname"><span class="pre">predict_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_idx</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module.predict_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module.predict_step" title="Link to this definition">#</a></dt>
-<dd><p>Step function called during <code class="xref py py-meth docutils literal notranslate"><span class="pre">predict()</span></code>. By default, it calls
-<code class="xref py py-meth docutils literal notranslate"><span class="pre">forward()</span></code>. Override to add any processing logic.</p>
-<p>The <code class="xref py py-meth docutils literal notranslate"><span class="pre">predict_step()</span></code> is used
+<dd><p>Step function called during <a class="reference external" href="https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.trainer.trainer.Trainer.html#lightning.pytorch.trainer.trainer.Trainer.predict" title="(in PyTorch Lightning v2.6.1)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">predict()</span></code></a>. By default, it calls
+<a class="reference external" href="https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.LightningModule.html#lightning.pytorch.core.LightningModule.forward" title="(in PyTorch Lightning v2.6.1)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">forward()</span></code></a>. Override to add any processing logic.</p>
+<p>The <a class="reference external" href="https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.LightningModule.html#lightning.pytorch.core.LightningModule.predict_step" title="(in PyTorch Lightning v2.6.1)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">predict_step()</span></code></a> is used
 to scale inference on multi-devices.</p>
-<p>To prevent an OOM error, it is possible to use <code class="xref py py-class docutils literal notranslate"><span class="pre">BasePredictionWriter</span></code>
+<p>To prevent an OOM error, it is possible to use <a class="reference external" href="https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.BasePredictionWriter.html#lightning.pytorch.callbacks.BasePredictionWriter" title="(in PyTorch Lightning v2.6.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePredictionWriter</span></code></a>
 callback to write the predictions to disk or database after each batch or on epoch end.</p>
-<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">BasePredictionWriter</span></code> should be used while using a spawn
+<p>The <a class="reference external" href="https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.BasePredictionWriter.html#lightning.pytorch.callbacks.BasePredictionWriter" title="(in PyTorch Lightning v2.6.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePredictionWriter</span></code></a> should be used while using a spawn
 based accelerator. This happens for <code class="docutils literal notranslate"><span class="pre">Trainer(strategy=&quot;ddp_spawn&quot;)</span></code>
 or training on 8 TPU cores with <code class="docutils literal notranslate"><span class="pre">Trainer(accelerator=&quot;tpu&quot;,</span> <span class="pre">devices=8)</span></code> as predictions won’t be returned.</p>
 <dl class="field-list simple">
@@ -685,7 +714,7 @@ calculate anything of interest such as accuracy.</p>
     <span class="bp">self</span><span class="o">.</span><span class="n">log_dict</span><span class="p">({</span><span class="s1">&#39;test_loss&#39;</span><span class="p">:</span> <span class="n">loss</span><span class="p">,</span> <span class="s1">&#39;test_acc&#39;</span><span class="p">:</span> <span class="n">test_acc</span><span class="p">})</span>
 </pre></div>
 </div>
-<p>If you pass in multiple test dataloaders, <a class="reference internal" href="../../../stable_pretraining/#stable_pretraining.module.Module.test_step" title="stable_pretraining.module.Module.test_step"><code class="xref py py-meth docutils literal notranslate"><span class="pre">test_step()</span></code></a> will have an additional argument. We recommend
+<p>If you pass in multiple test dataloaders, <a class="reference internal" href="#stable_pretraining.module.Module.test_step" title="stable_pretraining.module.Module.test_step"><code class="xref py py-meth docutils literal notranslate"><span class="pre">test_step()</span></code></a> will have an additional argument. We recommend
 setting the default value of 0 so that you can quickly switch between single and multiple dataloaders.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># CASE 2: multiple test dataloaders</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
@@ -714,7 +743,7 @@ setting the default value of 0 so that you can quickly switch between single and
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>When the <a class="reference internal" href="../../../stable_pretraining/#stable_pretraining.module.Module.test_step" title="stable_pretraining.module.Module.test_step"><code class="xref py py-meth docutils literal notranslate"><span class="pre">test_step()</span></code></a> is called, the model has been put in eval mode and
+<p>When the <a class="reference internal" href="#stable_pretraining.module.Module.test_step" title="stable_pretraining.module.Module.test_step"><code class="xref py py-meth docutils literal notranslate"><span class="pre">test_step()</span></code></a> is called, the model has been put in eval mode and
 PyTorch gradients have been disabled. At the end of the test epoch, the model goes back
 to training mode and gradients are enabled.</p>
 </div>
@@ -784,7 +813,7 @@ calculate anything of interest like accuracy.</p>
     <span class="bp">self</span><span class="o">.</span><span class="n">log_dict</span><span class="p">({</span><span class="s1">&#39;val_loss&#39;</span><span class="p">:</span> <span class="n">loss</span><span class="p">,</span> <span class="s1">&#39;val_acc&#39;</span><span class="p">:</span> <span class="n">val_acc</span><span class="p">})</span>
 </pre></div>
 </div>
-<p>If you pass in multiple val dataloaders, <a class="reference internal" href="../../../stable_pretraining/#stable_pretraining.module.Module.validation_step" title="stable_pretraining.module.Module.validation_step"><code class="xref py py-meth docutils literal notranslate"><span class="pre">validation_step()</span></code></a> will have an additional argument. We recommend
+<p>If you pass in multiple val dataloaders, <a class="reference internal" href="#stable_pretraining.module.Module.validation_step" title="stable_pretraining.module.Module.validation_step"><code class="xref py py-meth docutils literal notranslate"><span class="pre">validation_step()</span></code></a> will have an additional argument. We recommend
 setting the default value of 0 so that you can quickly switch between single and multiple dataloaders.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># CASE 2: multiple validation dataloaders</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">validation_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
@@ -813,7 +842,7 @@ setting the default value of 0 so that you can quickly switch between single and
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>When the <a class="reference internal" href="../../../stable_pretraining/#stable_pretraining.module.Module.validation_step" title="stable_pretraining.module.Module.validation_step"><code class="xref py py-meth docutils literal notranslate"><span class="pre">validation_step()</span></code></a> is called, the model has been put in eval mode
+<p>When the <a class="reference internal" href="#stable_pretraining.module.Module.validation_step" title="stable_pretraining.module.Module.validation_step"><code class="xref py py-meth docutils literal notranslate"><span class="pre">validation_step()</span></code></a> is called, the model has been put in eval mode
 and PyTorch gradients have been disabled. At the end of validation,
 the model goes back to training mode and gradients are enabled.</p>
 </div>

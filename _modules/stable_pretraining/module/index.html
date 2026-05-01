@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -147,6 +147,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -226,6 +231,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -348,56 +365,81 @@
 
 
 <div class="viewcode-block" id="Module">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module">[docs]</a>
 <span class="nd">@catch_errors_class</span><span class="p">()</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Module</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">LightningModule</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;PyTorch Lightning module using manual optimization with multi-optimizer support.</span>
 
-<span class="sd">    Core usage</span>
-<span class="sd">    - Provide a custom `forward(self, batch, stage)` via the `forward` argument at init.</span>
-<span class="sd">    - During training, `forward` must return a dict with `state[&quot;loss&quot;]` (a single joint loss).</span>
-<span class="sd">      When multiple optimizers are configured, this joint loss is used for all optimizers.</span>
+<span class="sd">    **Core usage**</span>
 
-<span class="sd">    Optimizer configuration (`self.optim`)</span>
-<span class="sd">    - Single optimizer:</span>
-<span class="sd">      {&quot;optimizer&quot;: str|dict|partial|Class, &quot;scheduler&quot;: &lt;see below&gt;, &quot;interval&quot;: &quot;step&quot;|&quot;epoch&quot;, &quot;frequency&quot;: int}</span>
-<span class="sd">      - Optimizer accepted forms:</span>
-<span class="sd">        * string name (e.g., &quot;AdamW&quot;, &quot;SGD&quot;) from torch.optim</span>
-<span class="sd">        * dict: {&quot;type&quot;: &quot;AdamW&quot;, &quot;lr&quot;: 1e-3, ...}</span>
-<span class="sd">        * functools.partial: partial(torch.optim.AdamW, lr=1e-3)</span>
-<span class="sd">        * optimizer class: torch.optim.AdamW</span>
-<span class="sd">    - Multiple optimizers:</span>
-<span class="sd">      {</span>
-<span class="sd">        name: {</span>
-<span class="sd">          &quot;modules&quot;: &quot;regex&quot;,                # assign params by module-name pattern (children inherit)</span>
-<span class="sd">          &quot;optimizer&quot;: str|dict|partial|Class, # optimizer factory (same accepted forms as above)</span>
-<span class="sd">          &quot;scheduler&quot;: str|dict|partial|Class, # flexible scheduler config (see below)</span>
-<span class="sd">          &quot;interval&quot;: &quot;step&quot;|&quot;epoch&quot;,       # scheduler interval</span>
-<span class="sd">          &quot;frequency&quot;: int,                   # optimizer step frequency</span>
-<span class="sd">          &quot;monitor&quot;: str                      # (optional) for ReduceLROnPlateau; alternatively set inside scheduler dict</span>
-<span class="sd">        }, ...</span>
-<span class="sd">      }</span>
+<span class="sd">    - Provide a custom ``forward(self, batch, stage)`` via the ``forward``</span>
+<span class="sd">      argument at init.</span>
+<span class="sd">    - During training, ``forward`` must return a dict with ``state[&quot;loss&quot;]``</span>
+<span class="sd">      (a single joint loss). When multiple optimizers are configured, this</span>
+<span class="sd">      joint loss is used for all optimizers.</span>
 
-<span class="sd">    Parameter assignment (multi-optimizer)</span>
-<span class="sd">    - Modules are matched by regex on their qualified name. Children inherit the parent&#39;s assignment</span>
-<span class="sd">      unless they match a more specific pattern. Only direct parameters of each module are collected</span>
-<span class="sd">      to avoid duplication.</span>
+<span class="sd">    **Optimizer configuration** (``self.optim``)</span>
 
-<span class="sd">    Schedulers (flexible)</span>
-<span class="sd">    - Accepted forms: string name (e.g., &quot;CosineAnnealingLR&quot;, &quot;StepLR&quot;), dict with {&quot;type&quot;: &quot;...&quot;, ...},</span>
-<span class="sd">      functools.partial, or a scheduler class. Smart defaults are applied when params are omitted for</span>
-<span class="sd">      common schedulers (CosineAnnealingLR, OneCycleLR, StepLR, ExponentialLR, ReduceLROnPlateau,</span>
-<span class="sd">      LinearLR, ConstantLR). For ReduceLROnPlateau, a `monitor` key is added (default: &quot;val_loss&quot;).</span>
-<span class="sd">      You may specify `monitor` either alongside the optimizer config (top level) or inside the</span>
-<span class="sd">      scheduler dict itself.</span>
-<span class="sd">    - The resulting Lightning scheduler dict includes `interval` and `frequency` (or `scheduler_frequency`).</span>
+<span class="sd">    - Single optimizer::</span>
 
-<span class="sd">    Training loop behavior</span>
-<span class="sd">    - Manual optimization (`automatic_optimization = False`).</span>
-<span class="sd">    - Gradient accumulation: scales loss by 1/N where N = Trainer.accumulate_grad_batches and steps on the boundary.</span>
-<span class="sd">    - Per-optimizer step frequency: each optimizer steps only when its frequency boundary is met (in addition to accumulation boundary).</span>
-<span class="sd">    - Gradient clipping: uses Trainer&#39;s `gradient_clip_val` and `gradient_clip_algorithm` before each step.</span>
-<span class="sd">    - Returns the `state` dict from `forward` unchanged for logging/inspection.</span>
+<span class="sd">        {&quot;optimizer&quot;: str|dict|partial|Class,</span>
+<span class="sd">         &quot;scheduler&quot;: &lt;see below&gt;,</span>
+<span class="sd">         &quot;interval&quot;: &quot;step&quot;|&quot;epoch&quot;,</span>
+<span class="sd">         &quot;frequency&quot;: int}</span>
+
+<span class="sd">      Optimizer accepted forms:</span>
+
+<span class="sd">      * string name (e.g., ``&quot;AdamW&quot;``, ``&quot;SGD&quot;``) from ``torch.optim``</span>
+<span class="sd">      * dict: ``{&quot;type&quot;: &quot;AdamW&quot;, &quot;lr&quot;: 1e-3, ...}``</span>
+<span class="sd">      * ``functools.partial``: ``partial(torch.optim.AdamW, lr=1e-3)``</span>
+<span class="sd">      * optimizer class: ``torch.optim.AdamW``</span>
+
+<span class="sd">    - Multiple optimizers::</span>
+
+<span class="sd">        {</span>
+<span class="sd">          name: {</span>
+<span class="sd">            &quot;modules&quot;: &quot;regex&quot;,                  # assign params by module-name pattern (children inherit)</span>
+<span class="sd">            &quot;optimizer&quot;: str|dict|partial|Class, # optimizer factory (same accepted forms as above)</span>
+<span class="sd">            &quot;scheduler&quot;: str|dict|partial|Class, # flexible scheduler config (see below)</span>
+<span class="sd">            &quot;interval&quot;: &quot;step&quot;|&quot;epoch&quot;,          # scheduler interval</span>
+<span class="sd">            &quot;frequency&quot;: int,                    # optimizer step frequency</span>
+<span class="sd">            &quot;monitor&quot;: str                       # (optional) for ReduceLROnPlateau</span>
+<span class="sd">          }, ...</span>
+<span class="sd">        }</span>
+
+<span class="sd">    **Parameter assignment** (multi-optimizer)</span>
+
+<span class="sd">    - Modules are matched by regex on their qualified name. Children</span>
+<span class="sd">      inherit the parent&#39;s assignment unless they match a more specific</span>
+<span class="sd">      pattern. Only direct parameters of each module are collected to</span>
+<span class="sd">      avoid duplication.</span>
+
+<span class="sd">    **Schedulers** (flexible)</span>
+
+<span class="sd">    - Accepted forms: string name (e.g., ``&quot;CosineAnnealingLR&quot;``,</span>
+<span class="sd">      ``&quot;StepLR&quot;``), dict with ``{&quot;type&quot;: &quot;...&quot;, ...}``,</span>
+<span class="sd">      ``functools.partial``, or a scheduler class. Smart defaults are</span>
+<span class="sd">      applied when params are omitted for common schedulers</span>
+<span class="sd">      (``CosineAnnealingLR``, ``OneCycleLR``, ``StepLR``,</span>
+<span class="sd">      ``ExponentialLR``, ``ReduceLROnPlateau``, ``LinearLR``,</span>
+<span class="sd">      ``ConstantLR``). For ``ReduceLROnPlateau``, a ``monitor`` key is</span>
+<span class="sd">      added (default: ``&quot;val_loss&quot;``). You may specify ``monitor`` either</span>
+<span class="sd">      alongside the optimizer config (top level) or inside the scheduler</span>
+<span class="sd">      dict itself.</span>
+<span class="sd">    - The resulting Lightning scheduler dict includes ``interval`` and</span>
+<span class="sd">      ``frequency`` (or ``scheduler_frequency``).</span>
+
+<span class="sd">    **Training loop behavior**</span>
+
+<span class="sd">    - Manual optimization (``automatic_optimization = False``).</span>
+<span class="sd">    - Gradient accumulation: scales loss by ``1/N`` where</span>
+<span class="sd">      ``N = Trainer.accumulate_grad_batches`` and steps on the boundary.</span>
+<span class="sd">    - Per-optimizer step frequency: each optimizer steps only when its</span>
+<span class="sd">      frequency boundary is met (in addition to accumulation boundary).</span>
+<span class="sd">    - Gradient clipping: uses Trainer&#39;s ``gradient_clip_val`` and</span>
+<span class="sd">      ``gradient_clip_algorithm`` before each step.</span>
+<span class="sd">    - Returns the ``state`` dict from ``forward`` unchanged for</span>
+<span class="sd">      logging/inspection.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_warned_named_parameters</span> <span class="o">=</span> <span class="kc">False</span>
@@ -470,13 +512,13 @@
             <span class="p">)</span>
 
 <div class="viewcode-block" id="Module.forward">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.forward">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;The forward() method must be implemented.&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Module.named_parameters">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.named_parameters">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.named_parameters">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">named_parameters</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">with_callbacks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">recurse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="p">):</span>
@@ -509,7 +551,7 @@
 
 
 <div class="viewcode-block" id="Module.parameters">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.parameters">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.parameters">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">with_callbacks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">recurse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Override to route through the filtered ``named_parameters`` implementation.</span>
 
@@ -525,8 +567,6 @@
             <span class="k">yield</span> <span class="n">param</span></div>
 
 
-<div class="viewcode-block" id="Module.rescale_loss_for_grad_acc">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.rescale_loss_for_grad_acc">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">rescale_loss_for_grad_acc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loss</span><span class="p">):</span>
         <span class="n">accum</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
             <span class="nb">int</span><span class="p">(</span>
@@ -538,17 +578,13 @@
             <span class="p">),</span>
             <span class="mi">1</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">loss</span> <span class="o">/</span> <span class="n">accum</span></div>
+        <span class="k">return</span> <span class="n">loss</span> <span class="o">/</span> <span class="n">accum</span>
 
-
-<div class="viewcode-block" id="Module.after_manual_backward">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.after_manual_backward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">after_manual_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">pass</span></div>
-
+        <span class="k">pass</span>
 
 <div class="viewcode-block" id="Module.training_step">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.training_step">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.training_step">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Manual optimization training step with support for multiple optimizers.</span>
 
@@ -639,7 +675,7 @@
 
 
 <div class="viewcode-block" id="Module.on_train_start">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.on_train_start">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.on_train_start">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">on_train_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;Optimizers&quot;</span><span class="p">)</span>
         <span class="n">optimizers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizers</span><span class="p">()</span>
@@ -692,21 +728,21 @@
 
 
 <div class="viewcode-block" id="Module.validation_step">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.validation_step">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.validation_step">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">validation_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">):</span>
         <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;batch_idx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch_idx</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;validate&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Module.test_step">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.test_step">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.test_step">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">):</span>
         <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;batch_idx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch_idx</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Module.predict_step">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.predict_step">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.predict_step">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">predict_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">):</span>
         <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;batch_idx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch_idx</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;predict&quot;</span><span class="p">)</span></div>
@@ -863,7 +899,7 @@
         <span class="k">return</span> <span class="n">params_by_name</span><span class="p">,</span> <span class="n">named_params_by_name</span><span class="p">,</span> <span class="n">modules_by_name</span>
 
 <div class="viewcode-block" id="Module.configure_optimizers">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.module.Module.configure_optimizers">[docs]</a>
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.configure_optimizers">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">configure_optimizers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Configure optimizers and schedulers for manual optimization.</span>
 

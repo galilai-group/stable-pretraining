@@ -1,5 +1,5 @@
 stable_pretraining.optim
-================
+========================
 .. module:: stable_pretraining.optim
 .. currentmodule:: stable_pretraining.optim
 

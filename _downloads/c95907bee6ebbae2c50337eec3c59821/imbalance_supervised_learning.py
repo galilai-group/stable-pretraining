@@ -1,4 +1,10 @@
-"""This example demonstrates how to use stable-SSL to train a supervised model on CIFAR10 with class imbalance."""
+"""
+Imbalanced Supervised Learning
+==============================
+
+This example demonstrates how to use stable-SSL to train a supervised model
+on CIFAR10 with class imbalance.
+"""
 
 import hydra
 import numpy as np

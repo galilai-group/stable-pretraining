@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.web.scan &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable_pretraining.web.scan &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -147,6 +147,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -226,6 +231,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -342,8 +359,11 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">queue</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">FIRST_COMPLETED</span><span class="p">,</span> <span class="n">ThreadPoolExecutor</span><span class="p">,</span> <span class="n">wait</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
@@ -362,7 +382,7 @@
 
 
 <div class="viewcode-block" id="RunScanner">
-<a class="viewcode-back" href="../../../../stable_pretraining.web/#stable_pretraining.web.scan.RunScanner">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/#stable_pretraining.web.scan.RunScanner">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RunScanner</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Polls a directory tree for sidecar+metrics changes and fans out events.&quot;&quot;&quot;</span>
 
@@ -374,44 +394,96 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_subs</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_thread</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># Scan progress (used to render a loading bar in the UI while the</span>
+        <span class="c1"># initial NFS walk is in progress; thousands of sidecars over NFS can</span>
+        <span class="c1"># take tens of seconds).</span>
+        <span class="c1"># phase: &quot;starting&quot; | &quot;discovering&quot; | &quot;loading&quot; | &quot;idle&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_progress</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;phase&quot;</span><span class="p">:</span> <span class="s2">&quot;starting&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;done&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;initial_done&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="c1"># Per-run cache of metrics, in two forms:</span>
+        <span class="c1">#   - parsed_dict: structured (used by Python callers)</span>
+        <span class="c1">#   - json_bytes: pre-serialised, NaN-sanitised JSON (sent verbatim</span>
+        <span class="c1">#                 by the HTTP layer to skip re-serialisation cost)</span>
+        <span class="c1"># Invalidated when the metrics.csv mtime or size changes.</span>
+        <span class="c1"># run_id -&gt; (mtime, size, parsed_dict, json_bytes_or_None)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_metrics_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># Per-run map of stream_id → resolved Path for the .out / .err / .log</span>
+        <span class="c1"># files discovered by ``logs_index``. Populated lazily and reused by</span>
+        <span class="c1"># ``log_content`` so reads don&#39;t have to walk the filesystem again.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_paths</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># Incremental-walk cache: directory path → (mtime, [child_subdirs],</span>
+        <span class="c1"># [child_sidecars]). On steady-state polls we ``stat`` each known</span>
+        <span class="c1"># directory; if its mtime is unchanged we reuse the cached child</span>
+        <span class="c1"># listings without a (NFS-expensive) ``readdir``. Only directories</span>
+        <span class="c1"># whose mtime has actually changed are re-walked.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_walk_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="c1"># ---- lifecycle ----</span>
 
 <div class="viewcode-block" id="RunScanner.start">
-<a class="viewcode-back" href="../../../../stable_pretraining.web/#stable_pretraining.web.scan.RunScanner.start">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/#stable_pretraining.web.scan.RunScanner.start">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_scan</span><span class="p">()</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start the background scanner thread.</span>
+
+<span class="sd">        Returns immediately. The first scan runs in the background so that</span>
+<span class="sd">        callers (e.g. the HTTP server) become responsive before a potentially</span>
+<span class="sd">        slow NFS walk over thousands of sidecars completes. Clients learn</span>
+<span class="sd">        about discovered runs via the SSE /api/stream channel.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
-            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;spt-web-scanner&quot;</span>
+            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_initial_then_loop</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;spt-web-scanner&quot;</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="RunScanner.stop">
-<a class="viewcode-back" href="../../../../stable_pretraining.web/#stable_pretraining.web.scan.RunScanner.stop">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initial_then_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the first scan, then enter the steady-state poll loop.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">changed</span><span class="p">,</span> <span class="n">removed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scan</span><span class="p">(</span><span class="n">initial</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">changed</span> <span class="ow">or</span> <span class="n">removed</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_publish</span><span class="p">(</span><span class="s2">&quot;update&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;changed&quot;</span><span class="p">:</span> <span class="n">changed</span><span class="p">,</span> <span class="s2">&quot;removed&quot;</span><span class="p">:</span> <span class="n">removed</span><span class="p">})</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_progress</span><span class="p">[</span><span class="s2">&quot;phase&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;idle&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_progress</span><span class="p">[</span><span class="s2">&quot;initial_done&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_publish</span><span class="p">(</span><span class="s2">&quot;progress&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress_json</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="p">()</span>
+
+    <span class="c1"># ---- progress --------------------------------------------------------</span>
+
+<div class="viewcode-block" id="RunScanner.progress_json">
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/#stable_pretraining.web.scan.RunScanner.progress_json">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">progress_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Snapshot of the current scan progress (used by the UI loading bar).&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_progress</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_progress</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thread</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span></div>
-
+            <span class="bp">self</span><span class="o">.</span><span class="n">_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
 
     <span class="c1"># ---- pub/sub ----</span>
 
-<div class="viewcode-block" id="RunScanner.subscribe">
-<a class="viewcode-back" href="../../../../stable_pretraining.web/#stable_pretraining.web.scan.RunScanner.subscribe">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">:</span>
         <span class="n">q</span><span class="p">:</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_subs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">q</span></div>
+        <span class="k">return</span> <span class="n">q</span>
 
-
-<div class="viewcode-block" id="RunScanner.unsubscribe">
-<a class="viewcode-back" href="../../../../stable_pretraining.web/#stable_pretraining.web.scan.RunScanner.unsubscribe">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">unsubscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_subs</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">q</span><span class="p">)</span></div>
-
+            <span class="bp">self</span><span class="o">.</span><span class="n">_subs</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
@@ -424,6 +496,89 @@
 
     <span class="c1"># ---- scanning ----</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_list_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (subdirs, sidecar_paths) for ``d``, mtime-cached.</span>
+
+<span class="sd">        On NFS each ``readdir`` is a network round-trip; ``stat`` on the</span>
+<span class="sd">        directory itself is much cheaper. By caching the prior listing</span>
+<span class="sd">        keyed on mtime we skip the readdir for every directory that hasn&#39;t</span>
+<span class="sd">        seen a child added/removed since the previous walk — which on a</span>
+<span class="sd">        big run tree is the vast majority of them.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">mtime</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="n">cached</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_walk_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">cached</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">mtime</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cached</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">cached</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">subdirs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">sidecars</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">os</span><span class="o">.</span><span class="n">scandir</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">as</span> <span class="n">it</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">is_dir</span><span class="p">(</span><span class="n">follow_symlinks</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+                            <span class="n">subdirs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+                        <span class="k">elif</span> <span class="n">entry</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;sidecar.json&quot;</span><span class="p">:</span>
+                            <span class="n">sidecars</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+                    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                        <span class="k">continue</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_walk_cache</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">mtime</span><span class="p">,</span> <span class="n">subdirs</span><span class="p">,</span> <span class="n">sidecars</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">subdirs</span><span class="p">,</span> <span class="n">sidecars</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_parallel_walk</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">report_progress</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">max_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Find every ``sidecar.json`` under ``root`` with a parallel BFS.</span>
+
+<span class="sd">        On NFS each ``readdir`` is a network round-trip, so a single-threaded</span>
+<span class="sd">        walk is round-trip-bound. By running many ``readdir`` calls</span>
+<span class="sd">        concurrently through a thread pool we overlap the latency and</span>
+<span class="sd">        approach link-bandwidth limits.</span>
+
+<span class="sd">        On a 2 200-run tree this drops discovery from ~3.7 s to &lt;1 s.</span>
+
+<span class="sd">        ``report_progress=True`` publishes a ``progress`` SSE event at most</span>
+<span class="sd">        ~5 Hz so the UI loading bar can show a live counter.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">visited</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">root</span><span class="p">}</span>
+        <span class="n">last_pub</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span>
+            <span class="n">max_workers</span><span class="o">=</span><span class="n">max_workers</span><span class="p">,</span> <span class="n">thread_name_prefix</span><span class="o">=</span><span class="s2">&quot;spt-walk&quot;</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">exe</span><span class="p">:</span>
+            <span class="n">in_flight</span> <span class="o">=</span> <span class="p">{</span><span class="n">exe</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_list_dir</span><span class="p">,</span> <span class="n">root</span><span class="p">)}</span>
+            <span class="k">while</span> <span class="n">in_flight</span><span class="p">:</span>
+                <span class="n">done</span><span class="p">,</span> <span class="n">in_flight</span> <span class="o">=</span> <span class="n">wait</span><span class="p">(</span><span class="n">in_flight</span><span class="p">,</span> <span class="n">return_when</span><span class="o">=</span><span class="n">FIRST_COMPLETED</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">fut</span> <span class="ow">in</span> <span class="n">done</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">subdirs</span><span class="p">,</span> <span class="n">sidecars</span> <span class="o">=</span> <span class="n">fut</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+                    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="n">results</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">sidecars</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">sd</span> <span class="ow">in</span> <span class="n">subdirs</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">sd</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
+                            <span class="n">visited</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">sd</span><span class="p">)</span>
+                            <span class="n">in_flight</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">exe</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_list_dir</span><span class="p">,</span> <span class="n">sd</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">report_progress</span><span class="p">:</span>
+                    <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">now</span> <span class="o">-</span> <span class="n">last_pub</span> <span class="o">&gt;=</span> <span class="mf">0.2</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_set_progress</span><span class="p">(</span>
+                            <span class="n">phase</span><span class="o">=</span><span class="s2">&quot;discovering&quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">),</span> <span class="n">done</span><span class="o">=</span><span class="mi">0</span>
+                        <span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_publish</span><span class="p">(</span><span class="s2">&quot;progress&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress_json</span><span class="p">())</span>
+                        <span class="n">last_pub</span> <span class="o">=</span> <span class="n">now</span>
+        <span class="c1"># Prune the walk cache: drop entries for dirs that no longer exist</span>
+        <span class="c1"># under ``root``. Keeps the cache footprint bounded as runs come and</span>
+        <span class="c1"># go (archived / moved / deleted).</span>
+        <span class="k">for</span> <span class="n">cached_dir</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_walk_cache</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">cached_dir</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_walk_cache</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">cached_dir</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">results</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">poll_interval</span><span class="p">):</span>
             <span class="k">try</span><span class="p">:</span>
@@ -434,18 +589,39 @@
                 <span class="c1"># Scan errors are recoverable; the next tick will retry.</span>
                 <span class="k">pass</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initial</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Walk for sidecar.json files and refresh tracked runs.</span>
+
+<span class="sd">        On NFS-mounted run trees the bottleneck is per-file ``stat`` /</span>
+<span class="sd">        ``read`` syscalls (each is a network round-trip), not CPU. The</span>
+<span class="sd">        per-sidecar work is therefore dispatched to a small thread pool;</span>
+<span class="sd">        this empirically takes a 2 000-run cold scan from ~16 s to ~3 s.</span>
+
+<span class="sd">        ``initial=True`` enables progress reporting via the ``progress`` SSE</span>
+<span class="sd">        event so the UI can render a loading bar during a slow first walk.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">initial</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_progress</span><span class="p">(</span><span class="n">phase</span><span class="o">=</span><span class="s2">&quot;discovering&quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">done</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_publish</span><span class="p">(</span><span class="s2">&quot;progress&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress_json</span><span class="p">())</span>
+            <span class="n">sidecar_paths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parallel_walk</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">report_progress</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_progress</span><span class="p">(</span><span class="n">phase</span><span class="o">=</span><span class="s2">&quot;loading&quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">sidecar_paths</span><span class="p">),</span> <span class="n">done</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_publish</span><span class="p">(</span><span class="s2">&quot;progress&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress_json</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sidecar_paths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parallel_walk</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">report_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="n">seen</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="n">changed</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
-        <span class="k">for</span> <span class="n">sidecar_path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">&quot;sidecar.json&quot;</span><span class="p">):</span>
+        <span class="c1"># Thread fan-out for the per-file work. cap at 16 to avoid drowning</span>
+        <span class="c1"># the NFS server with concurrent metadata requests.</span>
+        <span class="n">max_workers</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="ow">or</span> <span class="mi">4</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="p">))</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_process_one</span><span class="p">(</span><span class="n">sidecar_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">st</span> <span class="o">=</span> <span class="n">sidecar_path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
             <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-                <span class="k">continue</span>
+                <span class="k">return</span> <span class="kc">None</span>
             <span class="n">run_dir</span> <span class="o">=</span> <span class="n">sidecar_path</span><span class="o">.</span><span class="n">parent</span>
             <span class="n">run_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_id_for</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span>
-            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
 
             <span class="n">metrics_path</span> <span class="o">=</span> <span class="n">run_dir</span> <span class="o">/</span> <span class="s2">&quot;metrics.csv&quot;</span>
             <span class="k">try</span><span class="p">:</span>
@@ -464,28 +640,80 @@
             <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
                 <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
 
-            <span class="k">if</span> <span class="p">(</span>
+            <span class="n">need_update</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">existing</span> <span class="ow">is</span> <span class="kc">None</span>
                 <span class="ow">or</span> <span class="n">existing</span><span class="o">.</span><span class="n">sidecar_mtime</span> <span class="o">!=</span> <span class="n">st</span><span class="o">.</span><span class="n">st_mtime</span>
                 <span class="ow">or</span> <span class="n">existing</span><span class="o">.</span><span class="n">metrics_mtime</span> <span class="o">!=</span> <span class="n">m_mtime</span>
                 <span class="ow">or</span> <span class="n">existing</span><span class="o">.</span><span class="n">metrics_size</span> <span class="o">!=</span> <span class="n">m_size</span>
                 <span class="ow">or</span> <span class="n">existing</span><span class="o">.</span><span class="n">media_mtime</span> <span class="o">!=</span> <span class="n">med_mtime</span>
                 <span class="ow">or</span> <span class="n">existing</span><span class="o">.</span><span class="n">media_size</span> <span class="o">!=</span> <span class="n">med_size</span>
-            <span class="p">):</span>
+            <span class="p">)</span>
+            <span class="n">sidecar_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">need_update</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">sidecar</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">sidecar_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+                    <span class="n">sidecar_data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">sidecar_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
                 <span class="k">except</span> <span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">):</span>
-                    <span class="k">continue</span>
+                    <span class="k">return</span> <span class="n">run_id</span>  <span class="c1"># mark as seen so it isn&#39;t pruned, but no update</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="n">run_id</span><span class="p">,</span>
+                <span class="n">run_dir</span><span class="p">,</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">,</span>
+                <span class="n">m_mtime</span><span class="p">,</span>
+                <span class="n">m_size</span><span class="p">,</span>
+                <span class="n">med_mtime</span><span class="p">,</span>
+                <span class="n">med_size</span><span class="p">,</span>
+                <span class="n">sidecar_data</span><span class="p">,</span>
+                <span class="n">need_update</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Stream results back as workers finish so the UI sees progress.</span>
+        <span class="c1"># ``executor.map`` returns in submit order, which is fine here — each</span>
+        <span class="c1"># NFS round-trip is roughly the same cost so we don&#39;t lose much by</span>
+        <span class="c1"># not using ``as_completed``, and ordered results play well with the</span>
+        <span class="c1"># rest of this function.</span>
+        <span class="n">results</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">initial</span> <span class="ow">and</span> <span class="n">sidecar_paths</span><span class="p">:</span>
+            <span class="c1"># Tunable: report every ~2% or 50 files, whichever is bigger.</span>
+            <span class="n">tick</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sidecar_paths</span><span class="p">)</span> <span class="o">//</span> <span class="mi">50</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="n">max_workers</span><span class="p">)</span> <span class="k">as</span> <span class="n">exe</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">exe</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_process_one</span><span class="p">,</span> <span class="n">sidecar_paths</span><span class="p">),</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                    <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">i</span> <span class="o">%</span> <span class="n">tick</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">sidecar_paths</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_set_progress</span><span class="p">(</span><span class="n">done</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_publish</span><span class="p">(</span><span class="s2">&quot;progress&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress_json</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="n">max_workers</span><span class="p">)</span> <span class="k">as</span> <span class="n">exe</span><span class="p">:</span>
+                <span class="n">results</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">exe</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_process_one</span><span class="p">,</span> <span class="n">sidecar_paths</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">r</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>  <span class="c1"># seen-but-unparseable sidecar</span>
+                <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="p">(</span>
+                <span class="n">run_id</span><span class="p">,</span>
+                <span class="n">run_dir</span><span class="p">,</span>
+                <span class="n">s_mtime</span><span class="p">,</span>
+                <span class="n">m_mtime</span><span class="p">,</span>
+                <span class="n">m_size</span><span class="p">,</span>
+                <span class="n">med_mtime</span><span class="p">,</span>
+                <span class="n">med_size</span><span class="p">,</span>
+                <span class="n">sidecar_data</span><span class="p">,</span>
+                <span class="n">need_update</span><span class="p">,</span>
+            <span class="p">)</span> <span class="o">=</span> <span class="n">r</span>
+            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">need_update</span> <span class="ow">and</span> <span class="n">sidecar_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">run_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">_Run</span><span class="p">(</span>
                         <span class="n">run_id</span><span class="o">=</span><span class="n">run_id</span><span class="p">,</span>
                         <span class="n">run_dir</span><span class="o">=</span><span class="n">run_dir</span><span class="p">,</span>
-                        <span class="n">sidecar_mtime</span><span class="o">=</span><span class="n">st</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">,</span>
+                        <span class="n">sidecar_mtime</span><span class="o">=</span><span class="n">s_mtime</span><span class="p">,</span>
                         <span class="n">metrics_mtime</span><span class="o">=</span><span class="n">m_mtime</span><span class="p">,</span>
                         <span class="n">metrics_size</span><span class="o">=</span><span class="n">m_size</span><span class="p">,</span>
                         <span class="n">media_mtime</span><span class="o">=</span><span class="n">med_mtime</span><span class="p">,</span>
                         <span class="n">media_size</span><span class="o">=</span><span class="n">med_size</span><span class="p">,</span>
-                        <span class="n">sidecar</span><span class="o">=</span><span class="n">sidecar</span><span class="p">,</span>
+                        <span class="n">sidecar</span><span class="o">=</span><span class="n">sidecar_data</span><span class="p">,</span>
                     <span class="p">)</span>
                 <span class="n">changed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
 
@@ -493,6 +721,7 @@
             <span class="n">removed</span> <span class="o">=</span> <span class="p">[</span><span class="n">rid</span> <span class="k">for</span> <span class="n">rid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span> <span class="k">if</span> <span class="n">rid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">]</span>
             <span class="k">for</span> <span class="n">rid</span> <span class="ow">in</span> <span class="n">removed</span><span class="p">:</span>
                 <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">rid</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_metrics_cache</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">rid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">changed</span><span class="p">,</span> <span class="n">removed</span>
 
@@ -506,13 +735,10 @@
 
     <span class="c1"># ---- queries ----</span>
 
-<div class="viewcode-block" id="RunScanner.runs_json">
-<a class="viewcode-back" href="../../../../stable_pretraining.web/#stable_pretraining.web.scan.RunScanner.runs_json">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">runs_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
             <span class="n">runs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
-        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_serialize</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">runs</span><span class="p">]</span></div>
-
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_serialize</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">runs</span><span class="p">]</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_serialize</span><span class="p">(</span><span class="n">run</span><span class="p">:</span> <span class="n">_Run</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
@@ -531,8 +757,6 @@
             <span class="s2">&quot;has_media&quot;</span><span class="p">:</span> <span class="n">run</span><span class="o">.</span><span class="n">media_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
         <span class="p">}</span>
 
-<div class="viewcode-block" id="RunScanner.metrics_json">
-<a class="viewcode-back" href="../../../../stable_pretraining.web/#stable_pretraining.web.scan.RunScanner.metrics_json">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">metrics_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
             <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
@@ -541,6 +765,19 @@
         <span class="n">mpath</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">/</span> <span class="s2">&quot;metrics.csv&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">mpath</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
             <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="p">{}}</span>
+
+        <span class="c1"># Cache key = (mtime, size). If the file hasn&#39;t changed we serve the</span>
+        <span class="c1"># parsed result directly, which is orders of magnitude faster than</span>
+        <span class="c1"># re-reading and re-parsing a multi-MiB CSV from NFS.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">mpath</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+            <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">st_size</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">cache_key</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cached</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metrics_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">cached</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cached</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="n">cache_key</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">cached</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>  <span class="c1"># parsed dict (HTTP layer prefers metrics_json_bytes)</span>
 
         <span class="k">with</span> <span class="n">mpath</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
@@ -580,12 +817,237 @@
                     <span class="n">m</span><span class="p">[</span><span class="s2">&quot;epoch&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">epoch</span><span class="p">)</span>
                     <span class="n">m</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
 
-        <span class="n">out</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]}</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">out</span><span class="p">}</span></div>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]}}</span>
+        <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_metrics_cache</span><span class="p">[</span><span class="n">run_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">cache_key</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">cache_key</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">result</span><span class="p">,</span>
+                <span class="kc">None</span><span class="p">,</span>  <span class="c1"># JSON bytes filled lazily by metrics_json_bytes</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+<div class="viewcode-block" id="RunScanner.metrics_stream">
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/#stable_pretraining.web.scan.RunScanner.metrics_stream">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metrics_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield metrics for ``run_id`` in chunks as the CSV is parsed.</span>
+
+<span class="sd">        Each yielded value is a ``dict`` with shape::</span>
+
+<span class="sd">            {&quot;chunk&quot;: int, &quot;metrics&quot;: {&lt;name&gt;: {&quot;step&quot;:[...], &quot;epoch&quot;:[...], &quot;y&quot;:[...]}}}</span>
+
+<span class="sd">        and the final yielded value is ``{&quot;done&quot;: true}``. If the metrics are</span>
+<span class="sd">        already cached we emit them as a single chunk followed by ``done`` —</span>
+<span class="sd">        callers don&#39;t need a separate fast-path. If the run is unknown we</span>
+<span class="sd">        yield ``None`` (HTTP layer turns this into a 404).</span>
+
+<span class="sd">        While streaming we accumulate the parsed structure in memory and</span>
+<span class="sd">        publish it to ``self._metrics_cache`` on completion, so successive</span>
+<span class="sd">        reads of the same run hit the warm cache.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">run</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="kc">None</span>
+            <span class="k">return</span>
+        <span class="n">mpath</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">/</span> <span class="s2">&quot;metrics.csv&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mpath</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;chunk&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="p">{}}</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;done&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Warm-cache fast path — emit the full payload as one chunk.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">mpath</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+            <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">st_size</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">cache_key</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cached</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metrics_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">cached</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cached</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="n">cache_key</span><span class="p">:</span>
+                <span class="c1"># Slice the cached payload into smaller chunks so the client</span>
+                <span class="c1"># still gets a progressive paint even on a warm cache hit.</span>
+                <span class="c1"># The server is fast here — slicing a few thousand floats is</span>
+                <span class="c1"># cheap — and the visual feel (&quot;filling in&quot;) is what the</span>
+                <span class="c1"># user notices vs one big drop.</span>
+                <span class="n">CHUNK_POINTS</span> <span class="o">=</span> <span class="mi">5000</span>
+                <span class="n">full_metrics</span> <span class="o">=</span> <span class="n">cached</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="s2">&quot;metrics&quot;</span><span class="p">]</span>
+                <span class="c1"># Build per-metric slices in lockstep so each chunk carries</span>
+                <span class="c1"># roughly CHUNK_POINTS total points across all metrics.</span>
+                <span class="n">names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">full_metrics</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+                <span class="n">offsets</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">names</span><span class="p">}</span>
+                <span class="n">lengths</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">full_metrics</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="s2">&quot;y&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">names</span><span class="p">}</span>
+                <span class="n">chunk_id</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">while</span> <span class="nb">any</span><span class="p">(</span><span class="n">offsets</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">lengths</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">names</span><span class="p">):</span>
+                    <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+                    <span class="n">remaining</span> <span class="o">=</span> <span class="n">CHUNK_POINTS</span>
+                    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">remaining</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="k">break</span>
+                        <span class="n">a</span> <span class="o">=</span> <span class="n">offsets</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+                        <span class="n">b</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">lengths</span><span class="p">[</span><span class="n">n</span><span class="p">],</span> <span class="n">a</span> <span class="o">+</span> <span class="n">remaining</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">b</span> <span class="o">&lt;=</span> <span class="n">a</span><span class="p">:</span>
+                            <span class="k">continue</span>
+                        <span class="n">payload</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                            <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">full_metrics</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="s2">&quot;step&quot;</span><span class="p">][</span><span class="n">a</span><span class="p">:</span><span class="n">b</span><span class="p">],</span>
+                            <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="n">full_metrics</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="s2">&quot;epoch&quot;</span><span class="p">][</span><span class="n">a</span><span class="p">:</span><span class="n">b</span><span class="p">],</span>
+                            <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="n">full_metrics</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="s2">&quot;y&quot;</span><span class="p">][</span><span class="n">a</span><span class="p">:</span><span class="n">b</span><span class="p">],</span>
+                        <span class="p">}</span>
+                        <span class="n">offsets</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">b</span>
+                        <span class="n">remaining</span> <span class="o">-=</span> <span class="n">b</span> <span class="o">-</span> <span class="n">a</span>
+                    <span class="k">if</span> <span class="n">payload</span><span class="p">:</span>
+                        <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;chunk&quot;</span><span class="p">:</span> <span class="n">chunk_id</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">payload</span><span class="p">}</span>
+                        <span class="n">chunk_id</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;done&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+                <span class="k">return</span>
+
+        <span class="c1"># Cold path: parse + emit incrementally so the browser can paint</span>
+        <span class="c1"># while the file is still being read.</span>
+        <span class="k">with</span> <span class="n">mpath</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">header</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">reader</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;chunk&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="p">{}}</span>
+                <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;done&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+                <span class="k">return</span>
+
+            <span class="n">step_idx</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;step&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="s2">&quot;step&quot;</span> <span class="ow">in</span> <span class="n">header</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">epoch_idx</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;epoch&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="s2">&quot;epoch&quot;</span> <span class="ow">in</span> <span class="n">header</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">metric_cols</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;step&quot;</span><span class="p">,</span> <span class="s2">&quot;epoch&quot;</span><span class="p">)</span>
+            <span class="p">]</span>
+
+            <span class="c1"># Full structure (kept for caching at end). The per-chunk dicts</span>
+            <span class="c1"># only carry NEW points since the previous flush so the client</span>
+            <span class="c1"># can append cheaply.</span>
+            <span class="n">full</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="p">[]}</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">metric_cols</span>
+            <span class="p">}</span>
+            <span class="n">chunk_buf</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="p">[]}</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">metric_cols</span>
+            <span class="p">}</span>
+
+            <span class="n">CHUNK_ROWS</span> <span class="o">=</span> <span class="mi">5000</span>  <span class="c1"># flush after this many rows...</span>
+            <span class="n">CHUNK_INTERVAL</span> <span class="o">=</span> <span class="mf">0.2</span>  <span class="c1"># ...or this many seconds, whichever first.</span>
+            <span class="n">chunk_id</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">last_flush</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+            <span class="n">row_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">_flush_chunk</span><span class="p">():</span>
+                <span class="k">nonlocal</span> <span class="n">chunk_id</span><span class="p">,</span> <span class="n">chunk_buf</span><span class="p">,</span> <span class="n">last_flush</span>
+                <span class="c1"># Drop empty metric columns from the chunk so transmission</span>
+                <span class="c1"># stays sparse.</span>
+                <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">chunk_buf</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]}</span>
+                <span class="k">if</span> <span class="n">payload</span><span class="p">:</span>
+                    <span class="n">out</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;chunk&quot;</span><span class="p">:</span> <span class="n">chunk_id</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">payload</span><span class="p">}</span>
+                    <span class="n">chunk_id</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">chunk_buf</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="n">name</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+                        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">metric_cols</span>
+                    <span class="p">}</span>
+                    <span class="n">last_flush</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+                    <span class="k">return</span> <span class="n">out</span>
+                <span class="n">last_flush</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+            <span class="k">for</span> <span class="n">row_idx</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">reader</span><span class="p">):</span>
+                <span class="n">row_count</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">step</span> <span class="o">=</span> <span class="n">_maybe_float</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">step_idx</span><span class="p">)</span>
+                <span class="n">epoch</span> <span class="o">=</span> <span class="n">_maybe_float</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">epoch_idx</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">step</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">epoch</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">step</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row_idx</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">metric_cols</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="ow">or</span> <span class="n">row</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">y</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="n">full</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s2">&quot;step&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+                    <span class="n">full</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s2">&quot;epoch&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">epoch</span><span class="p">)</span>
+                    <span class="n">full</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s2">&quot;y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+                    <span class="n">chunk_buf</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s2">&quot;step&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+                    <span class="n">chunk_buf</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s2">&quot;epoch&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">epoch</span><span class="p">)</span>
+                    <span class="n">chunk_buf</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s2">&quot;y&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">row_count</span> <span class="o">%</span> <span class="mi">1024</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span>
+                    <span class="n">row_count</span> <span class="o">&gt;=</span> <span class="n">CHUNK_ROWS</span>
+                    <span class="ow">or</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="n">last_flush</span> <span class="o">&gt;=</span> <span class="n">CHUNK_INTERVAL</span>
+                <span class="p">):</span>
+                    <span class="n">out</span> <span class="o">=</span> <span class="n">_flush_chunk</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">yield</span> <span class="n">out</span>
+
+            <span class="c1"># Final partial chunk</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">_flush_chunk</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">out</span>
+
+        <span class="c1"># Populate cache from the in-memory full structure.</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">full</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]}}</span>
+        <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_metrics_cache</span><span class="p">[</span><span class="n">run_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">cache_key</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">cache_key</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">result</span><span class="p">,</span>
+                <span class="kc">None</span><span class="p">,</span>  <span class="c1"># JSON bytes lazily populated by metrics_json_bytes</span>
+            <span class="p">)</span>
+        <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;done&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="RunScanner.metrics_json_bytes">
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/#stable_pretraining.web.scan.RunScanner.metrics_json_bytes">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metrics_json_bytes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the metrics response as pre-serialised, NaN-safe JSON bytes.</span>
+
+<span class="sd">        First call materialises the dict (reusing the structured cache via</span>
+<span class="sd">        :meth:`metrics_json`) and serialises once; subsequent calls return</span>
+<span class="sd">        the cached bytes directly so the HTTP layer is reduced to a memcpy.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check bytes cache directly.</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">run</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">mpath</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">/</span> <span class="s2">&quot;metrics.csv&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">mpath</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+            <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">st_size</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">cache_key</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cached</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metrics_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">cached</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cached</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="n">cache_key</span>
+                <span class="ow">and</span> <span class="n">cached</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="p">):</span>
+                <span class="k">return</span> <span class="n">cached</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics_json</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="c1"># Sanitize once (replace NaN/Inf with None) and serialise.</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.server</span><span class="w"> </span><span class="kn">import</span> <span class="n">_safe_dumps</span>  <span class="c1"># local import to avoid cycle</span>
+
+        <span class="n">body</span> <span class="o">=</span> <span class="n">_safe_dumps</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cached</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metrics_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">cached</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cached</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="n">cache_key</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_metrics_cache</span><span class="p">[</span><span class="n">run_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">cached</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">cached</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">cached</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                    <span class="n">body</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">return</span> <span class="n">body</span></div>
 
 
 <div class="viewcode-block" id="RunScanner.media_json">
-<a class="viewcode-back" href="../../../../stable_pretraining.web/#stable_pretraining.web.scan.RunScanner.media_json">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/#stable_pretraining.web.scan.RunScanner.media_json">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">media_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the media events for a run by parsing ``media.jsonl``.</span>
 
@@ -619,8 +1081,193 @@
         <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;events&quot;</span><span class="p">:</span> <span class="n">events</span><span class="p">}</span></div>
 
 
+<div class="viewcode-block" id="RunScanner.logs_index">
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/#stable_pretraining.web.scan.RunScanner.logs_index">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">logs_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Discover ``.out`` / ``.err`` / ``.log`` files for a run.</span>
+
+<span class="sd">        Search order:</span>
+
+<span class="sd">        1. Anything inside ``{run_dir}/`` matching ``*.out`` / ``*.err``.</span>
+<span class="sd">        2. Files in ``hp.output_dir`` (Hydra often points training logs here).</span>
+<span class="sd">        3. **submitit layout** (common for spt + slurm):</span>
+
+<span class="sd">           ``{output_dir}/../{sweep_id}_{task_id}/.submitit/{sweep_id}_{task_id}_{rank}_log.{out,err}``</span>
+
+<span class="sd">           ``sweep_id`` comes from the ``sweep:N`` tag and ``task_id``</span>
+<span class="sd">           from ``hp.slurm.task_id`` (or the trailing ``_&lt;task&gt;`` part</span>
+<span class="sd">           of ``run_id``). Multiple ranks are returned individually so</span>
+<span class="sd">           DDP runs get a per-rank selector.</span>
+
+<span class="sd">        Returns a dict ``{&quot;streams&quot;: [{name, kind, rank, size, stream_id}, ...]}``</span>
+<span class="sd">        or ``None`` if the run is unknown.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">run</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="c1"># Single source of truth for path discovery — also reused by reads.</span>
+        <span class="n">path_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rediscover_log_paths</span><span class="p">(</span><span class="n">run</span><span class="p">,</span> <span class="n">run</span><span class="o">.</span><span class="n">sidecar</span> <span class="ow">or</span> <span class="p">{})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_paths</span><span class="p">[</span><span class="n">run_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">path_map</span>
+        <span class="n">streams</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">path_map</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">size</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span>
+            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="s2">&quot;err&quot;</span> <span class="k">if</span> <span class="n">label</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.err&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;_log.err&quot;</span> <span class="ow">in</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span> <span class="k">else</span> <span class="s2">&quot;out&quot;</span>
+            <span class="n">rank</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="c1"># Names from the submitit branch are ``&quot;rank N .out/.err&quot;``.</span>
+            <span class="k">if</span> <span class="n">label</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;rank &quot;</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">rank</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                    <span class="n">rank</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">streams</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">label</span><span class="p">,</span>
+                    <span class="s2">&quot;kind&quot;</span><span class="p">:</span> <span class="n">kind</span><span class="p">,</span>
+                    <span class="s2">&quot;rank&quot;</span><span class="p">:</span> <span class="n">rank</span><span class="p">,</span>
+                    <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="n">size</span><span class="p">,</span>
+                    <span class="s2">&quot;stream_id&quot;</span><span class="p">:</span> <span class="n">_safe_log_id</span><span class="p">(</span><span class="n">label</span><span class="p">),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+        <span class="c1"># Sort: .out before .err; ranked streams first (low to high), then alpha.</span>
+        <span class="n">streams</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span>
+            <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="p">(</span>
+                <span class="mi">0</span> <span class="k">if</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;kind&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;out&quot;</span> <span class="k">else</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="n">s</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">s</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="n">s</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;streams&quot;</span><span class="p">:</span> <span class="n">streams</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="RunScanner.log_content">
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/#stable_pretraining.web.scan.RunScanner.log_content">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">log_content</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">stream_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_bytes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read the (last ``max_bytes`` of the) log identified by ``stream_id``.</span>
+
+<span class="sd">        Returns ``None`` if the run / stream is unknown. Truncates from the</span>
+<span class="sd">        front so the most recent output is preserved when the file exceeds</span>
+<span class="sd">        the cap.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_find_path</span><span class="p">(</span><span class="n">paths_by_label</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">paths_by_label</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">_safe_log_id</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="o">==</span> <span class="n">stream_id</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">p</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">paths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log_paths</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">_find_path</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Run might have been added (or discovery cache cleared) after the</span>
+            <span class="c1"># last ``logs_index`` call — re-walk once and retry.</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">run</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="n">paths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rediscover_log_paths</span><span class="p">(</span><span class="n">run</span><span class="p">,</span> <span class="n">run</span><span class="o">.</span><span class="n">sidecar</span> <span class="ow">or</span> <span class="p">{})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_paths</span><span class="p">[</span><span class="n">run_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">paths</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">_find_path</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="n">max_bytes</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">size</span> <span class="o">-</span> <span class="n">max_bytes</span><span class="p">)</span>
+                <span class="c1"># Discard up to the next newline to avoid a truncated line.</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_rediscover_log_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run</span><span class="p">:</span> <span class="n">_Run</span><span class="p">,</span> <span class="n">sidecar</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Walk the well-known places and return a ``{label: Path}`` map.</span>
+
+<span class="sd">        Labels are human-readable (``&quot;&lt;basename&gt;&quot;`` for free-standing files,</span>
+<span class="sd">        ``&quot;rank N .out/.err&quot;`` for submitit per-rank logs). The HTTP layer</span>
+<span class="sd">        derives a slug ``stream_id`` from each label via ``_safe_log_id``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">seen</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_record</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+            <span class="c1"># Disambiguate label collisions across discovery paths.</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="n">label</span>
+            <span class="n">i</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="k">while</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">out</span><span class="p">:</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span>
+
+        <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;out&quot;</span><span class="p">,</span> <span class="s2">&quot;err&quot;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">run_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;*.</span><span class="si">{</span><span class="n">ext</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)):</span>
+                <span class="n">_record</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="n">hp</span> <span class="o">=</span> <span class="n">sidecar</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hparams&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">out_dir</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;output_dir&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">out_dir</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">od</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">out_dir</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">od</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">od</span> <span class="ow">and</span> <span class="n">od</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;out&quot;</span><span class="p">,</span> <span class="s2">&quot;err&quot;</span><span class="p">,</span> <span class="s2">&quot;log&quot;</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">od</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;*.</span><span class="si">{</span><span class="n">ext</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)):</span>
+                        <span class="n">_record</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="n">sweep_tag</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="n">sidecar</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tags&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;sweep:&quot;</span><span class="p">)),</span>
+            <span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">sweep_id</span> <span class="o">=</span> <span class="n">sweep_tag</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">sweep_tag</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">task_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># Try both nested (``hparams[&quot;slurm&quot;][&quot;task_id&quot;]``) and flat</span>
+        <span class="c1"># (``hparams[&quot;slurm.task_id&quot;]``) — Hydra/spt produce the flat form</span>
+        <span class="c1"># when keys are dotted in YAML.</span>
+        <span class="n">slurm</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;slurm&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slurm</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">slurm</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;task_id&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">task_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">slurm</span><span class="p">[</span><span class="s2">&quot;task_id&quot;</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">hp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;slurm.task_id&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">task_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">hp</span><span class="p">[</span><span class="s2">&quot;slurm.task_id&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">task_id</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;_&quot;</span> <span class="ow">in</span> <span class="n">run</span><span class="o">.</span><span class="n">run_id</span><span class="p">:</span>
+            <span class="n">task_id</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">run_id</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">sweep_id</span> <span class="ow">and</span> <span class="n">task_id</span> <span class="ow">and</span> <span class="n">out_dir</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">parent</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">out_dir</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parent</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">parent</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">parent</span> <span class="ow">and</span> <span class="n">parent</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="n">submitit_dir</span> <span class="o">=</span> <span class="n">parent</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sweep_id</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span> <span class="o">/</span> <span class="s2">&quot;.submitit&quot;</span>
+                <span class="k">if</span> <span class="n">submitit_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">submitit_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()):</span>
+                        <span class="n">n</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_log.out&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">n</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_log.err&quot;</span><span class="p">)):</span>
+                            <span class="k">continue</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">rank</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_log.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                            <span class="n">rank</span> <span class="o">=</span> <span class="kc">None</span>
+                        <span class="n">kind</span> <span class="o">=</span> <span class="s2">&quot;out&quot;</span> <span class="k">if</span> <span class="n">n</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.out&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;err&quot;</span>
+                        <span class="n">label</span> <span class="o">=</span> <span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;rank </span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2"> .</span><span class="si">{</span><span class="n">kind</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">rank</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;.</span><span class="si">{</span><span class="n">kind</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
+                        <span class="n">_record</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+
 <div class="viewcode-block" id="RunScanner.media_file_path">
-<a class="viewcode-back" href="../../../../stable_pretraining.web/#stable_pretraining.web.scan.RunScanner.media_file_path">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/#stable_pretraining.web.scan.RunScanner.media_file_path">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">media_file_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">rel_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve a media file path safely, with ``..`` traversal blocked.</span>
 
@@ -649,6 +1296,21 @@
         <span class="k">return</span> <span class="n">target</span></div>
 </div>
 
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_safe_log_id</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stable opaque id used in the ``/api/log-content`` URL.</span>
+
+<span class="sd">    Just an alphanum + ``_``/``-``/``.`` slug of the label so the client</span>
+<span class="sd">    can pass it back without worrying about URL encoding.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">label</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">ch</span><span class="o">.</span><span class="n">isalnum</span><span class="p">()</span> <span class="ow">or</span> <span class="n">ch</span> <span class="ow">in</span> <span class="s2">&quot;._-&quot;</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;log&quot;</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_maybe_float</span><span class="p">(</span><span class="n">row</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">idx</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>

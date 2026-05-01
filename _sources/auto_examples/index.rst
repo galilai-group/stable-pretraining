@@ -6,43 +6,56 @@ Examples
 Configuration examples for stable-pretraining.
 
 
-# Bayesian Hyperparameter Search with Optuna
-Sweeping over a search space is very easy with Hydra and Optuna. `hp_search.yaml` provides an example configuration for performing hyperparameter optimization using Optuna's TPE sampler (bayesian optimization).
+Bayesian Hyperparameter Search with Optuna
+------------------------------------------
+
+Sweeping over a search space is very easy with Hydra and Optuna.
+``hp_search.yaml`` provides an example configuration for performing
+hyperparameter optimization using Optuna's TPE sampler (bayesian
+optimization).
 
 First, make sure to install Optuna if you haven't already:
-```
-pip install optuna
-```
 
-Then, make sure to register the callback HPMetricLogger, which will make sure your hyperparameter optimization metric is logged correctly. More complex logic can also be implemented in this callback.
+.. code-block:: bash
 
-```
-from spt.callbacks import HPMetricLogger
+    pip install optuna
 
-callbacks=[HPMetricLogger(metric_name="eval/some_metric")]
-```
+Then, register the ``HPMetricLogger`` callback so the metric you want
+Optuna to optimise gets logged correctly. More complex logic can also be
+implemented in this callback.
 
-Finally, make sure your train script contains this code to return the hp_metric to Optuna:
-```
-...
-manager = spt.Manager(...)
-manager()
+.. code-block:: python
 
+    from spt.callbacks import HPMetricLogger
 
-if hasattr(module, "hp_metric"):
-    result = module.hp_metric.item()
-    if np.isnan(result):
-        logger.warning("HP Metric is NaN, returning inf for optimization.")
-        result = float("inf")
-    logger.info(f"HP Metric: {result}")
-    return result
-```
+    callbacks = [HPMetricLogger(metric_name="eval/some_metric")]
 
-Now you can simply run the hyperparameter search and it will automatically run multiple trials:
-```
-python train.py --config-name=hydra_hp_search
-```
-It is recommended to use the EarlyStopping callback in combination with hyperparameter optimization to avoid wasting resources on bad trials.
+Finally, make sure your train script returns the ``hp_metric`` to Optuna:
+
+.. code-block:: python
+
+    ...
+    manager = spt.Manager(...)
+    manager()
+
+    if hasattr(module, "hp_metric"):
+        result = module.hp_metric.item()
+        if np.isnan(result):
+            logger.warning("HP Metric is NaN, returning inf for optimization.")
+            result = float("inf")
+        logger.info(f"HP Metric: {result}")
+        return result
+
+Now you can run the hyperparameter search and it will automatically run
+multiple trials:
+
+.. code-block:: bash
+
+    python train.py --config-name=hydra_hp_search
+
+It is recommended to use the ``EarlyStopping`` callback in combination
+with hyperparameter optimization to avoid wasting resources on bad
+trials.
 
 
 .. raw:: html
@@ -58,7 +71,7 @@ It is recommended to use the EarlyStopping callback in combination with hyperpar
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This script demonstrates how to retrieve data from wandb using the stable_pretraining library.">
+    <div class="sphx-glr-thumbcontainer" tooltip="Retrieve run data from wandb using the stable_pretraining library.">
 
 .. only:: html
 
@@ -69,7 +82,7 @@ It is recommended to use the EarlyStopping callback in combination with hyperpar
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">This script demonstrates how to retrieve data from wandb using the stable_pretraining library.</div>
+      <div class="sphx-glr-thumbnail-title">Reading WandB Runs</div>
     </div>
 
 
@@ -86,13 +99,13 @@ It is recommended to use the EarlyStopping callback in combination with hyperpar
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">This example demonstrates how to use stable-SSL to train a supervised model on CIFAR10 with class imbalance.</div>
+      <div class="sphx-glr-thumbnail-title">Imbalanced Supervised Learning</div>
     </div>
 
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="To use, you should set the entity variable to your WandB entity and the project variable to the specific project within your WandB entity that you want to access runs from.">
+    <div class="sphx-glr-thumbcontainer" tooltip="Retrieve run data from wandb using the stable_pretraining library and create plots from it.">
 
 .. only:: html
 
@@ -103,7 +116,7 @@ It is recommended to use the EarlyStopping callback in combination with hyperpar
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">This script demonstrates how to retrieve data from wandb using the stable_pretraining library and create plots from it.</div>
+      <div class="sphx-glr-thumbnail-title">Plotting from WandB Runs</div>
     </div>
 
 
@@ -126,7 +139,7 @@ It is recommended to use the EarlyStopping callback in combination with hyperpar
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Multi-layer probe for vision models.">
+    <div class="sphx-glr-thumbcontainer" tooltip="Train probes attached to multiple layers of a frozen backbone to monitor representation quality across depth.">
 
 .. only:: html
 
@@ -137,7 +150,7 @@ It is recommended to use the EarlyStopping callback in combination with hyperpar
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Multi-layer probe for vision models.</div>
+      <div class="sphx-glr-thumbnail-title">Multi-layer Probe for Vision Models</div>
     </div>
 
 

@@ -1,0 +1,697 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>CLI reference &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=10068741"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'cli';</script>
+    <link rel="index" title="Index" href="../genindex/" />
+    <link rel="search" title="Search" href="../search/" />
+    <link rel="next" title="stable_pretraining.backbone" href="../api/backbone/" />
+    <link rel="prev" title="Cache directory &amp; run layout" href="../cache_dir/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search/"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../">stable-pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../releases/">Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">CLI reference</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/backbone/">stable_pretraining.backbone</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.MLP/">MLP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.Resnet9/">Resnet9</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.ConvMixer/">ConvMixer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.from_timm/">from_timm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.from_torchvision/">from_torchvision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.set_embedding_dim/">set_embedding_dim</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/">TeacherStudentWrapper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.EvalOnly/">EvalOnly</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/data/">stable_pretraining.data</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.DataModule/">DataModule</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.Collator/">Collator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.Dataset/">Dataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.FromTorchDataset/">FromTorchDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.HFDataset/">HFDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.Subset/">Subset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.GMM/">GMM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.MinariStepsDataset/">MinariStepsDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.MinariEpisodeDataset/">MinariEpisodeDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.swiss_roll/">swiss_roll</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.generate_perlin_noise_2d/">generate_perlin_noise_2d</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.perlin_noise_3d/">perlin_noise_3d</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.Categorical/">Categorical</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.ExponentialMixtureNoiseModel/">ExponentialMixtureNoiseModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.ExponentialNormalNoiseModel/">ExponentialNormalNoiseModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.RepeatedRandomSampler/">RepeatedRandomSampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.SupervisedBatchSampler/">SupervisedBatchSampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.RandomBatchSampler/">RandomBatchSampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.fold_views/">fold_views</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.random_split/">random_split</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.download/">download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.bulk_download/">bulk_download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.transforms/">stable_pretraining.data.transforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.dataset_stats/">stable_pretraining.data.dataset_stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.data.synthetic_data/">stable_pretraining.data.synthetic_data</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/forward/">stable_pretraining.forward</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/losses/">stable_pretraining.losses</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.losses.NTXEntLoss/">NTXEntLoss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.losses.NegativeCosineSimilarity/">NegativeCosineSimilarity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.losses.VICRegLoss/">VICRegLoss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.losses.BarlowTwinsLoss/">BarlowTwinsLoss</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/manager/">stable_pretraining.manager</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.manager.Manager/">Manager</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/module/">stable_pretraining.module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.module.Module/">Module</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/monitors/">stable_pretraining.callbacks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.callbacks.OnlineProbe/">OnlineProbe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.callbacks.OnlineKNN/">OnlineKNN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.callbacks.OnlineWriter/">OnlineWriter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.callbacks.RankMe/">RankMe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.callbacks.LiDAR/">LiDAR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.callbacks.EarlyStopping/">EarlyStopping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.callbacks.TrainerInfo/">TrainerInfo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.callbacks.LoggingCallback/">LoggingCallback</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.callbacks.ModuleSummary/">ModuleSummary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.callbacks.SklearnCheckpoint/">SklearnCheckpoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.callbacks.ImageRetrieval/">ImageRetrieval</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/optim/">stable_pretraining.optim</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.LARS/">LARS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.CosineDecayer/">CosineDecayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.LinearWarmup/">LinearWarmup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/cli.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>CLI reference</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-run"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">run</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-web"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">web</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Examples</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-dump-csv-logs"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">dump-csv-logs</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">...</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-ls"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">ls</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-show"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">show</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-best"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">best</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-export"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">export</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-scan"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">scan</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-migrate"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">migrate</span></code></a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="cli-reference">
+<span id="cli"></span><h1>CLI reference<a class="headerlink" href="#cli-reference" title="Link to this heading">#</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">spt</span></code> command is installed by <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">.</span></code> (or any wheel
+install) via the <code class="docutils literal notranslate"><span class="pre">[project.scripts]</span></code> entry in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>. It
+groups together training, log-management, registry queries, and the
+web viewer.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">spt</span> <span class="o">--</span><span class="n">help</span>
+</pre></div>
+</div>
+<nav class="contents local" id="subcommands">
+<p class="topic-title">Subcommands</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#spt-run" id="id2"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">run</span></code></a></p>
+<ul>
+<li><p><a class="reference internal" href="#examples" id="id3">Examples</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#spt-web" id="id4"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">web</span></code></a></p>
+<ul>
+<li><p><a class="reference internal" href="#id1" id="id5">Examples</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#spt-dump-csv-logs" id="id6"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">dump-csv-logs</span></code></a></p></li>
+<li><p><a class="reference internal" href="#spt-registry" id="id7"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">...</span></code></a></p>
+<ul>
+<li><p><a class="reference internal" href="#spt-registry-ls" id="id8"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">ls</span></code></a></p></li>
+<li><p><a class="reference internal" href="#spt-registry-show" id="id9"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">show</span></code></a></p></li>
+<li><p><a class="reference internal" href="#spt-registry-best" id="id10"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">best</span></code></a></p></li>
+<li><p><a class="reference internal" href="#spt-registry-export" id="id11"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">export</span></code></a></p></li>
+<li><p><a class="reference internal" href="#spt-registry-scan" id="id12"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">scan</span></code></a></p></li>
+<li><p><a class="reference internal" href="#spt-registry-migrate" id="id13"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">migrate</span></code></a></p></li>
+</ul>
+</li>
+</ul>
+</nav>
+<section id="spt-run">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">run</span></code></a><a class="headerlink" href="#spt-run" title="Link to this heading">#</a></h2>
+<p>Launch a Hydra-driven training script.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">spt</span> <span class="n">run</span> <span class="o">&lt;</span><span class="n">config</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">HYDRA_OVERRIDES</span><span class="o">...</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="examples">
+<h3><a class="toc-backref" href="#id3" role="doc-backlink">Examples</a><a class="headerlink" href="#examples" title="Link to this heading">#</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Single run from configs/myconfig.yaml</span>
+<span class="n">spt</span> <span class="n">run</span> <span class="n">myconfig</span>
+
+<span class="c1"># Multirun (sweep) — also auto-selects the SLURM submitit launcher</span>
+<span class="n">spt</span> <span class="n">run</span> <span class="n">myconfig</span> <span class="o">-</span><span class="n">m</span> <span class="n">trainer</span><span class="o">.</span><span class="n">max_epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span><span class="mi">200</span>
+
+<span class="c1"># Override individual keys</span>
+<span class="n">spt</span> <span class="n">run</span> <span class="n">myconfig</span> <span class="n">optim</span><span class="o">.</span><span class="n">lr</span><span class="o">=</span><span class="mf">3e-4</span> <span class="n">model</span><span class="o">.</span><span class="n">backbone</span><span class="o">=</span><span class="n">resnet50</span>
+</pre></div>
+</div>
+<p>Multirun is detected from any of: <code class="docutils literal notranslate"><span class="pre">--multirun</span></code>/<code class="docutils literal notranslate"><span class="pre">-m</span></code> flag,
+<code class="docutils literal notranslate"><span class="pre">hydra/launcher=…</span></code> override, <code class="docutils literal notranslate"><span class="pre">hydra.sweep…</span></code> override, or a
+comma-separated value (<code class="docutils literal notranslate"><span class="pre">key=a,b,c</span></code>). When detected without an explicit
+launcher, <code class="docutils literal notranslate"><span class="pre">hydra/launcher=submitit_slurm</span></code> is appended.</p>
+</section>
+</section>
+<section id="spt-web">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">web</span></code></a><a class="headerlink" href="#spt-web" title="Link to this heading">#</a></h2>
+<p>Local wandb-like web viewer.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">spt</span> <span class="n">web</span> <span class="p">[</span><span class="n">DIRECTORY</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">host</span> <span class="mf">127.0.0.1</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">port</span> <span class="mi">4242</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">poll</span> <span class="mf">1.0</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cache</span><span class="o">-</span><span class="nb">dir</span> <span class="n">DIR</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Without <code class="docutils literal notranslate"><span class="pre">DIRECTORY</span></code>, scans <code class="docutils literal notranslate"><span class="pre">{cache_dir}/runs</span></code> where <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code> is
+resolved from <code class="docutils literal notranslate"><span class="pre">--cache-dir</span></code> &gt; <code class="docutils literal notranslate"><span class="pre">SPT_CACHE_DIR</span></code> env var &gt;
+<code class="docutils literal notranslate"><span class="pre">spt.set(cache_dir=...)</span></code> global config. The viewer parses
+<code class="docutils literal notranslate"><span class="pre">sidecar.json</span></code> + <code class="docutils literal notranslate"><span class="pre">metrics.csv</span></code> (+ <code class="docutils literal notranslate"><span class="pre">media.jsonl</span></code> when present) under
+the given tree and renders charts, the run table, and any logged images
+or videos. See <a class="reference internal" href="../api/web/"><span class="doc">stable_pretraining.web</span></a> for the Python entry point.</p>
+<section id="id1">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">Examples</a><a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run on the cluster, port-forward over SSH from your laptop:</span>
+<span class="c1">#   ssh -L 4242:127.0.0.1:4242 user@cluster</span>
+<span class="n">spt</span> <span class="n">web</span>
+
+<span class="c1"># Serve a specific tree on a non-default port</span>
+<span class="n">spt</span> <span class="n">web</span> <span class="o">/</span><span class="n">scratch</span><span class="o">/</span><span class="n">my_sweep</span> <span class="o">--</span><span class="n">port</span> <span class="mi">4243</span>
+
+<span class="c1"># Bind publicly (NO auth — only do this on a trusted network)</span>
+<span class="n">spt</span> <span class="n">web</span> <span class="o">--</span><span class="n">host</span> <span class="mf">0.0.0.0</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="spt-dump-csv-logs">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">dump-csv-logs</span></code></a><a class="headerlink" href="#spt-dump-csv-logs" title="Link to this heading">#</a></h2>
+<p>Aggregate Hydra-multirun CSV logs and save them in the smallest
+losslessly-compressed format among parquet/zstd, parquet/gzip,
+parquet/brotli, feather, csv, pickle.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">spt</span> <span class="n">dump</span><span class="o">-</span><span class="n">csv</span><span class="o">-</span><span class="n">logs</span> <span class="o">&lt;</span><span class="n">input_dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">output_basename</span><span class="o">&gt;</span> <span class="p">[{</span><span class="nb">max</span><span class="p">,</span><span class="n">last</span><span class="p">,</span><span class="nb">all</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p>The aggregator picks the highest value (<code class="docutils literal notranslate"><span class="pre">max</span></code>), the last row
+(<code class="docutils literal notranslate"><span class="pre">last</span></code>), or keeps all rows (<code class="docutils literal notranslate"><span class="pre">all</span></code>) per metric column. Numeric
+columns aggregate as the mode says; non-numeric take the last non-null.</p>
+</section>
+<section id="spt-registry">
+<h2><a class="toc-backref" href="#id7" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">...</span></code></a><a class="headerlink" href="#spt-registry" title="Link to this heading">#</a></h2>
+<p>Query the local run registry. Requires <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code> resolved (same
+priority as <code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">web</span></code>); pass <code class="docutils literal notranslate"><span class="pre">--cache-dir</span></code> or set <code class="docutils literal notranslate"><span class="pre">SPT_CACHE_DIR</span></code>.</p>
+<section id="spt-registry-ls">
+<h3><a class="toc-backref" href="#id8" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">ls</span></code></a><a class="headerlink" href="#spt-registry-ls" title="Link to this heading">#</a></h3>
+<p>List runs in a table, optionally filtered/sorted.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">spt</span> <span class="n">registry</span> <span class="n">ls</span> <span class="p">[</span><span class="o">--</span><span class="n">tag</span> <span class="n">TAG</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">status</span> <span class="n">STATUS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">alive</span><span class="o">/--</span><span class="n">dead</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">sort</span> <span class="n">COL</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">n</span> <span class="n">LIMIT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cache</span><span class="o">-</span><span class="nb">dir</span> <span class="n">DIR</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="spt-registry-show">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">show</span></code></a><a class="headerlink" href="#spt-registry-show" title="Link to this heading">#</a></h3>
+<p>Dump one run’s full sidecar — status, run_dir, hparams, summary metrics,
+checkpoint path.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">spt</span> <span class="n">registry</span> <span class="n">show</span> <span class="o">&lt;</span><span class="n">run_id</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">--</span><span class="n">cache</span><span class="o">-</span><span class="nb">dir</span> <span class="n">DIR</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="spt-registry-best">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">best</span></code></a><a class="headerlink" href="#spt-registry-best" title="Link to this heading">#</a></h3>
+<p>Top N runs ranked by a summary metric. Defaults to highest first; pass
+<code class="docutils literal notranslate"><span class="pre">--asc</span></code> for losses.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">spt</span> <span class="n">registry</span> <span class="n">best</span> <span class="o">&lt;</span><span class="n">metric</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">--</span><span class="n">tag</span> <span class="n">TAG</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">n</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">asc</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cache</span><span class="o">-</span><span class="nb">dir</span> <span class="n">DIR</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="spt-registry-export">
+<h3><a class="toc-backref" href="#id11" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">export</span></code></a><a class="headerlink" href="#spt-registry-export" title="Link to this heading">#</a></h3>
+<p>Export filtered runs as CSV or Parquet (auto-detected from extension).
+<code class="docutils literal notranslate"><span class="pre">hparams</span></code> and <code class="docutils literal notranslate"><span class="pre">summary</span></code> are flattened into columns.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">spt</span> <span class="n">registry</span> <span class="n">export</span> <span class="o">&lt;</span><span class="n">output</span><span class="o">.</span><span class="p">{</span><span class="n">csv</span><span class="p">,</span><span class="n">parquet</span><span class="p">}</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">--</span><span class="n">tag</span> <span class="n">TAG</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">status</span> <span class="n">STATUS</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="spt-registry-scan">
+<h3><a class="toc-backref" href="#id12" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">scan</span></code></a><a class="headerlink" href="#spt-registry-scan" title="Link to this heading">#</a></h3>
+<p>Refresh the SQLite cache from sidecar files. Incremental by default
+(only re-parses sidecars whose mtime advanced); <code class="docutils literal notranslate"><span class="pre">--full</span></code> re-ingests
+everything (use after a schema change).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">spt</span> <span class="n">registry</span> <span class="n">scan</span> <span class="p">[</span><span class="o">--</span><span class="n">full</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cache</span><span class="o">-</span><span class="nb">dir</span> <span class="n">DIR</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="spt-registry-migrate">
+<h3><a class="toc-backref" href="#id13" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">migrate</span></code></a><a class="headerlink" href="#spt-registry-migrate" title="Link to this heading">#</a></h3>
+<p>One-shot conversion from a legacy server-backed <code class="docutils literal notranslate"><span class="pre">registry.db</span></code> to the
+filesystem sidecar layout. Run once after upgrading; subsequent
+<code class="docutils literal notranslate"><span class="pre">scan</span></code> invocations rebuild the cache from the sidecars.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">spt</span> <span class="n">registry</span> <span class="n">migrate</span> <span class="o">&lt;</span><span class="n">legacy_registry</span><span class="o">.</span><span class="n">db</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">--</span><span class="n">cache</span><span class="o">-</span><span class="nb">dir</span> <span class="n">DIR</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">overwrite</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../cache_dir/"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Cache directory &amp; run layout</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../api/backbone/"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">stable_pretraining.backbone</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-run"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">run</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-web"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">web</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Examples</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-dump-csv-logs"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">dump-csv-logs</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">...</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-ls"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">ls</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-show"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">show</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-best"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">best</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-export"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">export</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-scan"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">scan</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spt-registry-migrate"><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">migrate</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By stable-pretraining team
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, stable-pretraining team.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

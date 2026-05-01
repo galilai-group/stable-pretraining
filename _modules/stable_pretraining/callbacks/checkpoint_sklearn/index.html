@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.checkpoint_sklearn &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable_pretraining.callbacks.checkpoint_sklearn &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -147,6 +147,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -226,6 +231,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -351,7 +368,7 @@
 
 
 <div class="viewcode-block" id="SklearnCheckpoint">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.SklearnCheckpoint">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.callbacks.SklearnCheckpoint/#stable_pretraining.callbacks.SklearnCheckpoint">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SklearnCheckpoint</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Callback for saving and loading sklearn models in PyTorch Lightning checkpoints.</span>
 
@@ -373,7 +390,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="SklearnCheckpoint.setup">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.SklearnCheckpoint.setup">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.callbacks.SklearnCheckpoint/#stable_pretraining.callbacks.SklearnCheckpoint.setup">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -388,7 +405,7 @@
 
 
 <div class="viewcode-block" id="SklearnCheckpoint.on_save_checkpoint">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.SklearnCheckpoint.on_save_checkpoint">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.callbacks.SklearnCheckpoint/#stable_pretraining.callbacks.SklearnCheckpoint.on_save_checkpoint">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">on_save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">):</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Checking for non PyTorch modules to save&quot;</span><span class="p">)</span>
         <span class="n">modules</span> <span class="o">=</span> <span class="n">_get_sklearn_modules</span><span class="p">(</span><span class="n">pl_module</span><span class="p">)</span>
@@ -402,7 +419,7 @@
 
 
 <div class="viewcode-block" id="SklearnCheckpoint.on_load_checkpoint">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.SklearnCheckpoint.on_load_checkpoint">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.callbacks.SklearnCheckpoint/#stable_pretraining.callbacks.SklearnCheckpoint.on_load_checkpoint">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">on_load_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">):</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Checking for non PyTorch modules to load&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">SKLEARN_AVAILABLE</span><span class="p">:</span>
@@ -438,8 +455,6 @@
     <span class="k">return</span> <span class="n">modules</span>
 
 
-<div class="viewcode-block" id="StrictCheckpointCallback">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.StrictCheckpointCallback">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">StrictCheckpointCallback</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A PyTorch Lightning callback that controls strict checkpoint loading behavior.&quot;&quot;&quot;</span>
 
@@ -448,8 +463,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">strict</span> <span class="o">=</span> <span class="n">strict</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  StrictCheckpointCallback initialized with strict=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">strict</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-<div class="viewcode-block" id="StrictCheckpointCallback.on_load_checkpoint">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.StrictCheckpointCallback.on_load_checkpoint">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">on_load_checkpoint</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">trainer</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">,</span>
@@ -540,8 +553,7 @@
             <span class="n">missing_in_model</span><span class="p">,</span>
             <span class="n">shape_mismatches</span><span class="p">,</span>
             <span class="nb">len</span><span class="p">(</span><span class="n">model_state_dict</span><span class="p">),</span>
-        <span class="p">)</span></div>
-
+        <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_print_summary</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -571,15 +583,12 @@
         <span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;  Checkpoint loading coverage: </span><span class="si">{</span><span class="n">loaded_percentage</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">% (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">matched_keys</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total_model_params</span><span class="si">}</span><span class="s2">)&quot;</span>
-        <span class="p">)</span></div>
-
+        <span class="p">)</span>
 
 
 <span class="n">_WANDB_RESUME_FILENAME</span> <span class="o">=</span> <span class="s2">&quot;wandb_resume.json&quot;</span>
 
 
-<div class="viewcode-block" id="find_wandb_logger">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.find_wandb_logger">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">find_wandb_logger</span><span class="p">(</span><span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">WandbLogger</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Find the unique WandbLogger among all trainer loggers.</span>
 
@@ -597,12 +606,9 @@
             <span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">found</span><span class="p">)</span><span class="si">}</span><span class="s2"> WandbLoggers attached to the Trainer. &quot;</span>
             <span class="s2">&quot;Only one is supported for run resume across requeues.&quot;</span>
         <span class="p">)</span>
-    <span class="k">return</span> <span class="n">found</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+    <span class="k">return</span> <span class="n">found</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
 
-
-<div class="viewcode-block" id="WandbCheckpoint">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.WandbCheckpoint">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">WandbCheckpoint</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Persist the wandb run ID across checkpoint save/load for seamless requeue resume.</span>
 
@@ -616,16 +622,11 @@
 <span class="sd">          the Manager should have already set the correct ID).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="WandbCheckpoint.setup">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.WandbCheckpoint.setup">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;WandbCheckpoint&quot;</span><span class="p">)</span></div>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;WandbCheckpoint&quot;</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="WandbCheckpoint.on_save_checkpoint">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.WandbCheckpoint.on_save_checkpoint">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">on_save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">):</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -658,11 +659,8 @@
                 <span class="n">cwd_sidecar</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">_WANDB_RESUME_FILENAME</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">cwd_sidecar</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">!=</span> <span class="n">sidecar</span><span class="o">.</span><span class="n">resolve</span><span class="p">():</span>
                     <span class="n">cwd_sidecar</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">resume_info</span><span class="p">))</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Wrote </span><span class="si">{</span><span class="n">cwd_sidecar</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="si">}</span><span class="s2"> (compat)&quot;</span><span class="p">)</span></div>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Wrote </span><span class="si">{</span><span class="n">cwd_sidecar</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="si">}</span><span class="s2"> (compat)&quot;</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="WandbCheckpoint.on_load_checkpoint">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.WandbCheckpoint.on_load_checkpoint">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">on_load_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">):</span>
         <span class="k">if</span> <span class="s2">&quot;wandb&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">checkpoint</span><span class="p">:</span>
             <span class="k">return</span>
@@ -690,9 +688,7 @@
                 <span class="sa">f</span><span class="s2">&quot;but the logger is configured with &#39;</span><span class="si">{</span><span class="n">configured_id</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
                 <span class="s2">&quot;The run may not resume correctly. This can happen if wandb.init() &quot;</span>
                 <span class="s2">&quot;was called before the Manager had a chance to inject the ID.&quot;</span>
-            <span class="p">)</span></div>
-</div>
-
+            <span class="p">)</span>
 </pre></div>
 
                 </article>

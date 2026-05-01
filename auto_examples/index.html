@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Examples &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>Examples &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../_static/documentation_options.js?v=10068741"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -148,6 +148,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -227,6 +232,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -351,7 +368,9 @@
 <button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <i class="fa-solid fa-magnifying-glass fa-lg"></i>
 </button>
-
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
 </div></div>
       
     </div>
@@ -367,6 +386,14 @@
     <div id="print-main-content">
         <div id="jb-print-toc">
             
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bayesian-hyperparameter-search-with-optuna">Bayesian Hyperparameter Search with Optuna</a></li>
+</ul>
+            </nav>
         </div>
     </div>
 </div>
@@ -379,54 +406,61 @@
   <section id="examples">
 <h1>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h1>
 <p>Configuration examples for stable-pretraining.</p>
-<p># Bayesian Hyperparameter Search with Optuna
-Sweeping over a search space is very easy with Hydra and Optuna. <cite>hp_search.yaml</cite> provides an example configuration for performing hyperparameter optimization using Optuna’s TPE sampler (bayesian optimization).</p>
-<p>First, make sure to install Optuna if you haven’t already:
-<code class="docutils literal notranslate"><span class="pre">`</span>
-<span class="pre">pip</span> <span class="pre">install</span> <span class="pre">optuna</span>
-<span class="pre">`</span></code></p>
-<p>Then, make sure to register the callback HPMetricLogger, which will make sure your hyperparameter optimization metric is logged correctly. More complex logic can also be implemented in this callback.</p>
-<p><a href="#id1"><span class="problematic" id="id2">``</span></a>`
-from spt.callbacks import HPMetricLogger</p>
-<p>callbacks=[HPMetricLogger(metric_name=”eval/some_metric”)]
-<a href="#id3"><span class="problematic" id="id4">``</span></a><a href="#id5"><span class="problematic" id="id6">`</span></a></p>
-<p>Finally, make sure your train script contains this code to return the hp_metric to Optuna:
-<a href="#id7"><span class="problematic" id="id8">``</span></a>`
-…
-manager = spt.Manager(…)
-manager()</p>
-<dl>
-<dt>if hasattr(module, “hp_metric”):</dt><dd><p>result = module.hp_metric.item()
-if np.isnan(result):</p>
-<blockquote>
-<div><p>logger.warning(“HP Metric is NaN, returning inf for optimization.”)
-result = float(“inf”)</p>
-</div></blockquote>
-<p>logger.info(f”HP Metric: {result}”)
-return result</p>
-</dd>
-</dl>
-<p><a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a></p>
-<p>Now you can simply run the hyperparameter search and it will automatically run multiple trials:
-<code class="docutils literal notranslate"><span class="pre">`</span>
-<span class="pre">python</span> <span class="pre">train.py</span> <span class="pre">--config-name=hydra_hp_search</span>
-<span class="pre">`</span></code>
-It is recommended to use the EarlyStopping callback in combination with hyperparameter optimization to avoid wasting resources on bad trials.</p>
-<div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="This script demonstrates how to retrieve data from wandb using the stable_pretraining library."><img alt="" src="../_images/sphx_glr_wandb_reader_thumb.png" />
-<p><a class="reference internal" href="wandb_reader/"><span class="doc">&lt;no title&gt;</span></a></p>
-  <div class="sphx-glr-thumbnail-title">This script demonstrates how to retrieve data from wandb using the stable_pretraining library.</div>
+<section id="bayesian-hyperparameter-search-with-optuna">
+<h2>Bayesian Hyperparameter Search with Optuna<a class="headerlink" href="#bayesian-hyperparameter-search-with-optuna" title="Link to this heading">#</a></h2>
+<p>Sweeping over a search space is very easy with Hydra and Optuna.
+<code class="docutils literal notranslate"><span class="pre">hp_search.yaml</span></code> provides an example configuration for performing
+hyperparameter optimization using Optuna’s TPE sampler (bayesian
+optimization).</p>
+<p>First, make sure to install Optuna if you haven’t already:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>optuna
+</pre></div>
+</div>
+<p>Then, register the <code class="docutils literal notranslate"><span class="pre">HPMetricLogger</span></code> callback so the metric you want
+Optuna to optimise gets logged correctly. More complex logic can also be
+implemented in this callback.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spt.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">HPMetricLogger</span>
+
+<span class="n">callbacks</span> <span class="o">=</span> <span class="p">[</span><span class="n">HPMetricLogger</span><span class="p">(</span><span class="n">metric_name</span><span class="o">=</span><span class="s2">&quot;eval/some_metric&quot;</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>Finally, make sure your train script returns the <code class="docutils literal notranslate"><span class="pre">hp_metric</span></code> to Optuna:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">...</span>
+<span class="n">manager</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Manager</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">manager</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="s2">&quot;hp_metric&quot;</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">hp_metric</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;HP Metric is NaN, returning inf for optimization.&quot;</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;HP Metric: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p>Now you can run the hyperparameter search and it will automatically run
+multiple trials:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>train.py<span class="w"> </span>--config-name<span class="o">=</span>hydra_hp_search
+</pre></div>
+</div>
+<p>It is recommended to use the <code class="docutils literal notranslate"><span class="pre">EarlyStopping</span></code> callback in combination
+with hyperparameter optimization to avoid wasting resources on bad
+trials.</p>
+<div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="Retrieve run data from wandb using the stable_pretraining library."><img alt="" src="../_images/sphx_glr_wandb_reader_thumb.png" />
+<p><a class="reference internal" href="wandb_reader/"><span class="doc">Reading WandB Runs</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Reading WandB Runs</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="This example demonstrates how to use stable-SSL to train a supervised model on CIFAR10 with class imbalance."><img alt="" src="../_images/sphx_glr_imbalance_supervised_learning_thumb.png" />
-<p><a class="reference internal" href="imbalance_supervised_learning/"><span class="doc">&lt;no title&gt;</span></a></p>
-  <div class="sphx-glr-thumbnail-title">This example demonstrates how to use stable-SSL to train a supervised model on CIFAR10 with class imbalance.</div>
-</div><div class="sphx-glr-thumbcontainer" tooltip="To use, you should set the entity variable to your WandB entity and the project variable to the specific project within your WandB entity that you want to access runs from."><img alt="" src="../_images/sphx_glr_wandb_figures_thumb.png" />
-<p><a class="reference internal" href="wandb_figures/"><span class="doc">&lt;no title&gt;</span></a></p>
-  <div class="sphx-glr-thumbnail-title">This script demonstrates how to retrieve data from wandb using the stable_pretraining library and create plots from it.</div>
+<p><a class="reference internal" href="imbalance_supervised_learning/"><span class="doc">Imbalanced Supervised Learning</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Imbalanced Supervised Learning</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="Retrieve run data from wandb using the stable_pretraining library and create plots from it."><img alt="" src="../_images/sphx_glr_wandb_figures_thumb.png" />
+<p><a class="reference internal" href="wandb_figures/"><span class="doc">Plotting from WandB Runs</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Plotting from WandB Runs</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="This example demonstrates how to train models using supervised learning with stable-pretraining, including support for various datasets like ImageNet-10, ImageNet-100, and ImageNet-1k."><img alt="" src="../_images/sphx_glr_supervised_learning_thumb.png" />
 <p><a class="reference internal" href="supervised_learning/"><span class="doc">Supervised Learning Example</span></a></p>
   <div class="sphx-glr-thumbnail-title">Supervised Learning Example</div>
-</div><div class="sphx-glr-thumbcontainer" tooltip="Multi-layer probe for vision models."><img alt="" src="../_images/sphx_glr_multi_layer_probe_thumb.png" />
-<p><a class="reference internal" href="multi_layer_probe/"><span class="doc">&lt;no title&gt;</span></a></p>
-  <div class="sphx-glr-thumbnail-title">Multi-layer probe for vision models.</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="Train probes attached to multiple layers of a frozen backbone to monitor representation quality across depth."><img alt="" src="../_images/sphx_glr_multi_layer_probe_thumb.png" />
+<p><a class="reference internal" href="multi_layer_probe/"><span class="doc">Multi-layer Probe for Vision Models</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Multi-layer Probe for Vision Models</div>
 </div></div><div class="toctree-wrapper compound">
 </div>
 <div class="sphx-glr-footer sphx-glr-footer-gallery docutils container">
@@ -438,6 +472,7 @@ It is recommended to use the EarlyStopping callback in combination with hyperpar
 </div>
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
 </section>
 
 
@@ -457,6 +492,23 @@ It is recommended to use the EarlyStopping callback in combination with hyperpar
             </div>
             
             
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bayesian-hyperparameter-search-with-optuna">Bayesian Hyperparameter Search with Optuna</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
               
             
           </div>

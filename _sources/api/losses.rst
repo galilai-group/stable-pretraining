@@ -1,5 +1,5 @@
 stable_pretraining.losses
-=================
+=========================
 
 .. module:: stable_pretraining.losses
 .. currentmodule:: stable_pretraining.losses

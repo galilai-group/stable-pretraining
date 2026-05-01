@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Releases &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>Releases &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../_static/documentation_options.js?v=10068741"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -148,6 +148,11 @@
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -227,6 +232,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -374,6 +391,7 @@
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">Unreleased</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-0-1">Version 0.1</a></li>
 </ul>
             </nav>
@@ -388,6 +406,37 @@
                   
   <section id="releases">
 <span id="id1"></span><h1>Releases<a class="headerlink" href="#releases" title="Link to this heading">#</a></h1>
+<section id="unreleased">
+<h2>Unreleased<a class="headerlink" href="#unreleased" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">spt</span></code> CLI: new <code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">web</span></code> subcommand launches a local, dependency-free
+web viewer (stdlib <code class="docutils literal notranslate"><span class="pre">http.server</span></code> + Server-Sent Events, NFS-safe). Reads
+<code class="docutils literal notranslate"><span class="pre">sidecar.json</span></code> + <code class="docutils literal notranslate"><span class="pre">metrics.csv</span></code> (and optional <code class="docutils literal notranslate"><span class="pre">media.jsonl</span></code>) under a
+given directory and renders a wandb-like UI with a metric tree, multi-run
+filter chips, group-by/sort, light/dark theme toggle, in-chart synced
+cursor tooltip, run-config modal, and a landing-page activity overview.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">web</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">{cache_dir}/runs</span></code> when no path is passed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RegistryLogger.log_image</span></code> / <code class="docutils literal notranslate"><span class="pre">log_video</span></code>: new methods matching
+Lightning’s <code class="docutils literal notranslate"><span class="pre">WandbLogger</span></code> signatures. Existing callbacks gating on
+<code class="docutils literal notranslate"><span class="pre">hasattr(logger,</span> <span class="pre">&quot;log_image&quot;)</span></code> start writing to disk without code
+changes. Files land under <code class="docutils literal notranslate"><span class="pre">{run_dir}/media/&lt;safe_tag&gt;/</span></code> with an
+append-only <code class="docutils literal notranslate"><span class="pre">media.jsonl</span></code> manifest. The web viewer renders these
+alongside scalar charts in the same metric tree.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Manager._resolve_run_dir</span></code> is now DDP-safe: rank-0 picks the
+<code class="docutils literal notranslate"><span class="pre">run_dir</span></code> and atomically publishes it under
+<code class="docutils literal notranslate"><span class="pre">{cache_dir}/.rank_handoff/&lt;launch_key&gt;</span></code>; non-zero ranks block on
+that handoff and adopt the same value. Prevents ranks from generating
+divergent uuids and writing inconsistent <code class="docutils literal notranslate"><span class="pre">.slurm_index</span></code> entries (a
+silent data-loss source on multi-rank preempt+requeue). Rank detection
+uses Lightning’s <code class="docutils literal notranslate"><span class="pre">rank_zero_only.rank</span></code>. Override timeout via
+<code class="docutils literal notranslate"><span class="pre">SPT_RANK_HANDOFF_TIMEOUT_S</span></code>.</p></li>
+<li><p>New documentation pages: <a class="reference internal" href="../cache_dir/"><span class="doc">Cache directory &amp; run layout</span></a> (run directory layout,
+resume / requeue / DDP semantics, media layout) and <a class="reference internal" href="../cli/"><span class="doc">CLI reference</span></a>
+(full <code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">run</span></code> / <code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">web</span></code> / <code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span></code> reference).</p></li>
+<li><p>New API pages: <a class="reference internal" href="../api/registry/"><span class="doc">stable_pretraining.registry</span></a> (RegistryLogger + Registry query)
+and <a class="reference internal" href="../api/web/"><span class="doc">stable_pretraining.web</span></a> (<code class="docutils literal notranslate"><span class="pre">serve</span></code> entry point).</p></li>
+</ul>
+</section>
 <section id="version-0-1">
 <h2>Version 0.1<a class="headerlink" href="#version-0-1" title="Link to this heading">#</a></h2>
 <ul class="simple">
@@ -455,6 +504,7 @@
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">Unreleased</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#version-0-1">Version 0.1</a></li>
 </ul>
   </nav></div>

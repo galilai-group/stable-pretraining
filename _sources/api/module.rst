@@ -1,5 +1,5 @@
 stable_pretraining.module
-==================
+=========================
 .. module:: stable_pretraining.module
 .. currentmodule:: stable_pretraining.module
 
@@ -15,7 +15,7 @@ Core Module
    Module
 
 User Implementation
-------------------
+-------------------
 
 The key insight of `stable-pretraining` is **simplicity**: you only need to implement the `forward` method. Everything else (optimizers, schedulers, training loops, logging) is handled automatically.
 

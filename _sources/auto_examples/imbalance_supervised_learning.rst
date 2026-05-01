@@ -17,9 +17,14 @@
 
 .. _sphx_glr_auto_examples_imbalance_supervised_learning.py:
 
-This example demonstrates how to use stable-SSL to train a supervised model on CIFAR10 with class imbalance.
 
-.. GENERATED FROM PYTHON SOURCE LINES 2-130
+Imbalanced Supervised Learning
+==============================
+
+This example demonstrates how to use stable-SSL to train a supervised model
+on CIFAR10 with class imbalance.
+
+.. GENERATED FROM PYTHON SOURCE LINES 8-136
 
 .. code-block:: Python
 

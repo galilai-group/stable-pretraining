@@ -1,8 +1,12 @@
-"""This script demonstrates how to retrieve data from wandb using the stable_pretraining library and create plots from it.
+"""
+Plotting from WandB Runs
+========================
 
-To use, you should set the entity variable to your WandB entity and the project variable to the specific project within
-your WandB entity that you want to access runs from.
+Retrieve run data from wandb using the stable_pretraining library and
+create plots from it.
 
+To use, set the ``entity`` variable to your WandB entity and ``project``
+to the specific project you want to read runs from.
 """
 
 import matplotlib.pyplot as plt

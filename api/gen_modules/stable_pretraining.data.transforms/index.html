@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.data.transforms &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable_pretraining.data.transforms &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -148,6 +148,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="current nav bd-sidenav">
@@ -227,6 +232,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -381,7 +398,7 @@
 <p class="rubric">Functions</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.to_image" title="stable_pretraining.data.transforms.to_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_image</span></code></a>(input)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_image</span></code>(input)</p></td>
 <td><p>See <code class="xref py py-class docutils literal notranslate"><span class="pre">ToImage</span></code> for details.</p></td>
 </tr>
 </tbody>
@@ -390,124 +407,124 @@
 <p class="rubric">Classes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.AdditiveGaussian" title="stable_pretraining.data.transforms.AdditiveGaussian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AdditiveGaussian</span></code></a>(sigma[, p])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">AdditiveGaussian</span></code>(sigma[, p])</p></td>
 <td><p>Add Gaussian noise to input data.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.CenterCrop" title="stable_pretraining.data.transforms.CenterCrop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CenterCrop</span></code></a>(size[, source, target])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">CenterCrop</span></code>(size[, source, target])</p></td>
 <td><p>Crop the center of an image to the given size.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.ColorJitter" title="stable_pretraining.data.transforms.ColorJitter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ColorJitter</span></code></a>([brightness, contrast, ...])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ColorJitter</span></code>([brightness, contrast, ...])</p></td>
 <td><p>Randomly change brightness, contrast, saturation, and hue of an image.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.Compose" title="stable_pretraining.data.transforms.Compose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Compose</span></code></a>(*args)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Compose</span></code>(*args)</p></td>
 <td><p>Compose multiple transforms together in sequence.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.Conditional" title="stable_pretraining.data.transforms.Conditional"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Conditional</span></code></a>(transform, condition_key[, ...])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Conditional</span></code>(transform, condition_key[, ...])</p></td>
 <td><p>Apply transform conditionally based on a data dictionary key.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.ContextTargetsMultiBlockMask" title="stable_pretraining.data.transforms.ContextTargetsMultiBlockMask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ContextTargetsMultiBlockMask</span></code></a>([patch_size, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ContextTargetsMultiBlockMask</span></code>([patch_size, ...])</p></td>
 <td><p>Transform that adds multi-block masks to batch, with multiple target blocks and one disjoint context block.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.ControlledTransform" title="stable_pretraining.data.transforms.ControlledTransform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ControlledTransform</span></code></a>(transform[, ...])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ControlledTransform</span></code>(transform[, ...])</p></td>
 <td><p>Face Landmarks dataset.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.GaussianBlur" title="stable_pretraining.data.transforms.GaussianBlur"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GaussianBlur</span></code></a>(kernel_size[, sigma, p, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GaussianBlur</span></code>(kernel_size[, sigma, p, ...])</p></td>
 <td><p>Apply Gaussian blur to image with random sigma values.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.GaussianNoise" title="stable_pretraining.data.transforms.GaussianNoise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GaussianNoise</span></code></a>([mean, sigma, p, source, target])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GaussianNoise</span></code>([mean, sigma, p, source, target])</p></td>
 <td><p>Add Gaussian noise to the image (torchvision implementation).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.Lambda" title="stable_pretraining.data.transforms.Lambda"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Lambda</span></code></a>(lambd[, source, target])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Lambda</span></code>(lambd[, source, target])</p></td>
 <td><p>Applies a lambda callable to target key and store it in source.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.MultiViewTransform" title="stable_pretraining.data.transforms.MultiViewTransform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MultiViewTransform</span></code></a>(transforms)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">MultiViewTransform</span></code>(transforms)</p></td>
 <td><p>Creates multiple views from one sample by applying different transforms.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.PILGaussianBlur" title="stable_pretraining.data.transforms.PILGaussianBlur"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PILGaussianBlur</span></code></a>([sigma, p, source, target])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">PILGaussianBlur</span></code>([sigma, p, source, target])</p></td>
 <td><p>PIL-based Gaussian blur transform with random sigma sampling.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.PatchMasking" title="stable_pretraining.data.transforms.PatchMasking"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PatchMasking</span></code></a>([patch_size, drop_ratio, ...])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">PatchMasking</span></code>([patch_size, drop_ratio, ...])</p></td>
 <td><p>Randomly masks square patches in an image, similar to patch masking used in Masked Signal Encoding (MSE) tasks.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RGB" title="stable_pretraining.data.transforms.RGB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RGB</span></code></a>([source, target])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RGB</span></code>([source, target])</p></td>
 <td><p>Convert image to RGB format.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAdjustSharpness" title="stable_pretraining.data.transforms.RandomAdjustSharpness"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomAdjustSharpness</span></code></a>(sharpness_factor[, p, ...])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomAdjustSharpness</span></code>(sharpness_factor[, p, ...])</p></td>
 <td><p>Randomly adjust the sharpness of the image.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAffine" title="stable_pretraining.data.transforms.RandomAffine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomAffine</span></code></a>(degrees[, translate, scale, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomAffine</span></code>(degrees[, translate, scale, ...])</p></td>
 <td><p>Randomly apply affine transformation to the image.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomAutocontrast" title="stable_pretraining.data.transforms.RandomAutocontrast"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomAutocontrast</span></code></a>([p, source, target])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomAutocontrast</span></code>([p, source, target])</p></td>
 <td><p>Randomly apply autocontrast to the image.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomChannelPermutation" title="stable_pretraining.data.transforms.RandomChannelPermutation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomChannelPermutation</span></code></a>([source, target])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomChannelPermutation</span></code>([source, target])</p></td>
 <td><p>Randomly permute the channels of an image.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomContiguousTemporalSampler" title="stable_pretraining.data.transforms.RandomContiguousTemporalSampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomContiguousTemporalSampler</span></code></a>(source, ...)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomContiguousTemporalSampler</span></code>(source, ...)</p></td>
 <td><p>Randomly sample contiguous frames from a video sequence.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomCrop" title="stable_pretraining.data.transforms.RandomCrop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomCrop</span></code></a>(size[, padding, pad_if_needed, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomCrop</span></code>(size[, padding, pad_if_needed, ...])</p></td>
 <td><p>Crop a random portion of image and resize it to given size.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomEqualize" title="stable_pretraining.data.transforms.RandomEqualize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomEqualize</span></code></a>([p, source, target])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomEqualize</span></code>([p, source, target])</p></td>
 <td><p>Randomly equalize the histogram of the image.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomErasing" title="stable_pretraining.data.transforms.RandomErasing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomErasing</span></code></a>([p, scale, ratio, value, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomErasing</span></code>([p, scale, ratio, value, ...])</p></td>
 <td><p>Randomly erase a rectangular region in the image.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomGrayscale" title="stable_pretraining.data.transforms.RandomGrayscale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomGrayscale</span></code></a>([p, source, target])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomGrayscale</span></code>([p, source, target])</p></td>
 <td><p>Randomly convert image to grayscale with given probability.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomHorizontalFlip" title="stable_pretraining.data.transforms.RandomHorizontalFlip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomHorizontalFlip</span></code></a>([p, source, target])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomHorizontalFlip</span></code>([p, source, target])</p></td>
 <td><p>Horizontally flip the given image randomly with a given probability.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomInvert" title="stable_pretraining.data.transforms.RandomInvert"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomInvert</span></code></a>([p, source, target])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomInvert</span></code>([p, source, target])</p></td>
 <td><p>Randomly invert the colors of the image.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomMask" title="stable_pretraining.data.transforms.RandomMask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomMask</span></code></a>([patch_size, mask_ratio, source, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomMask</span></code>([patch_size, mask_ratio, source, ...])</p></td>
 <td><p>Creates a random MAE-style mask for an image.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomPerspective" title="stable_pretraining.data.transforms.RandomPerspective"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomPerspective</span></code></a>([distortion_scale, p, ...])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomPerspective</span></code>([distortion_scale, p, ...])</p></td>
 <td><p>Randomly apply perspective transformation to the image.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomPosterize" title="stable_pretraining.data.transforms.RandomPosterize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomPosterize</span></code></a>(bits[, p, source, target])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomPosterize</span></code>(bits[, p, source, target])</p></td>
 <td><p>Randomly posterize the image by reducing bits per channel.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomResizedCrop" title="stable_pretraining.data.transforms.RandomResizedCrop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomResizedCrop</span></code></a>(size[, scale, ratio, ...])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomResizedCrop</span></code>(size[, scale, ratio, ...])</p></td>
 <td><p>Crop a random portion of image and resize it to given size.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomRotation" title="stable_pretraining.data.transforms.RandomRotation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomRotation</span></code></a>(degrees[, interpolation, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomRotation</span></code>(degrees[, interpolation, ...])</p></td>
 <td><p>Rotate image by random angle within specified degrees range.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomSolarize" title="stable_pretraining.data.transforms.RandomSolarize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomSolarize</span></code></a>(threshold[, p, source, target])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomSolarize</span></code>(threshold[, p, source, target])</p></td>
 <td><p>Randomly solarize image by inverting pixel values above threshold.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RandomVerticalFlip" title="stable_pretraining.data.transforms.RandomVerticalFlip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomVerticalFlip</span></code></a>([p, source, target])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomVerticalFlip</span></code>([p, source, target])</p></td>
 <td><p>Vertically flip the given image randomly with a given probability.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.Resize" title="stable_pretraining.data.transforms.Resize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Resize</span></code></a>(size[, interpolation, max_size, ...])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Resize</span></code>(size[, interpolation, max_size, ...])</p></td>
 <td><p>Resize image to specified size.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RoundRobinMultiViewTransform" title="stable_pretraining.data.transforms.RoundRobinMultiViewTransform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RoundRobinMultiViewTransform</span></code></a>(transforms)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RoundRobinMultiViewTransform</span></code>(transforms)</p></td>
 <td><p>Round-robin multi-view transform that cycles through transforms using a counter.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.RoutingTransform" title="stable_pretraining.data.transforms.RoutingTransform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RoutingTransform</span></code></a>(router, transforms)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">RoutingTransform</span></code>(router, transforms)</p></td>
 <td><p>Applies a routing callable to conditionally apply a transform from many candidates.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.ToImage" title="stable_pretraining.data.transforms.ToImage"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ToImage</span></code></a>([dtype, scale, mean, std, source, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ToImage</span></code>([dtype, scale, mean, std, source, ...])</p></td>
 <td><p>Convert input to image tensor with optional normalization.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.Transform" title="stable_pretraining.data.transforms.Transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Transform</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">Transform</span></code>()</p></td>
 <td><p>Base transform class extending torchvision v2.Transform with nested data handling.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.UniformTemporalSubsample" title="stable_pretraining.data.transforms.UniformTemporalSubsample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UniformTemporalSubsample</span></code></a>(num_samples[, ...])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">UniformTemporalSubsample</span></code>(num_samples[, ...])</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">nn.Module</span></code> wrapper for <code class="docutils literal notranslate"><span class="pre">pytorchvideo.transforms.functional.uniform_temporal_subsample</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.WrapTorchTransform" title="stable_pretraining.data.transforms.WrapTorchTransform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WrapTorchTransform</span></code></a>(transform[, source, target])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">WrapTorchTransform</span></code>(transform[, source, target])</p></td>
 <td><p>Applies a lambda callable to target key and store it in source.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.transforms.random_seed" title="stable_pretraining.data.transforms.random_seed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">random_seed</span></code></a>(seed)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">random_seed</span></code>(seed)</p></td>
 <td><p>Context manager that forks the torch RNG, seeds it, and restores on exit.</p></td>
 </tr>
 </tbody>

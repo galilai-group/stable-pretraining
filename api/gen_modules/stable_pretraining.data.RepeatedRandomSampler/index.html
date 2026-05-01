@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>RepeatedRandomSampler &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>RepeatedRandomSampler &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -148,6 +148,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="current nav bd-sidenav">
@@ -227,6 +232,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -394,26 +411,33 @@
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">RepeatedRandomSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_source_or_len</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.14)"><span class="pre">Iterable</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_views</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replacement</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pass_view_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/data/sampler/#RepeatedRandomSampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.RepeatedRandomSampler" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.distributed.DistributedSampler" title="(in PyTorch v2.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">DistributedSampler</span></code></a></p>
 <p>Sampler that repeats each dataset index consecutively for multi-view learning.</p>
-<p>IMPORTANT: This sampler repeats each index n_views times in a row, creating
-sequences like [0,0,0,0, 1,1,1,1, 2,2,2,2, …] for n_views=4. This means:
-- The DataLoader will load the SAME image multiple times consecutively
-- Each repeated index goes through the transform pipeline separately
-- BATCH SIZE: The batch_size in DataLoader refers to total augmented samples.</p>
-<blockquote>
-<div><p>For example: batch_size=128 with n_views=8 means only 16 unique images,
-each appearing 8 times with different augmentations</p>
-</div></blockquote>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>This sampler repeats each index <code class="docutils literal notranslate"><span class="pre">n_views</span></code> times in a row, creating
+sequences like <code class="docutils literal notranslate"><span class="pre">[0,0,0,0,</span> <span class="pre">1,1,1,1,</span> <span class="pre">2,2,2,2,</span> <span class="pre">...]</span></code> for
+<code class="docutils literal notranslate"><span class="pre">n_views=4</span></code>. This means:</p>
+<ul class="simple">
+<li><p>The DataLoader will load the SAME image multiple times
+consecutively.</p></li>
+<li><p>Each repeated index goes through the transform pipeline
+separately.</p></li>
+<li><p>BATCH SIZE: the batch_size in DataLoader refers to total
+augmented samples. For example, <code class="docutils literal notranslate"><span class="pre">batch_size=128</span></code> with
+<code class="docutils literal notranslate"><span class="pre">n_views=8</span></code> means only 16 unique images, each appearing 8
+times with different augmentations.</p></li>
+</ul>
+</div>
 <p>Designed to work with RoundRobinMultiViewTransform which uses a counter to apply different
 augmentations to each repeated occurrence of the same image.</p>
-<dl class="simple">
-<dt>Example behavior with n_views=3:</dt><dd><p>Dataset indices: [0, 1, 2, 3, 4]
-Sampler output:  [0,0,0, 1,1,1, 2,2,2, 3,3,3, 4,4,4]</p>
-</dd>
-</dl>
+<p>Example behavior with <code class="docutils literal notranslate"><span class="pre">n_views=3</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Dataset</span> <span class="n">indices</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
+<span class="n">Sampler</span> <span class="n">output</span><span class="p">:</span>  <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span>
+</pre></div>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data_source</strong> (<a class="reference internal" href="../../../stable_pretraining.data/#stable_pretraining.data.Dataset" title="stable_pretraining.data.Dataset"><em>Dataset</em></a>) – dataset to sample from</p></li>
+<li><p><strong>data_source</strong> (<a class="reference internal" href="../stable_pretraining.data.Dataset/#stable_pretraining.data.Dataset" title="stable_pretraining.data.Dataset"><em>Dataset</em></a>) – dataset to sample from</p></li>
 <li><p><strong>n_views</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – number of times to repeat each index consecutively, default=1</p></li>
 <li><p><strong>replacement</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – samples are drawn on-demand with replacement if <code class="docutils literal notranslate"><span class="pre">True</span></code>, default=``False``</p></li>
 <li><p><strong>seed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – random seed for shuffling</p></li>
@@ -427,9 +451,9 @@ MultiViewTransform with a standard sampler.</p>
 
 <section id="examples-using-repeatedrandomsampler">
 <span id="sphx-glr-backref-stable-pretraining-data-repeatedrandomsampler"></span><h2>Examples using <code class="docutils literal notranslate"><span class="pre">RepeatedRandomSampler</span></code>:<a class="headerlink" href="#examples-using-repeatedrandomsampler" title="Link to this heading">#</a></h2>
-<div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="Multi-layer probe for vision models."><img alt="" src="../../../_images/sphx_glr_multi_layer_probe_thumb.png" />
-<p><a class="reference internal" href="../../../auto_examples/multi_layer_probe/"><span class="doc">&lt;no title&gt;</span></a></p>
-  <div class="sphx-glr-thumbnail-title">Multi-layer probe for vision models.</div>
+<div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="Train probes attached to multiple layers of a frozen backbone to monitor representation quality across depth."><img alt="" src="../../../_images/sphx_glr_multi_layer_probe_thumb.png" />
+<p><a class="reference internal" href="../../../auto_examples/multi_layer_probe/"><span class="doc">Multi-layer Probe for Vision Models</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Multi-layer Probe for Vision Models</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="This example demonstrates how to train models using supervised learning with stable-pretraining, including support for various datasets like ImageNet-10, ImageNet-100, and ImageNet-1k."><img alt="" src="../../../_images/sphx_glr_supervised_learning_thumb.png" />
 <p><a class="reference internal" href="../../../auto_examples/supervised_learning/"><span class="doc">Supervised Learning Example</span></a></p>
   <div class="sphx-glr-thumbnail-title">Supervised Learning Example</div>

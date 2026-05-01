@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.utils &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable_pretraining.callbacks.utils &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -147,6 +147,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -226,6 +231,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -341,17 +358,12 @@
 <span class="n">_HEADER_WIDTH</span> <span class="o">=</span> <span class="mi">50</span>
 
 
-<div class="viewcode-block" id="log_header">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.log_header">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">log_header</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">_HEADER_WIDTH</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Log a unified section header: ``── Name ────────────``.&quot;&quot;&quot;</span>
     <span class="n">pad</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">-</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;── </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> &quot;</span> <span class="o">+</span> <span class="s2">&quot;─&quot;</span> <span class="o">*</span> <span class="n">pad</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;── </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> &quot;</span> <span class="o">+</span> <span class="s2">&quot;─&quot;</span> <span class="o">*</span> <span class="n">pad</span><span class="p">)</span>
 
 
-
-<div class="viewcode-block" id="resolve_verbose">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.resolve_verbose">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_verbose</span><span class="p">(</span><span class="n">verbose</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a callback&#39;s ``verbose`` flag.</span>
 
@@ -365,12 +377,9 @@
 
     <span class="n">level</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span><span class="o">.</span><span class="n">verbose</span>
     <span class="c1"># INFO is index 2; anything &lt;= INFO means &quot;chatty enough for verbose&quot;</span>
-    <span class="k">return</span> <span class="n">_VALID_LOG_LEVELS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">level</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">_VALID_LOG_LEVELS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;INFO&quot;</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">_VALID_LOG_LEVELS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">level</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">_VALID_LOG_LEVELS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;INFO&quot;</span><span class="p">)</span>
 
 
-
-<div class="viewcode-block" id="TrainableCallback">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.TrainableCallback">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrainableCallback</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base callback class with optimizer and scheduler management.</span>
 
@@ -421,8 +430,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">wrap_configure_model</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">wrap_configure_optimizers</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
 
-<div class="viewcode-block" id="TrainableCallback.wrap_configure_model">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.TrainableCallback.wrap_configure_model">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">wrap_configure_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">):</span>
         <span class="n">fn</span> <span class="o">=</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">configure_model</span>
 
@@ -444,11 +451,8 @@
 
         <span class="c1"># Bind the new method to the instance</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  wrapping configure_model&quot;</span><span class="p">)</span>
-        <span class="n">pl_module</span><span class="o">.</span><span class="n">configure_model</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">MethodType</span><span class="p">(</span><span class="n">new_configure_model</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span></div>
+        <span class="n">pl_module</span><span class="o">.</span><span class="n">configure_model</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">MethodType</span><span class="p">(</span><span class="n">new_configure_model</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="TrainableCallback.configure_model">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.TrainableCallback.configure_model">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">configure_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the module for this callback.</span>
 
@@ -460,11 +464,8 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            The initialized module.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Subclasses must implement configure_model&quot;</span><span class="p">)</span></div>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Subclasses must implement configure_model&quot;</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="TrainableCallback.wrap_configure_optimizers">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.TrainableCallback.wrap_configure_optimizers">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">wrap_configure_optimizers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">):</span>
         <span class="n">fn</span> <span class="o">=</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">configure_optimizers</span>
 
@@ -501,11 +502,8 @@
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  wrapping configure_optimizers&quot;</span><span class="p">)</span>
         <span class="n">pl_module</span><span class="o">.</span><span class="n">configure_optimizers</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">MethodType</span><span class="p">(</span>
             <span class="n">new_configure_optimizers</span><span class="p">,</span> <span class="n">pl_module</span>
-        <span class="p">)</span></div>
+        <span class="p">)</span>
 
-
-<div class="viewcode-block" id="TrainableCallback.setup_optimizer">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.TrainableCallback.setup_optimizer">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">setup_optimizer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize optimizer with default LARS if not specified.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -521,11 +519,8 @@
             <span class="p">)</span>
         <span class="c1"># Use explicitly provided optimizer config</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  using explicitly provided optimizer&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">create_optimizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_config</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">create_optimizer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">module</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_config</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="TrainableCallback.setup_scheduler">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.TrainableCallback.setup_scheduler">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">setup_scheduler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize scheduler with default ConstantLR if not specified.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scheduler_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -533,8 +528,7 @@
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  no scheduler given, using default ConstantLR&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">lr_scheduler</span><span class="o">.</span><span class="n">ConstantLR</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  using explicitly provided scheduler&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">create_scheduler</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scheduler_config</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="n">pl_module</span><span class="p">)</span></div>
-
+        <span class="k">return</span> <span class="n">create_scheduler</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scheduler_config</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="n">pl_module</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">module</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -554,12 +548,11 @@
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">state_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Unique identifier for this callback&#39;s state during checkpointing.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">[name=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">]&quot;</span></div>
-
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">[name=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">]&quot;</span>
 
 
 <div class="viewcode-block" id="EarlyStopping">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.EarlyStopping">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.callbacks.EarlyStopping/#stable_pretraining.callbacks.EarlyStopping">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">EarlyStopping</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Early stopping mechanism with support for metric milestones and patience.</span>
 
@@ -595,8 +588,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">patience</span> <span class="o">=</span> <span class="n">patience</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;history&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">patience</span><span class="p">))</span>
 
-<div class="viewcode-block" id="EarlyStopping.should_stop">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.EarlyStopping.should_stop">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">should_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">metric</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">dict</span>
@@ -609,12 +600,9 @@
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;max&quot;</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">metric</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">milestones</span><span class="p">[</span><span class="n">step</span><span class="p">]</span>
         <span class="k">return</span> <span class="kc">False</span></div>
-</div>
 
 
 
-<div class="viewcode-block" id="format_metrics_as_dict">
-<a class="viewcode-back" href="../../../../stable_pretraining.callbacks/#stable_pretraining.callbacks.format_metrics_as_dict">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">format_metrics_as_dict</span><span class="p">(</span><span class="n">metrics</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Formats various metric input formats into a standardized dictionary structure.</span>
 
@@ -689,8 +677,7 @@
             <span class="s2">&quot;_train&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ModuleDict</span><span class="p">(</span><span class="n">train</span><span class="p">),</span>
             <span class="s2">&quot;_val&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ModuleDict</span><span class="p">(</span><span class="nb">eval</span><span class="p">),</span>
         <span class="p">}</span>
-    <span class="p">)</span></div>
-
+    <span class="p">)</span>
 </pre></div>
 
                 </article>

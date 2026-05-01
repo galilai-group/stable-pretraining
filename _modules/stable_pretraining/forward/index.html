@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.forward &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable_pretraining.forward &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -147,6 +147,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -226,6 +231,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -427,7 +444,7 @@
 
 
 <div class="viewcode-block" id="supervised_forward">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.forward.supervised_forward">[docs]</a>
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.supervised_forward">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">supervised_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for standard supervised training.</span>
 
@@ -479,7 +496,7 @@
 
 
 <div class="viewcode-block" id="simclr_forward">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.forward.simclr_forward">[docs]</a>
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.simclr_forward">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">simclr_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for SimCLR (Simple Contrastive Learning of Representations).</span>
 
@@ -543,7 +560,7 @@
 
 
 <div class="viewcode-block" id="byol_forward">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.forward.byol_forward">[docs]</a>
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.byol_forward">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">byol_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for BYOL (Bootstrap Your Own Latent).</span>
 
@@ -647,7 +664,7 @@
 
 
 <div class="viewcode-block" id="vicreg_forward">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.forward.vicreg_forward">[docs]</a>
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.vicreg_forward">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">vicreg_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for VICReg (Variance-Invariance-Covariance Regularization).</span>
 
@@ -671,7 +688,7 @@
 <span class="sd">            - &#39;label&#39;: Labels if present (for probes/callbacks)</span>
 
 <span class="sd">    Note:</span>
-<span class="sd">        Introduced in the VICReg paper :cite:`bardes2022vicreg`.</span>
+<span class="sd">        Introduced in the VICReg paper :cite:`bardes2021vicreg`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
 
@@ -712,7 +729,7 @@
 
 
 <div class="viewcode-block" id="barlow_twins_forward">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.forward.barlow_twins_forward">[docs]</a>
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.barlow_twins_forward">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">barlow_twins_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for Barlow Twins.</span>
 
@@ -776,8 +793,6 @@
 
 
 
-<div class="viewcode-block" id="swav_forward">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.forward.swav_forward">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">swav_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for SwAV (Swapping Assignments between Views).</span>
 
@@ -835,8 +850,7 @@
         <span class="k">if</span> <span class="s2">&quot;label&quot;</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
             <span class="n">out</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span>
 
-    <span class="k">return</span> <span class="n">out</span></div>
-
+    <span class="k">return</span> <span class="n">out</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_find_nearest_neighbors</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">support_set</span><span class="p">):</span>
@@ -849,7 +863,7 @@
 
 
 <div class="viewcode-block" id="nnclr_forward">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.forward.nnclr_forward">[docs]</a>
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.nnclr_forward">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">nnclr_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for NNCLR (Nearest-Neighbor Contrastive Learning).</span>
 
@@ -946,8 +960,6 @@
 
 
 
-<div class="viewcode-block" id="dino_forward">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.forward.dino_forward">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">dino_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for DINO (self-DIstillation with NO labels).</span>
 
@@ -1135,12 +1147,9 @@
         <span class="n">prog_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">out</span></div>
+    <span class="k">return</span> <span class="n">out</span>
 
 
-
-<div class="viewcode-block" id="dinov2_forward">
-<a class="viewcode-back" href="../../../stable_pretraining/#stable_pretraining.forward.dinov2_forward">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">dinov2_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for DINOv2 with iBOT.</span>
 
@@ -1429,8 +1438,7 @@
         <span class="n">prog_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">out</span></div>
-
+    <span class="k">return</span> <span class="n">out</span>
 </pre></div>
 
                 </article>

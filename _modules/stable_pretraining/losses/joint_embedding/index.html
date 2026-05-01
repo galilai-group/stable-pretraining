@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.losses.joint_embedding &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable_pretraining.losses.joint_embedding &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=245b4524"></script>
+    <script src="../../../../_static/documentation_options.js?v=10068741"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -147,6 +147,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -226,6 +231,18 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -344,8 +361,6 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">off_diagonal</span><span class="p">,</span> <span class="n">VCRegLoss</span>
 
 
-<div class="viewcode-block" id="BYOLLoss">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.BYOLLoss">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BYOLLoss</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalized MSE objective used in BYOL :cite:`grill2020bootstrap`.</span>
 
@@ -353,8 +368,6 @@
 <span class="sd">    and L2-normalized target projections.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="BYOLLoss.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.BYOLLoss.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">online_pred</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">target_proj</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
@@ -370,13 +383,11 @@
         <span class="n">online_pred</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">online_pred</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
         <span class="n">target_proj</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">target_proj</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
         <span class="n">loss</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">online_pred</span> <span class="o">*</span> <span class="n">target_proj</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">loss</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span></div>
-</div>
-
+        <span class="k">return</span> <span class="n">loss</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
 
 
 <div class="viewcode-block" id="VICRegLoss">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.VICRegLoss">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.losses.VICRegLoss/#stable_pretraining.losses.VICRegLoss">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">VICRegLoss</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;SSL objective used in VICReg :cite:`bardes2021vicreg`.</span>
 
@@ -403,7 +414,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">vcreg_loss</span> <span class="o">=</span> <span class="n">VCRegLoss</span><span class="p">(</span><span class="n">std_coeff</span><span class="p">,</span> <span class="n">cov_coeff</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">)</span>
 
 <div class="viewcode-block" id="VICRegLoss.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.VICRegLoss.forward">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.losses.VICRegLoss/#stable_pretraining.losses.VICRegLoss.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z_i</span><span class="p">,</span> <span class="n">z_j</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the loss of the VICReg model.</span>
 
@@ -423,7 +434,7 @@
 
 
 <div class="viewcode-block" id="BarlowTwinsLoss">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.BarlowTwinsLoss">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.losses.BarlowTwinsLoss/#stable_pretraining.losses.BarlowTwinsLoss">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BarlowTwinsLoss</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;SSL objective used in Barlow Twins :cite:`zbontar2021barlow`.</span>
 
@@ -442,7 +453,7 @@
         <span class="k">return</span> <span class="p">(</span><span class="n">z</span> <span class="o">-</span> <span class="n">z</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">z</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-5</span><span class="p">)</span>
 
 <div class="viewcode-block" id="BarlowTwinsLoss.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.BarlowTwinsLoss.forward">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.losses.BarlowTwinsLoss/#stable_pretraining.losses.BarlowTwinsLoss.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z_i</span><span class="p">,</span> <span class="n">z_j</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the loss of the Barlow Twins model.</span>
 
@@ -467,8 +478,6 @@
 
 
 
-<div class="viewcode-block" id="SwAVLoss">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.SwAVLoss">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SwAVLoss</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the SwAV loss, optionally using a feature queue.</span>
 
@@ -499,8 +508,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">sinkhorn_iterations</span> <span class="o">=</span> <span class="n">sinkhorn_iterations</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span> <span class="o">=</span> <span class="n">epsilon</span>
 
-<div class="viewcode-block" id="SwAVLoss.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.SwAVLoss.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">proj1</span><span class="p">,</span> <span class="n">proj2</span><span class="p">,</span> <span class="n">prototypes</span><span class="p">,</span> <span class="n">queue_feats</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the SwAV loss.</span>
 
@@ -538,22 +545,16 @@
         <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">swapped_prediction</span><span class="p">(</span><span class="n">scores1</span><span class="p">,</span> <span class="n">q2</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">swapped_prediction</span><span class="p">(</span>
             <span class="n">scores2</span><span class="p">,</span> <span class="n">q1</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">loss</span> <span class="o">/</span> <span class="mf">2.0</span></div>
+        <span class="k">return</span> <span class="n">loss</span> <span class="o">/</span> <span class="mf">2.0</span>
 
-
-<div class="viewcode-block" id="SwAVLoss.swapped_prediction">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.SwAVLoss.swapped_prediction">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">swapped_prediction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scores</span><span class="p">,</span> <span class="n">q</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Computes the cross-entropy loss for the swapped prediction task.&quot;&quot;&quot;</span>
         <span class="n">scores</span> <span class="o">=</span> <span class="n">scores</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
         <span class="n">loss</span> <span class="o">=</span> <span class="o">-</span><span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span>
             <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">q</span> <span class="o">*</span> <span class="n">F</span><span class="o">.</span><span class="n">log_softmax</span><span class="p">(</span><span class="n">scores</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">loss</span></div>
+        <span class="k">return</span> <span class="n">loss</span>
 
-
-<div class="viewcode-block" id="SwAVLoss.sinkhorn">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.SwAVLoss.sinkhorn">[docs]</a>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">sinkhorn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scores</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Applies the Sinkhorn-Knopp algorithm.&quot;&quot;&quot;</span>
@@ -567,13 +568,9 @@
             <span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
             <span class="n">Q</span> <span class="o">*=</span> <span class="p">(</span><span class="n">r</span> <span class="o">/</span> <span class="n">u</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
             <span class="n">Q</span> <span class="o">*=</span> <span class="p">(</span><span class="n">c</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">Q</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span><span class="o">.</span><span class="n">T</span></div>
-</div>
+        <span class="k">return</span> <span class="p">(</span><span class="n">Q</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
 
 
-
-<div class="viewcode-block" id="InfoNCELoss">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.InfoNCELoss">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InfoNCELoss</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;InfoNCE contrastive loss (one-directional).</span>
 
@@ -611,8 +608,6 @@
 
         <span class="k">return</span> <span class="n">F</span><span class="o">.</span><span class="n">cross_entropy</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
 
-<div class="viewcode-block" id="InfoNCELoss.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.InfoNCELoss.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">anchors</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
@@ -638,13 +633,11 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            torch.Tensor: A scalar loss value.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute</span><span class="p">(</span><span class="n">anchors</span><span class="p">,</span> <span class="n">candidates</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">logit_scale</span><span class="p">)</span></div>
-</div>
-
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute</span><span class="p">(</span><span class="n">anchors</span><span class="p">,</span> <span class="n">candidates</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">logit_scale</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="NTXEntLoss">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.NTXEntLoss">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.losses.NTXEntLoss/#stable_pretraining.losses.NTXEntLoss">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NTXEntLoss</span><span class="p">(</span><span class="n">InfoNCELoss</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalized temperature-scaled cross entropy loss.</span>
 
@@ -660,7 +653,7 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="n">temperature</span><span class="p">)</span>
 
 <div class="viewcode-block" id="NTXEntLoss.forward">
-<a class="viewcode-back" href="../../../../stable_pretraining.losses/#stable_pretraining.losses.NTXEntLoss.forward">[docs]</a>
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.losses.NTXEntLoss/#stable_pretraining.losses.NTXEntLoss.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z_i</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">z_j</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the NT-Xent loss.</span>
 

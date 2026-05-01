@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</title>
+    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=245b4524"></script>
+    <script src="_static/documentation_options.js?v=10068741"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/sg-tags.js?v=d80f6fa4"></script>
@@ -131,7 +131,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7ea1cd402.d20260425 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -149,6 +149,11 @@
 <li class="toctree-l1"><a class="reference internal" href="releases/">Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing/">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli/">CLI reference</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="nav bd-sidenav">
@@ -228,6 +233,18 @@
 <li class="toctree-l2"><a class="reference internal" href="api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
 </ul>
 </details></li>
 </ul>
@@ -462,7 +479,6 @@ git<span class="w"> </span>clone<span class="w"> </span>https://github.com/galil
 pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
 </pre></div>
 </div>
-<p>For advanced installation options, see <a class="reference internal" href="#installation"><span class="xref myst">Installation</span></a> below.</p>
 </section>
 <section id="core-structure">
 <h2>Core Structure<a class="headerlink" href="#core-structure" title="Link to this heading">#</a></h2>
@@ -673,7 +689,7 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 <section id="intelligent-queue-system">
 <h4>Intelligent Queue System<a class="headerlink" href="#intelligent-queue-system" title="Link to this heading">#</a></h4>
 <p>Callbacks that need rolling feature stores (<code class="docutils literal notranslate"><span class="pre">OnlineKNN</span></code>, <code class="docutils literal notranslate"><span class="pre">RankMe</span></code>, <code class="docutils literal notranslate"><span class="pre">LiDAR</span></code>, <code class="docutils literal notranslate"><span class="pre">LatentViz</span></code>) share memory through an automatic queue management system. If two callbacks monitor the same key with different queue lengths, a single queue is allocated at the maximum length and shared, eliminating redundant computation.</p>
-<p><strong>Why callbacks matter:</strong> Get real-time feedback on representation quality, catch issues like collapse early, and track multiple metrics simultaneously. For detailed usage and practical considerations, see the <a class="reference internal" href="#stable_pretraining/callbacks/README.md"><span class="xref myst">Callback guide</span></a>.</p>
+<p><strong>Why callbacks matter:</strong> Get real-time feedback on representation quality, catch issues like collapse early, and track multiple metrics simultaneously. For detailed usage and practical considerations, see the <a class="reference external" href="https://github.com/rbalestr-lab/stable-pretraining/blob/main/stable_pretraining/callbacks/README.md">Callback guide</a>.</p>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Monitor SSL representations with a linear classifier</span>
 <span class="n">linear_probe</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">OnlineProbe</span><span class="p">(</span>
@@ -778,7 +794,7 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cache_dir</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code> or <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code> (or <code class="docutils literal notranslate"><span class="pre">SPT_CACHE_DIR</span></code> env var)</p></td>
-<td><p>Root directory for all training outputs. See <a class="reference internal" href="#output-directory-cache_dir"><span class="xref myst">Output Directory</span></a> below.</p></td>
+<td><p>Root directory for all training outputs. See <a class="reference internal" href="#output-directory-cache-dir">Output Directory</a> below.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">requeue_checkpoint</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
@@ -791,7 +807,7 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 <p>Settings apply immediately and persist for the process lifetime. <code class="docutils literal notranslate"><span class="pre">spt.set()</span></code> can be called multiple times; only the settings you pass are updated.</p>
 </section>
 <section id="output-directory-cache-dir">
-<h2>Output Directory (<code class="docutils literal notranslate"><span class="pre">cache_dir</span></code>)<a class="headerlink" href="#output-directory-cache-dir" title="Link to this heading">#</a></h2>
+<span id="id1"></span><h2>Output Directory (<code class="docutils literal notranslate"><span class="pre">cache_dir</span></code>)<a class="headerlink" href="#output-directory-cache-dir" title="Link to this heading">#</a></h2>
 <p>By default, Lightning and Hydra scatter training outputs (checkpoints, logs, wandb data) based on the current working directory or Hydra’s <code class="docutils literal notranslate"><span class="pre">run.dir</span></code>. This causes collisions when multiple sweep jobs start at the same time and resolve to the same path.</p>
 <p><code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code> solves this with a centralized <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code>. When set, <strong>every run gets its own unique directory</strong> and all outputs are routed there automatically:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>{cache_dir}/runs/{YYYYMMDD}/{HHMMSS}/{run_id}/
@@ -1351,40 +1367,52 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 <li><p><strong>LaTeX support in Matplotlib</strong> (optional)</p>
  <details>
  <summary>Click to expand setup instructions</summary>
-<p><strong>Install Computer Modern fonts:</strong></p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.local/share/fonts
-cp<span class="w"> </span>assets/cm-unicode-0.7.0<span class="se">\ </span><span class="m">2</span>/*.ttf<span class="w"> </span>~/.local/share/fonts/
-fc-cache<span class="w"> </span>-f<span class="w"> </span>-v
-<span class="c1"># verify: fc-list | grep cmu</span>
-</pre></div>
-</div>
-<p><strong>Clear matplotlib font cache:</strong></p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import shutil, matplotlib; shutil.rmtree(matplotlib.get_cachedir())&quot;</span>
-</pre></div>
-</div>
 <p><strong>Install TeX Live (minimal, no sudo):</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/tmp
 wget<span class="w"> </span>https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
 tar<span class="w"> </span>xzf<span class="w"> </span>install-tl-unx.tar.gz
 <span class="nb">cd</span><span class="w"> </span>install-tl-*/
 ./install-tl<span class="w"> </span>--texdir<span class="w"> </span>~/texlive<span class="w"> </span>--no-interaction<span class="w"> </span>--scheme<span class="o">=</span>scheme-basic
-~/texlive/bin/x86_64-linux/tlmgr<span class="w"> </span>install<span class="w"> </span>type1cm<span class="w"> </span>cm-super<span class="w"> </span>dvipng<span class="w"> </span>collection-fontsrecommended<span class="w"> </span>amsmath<span class="w"> </span>amssymb<span class="w"> </span>bm<span class="w"> </span>underscore<span class="w"> </span>xcolor
 </pre></div>
 </div>
 <p>Add to your <code class="docutils literal notranslate"><span class="pre">~/.bashrc</span></code> (or equivalent):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/texlive/bin/x86_64-linux:</span><span class="nv">$PATH</span><span class="s2">&quot;</span>
 </pre></div>
 </div>
-<p><strong>Verify:</strong></p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
-<span class="s2">import matplotlib; matplotlib.use(&#39;Agg&#39;)</span>
-<span class="s2">import matplotlib.pyplot as plt</span>
-<span class="s2">plt.rc(&#39;text&#39;, usetex=True)</span>
-<span class="s2">plt.rc(&#39;font&#39;, family=&#39;serif&#39;)</span>
-<span class="s2">plt.figure(); plt.title(r&#39;\$\sum_{i=1}^n x_i\$&#39;)</span>
-<span class="s2">plt.savefig(&#39;/tmp/tex_test.png&#39;)</span>
-<span class="s2">print(&#39;Success!&#39;)</span>
-<span class="s2">&quot;</span>
+<p><strong>Install required LaTeX packages.</strong> Pin a known-good CTAN mirror first (the default redirector occasionally serves corrupt files or unreachable hosts), then install one package per line so any failure is visible:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>tlmgr<span class="w"> </span>option<span class="w"> </span>repository<span class="w"> </span>https://ctan.math.illinois.edu/systems/texlive/tlnet
+<span class="k">for</span><span class="w"> </span>pkg<span class="w"> </span><span class="k">in</span><span class="w"> </span>type1cm<span class="w"> </span>cm-super<span class="w"> </span>dvipng<span class="w"> </span>collection-fontsrecommended<span class="w"> </span><span class="se">\</span>
+<span class="w">           </span>amsmath<span class="w"> </span>amsfonts<span class="w"> </span>tools<span class="w"> </span>underscore<span class="w"> </span>xcolor<span class="w"> </span>iftex<span class="w"> </span>epstopdf-pkg<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span>tlmgr<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$pkg</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;FAILED: </span><span class="nv">$pkg</span><span class="s2">&quot;</span>
+<span class="k">done</span>
+</pre></div>
+</div>
+<p>Notes on the package list:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">amsfonts</span></code> provides <code class="docutils literal notranslate"><span class="pre">amssymb.sty</span></code>; <code class="docutils literal notranslate"><span class="pre">tools</span></code> provides <code class="docutils literal notranslate"><span class="pre">bm.sty</span></code>; <code class="docutils literal notranslate"><span class="pre">iftex</span></code> provides <code class="docutils literal notranslate"><span class="pre">ifvtex.sty</span></code>. Naming these as <code class="docutils literal notranslate"><span class="pre">amssymb</span></code>/<code class="docutils literal notranslate"><span class="pre">bm</span></code>/<code class="docutils literal notranslate"><span class="pre">ifvtex</span></code> directly will fail with “package not present in repository”.</p></li>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">tlmgr</span></code> reports checksum mismatches, switch to a different mirror (e.g. <code class="docutils literal notranslate"><span class="pre">https://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/tlnet</span></code>) and rerun.</p></li>
+</ul>
+<p><strong>Computer Modern TTF fonts (only if you also use <code class="docutils literal notranslate"><span class="pre">usetex=False</span></code>):</strong> with <code class="docutils literal notranslate"><span class="pre">usetex=True</span></code>, all matplotlib text is rendered by LaTeX using TeX Live’s bundled fonts and this step is unnecessary. Install the TTFs only if you want CMU for matplotlib’s own text rendering (no LaTeX roundtrip):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.local/share/fonts
+cp<span class="w"> </span>assets/cm-unicode-0.7.0<span class="se">\ </span><span class="m">2</span>/*.ttf<span class="w"> </span>~/.local/share/fonts/
+fc-cache<span class="w"> </span>-f<span class="w"> </span>-v<span class="w">   </span><span class="c1"># requires fontconfig; skip if unavailable</span>
+<span class="c1"># verify: fc-list | grep cmu</span>
+</pre></div>
+</div>
+<p><strong>Clear matplotlib font cache</strong> (after either step above):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import shutil, matplotlib; shutil.rmtree(matplotlib.get_cachedir(), ignore_errors=True)&quot;</span>
+</pre></div>
+</div>
+<p><strong>Verify</strong> (heredoc with single-quoted <code class="docutils literal notranslate"><span class="pre">'PY'</span></code> so the shell does not touch <code class="docutils literal notranslate"><span class="pre">$</span></code>):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+<span class="s">import matplotlib; matplotlib.use(&#39;Agg&#39;)</span>
+<span class="s">import matplotlib.pyplot as plt</span>
+<span class="s">plt.rc(&#39;text&#39;, usetex=True)</span>
+<span class="s">plt.rc(&#39;font&#39;, family=&#39;serif&#39;)</span>
+<span class="s">plt.figure(); plt.title(r&#39;$\sum_{i=1}^n x_i$&#39;)</span>
+<span class="s">plt.savefig(&#39;/tmp/tex_test.png&#39;)</span>
+<span class="s">print(&#39;Success!&#39;)</span>
+<span class="s">PY</span>
 </pre></div>
 </div>
  </details>
@@ -1422,6 +1450,13 @@ tar<span class="w"> </span>xzf<span class="w"> </span>install-tl-unx.tar.gz
 </section>
 </section>
 <div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli/">CLI reference</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="api/backbone/">stable_pretraining.backbone</a></li>
@@ -1432,6 +1467,8 @@ tar<span class="w"> </span>xzf<span class="w"> </span>install-tl-unx.tar.gz
 <li class="toctree-l1"><a class="reference internal" href="api/module/">stable_pretraining.module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/monitors/">stable_pretraining.callbacks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/optim/">stable_pretraining.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/registry/">stable_pretraining.registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/web/">stable_pretraining.web</a></li>
 </ul>
 </div>
 
