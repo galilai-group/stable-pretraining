@@ -872,6 +872,45 @@ class TestErrorHandling:
                 if callback:
                     del callback
 
+    def test_callback_picklable_after_thread_started(
+        self, dummy_model, temp_log_dir, mock_subprocess_success
+    ):
+        """Regression test for issue #416.
+
+        Spawn-mode DataLoader workers must be able to pickle the
+        trainer/module graph that contains this callback.
+        ``threading.Thread`` holds a ``_thread.lock``, so the callback
+        must drop ``_dump_thread`` in ``__getstate__``.
+        """
+        import pickle
+
+        callback = EnvironmentDumpCallback(async_dump=True)
+        trainer = None
+
+        try:
+            trainer = Trainer(
+                default_root_dir=temp_log_dir,
+                callbacks=[callback],
+                logger=False,
+                enable_checkpointing=False,
+            )
+
+            callback.setup(trainer, dummy_model, stage="fit")
+            assert callback._dump_thread is not None
+
+            blob = pickle.dumps(callback)
+            restored = pickle.loads(blob)
+            assert restored._dump_thread is None
+            assert restored.filename == callback.filename
+            assert restored.async_dump == callback.async_dump
+        finally:
+            if callback._dump_thread and callback._dump_thread.is_alive():
+                callback._dump_thread.join(timeout=5)
+            if trainer and hasattr(trainer, "strategy"):
+                trainer.strategy.teardown()
+            del callback
+            del trainer
+
     def test_thread_cleanup_on_exception(self, dummy_model, temp_log_dir):
         """Test that threads are cleaned up even when exceptions occur."""
         callback = EnvironmentDumpCallback(async_dump=True)
