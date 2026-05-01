@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g048612646 documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+ga350713e3 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=10068741"></script>
+    <script src="../../../_static/documentation_options.js?v=0ce21dd2"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g048612646 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+ga350713e3 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -1182,6 +1182,33 @@
                         <span class="sa">f</span><span class="s2">&quot;to &#39;</span><span class="si">{</span><span class="n">save_dir</span><span class="si">}</span><span class="s2">&#39; (cache_dir is active)&quot;</span>
                     <span class="p">)</span>
                 <span class="n">cb</span><span class="o">.</span><span class="n">dirpath</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">save_dir</span><span class="p">)</span>
+
+        <span class="c1"># Same redirect for HuggingFaceCheckpointCallback. Without this, an</span>
+        <span class="c1"># absolute ``save_dir`` (e.g. ``/mnt/data/spt_cache/hf_exports``)</span>
+        <span class="c1"># gets reused by every array task — 1024 jobs ``rmtree``-ing the</span>
+        <span class="c1"># same ``last/`` subdir produce ``FileNotFoundError`` storms.</span>
+        <span class="c1"># Per-run redirection puts each export under</span>
+        <span class="c1"># ``&lt;run_dir&gt;/hf_exports/`` so concurrency on the export path is</span>
+        <span class="c1"># impossible by construction.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">.callbacks.hf_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">HuggingFaceCheckpointCallback</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># pragma: no cover - HF is optional</span>
+            <span class="n">HuggingFaceCheckpointCallback</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">HuggingFaceCheckpointCallback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hf_save_dir</span> <span class="o">=</span> <span class="n">run_dir</span> <span class="o">/</span> <span class="s2">&quot;hf_exports&quot;</span>
+            <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">HuggingFaceCheckpointCallback</span><span class="p">):</span>
+                    <span class="n">old_dir</span> <span class="o">=</span> <span class="n">cb</span><span class="o">.</span><span class="n">save_dir</span>
+                    <span class="k">if</span> <span class="p">(</span>
+                        <span class="n">old_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                        <span class="ow">and</span> <span class="n">Path</span><span class="p">(</span><span class="n">old_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">!=</span> <span class="n">hf_save_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+                    <span class="p">):</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;  Redirecting HuggingFaceCheckpointCallback &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;from &#39;</span><span class="si">{</span><span class="n">old_dir</span><span class="si">}</span><span class="s2">&#39; to &#39;</span><span class="si">{</span><span class="n">hf_save_dir</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+                            <span class="s2">&quot;(cache_dir is active — prevents races on a shared cache)&quot;</span>
+                        <span class="p">)</span>
+                    <span class="n">cb</span><span class="o">.</span><span class="n">save_dir</span> <span class="o">=</span> <span class="n">hf_save_dir</span>
 
         <span class="c1"># Add a requeue checkpoint (last.ckpt) so preemption recovery works</span>
         <span class="c1"># regardless of what the user&#39;s callbacks save.  Can be disabled via</span>
