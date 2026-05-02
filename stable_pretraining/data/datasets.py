@@ -143,8 +143,14 @@ class Subset(Dataset):
         return len(self.indices)
 
     def __getattr__(self, name):
-        if name == "dataset":
-            raise AttributeError("dataset")
+        # Don't proxy dunders to the wrapped dataset. Pickle/copy/etc. on
+        # the Subset must use Subset's own machinery, not the inner ds's.
+        # On Python <3.11 ``object.__getstate__`` doesn't exist, so a bare
+        # proxy makes pickle read the inner dataset's ``__getstate__`` and
+        # serialize the wrong state (inner's ``__dict__`` under Subset's
+        # class), breaking spawn-mode DataLoader workers.
+        if name == "dataset" or (name.startswith("__") and name.endswith("__")):
+            raise AttributeError(name)
         return getattr(self.dataset, name)
 
 
