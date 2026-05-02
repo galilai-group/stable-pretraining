@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.data.datasets &#8212; stable-pretraining 0.1.dev1+ga350713e3 documentation</title>
+    <title>stable_pretraining.data.datasets &#8212; stable-pretraining 0.1.dev1+g7a0ec36ee documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=0ce21dd2"></script>
+    <script src="../../../../_static/documentation_options.js?v=5c5175e4"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+ga350713e3 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g7a0ec36ee documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -400,6 +400,18 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Attach a Lightning trainer so its state is injected into samples.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span> <span class="o">=</span> <span class="n">trainer</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Drop the trainer back-reference. Pickle-walking it reaches</span>
+        <span class="c1"># `trainer.train_dataloader._iterator`, a</span>
+        <span class="c1"># `_MultiProcessingDataLoaderIter`, which raises on __getstate__.</span>
+        <span class="c1"># Spawn-mode DataLoader workers therefore can&#39;t serialise any</span>
+        <span class="c1"># dataset that has had `set_pl_trainer` called on it.</span>
+        <span class="c1"># Workers see only a snapshot of trainer state at spawn time</span>
+        <span class="c1"># anyway; `process_sample` already handles `_trainer is None`.</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_trainer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">state</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">process_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Run a raw sample dict through trainer-injection and transforms.</span>
 
@@ -495,8 +507,14 @@
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">indices</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;dataset&quot;</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;dataset&quot;</span><span class="p">)</span>
+        <span class="c1"># Don&#39;t proxy dunders to the wrapped dataset. Pickle/copy/etc. on</span>
+        <span class="c1"># the Subset must use Subset&#39;s own machinery, not the inner ds&#39;s.</span>
+        <span class="c1"># On Python &lt;3.11 ``object.__getstate__`` doesn&#39;t exist, so a bare</span>
+        <span class="c1"># proxy makes pickle read the inner dataset&#39;s ``__getstate__`` and</span>
+        <span class="c1"># serialize the wrong state (inner&#39;s ``__dict__`` under Subset&#39;s</span>
+        <span class="c1"># class), breaking spawn-mode DataLoader workers.</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;dataset&quot;</span> <span class="ow">or</span> <span class="p">(</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
 
 
