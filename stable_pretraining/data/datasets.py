@@ -53,6 +53,18 @@ class DatasetMixin:
         """Attach a Lightning trainer so its state is injected into samples."""
         self._trainer = trainer
 
+    def __getstate__(self):
+        # Drop the trainer back-reference. Pickle-walking it reaches
+        # `trainer.train_dataloader._iterator`, a
+        # `_MultiProcessingDataLoaderIter`, which raises on __getstate__.
+        # Spawn-mode DataLoader workers therefore can't serialise any
+        # dataset that has had `set_pl_trainer` called on it.
+        # Workers see only a snapshot of trainer state at spawn time
+        # anyway; `process_sample` already handles `_trainer is None`.
+        state = self.__dict__.copy()
+        state["_trainer"] = None
+        return state
+
     def process_sample(self, sample, **kwargs):
         """Run a raw sample dict through trainer-injection and transforms.
 

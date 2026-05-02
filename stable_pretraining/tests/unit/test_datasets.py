@@ -509,3 +509,37 @@ class TestDatasetUnit:
         assert roundtripped.indices == [0, 1, 2]
         assert roundtripped.dataset.color == "red"
         assert len(roundtripped) == 3
+
+    def test_dataset_mixin_drops_trainer_on_pickle(self):
+        """``DatasetMixin.__getstate__`` must drop ``_trainer``.
+
+        Regression: ``set_pl_trainer()`` stores ``self._trainer``, and
+        the trainer transitively reaches ``train_dataloader._iterator``
+        (a ``_MultiProcessingDataLoaderIter`` that raises
+        ``NotImplementedError`` on ``__getstate__``). Spawn-mode
+        DataLoader workers can therefore not pickle any dataset that
+        has had a trainer attached unless ``__getstate__`` drops the
+        back-reference.
+        """
+        from stable_pretraining.data.datasets import Dataset
+
+        class _FakeTrainer:
+            global_step = 0
+            current_epoch = 0
+
+        class _DS(Dataset):
+            def __getitem__(self, idx):
+                return {"x": idx}
+
+            def __len__(self):
+                return 3
+
+        ds = _DS()
+        ds.set_pl_trainer(_FakeTrainer())
+        assert ds._trainer is not None
+
+        state = ds.__getstate__()
+        assert state["_trainer"] is None
+
+        # Live attribute is preserved; only the pickled snapshot is None.
+        assert ds._trainer is not None
