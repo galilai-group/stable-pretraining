@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.registry.logger &#8212; stable-pretraining 0.1.dev1+g7a0ec36ee documentation</title>
+    <title>stable_pretraining.registry.logger &#8212; stable-pretraining 0.1.dev1+gbaddab4d8 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=5c5175e4"></script>
+    <script src="../../../../_static/documentation_options.js?v=ed152b67"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7a0ec36ee documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gbaddab4d8 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -352,15 +352,19 @@
 
 <span class="sd">:class:`RegistryLogger` is a thin subclass of Lightning&#39;s</span>
 <span class="sd">:class:`~lightning.pytorch.loggers.CSVLogger`.  It writes the standard</span>
-<span class="sd">CSV + hparams artifacts **and** an indexable ``sidecar.json`` + a</span>
-<span class="sd">``heartbeat`` file in the run directory.</span>
+<span class="sd">CSV + hparams artifacts **and** an indexable ``sidecar.json``, a</span>
+<span class="sd">fast-readable ``summary.json`` (per-metric stats), and a ``heartbeat``</span>
+<span class="sd">file in the run directory.</span>
 
 <span class="sd">Nothing in the training path touches SQLite or a network server:</span>
 
 <span class="sd">* ``log_hyperparams`` → CSV hparams + sidecar snapshot.</span>
-<span class="sd">* ``log_metrics``     → CSV metrics row + summary accumulator + heartbeat touch.</span>
-<span class="sd">* ``save``            → CSV flush + sidecar rewrite (atomic).</span>
-<span class="sd">* ``finalize``        → terminal status in sidecar.</span>
+<span class="sd">* ``log_metrics``     → CSV metrics row + per-metric stats accumulator</span>
+<span class="sd">                        (last / min / max / count) + heartbeat touch.</span>
+<span class="sd">* ``save``            → CSV flush + sidecar rewrite + summary.json</span>
+<span class="sd">                        rewrite (both atomic). Lightning calls this at</span>
+<span class="sd">                        epoch boundaries and on the flush cadence.</span>
+<span class="sd">* ``finalize``        → terminal status in sidecar + final summary flush.</span>
 <span class="sd">* ``after_save_checkpoint`` → ``checkpoint_path`` in sidecar.</span>
 
 <span class="sd">A separate scanner (see :mod:`stable_pretraining.registry._scanner`)</span>
@@ -372,11 +376,13 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">csv</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_csv</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.loggers</span><span class="w"> </span><span class="kn">import</span> <span class="n">CSVLogger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.loggers.csv_logs</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExperimentWriter</span> <span class="k">as</span> <span class="n">_LightningCSVWriter</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.utilities.rank_zero</span><span class="w"> </span><span class="kn">import</span> <span class="n">rank_zero_only</span>
@@ -500,12 +506,19 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_notes</span> <span class="o">=</span> <span class="n">notes</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_hparams</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_summary</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># Per-metric extended stats for summary.json: each entry is a dict</span>
+        <span class="c1"># with last / min / max / count. Updated incrementally on every</span>
+        <span class="c1"># log_metrics.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_metric_stats</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_checkpoint_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_status</span> <span class="o">=</span> <span class="s2">&quot;running&quot;</span>
-        <span class="c1"># Last step seen via log_metrics — used to attach a step to media</span>
-        <span class="c1"># events when the caller of log_image / log_video does not supply one</span>
-        <span class="c1"># (matches Lightning&#39;s WandbLogger behaviour).</span>
+        <span class="c1"># Last step / epoch seen via log_metrics — step is used to attach a</span>
+        <span class="c1"># step to media events when log_image / log_video doesn&#39;t supply one</span>
+        <span class="c1"># (matches Lightning&#39;s WandbLogger behaviour). Epoch is read from</span>
+        <span class="c1"># the metrics dict (Lightning auto-injects an &quot;epoch&quot; key) and is</span>
+        <span class="c1"># surfaced as a top-level field in summary.json.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_step</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_epoch</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="c1"># Replace Lightning&#39;s truncate-on-init writer with our appending one</span>
         <span class="c1"># so SLURM preempt/requeue cycles don&#39;t erase prior training history.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_experiment</span> <span class="o">=</span> <span class="n">_AppendingExperimentWriter</span><span class="p">(</span><span class="n">log_dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">))</span>
@@ -513,6 +526,15 @@
         <span class="c1"># the registry can order runs chronologically regardless of how</span>
         <span class="c1"># often we flush.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_created_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># First-write flag for summary.json — used to log a one-shot info</span>
+        <span class="c1"># line on creation, then debug lines on subsequent rewrites so we</span>
+        <span class="c1"># don&#39;t spam every flush.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_summary_written</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[RegistryLogger] run_id=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;run_dir=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2"> — sidecar.json + summary.json + &quot;</span>
+            <span class="s2">&quot;metrics.csv will live here&quot;</span>
+        <span class="p">)</span>
 
     <span class="c1"># -- identity ---------------------------------------------------------------</span>
 
@@ -546,12 +568,36 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">step</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_last_step</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+        <span class="c1"># Lightning auto-injects &quot;epoch&quot; into the metrics dict; surface it</span>
+        <span class="c1"># as a top-level field in summary.json.</span>
+        <span class="k">if</span> <span class="s2">&quot;epoch&quot;</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+            <span class="n">ep</span> <span class="o">=</span> <span class="n">_to_scalar</span><span class="p">(</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;epoch&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">ep</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_last_epoch</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ep</span><span class="p">)</span>
 
-        <span class="c1"># Sidecar-side: accumulate last-value-per-key summary.</span>
         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">scalar</span> <span class="o">=</span> <span class="n">_to_scalar</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">scalar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_summary</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">scalar</span>
+            <span class="k">if</span> <span class="n">scalar</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="c1"># Sidecar-side: accumulate last-value-per-key summary (kept for</span>
+            <span class="c1"># backward compatibility with the scanner / SQLite cache).</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_summary</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">scalar</span>
+            <span class="c1"># summary.json-side: extended stats with last/min/max/count.</span>
+            <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metric_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">stats</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_metric_stats</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;last&quot;</span><span class="p">:</span> <span class="n">scalar</span><span class="p">,</span>
+                    <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="n">scalar</span><span class="p">,</span>
+                    <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="n">scalar</span><span class="p">,</span>
+                    <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;last&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scalar</span>
+                <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">scalar</span> <span class="o">&lt;</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;min&quot;</span><span class="p">]:</span>
+                    <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;min&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scalar</span>
+                <span class="k">if</span> <span class="n">scalar</span> <span class="o">&gt;</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;max&quot;</span><span class="p">]:</span>
+                    <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;max&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scalar</span>
 
         <span class="c1"># Heartbeat: cheap, fire-and-forget; used by the scanner to</span>
         <span class="c1"># distinguish running / stalled / dead without contacting SLURM.</span>
@@ -563,7 +609,11 @@
     <span class="nd">@rank_zero_only</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_write_sidecar</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_sidecar</span><span class="p">()</span>
+        <span class="c1"># Lightning calls save() at flush cadence and at epoch boundaries —</span>
+        <span class="c1"># piggyback the summary flush on the same path so summary.json is</span>
+        <span class="c1"># always fresh after each epoch.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_summary_safe</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="RegistryLogger.finalize">
@@ -576,7 +626,8 @@
         <span class="c1"># because _experiment may be None on rank-zero callers that</span>
         <span class="c1"># never logged — super() handles that no-op correctly.</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_write_sidecar</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_sidecar</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_summary_safe</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="RegistryLogger.after_save_checkpoint">
@@ -744,6 +795,50 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_write_sidecar</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="c1"># -- summary.json -----------------------------------------------------------</span>
+
+    <span class="nd">@rank_zero_only</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Atomically (re)write ``summary.json`` with per-metric stats.</span>
+
+<span class="sd">        Format is intentionally tight (a flat ``{metric: stats_dict}`` map)</span>
+<span class="sd">        so a downstream reader can parse it with a single ``json.load`` and</span>
+<span class="sd">        reach any metric&#39;s last/min/max in O(1).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;schema_version&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="p">,</span>
+            <span class="s2">&quot;run_dir&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="p">),</span>
+            <span class="s2">&quot;updated_at&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_step</span><span class="p">,</span>
+            <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_epoch</span><span class="p">,</span>
+            <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_metric_stats</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">/</span> <span class="s2">&quot;summary.json&quot;</span>
+        <span class="n">_sidecar</span><span class="o">.</span><span class="n">atomic_json_write</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[RegistryLogger] summary.json flushed &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_metric_stats</span><span class="p">)</span><span class="si">}</span><span class="s2"> metrics, step=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_last_step</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;epoch=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_last_epoch</span><span class="si">}</span><span class="s2">) → </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_summary_written</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_summary_written</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="nd">@rank_zero_only</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_summary_safe</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Same as :meth:`_write_summary` but swallows I/O errors.</span>
+
+<span class="sd">        ``summary.json`` is auxiliary — a failed write must never take down</span>
+<span class="sd">        a training run.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_summary</span><span class="p">()</span>
         <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
             <span class="k">pass</span></div>
 

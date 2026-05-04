@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g7a0ec36ee documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+gbaddab4d8 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=5c5175e4"></script>
+    <script src="../../../_static/documentation_options.js?v=ed152b67"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g7a0ec36ee documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gbaddab4d8 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -533,8 +533,9 @@
 
 <span class="c1"># Rank-N waits up to this many seconds for rank-0 to publish run_dir before</span>
 <span class="c1"># falling back to local resolution. Generous to absorb slow NFS mkdir + the</span>
-<span class="c1"># actual time rank-0 spends in `_try_restore_run_dir`. Override via env var</span>
-<span class="c1"># `SPT_RANK_HANDOFF_TIMEOUT_S` if the cluster&#39;s NFS is unusually slow.</span>
+<span class="c1"># actual time rank-0 spends resolving (requeue index lookup, mkdir, etc.).</span>
+<span class="c1"># Override via env var ``SPT_RANK_HANDOFF_TIMEOUT_S`` if the cluster&#39;s NFS</span>
+<span class="c1"># is unusually slow.</span>
 <span class="k">try</span><span class="p">:</span>
     <span class="n">_RANK_HANDOFF_TIMEOUT_S</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
         <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SPT_RANK_HANDOFF_TIMEOUT_S&quot;</span><span class="p">,</span> <span class="s2">&quot;60.0&quot;</span><span class="p">)</span>
@@ -545,13 +546,81 @@
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">_RunDirCallback</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Internal callback that persists the run directory path inside every checkpoint.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Internal callback that persists the run directory path inside every checkpoint.</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="sd">    Also acts as a defensive *guard* on the SLURM index: at</span>
+<span class="sd">    ``on_train_start`` (after the user&#39;s setup is done, before any</span>
+<span class="sd">    training step) it verifies that</span>
+<span class="sd">    ``&lt;cache_dir&gt;/.slurm_index/&lt;SLURM_JOB_ID[_TASK_ID]&gt;`` exists and</span>
+<span class="sd">    points at this run&#39;s ``run_dir``. If it&#39;s missing or stale, the</span>
+<span class="sd">    callback re-writes it (atomically) and logs loudly so it&#39;s obvious</span>
+<span class="sd">    in the run output. This is a belt-and-braces check — every code</span>
+<span class="sd">    path in :meth:`Manager._resolve_run_dir` already calls</span>
+<span class="sd">    :meth:`Manager._write_slurm_index`, but a future regression in</span>
+<span class="sd">    that wiring would otherwise only surface as a cryptic</span>
+<span class="sd">    ``RuntimeError`` on the *next* requeue, hours into a sweep.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span> <span class="o">=</span> <span class="n">run_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_dir</span> <span class="o">=</span> <span class="n">cache_dir</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">on_save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">):</span>
         <span class="n">checkpoint</span><span class="p">[</span><span class="s2">&quot;spt_run_dir&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span>
+
+    <span class="nd">@rank_zero_only</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_train_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">):</span>
+        <span class="n">slurm_key</span> <span class="o">=</span> <span class="n">_slurm_session_key</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">slurm_key</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">idx_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;.slurm_index&quot;</span> <span class="o">/</span> <span class="n">slurm_key</span>
+        <span class="k">if</span> <span class="n">idx_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="k">return</span>  <span class="c1"># index already there for this SLURM session — done</span>
+
+        <span class="c1"># Missing index by the time training starts means</span>
+        <span class="c1"># ``Manager._resolve_run_dir`` settled on a ``run_dir`` without</span>
+        <span class="c1"># going through ``_write_slurm_index`` — a real regression in</span>
+        <span class="c1"># that wiring. Don&#39;t self-heal: papering over the bug here lets</span>
+        <span class="c1"># it persist silently. Kill the run loudly with every piece of</span>
+        <span class="c1"># state we have so it can be diagnosed quickly.</span>
+        <span class="n">idx_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;.slurm_index&quot;</span>
+        <span class="n">existing_entries</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">sorted</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">idx_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">is_file</span><span class="p">())</span>
+            <span class="k">if</span> <span class="n">idx_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
+            <span class="k">else</span> <span class="p">[]</span>
+        <span class="p">)</span>
+        <span class="n">slurm_env</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">k</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="s2">&quot;SLURM_JOB_ID&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;SLURM_ARRAY_JOB_ID&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;SLURM_ARRAY_TASK_ID&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;SLURM_RESTART_COUNT&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;SLURM_PROCID&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;SLURMD_NODENAME&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">}</span>
+        <span class="n">diagnostic</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;SLURM-index guard FAILED: index file is missing at training &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;start — this should never happen.</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  expected path : </span><span class="si">{</span><span class="n">idx_path</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  expected → run_dir : </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">run_dir</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  cache_dir : </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_dir</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  slurm_key : </span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  index dir exists : </span><span class="si">{</span><span class="n">idx_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  index dir contents (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">)</span><span class="si">}</span><span class="s2"> entries): &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">existing_entries</span><span class="p">[:</span><span class="mi">20</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39; ...&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">existing_entries</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">20</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  SLURM env : </span><span class="si">{</span><span class="n">slurm_env</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;Possible causes: a code path in Manager._resolve_run_dir &quot;</span>
+            <span class="s2">&quot;settled on a run_dir without calling _write_slurm_index &quot;</span>
+            <span class="s2">&quot;(regression), the index dir was wiped between resolution &quot;</span>
+            <span class="s2">&quot;and now, or the cache_dir on this node differs from the &quot;</span>
+            <span class="s2">&quot;one used to write the entry. Refusing to silently rewrite — &quot;</span>
+            <span class="s2">&quot;fix the root cause.&quot;</span>
+        <span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">diagnostic</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">diagnostic</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="Manager">
@@ -565,9 +634,26 @@
 <span class="sd">        module (Union[dict, DictConfig, pl.LightningModule]): Lightning module configuration or instance.</span>
 <span class="sd">        data (Union[dict, DictConfig, pl.LightningDataModule]): Data module configuration or instance.</span>
 <span class="sd">        seed (int, optional): Random seed for reproducibility. Defaults to None.</span>
-<span class="sd">        ckpt_path (str, optional): Path to checkpoint for resuming training. Defaults to &quot;last&quot;.</span>
-<span class="sd">        resume_weights_only (bool | None, optional): Forwarded to ``Trainer.fit(weights_only=...)``</span>
-<span class="sd">            when supported by the installed Lightning version. Defaults to ``False``.</span>
+<span class="sd">        ckpt_path (str, optional): **Absolute** path to a checkpoint to load</span>
+<span class="sd">            from at the very start of a *fresh* run. Loaded once at step 0;</span>
+<span class="sd">            after that the run lives in its own freshly-created ``run_dir``</span>
+<span class="sd">            and produces its own ``last.ckpt``. **Ignored** on SLURM requeue</span>
+<span class="sd">            — see below. Must be absolute and must exist on disk; otherwise</span>
+<span class="sd">            ``Manager`` raises before training. Defaults to ``None`` (train</span>
+<span class="sd">            from scratch / pretrained backbone).</span>
+<span class="sd">        weights_only (bool, optional): Controls how ``ckpt_path`` is loaded</span>
+<span class="sd">            on a fresh run. Forwarded to ``Trainer.fit(weights_only=...)``</span>
+<span class="sd">            when supported by the installed Lightning version. ``True``</span>
+<span class="sd">            (the PyTorch ≥ 2.6 default for ``torch.load``) loads only model</span>
+<span class="sd">            weights — optimizer / scheduler / RNG state are discarded, which</span>
+<span class="sd">            is the usual &quot;transfer-learning init&quot; semantics. Set ``False``</span>
+<span class="sd">            to fully restore everything from the checkpoint.</span>
+
+<span class="sd">            **Has no effect on SLURM requeue**: when ``SLURM_RESTART_COUNT</span>
+<span class="sd">            &gt;= 1`` the Manager always loads ``&lt;run_dir&gt;/checkpoints/last.ckpt``</span>
+<span class="sd">            with full state (``weights_only=False``) regardless of this flag,</span>
+<span class="sd">            because the goal is to resume in-flight training exactly where</span>
+<span class="sd">            preempt struck.</span>
 <span class="sd">        compile (bool, optional): Should we compile the given module. Defaults to False.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -578,23 +664,54 @@
         <span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">DictConfig</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">LightningDataModule</span><span class="p">],</span>
         <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">ckpt_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">resume_weights_only</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">weights_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="nb">compile</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                 <span class="s2">&quot;User didn&#39;t specify seed, runs won&#39;t be exactly reproducible!&quot;</span>
             <span class="p">)</span>
+        <span class="c1"># Fail-fast on bad user input BEFORE any heavy setup</span>
+        <span class="c1"># (trainer/module/data instantiation), so a typo doesn&#39;t waste</span>
+        <span class="c1"># multi-second config loads / hydra instantiation.</span>
+        <span class="c1"># Strict validation of ckpt_path: must be absolute + must exist.</span>
+        <span class="c1"># We refuse a relative path because a fresh-run resolver creates a</span>
+        <span class="c1"># run_dir under cache_dir, so a relative path is ambiguous (resolved</span>
+        <span class="c1"># against what — CWD? run_dir? cache_dir?). We refuse a missing file</span>
+        <span class="c1"># because falling back to &quot;no ckpt&quot; silently turns a fine-tune</span>
+        <span class="c1"># request into a from-scratch run, which is a common foot-gun.</span>
+        <span class="k">if</span> <span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ckpt_path</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;`ckpt_path` must be an absolute path; got </span><span class="si">{</span><span class="n">ckpt_path</span><span class="si">!r}</span><span class="s2">. &quot;</span>
+                    <span class="s2">&quot;Pass a fully-qualified path so loading is unambiguous &quot;</span>
+                    <span class="s2">&quot;regardless of where the process is launched from.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.ckpt&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;`ckpt_path` was set to </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2"> but no such file exists. &quot;</span>
+                    <span class="s2">&quot;Refusing to silently start training from scratch.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">ckpt_path</span> <span class="o">=</span> <span class="n">p</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="o">=</span> <span class="n">ckpt_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights_only</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">weights_only</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  Manager init: ckpt_path=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;weights_only=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">weights_only</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="c1"># Flips to True if `_resolve_run_dir` detects the &quot;SLURM says</span>
+        <span class="c1"># requeue but no index exists&quot; early-preempt scenario and falls</span>
+        <span class="c1"># back to fresh-run resolution. `_resolve_load_path` reads it so</span>
+        <span class="c1"># it doesn&#39;t insist on a non-existent ``last.ckpt``.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_early_preempt_fallback</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">compile</span> <span class="o">=</span> <span class="nb">compile</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_register_trainer</span><span class="p">(</span><span class="n">trainer</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_register_module</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_register_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
-        <span class="k">if</span> <span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">ckpt_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ckpt_path</span><span class="p">)</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.ckpt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="o">=</span> <span class="n">ckpt_path</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">resume_weights_only</span> <span class="o">=</span> <span class="n">resume_weights_only</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_maybe_restore_wandb_run_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Inject a previous wandb run ID into the logger BEFORE wandb.init() fires.</span>
@@ -853,6 +970,8 @@
                 <span class="n">log_header</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;RunDirectory (rank </span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">, adopted from rank-0)&quot;</span><span class="p">)</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="c1"># Non-rank-0 doesn&#39;t write the index (rank-0 owns that); we</span>
+                <span class="c1"># just record what we adopted.</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
             <span class="c1"># Timeout — fall through. We log loudly inside the helper. Falling</span>
             <span class="c1"># back to local resolution is safer than crashing because only</span>
@@ -864,21 +983,135 @@
                 <span class="s2">&quot;but ModelCheckpoint paths may diverge.&quot;</span>
             <span class="p">)</span>
 
-        <span class="c1"># Try to restore from a previous run. Raises RuntimeError if SLURM</span>
-        <span class="c1"># signals a requeue but the index is missing or stale (caller should</span>
-        <span class="c1"># propagate — silent fallback would lose history).</span>
-        <span class="n">restored</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_try_restore_run_dir</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">restored</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">=</span> <span class="n">restored</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span> <span class="o">=</span> <span class="n">restored</span><span class="o">.</span><span class="n">name</span>
-            <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory (restored)&quot;</span><span class="p">)</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">launch_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">is_rank_zero</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_publish_rank_zero_handoff</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">,</span> <span class="n">restored</span><span class="p">)</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
+        <span class="c1"># ============================================================</span>
+        <span class="c1"># SLURM requeue branch — RESTART_COUNT &gt;= 1 means the *same*</span>
+        <span class="c1"># SLURM_JOB_ID has already had a previous invocation that</span>
+        <span class="c1"># presumably wrote the index entry. Look it up and reuse the</span>
+        <span class="c1"># original run_dir; do nothing else (no index rewrite, no</span>
+        <span class="c1"># ckpt_path handling — load-path resolution will pick</span>
+        <span class="c1"># ``&lt;run_dir&gt;/checkpoints/last.ckpt`` later).</span>
+        <span class="c1"># ============================================================</span>
+        <span class="n">slurm_key</span> <span class="o">=</span> <span class="n">_slurm_session_key</span><span class="p">()</span>
+        <span class="n">in_requeue</span> <span class="o">=</span> <span class="n">_is_slurm_requeue</span><span class="p">()</span>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory: requeue probe&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM session key   = </span><span class="si">{</span><span class="n">slurm_key</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(no SLURM)&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  SLURM_RESTART_COUNT = </span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SLURM_RESTART_COUNT&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;0&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  in_requeue          = </span><span class="si">{</span><span class="n">in_requeue</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Fresh run — generate a new uuid and create the dir.</span>
+        <span class="k">if</span> <span class="n">in_requeue</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">slurm_key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># SLURM said requeue but no JOB_ID — pathological env, fail loud.</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="s2">&quot;SLURM_RESTART_COUNT &gt;= 1 but SLURM_JOB_ID is unset. &quot;</span>
+                    <span class="s2">&quot;Cannot resolve which run to resume — refusing to start &quot;</span>
+                    <span class="s2">&quot;a fresh run that would lose prior history.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">idx_path</span> <span class="o">=</span> <span class="n">cache_dir</span> <span class="o">/</span> <span class="s2">&quot;.slurm_index&quot;</span> <span class="o">/</span> <span class="n">slurm_key</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  → looking up index file: </span><span class="si">{</span><span class="n">idx_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">idx_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="c1"># SLURM bumped RESTART_COUNT but no index entry exists. Two</span>
+                <span class="c1"># possible causes — and they have opposite correct responses:</span>
+                <span class="c1">#</span>
+                <span class="c1">#   (a) Early preempt: prior task was killed before reaching</span>
+                <span class="c1">#       Manager.__init__ (e.g. cluster-wide eviction during</span>
+                <span class="c1">#       the submitit pickle load). Nothing was written, no</span>
+                <span class="c1">#       run_dir was created, no state was lost. Correct</span>
+                <span class="c1">#       response: fall through to fresh-run.</span>
+                <span class="c1">#</span>
+                <span class="c1">#   (b) Partial write: a prior attempt under this JOB_ID got</span>
+                <span class="c1">#       far enough to mkdir+stamp a run_dir but died before</span>
+                <span class="c1">#       (or during) writing the index. There IS an orphan</span>
+                <span class="c1">#       run_dir on disk we&#39;d be ignoring. Correct response:</span>
+                <span class="c1">#       raise — the user needs to know.</span>
+                <span class="c1">#</span>
+                <span class="c1"># Distinguish by scanning ``cache_dir/runs/`` for any</span>
+                <span class="c1"># ``run_meta.json`` that was stamped with our SLURM_JOB_ID.</span>
+                <span class="c1"># If we find one, it&#39;s case (b): orphan. Otherwise case (a):</span>
+                <span class="c1"># nothing exists, safe to start fresh.</span>
+                <span class="n">orphans</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_orphans_for_slurm_key</span><span class="p">(</span>
+                    <span class="n">cache_dir</span><span class="p">,</span> <span class="n">slurm_key</span><span class="o">=</span><span class="n">slurm_key</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">orphans</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;SLURM reports requeue (RESTART_COUNT=&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SLURM_RESTART_COUNT&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">) for key &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">&#39;, the index file at </span><span class="si">{</span><span class="n">idx_path</span><span class="si">}</span><span class="s2"> is &quot;</span>
+                        <span class="s2">&quot;missing, AND yet there is/are run_dir(s) on disk &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;already stamped with this SLURM_JOB_ID: &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">orphans</span><span class="p">]</span><span class="si">}</span><span class="s2">. This is not the &quot;</span>
+                        <span class="s2">&quot;early-preempt case (that would leave no artefact). &quot;</span>
+                        <span class="s2">&quot;Most likely the prior attempt died after creating &quot;</span>
+                        <span class="s2">&quot;its run_dir but before writing the index. Inspect &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;those dirs and either (i) point the index at the &quot;</span>
+                        <span class="s2">&quot;right one manually, or (ii) delete them if you&#39;d &quot;</span>
+                        <span class="s2">&quot;rather start fresh.&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;! SLURM_RESTART_COUNT=&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SLURM_RESTART_COUNT&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> but no index &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;entry at </span><span class="si">{</span><span class="n">idx_path</span><span class="si">}</span><span class="s2">, and no run_dir under </span><span class="si">{</span><span class="n">cache_dir</span><span class="si">}</span><span class="s2"> &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;is stamped with SLURM_JOB_ID=</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SLURM_JOB_ID&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">. &quot;</span>
+                    <span class="s2">&quot;Diagnosis: prior task was preempted before reaching &quot;</span>
+                    <span class="s2">&quot;Manager.__init__ (typical: cluster-wide eviction &quot;</span>
+                    <span class="s2">&quot;during submitit pickle load). Treating this as a &quot;</span>
+                    <span class="s2">&quot;fresh run — nothing was lost because nothing was &quot;</span>
+                    <span class="s2">&quot;written. A new index entry will be created below.&quot;</span>
+                <span class="p">)</span>
+                <span class="n">in_requeue</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># fall through to the fresh-run branch</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_early_preempt_fallback</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">recorded</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">idx_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Failed to read SLURM index </span><span class="si">{</span><span class="n">idx_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">recorded</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;SLURM index for &#39;</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">&#39; points at </span><span class="si">{</span><span class="n">recorded</span><span class="si">}</span><span class="s2">, &quot;</span>
+                        <span class="s2">&quot;but that directory no longer exists. Stale index or &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;manual deletion. Either restore the dir or remove </span><span class="si">{</span><span class="n">idx_path</span><span class="si">}</span><span class="s2"> &quot;</span>
+                        <span class="s2">&quot;to start fresh.&quot;</span>
+                    <span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">=</span> <span class="n">recorded</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span> <span class="o">=</span> <span class="n">recorded</span><span class="o">.</span><span class="n">name</span>
+                <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory (REQUEUE — restored from index)&quot;</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id  = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;! REQUEUE — ignoring user ckpt_path=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">. &quot;</span>
+                        <span class="s2">&quot;On requeue we always resume from &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;&lt;run_dir&gt;/checkpoints/last.ckpt (full state); user &quot;</span>
+                        <span class="s2">&quot;ckpt_path is only consumed on the FIRST (fresh) &quot;</span>
+                        <span class="s2">&quot;invocation under a SLURM_JOB_ID.&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">if</span> <span class="n">launch_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">is_rank_zero</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_publish_rank_zero_handoff</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">,</span> <span class="n">recorded</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
+
+        <span class="c1"># ============================================================</span>
+        <span class="c1"># Fresh-run branch — covers both no-SLURM and</span>
+        <span class="c1"># SLURM RESTART_COUNT=0 (first invocation under this JOB_ID).</span>
+        <span class="c1"># Always creates a brand-new run_dir.</span>
+        <span class="c1"># ============================================================</span>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory: fresh&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Already validated absolute+exists in __init__, but log it.</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  user ckpt_path = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  weights_only   = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">weights_only</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;  → checkpoint will be loaded at step 0 of this fresh run; &quot;</span>
+                <span class="s2">&quot;training otherwise lives in a brand-new run_dir.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;  no user ckpt_path — training from scratch / pretrained backbone.&quot;</span>
+            <span class="p">)</span>
+
         <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
         <span class="n">run_id</span> <span class="o">=</span> <span class="n">_generate_run_id</span><span class="p">()</span>
         <span class="n">run_dir</span> <span class="o">=</span> <span class="p">(</span>
@@ -889,28 +1122,45 @@
             <span class="o">/</span> <span class="n">run_id</span>
         <span class="p">)</span>
         <span class="n">run_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  created run_dir = </span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Write sidecar so a future invocation that explicitly receives</span>
-        <span class="c1"># the ckpt_path can find this directory via Strategy 1.</span>
+        <span class="c1"># Hard sanity check: a freshly-created uuid&#39;d dir cannot already</span>
+        <span class="c1"># contain a last.ckpt. If it does, something is very wrong (uuid</span>
+        <span class="c1"># collision, stale FS state, caller reusing a path they shouldn&#39;t,</span>
+        <span class="c1"># ...). Fail loud — this is impossible by construction in normal</span>
+        <span class="c1"># operation.</span>
+        <span class="n">stale_last</span> <span class="o">=</span> <span class="n">run_dir</span> <span class="o">/</span> <span class="s2">&quot;checkpoints&quot;</span> <span class="o">/</span> <span class="s2">&quot;last.ckpt&quot;</span>
+        <span class="k">if</span> <span class="n">stale_last</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Sanity check failed: just-created fresh run_dir </span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;already contains </span><span class="si">{</span><span class="n">stale_last</span><span class="si">}</span><span class="s2">. This should be impossible &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(run_id was a fresh uuid). Possible causes: filesystem &quot;</span>
+                <span class="s2">&quot;weirdness (NFS stale mount, uuid collision in a test), &quot;</span>
+                <span class="s2">&quot;or a caller reusing a path that should have been unique. &quot;</span>
+                <span class="s2">&quot;Refusing to start training in a non-empty fresh run_dir.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Write sidecar so external tooling (registry scanner, etc.) can</span>
+        <span class="c1"># discover the run_id from any path under run_dir.</span>
+        <span class="c1"># We stamp the SLURM_JOB_ID (and array task id, if any) so a future</span>
+        <span class="c1"># requeue can detect &quot;orphan partial-writes from a prior attempt</span>
+        <span class="c1"># under this same JOB_ID&quot; — that&#39;s how the early-preempt fallback</span>
+        <span class="c1"># in the requeue branch tells &quot;nothing happened&quot; apart from &quot;a</span>
+        <span class="c1"># prior attempt did partial work then died&quot; (see that branch).</span>
         <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;run_dir&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">),</span> <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="n">run_id</span><span class="p">}</span>
+        <span class="n">slurm_job_id_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_JOB_ID&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">slurm_job_id_env</span><span class="p">:</span>
+            <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;slurm_job_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_job_id_env</span>
+            <span class="n">slurm_array_task</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_ARRAY_TASK_ID&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">slurm_array_task</span><span class="p">:</span>
+                <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;slurm_array_task_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_array_task</span>
         <span class="p">(</span><span class="n">run_dir</span> <span class="o">/</span> <span class="n">_RUN_META_FILENAME</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">meta</span><span class="p">))</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  wrote run_meta.json with run_id=</span><span class="si">{</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Record SLURM-key → run_dir mapping so a SLURM-requeued process</span>
-        <span class="c1"># finds us via Strategy 2. The index is overwritten on each fresh</span>
-        <span class="c1"># run, but the LOOKUP is gated on SLURM_RESTART_COUNT ≥ 1, so</span>
-        <span class="c1"># interactive re-invocations write but never read — and therefore</span>
-        <span class="c1"># always get fresh dirs.</span>
-        <span class="n">slurm_key</span> <span class="o">=</span> <span class="n">_slurm_session_key</span><span class="p">()</span>
-        <span class="n">index_msg</span> <span class="o">=</span> <span class="s2">&quot;(no SLURM, skipped)&quot;</span>
-        <span class="k">if</span> <span class="n">slurm_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">idx_dir</span> <span class="o">=</span> <span class="n">cache_dir</span> <span class="o">/</span> <span class="s2">&quot;.slurm_index&quot;</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">idx_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                <span class="p">(</span><span class="n">idx_dir</span> <span class="o">/</span> <span class="n">slurm_key</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">))</span>
-                <span class="n">index_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">idx_dir</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">slurm_key</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                <span class="n">index_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;FAILED to write index: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! Could not record SLURM index: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Record SLURM-key → run_dir so a future preempt-and-requeue</span>
+        <span class="c1"># cycle finds us. No-op outside SLURM.</span>
+        <span class="n">index_msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_slurm_index</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM index = </span><span class="si">{</span><span class="n">index_msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">=</span> <span class="n">run_dir</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span> <span class="o">=</span> <span class="n">run_id</span>
@@ -921,15 +1171,100 @@
         <span class="k">if</span> <span class="n">launch_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">is_rank_zero</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_publish_rank_zero_handoff</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">)</span>
 
-        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory: fresh&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_dir          = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  run_id (uuid)    = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM index      = </span><span class="si">{</span><span class="n">index_msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;  → future SLURM requeue (SLURM_RESTART_COUNT ≥ 1) for the same &quot;</span>
-            <span class="s2">&quot;job/task will resume into this directory.&quot;</span>
-        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">slurm_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;  → future SLURM requeue (SLURM_RESTART_COUNT ≥ 1) for &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;key &#39;</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">&#39; will resume into this directory via the &quot;</span>
+                <span class="s2">&quot;index entry written above.&quot;</span>
+            <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_orphans_for_slurm_key</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">slurm_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return run_dirs whose ``run_meta.json`` matches the given SLURM key.</span>
+
+<span class="sd">        Used by the requeue-with-missing-index branch to distinguish:</span>
+
+<span class="sd">        * **early-preempt** (no result) — nothing exists for this key, the</span>
+<span class="sd">          prior attempt died before stamping a run_dir.</span>
+<span class="sd">        * **partial write** (≥1 hit) — a prior attempt under this same</span>
+<span class="sd">          ``SLURM_JOB_ID`` got far enough to mkdir + stamp a run_dir but</span>
+<span class="sd">          died before writing the index. Caller should raise.</span>
+
+<span class="sd">        The scan walks ``cache_dir/runs/**/run_meta.json`` and matches the</span>
+<span class="sd">        full ``slurm_key`` (job id, optionally ``_&lt;array_task_id&gt;``). A</span>
+<span class="sd">        malformed or unreadable ``run_meta.json`` is skipped (best-effort</span>
+<span class="sd">        — we&#39;d rather miss a degenerate case than crash on it).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">runs_root</span> <span class="o">=</span> <span class="n">cache_dir</span> <span class="o">/</span> <span class="s2">&quot;runs&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">runs_root</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="c1"># slurm_key is &quot;&lt;JOB_ID&gt;&quot; or &quot;&lt;JOB_ID&gt;_&lt;TASK_ID&gt;&quot;; pull them apart so</span>
+        <span class="c1"># we match exactly what the fresh-run branch stamped.</span>
+        <span class="k">if</span> <span class="s2">&quot;_&quot;</span> <span class="ow">in</span> <span class="n">slurm_key</span><span class="p">:</span>
+            <span class="n">job_id</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">task_id</span> <span class="o">=</span> <span class="n">slurm_key</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">job_id</span><span class="p">,</span> <span class="n">task_id</span> <span class="o">=</span> <span class="n">slurm_key</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="n">hits</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">meta_file</span> <span class="ow">in</span> <span class="n">runs_root</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="n">_RUN_META_FILENAME</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">meta_file</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;slurm_job_id&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span> <span class="o">!=</span> <span class="n">job_id</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;slurm_array_task_id&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">task_id</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">hits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">meta_file</span><span class="o">.</span><span class="n">parent</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">hits</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_slurm_index</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record ``SLURM_JOB_ID[_TASK_ID] → run_dir`` iff missing.</span>
+
+<span class="sd">        Semantics — match SLURM&#39;s lifecycle:</span>
+
+<span class="sd">        * **First invocation under a SLURM_JOB_ID** (fresh run, or first</span>
+<span class="sd">          time hitting Strategy 1 under this job ID): index doesn&#39;t</span>
+<span class="sd">          exist yet → atomic-write it.</span>
+<span class="sd">        * **Subsequent requeues of the same SLURM_JOB_ID**: index already</span>
+<span class="sd">          exists from the first invocation → leave it alone.</span>
+<span class="sd">        * **Different SLURM_JOB_ID**: writes to a different filename</span>
+<span class="sd">          (different ``slurm_key``) so we never touch another session&#39;s</span>
+<span class="sd">          entry.</span>
+
+<span class="sd">        Atomic write via sibling temp + ``fsync`` + ``os.replace`` so a</span>
+<span class="sd">        process killed mid-write never leaves a partial file. Returns a</span>
+<span class="sd">        human-readable status string for logging.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">slurm_key</span> <span class="o">=</span> <span class="n">_slurm_session_key</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">slurm_key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;(no SLURM, skipped)&quot;</span>
+        <span class="n">idx_dir</span> <span class="o">=</span> <span class="n">cache_dir</span> <span class="o">/</span> <span class="s2">&quot;.slurm_index&quot;</span>
+        <span class="n">idx_path</span> <span class="o">=</span> <span class="n">idx_dir</span> <span class="o">/</span> <span class="n">slurm_key</span>
+        <span class="k">if</span> <span class="n">idx_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="c1"># Same SLURM_JOB_ID, requeue cycle — keep the original</span>
+            <span class="c1"># mapping written by the first invocation.</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">idx_path</span><span class="si">}</span><span class="s2"> (already present, kept)&quot;</span>
+        <span class="n">tmp_path</span> <span class="o">=</span> <span class="n">idx_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;.</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">.tmp.</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">idx_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">))</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">fileno</span><span class="p">())</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="n">idx_path</span><span class="p">)</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">idx_path</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;! Could not record SLURM index: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">tmp_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                    <span class="n">tmp_path</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;FAILED to write index: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
 
     <span class="c1"># -- DDP rank-0 handoff (used by `_resolve_run_dir`) -----------------------</span>
 
@@ -991,111 +1326,6 @@
         <span class="p">)</span>
         <span class="k">return</span> <span class="kc">None</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_try_restore_run_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attempt to find a previous run directory for this job.</span>
-
-<span class="sd">        Two strategies, each loudly logged so the user can follow exactly</span>
-<span class="sd">        what&#39;s happening at startup:</span>
-
-<span class="sd">            1. Sidecar next to ``ckpt_path`` (explicit checkpoint from user).</span>
-<span class="sd">            2. SLURM requeue lookup, fires only when ``SLURM_RESTART_COUNT ≥ 1``.</span>
-<span class="sd">               The lookup key is the SLURM job/array-task id; the value is</span>
-<span class="sd">               the run dir recorded by the original invocation in</span>
-<span class="sd">               ``cache_dir/.slurm_index/&lt;key&gt;``. Interactive ``srun --pty``</span>
-<span class="sd">               reruns never bump RESTART_COUNT so they don&#39;t even consult</span>
-<span class="sd">               the index — each invocation gets a fresh dir.</span>
-
-<span class="sd">        Raises ``RuntimeError`` if SLURM signals a requeue</span>
-<span class="sd">        (``SLURM_RESTART_COUNT ≥ 1``) but the index file is missing or</span>
-<span class="sd">        points at a directory that no longer exists. Silently falling back</span>
-<span class="sd">        to a fresh dir in this case would lose the prior training history</span>
-<span class="sd">        and produce surprising re-trains, so we surface it loudly instead.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;RunDirectory: restoration probe&quot;</span><span class="p">)</span>
-        <span class="n">slurm_key</span> <span class="o">=</span> <span class="n">_slurm_session_key</span><span class="p">()</span>
-        <span class="n">restart</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_RESTART_COUNT&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM_RESTART_COUNT = </span><span class="si">{</span><span class="n">restart</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM session key   = </span><span class="si">{</span><span class="n">slurm_key</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(no SLURM)&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ckpt_path           = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Strategy 1: sidecar next to ckpt_path</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-            <span class="n">meta_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">_RUN_META_FILENAME</span>
-            <span class="k">if</span> <span class="n">meta_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Strategy 1: ckpt-sidecar found at </span><span class="si">{</span><span class="n">meta_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">meta_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
-                    <span class="n">run_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;run_dir&quot;</span><span class="p">])</span>
-                    <span class="k">if</span> <span class="n">run_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-                        <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;  → reusing run_dir from ckpt sidecar: </span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="p">)</span>
-                        <span class="k">return</span> <span class="n">run_dir</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;  ! Sidecar pointed at </span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2"> but the directory &quot;</span>
-                        <span class="s2">&quot;is gone; falling through to next strategy.&quot;</span>
-                    <span class="p">)</span>
-                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;  ! Could not parse </span><span class="si">{</span><span class="n">meta_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">; &quot;</span>
-                        <span class="s2">&quot;falling through to next strategy.&quot;</span>
-                    <span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="s2">&quot;  Strategy 1: no run_meta.json next to ckpt_path; skipping.&quot;</span>
-                <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Strategy 1: no usable ckpt_path; skipping.&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Strategy 2: SLURM requeue index lookup</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_slurm_requeue</span><span class="p">():</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="s2">&quot;  Strategy 2: skipped — SLURM_RESTART_COUNT &lt; 1, this is a &quot;</span>
-                <span class="s2">&quot;fresh invocation (or non-SLURM).&quot;</span>
-            <span class="p">)</span>
-            <span class="k">return</span> <span class="kc">None</span>
-
-        <span class="k">if</span> <span class="n">slurm_key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;  Strategy 2: SLURM_RESTART_COUNT ≥ 1 but SLURM_JOB_ID is &quot;</span>
-                <span class="s2">&quot;not set. Cannot resolve a requeue without a session key — &quot;</span>
-                <span class="s2">&quot;treating as fresh run.&quot;</span>
-            <span class="p">)</span>
-            <span class="k">return</span> <span class="kc">None</span>
-
-        <span class="n">idx_file</span> <span class="o">=</span> <span class="n">cache_dir</span> <span class="o">/</span> <span class="s2">&quot;.slurm_index&quot;</span> <span class="o">/</span> <span class="n">slurm_key</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Strategy 2: checking SLURM index → </span><span class="si">{</span><span class="n">idx_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">idx_file</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;SLURM reports this is a requeue (SLURM_RESTART_COUNT=&quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">restart</span><span class="si">}</span><span class="s2">) for job key &#39;</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">&#39;, but no index file &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;exists at </span><span class="si">{</span><span class="n">idx_file</span><span class="si">}</span><span class="s2">. The original run&#39;s index entry was &quot;</span>
-                <span class="s2">&quot;never written (or was deleted). Refusing to silently start &quot;</span>
-                <span class="s2">&quot;a fresh run — that would lose the prior training history. &quot;</span>
-                <span class="s2">&quot;If you intended a fresh run, manually clear &quot;</span>
-                <span class="s2">&quot;SLURM_RESTART_COUNT or remove the requeue checkpoint.&quot;</span>
-            <span class="p">)</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">recorded</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">idx_file</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
-        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;SLURM requeue (key=&#39;</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">&#39;): index file </span><span class="si">{</span><span class="n">idx_file</span><span class="si">}</span><span class="s2"> &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;exists but could not be read: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">.&quot;</span>
-            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">recorded</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;SLURM requeue (key=&#39;</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">&#39;): index points at &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">recorded</span><span class="si">}</span><span class="s2">, but that directory no longer exists. Manual &quot;</span>
-                <span class="s2">&quot;deletion or a stale index entry. Either restore the dir &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;or delete the index entry (</span><span class="si">{</span><span class="n">idx_file</span><span class="si">}</span><span class="s2">) to start fresh.&quot;</span>
-            <span class="p">)</span>
-
-        <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;  → reusing run_dir from SLURM index (</span><span class="si">{</span><span class="n">slurm_key</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">recorded</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">recorded</span>
-
     <span class="k">def</span><span class="w"> </span><span class="nf">_inject_run_dir_into_trainer_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Set ``default_root_dir`` in the trainer config before instantiation.</span>
 
@@ -1122,35 +1352,83 @@
                 <span class="s2">&quot;Consider passing the trainer as a config dict instead.&quot;</span>
             <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_load_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determine what checkpoint to pass to ``trainer.fit(ckpt_path=...)``.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_load_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decide what to load and how, given the resolved ``run_dir``.</span>
 
-<span class="sd">        Priority:</span>
-<span class="sd">            1. User&#39;s explicit ``ckpt_path`` (if it exists on disk).</span>
-<span class="sd">            2. ``{run_dir}/checkpoints/last.ckpt`` (requeue from cache_dir).</span>
-<span class="sd">            3. ``None`` (fresh run).</span>
+<span class="sd">        Returns ``(ckpt_path, weights_only)`` to pass to</span>
+<span class="sd">        ``Trainer.fit(...)``. Both can be ``None`` (train from scratch).</span>
 
-<span class="sd">        This is purely the *load* path.  Where new checkpoints are *saved*</span>
-<span class="sd">        is controlled separately by ``_configure_cache_dir_checkpointing``.</span>
+<span class="sd">        Behaviour matrix:</span>
+
+<span class="sd">        =========================================  ===============================  =================</span>
+<span class="sd">        State                                       ckpt_path                        weights_only</span>
+<span class="sd">        =========================================  ===============================  =================</span>
+<span class="sd">        SLURM requeue (RESTART_COUNT &gt;= 1)         ``&lt;run_dir&gt;/checkpoints/last.ckpt``  ``False`` (forced)</span>
+<span class="sd">        Fresh run + user ``ckpt_path`` set         user&#39;s absolute path             user&#39;s flag (default ``True``)</span>
+<span class="sd">        Fresh run + no user ``ckpt_path``          ``None``                         ``None``</span>
+<span class="sd">        =========================================  ===============================  =================</span>
+
+<span class="sd">        On requeue we *always* full-restore (optimizer, scheduler, RNG)</span>
+<span class="sd">        from ``last.ckpt`` and ignore any user-given ``ckpt_path`` —</span>
+<span class="sd">        loading a stale pretrain checkpoint mid-run would discard</span>
+<span class="sd">        whatever progress was made. We log loudly when this overrides</span>
+<span class="sd">        the user&#39;s ``ckpt_path`` so it&#39;s obvious in run logs.</span>
+
+<span class="sd">        Raises ``RuntimeError`` on requeue if ``last.ckpt`` is missing</span>
+<span class="sd">        (preempt before the first save — there&#39;s nothing to resume from).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># 1. User explicitly provided a checkpoint</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Load checkpoint (user): </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="p">)</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2"> specified but does not exist, &quot;</span>
-                <span class="s2">&quot;falling back to auto-detection&quot;</span>
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;LoadPath resolution&quot;</span><span class="p">)</span>
+        <span class="n">in_requeue</span> <span class="o">=</span> <span class="n">_is_slurm_requeue</span><span class="p">()</span>
+        <span class="c1"># If `_resolve_run_dir` already decided this is an early-preempt</span>
+        <span class="c1"># fallback (SLURM RESTART_COUNT≥1 but no index entry → fresh</span>
+        <span class="c1"># run_dir), behave exactly like a fresh run for load-path purposes:</span>
+        <span class="c1"># there&#39;s no `last.ckpt` to resume from, but the user&#39;s ckpt_path</span>
+        <span class="c1"># (if any) is still a legitimate fresh-run starting point.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_early_preempt_fallback</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;  early_preempt_fallback=True — SLURM env says requeue but &quot;</span>
+                <span class="s2">&quot;the index was missing; treating as fresh for load-path.&quot;</span>
             <span class="p">)</span>
+            <span class="n">in_requeue</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  in_requeue = </span><span class="si">{</span><span class="n">in_requeue</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  user ckpt_path = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  user weights_only = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">weights_only</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="c1"># 2. Auto-detect requeue checkpoint in run_dir</span>
-        <span class="n">auto_ckpt</span> <span class="o">=</span> <span class="n">run_dir</span> <span class="o">/</span> <span class="s2">&quot;checkpoints&quot;</span> <span class="o">/</span> <span class="s2">&quot;last.ckpt&quot;</span>
-        <span class="k">if</span> <span class="n">auto_ckpt</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Load checkpoint (requeue): </span><span class="si">{</span><span class="n">auto_ckpt</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">auto_ckpt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">in_requeue</span><span class="p">:</span>
+            <span class="n">last_ckpt</span> <span class="o">=</span> <span class="n">run_dir</span> <span class="o">/</span> <span class="s2">&quot;checkpoints&quot;</span> <span class="o">/</span> <span class="s2">&quot;last.ckpt&quot;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;! REQUEUE — ignoring user ckpt_path=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">. &quot;</span>
+                    <span class="s2">&quot;On requeue we always resume from &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">last_ckpt</span><span class="si">}</span><span class="s2"> (full state restore) so in-flight training &quot;</span>
+                    <span class="s2">&quot;picks up exactly where it left off. The user ckpt_path &quot;</span>
+                    <span class="s2">&quot;is only consumed on the FIRST (fresh) invocation.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">last_ckpt</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;REQUEUE but no last.ckpt to resume from at </span><span class="si">{</span><span class="n">last_ckpt</span><span class="si">}</span><span class="s2">. &quot;</span>
+                    <span class="s2">&quot;The original run was preempted before saving its first &quot;</span>
+                    <span class="s2">&quot;checkpoint, OR the requeue-checkpoint callback was &quot;</span>
+                    <span class="s2">&quot;disabled (spt.set(requeue_checkpoint=False)). Either &quot;</span>
+                    <span class="s2">&quot;way there is no in-flight state to recover. Refusing &quot;</span>
+                    <span class="s2">&quot;to silently restart from scratch.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  → loading </span><span class="si">{</span><span class="n">last_ckpt</span><span class="si">}</span><span class="s2"> with weights_only=False (full state)&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">last_ckpt</span><span class="p">),</span> <span class="kc">False</span>
 
-        <span class="c1"># 3. Fresh run</span>
-        <span class="k">return</span> <span class="kc">None</span>
+        <span class="c1"># Fresh run.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  → no ckpt_path; training from scratch.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="c1"># ckpt_path was already validated (absolute + exists) in __init__.</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  → loading user ckpt_path=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2"> with &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;weights_only=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">weights_only</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights_only</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_configure_cache_dir_checkpointing</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Ensure all checkpoints are saved into ``run_dir/checkpoints/``.</span>
@@ -1225,6 +1503,14 @@
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">requeue_saver</span><span class="p">)</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Added requeue checkpoint (filename=&#39;last&#39;)&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s2">&quot;SLURM_JOB_ID&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;! Requeue checkpoint disabled &quot;</span>
+                <span class="s2">&quot;(spt.set(requeue_checkpoint=False)) but running under SLURM. &quot;</span>
+                <span class="s2">&quot;If this run is preempted the next requeue will fail with &quot;</span>
+                <span class="s2">&quot;&#39;REQUEUE but no last.ckpt to resume from&#39; — Manager looks &quot;</span>
+                <span class="s2">&quot;for that file to recover in-flight state.&quot;</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
                 <span class="s2">&quot;  Requeue checkpoint disabled (spt.set(requeue_checkpoint=False))&quot;</span>
@@ -1477,9 +1763,16 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`trainer` should be a Trainer&quot;</span><span class="p">)</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">&quot;✓ trainer instantiated&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Persist run_dir in every checkpoint so requeue can restore it</span>
+        <span class="c1"># Persist run_dir in every checkpoint so requeue can restore it.</span>
+        <span class="c1"># Also passes cache_dir so the callback can verify (and self-heal)</span>
+        <span class="c1"># the SLURM index entry on ``on_train_start`` — see</span>
+        <span class="c1"># :class:`_RunDirCallback` for the rationale.</span>
         <span class="k">if</span> <span class="n">run_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_RunDirCallback</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)))</span>
+            <span class="n">cfg</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
+            <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">cache_dir</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">_RunDirCallback</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">),</span> <span class="n">cache_dir</span><span class="o">=</span><span class="n">cache_dir</span><span class="p">)</span>
+            <span class="p">)</span>
 
         <span class="c1"># Always inject RegistryLogger + CSVLogger (works with or without cache_dir)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_inject_registry_logger</span><span class="p">()</span>
@@ -1520,27 +1813,21 @@
             <span class="c1"># cache_dir mode: save always goes to run_dir/checkpoints/,</span>
             <span class="c1"># load is resolved separately (user ckpt_path or requeue auto-detect)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_configure_cache_dir_checkpointing</span><span class="p">()</span>
-            <span class="n">ckpt_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_load_path</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span>
+            <span class="n">ckpt_path</span><span class="p">,</span> <span class="n">weights_only_for_load</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_load_path</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Legacy mode: ckpt_path controls both load and save location</span>
+            <span class="c1"># Legacy mode (no cache_dir configured): ckpt_path controls both</span>
+            <span class="c1"># load and save location. No SLURM-requeue auto-discovery — the</span>
+            <span class="c1"># user is responsible for resume.</span>
             <span class="k">if</span> <span class="s2">&quot;SLURM_JOB_ID&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="s2">&quot;Using SLURM but no ckpt_path, if requeued it will start &quot;</span>
-                    <span class="s2">&quot;from scratch. Consider using spt.set(cache_dir=...) or &quot;</span>
-                    <span class="s2">&quot;passing a value to the Manager&#39;s `ckpt_path`.&quot;</span>
+                    <span class="s2">&quot;Using SLURM but no cache_dir + no ckpt_path: a requeue &quot;</span>
+                    <span class="s2">&quot;will restart from scratch. Configure cache_dir via &quot;</span>
+                    <span class="s2">&quot;spt.set(cache_dir=...) for proper preempt/requeue.&quot;</span>
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_configure_checkpointing</span><span class="p">()</span>
-
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-                <span class="n">ckpt_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2"> specified, but does not exist, using None for now!&quot;</span>
-                <span class="p">)</span>
-                <span class="n">ckpt_path</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">ckpt_path</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">ckpt_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ckpt_path</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">weights_only_for_load</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights_only</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compile</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Compiling module!&quot;</span><span class="p">)</span>
@@ -1551,11 +1838,14 @@
             <span class="s2">&quot;ckpt_path&quot;</span><span class="p">:</span> <span class="n">ckpt_path</span><span class="p">,</span>
         <span class="p">}</span>
         <span class="k">if</span> <span class="s2">&quot;weights_only&quot;</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span><span class="p">:</span>
-            <span class="n">fit_kwargs</span><span class="p">[</span><span class="s2">&quot;weights_only&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resume_weights_only</span>
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">resume_weights_only</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">fit_kwargs</span><span class="p">[</span><span class="s2">&quot;weights_only&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">weights_only_for_load</span>
+        <span class="k">elif</span> <span class="n">ckpt_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">weights_only_for_load</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;Installed Lightning Trainer.fit does not accept `weights_only`; &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;ignoring manager.resume_weights_only=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">resume_weights_only</span><span class="si">}</span><span class="s2">.&quot;</span>
+                <span class="s2">&quot;! Installed Lightning Trainer.fit does not accept &quot;</span>
+                <span class="s2">&quot;`weights_only`; ignoring requested &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;weights_only=</span><span class="si">{</span><span class="n">weights_only_for_load</span><span class="si">}</span><span class="s2">. The checkpoint at &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2"> will be loaded with Lightning&#39;s default policy.&quot;</span>
             <span class="p">)</span>
 
         <span class="c1"># Inject the full flattened Hydra config into the module&#39;s hparams</span>
@@ -1564,8 +1854,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_inject_hydra_hparams</span><span class="p">()</span>
 
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrainerFit&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ckpt_path: </span><span class="si">{</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  resume_weights_only: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">resume_weights_only</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ckpt_path:     </span><span class="si">{</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  weights_only:  </span><span class="si">{</span><span class="n">weights_only_for_load</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="c1"># Wrap fit() so any callback/model error gets a full, flushed,</span>
         <span class="c1"># multi-stream traceback in stdout BEFORE it climbs the</span>
         <span class="c1"># Hydra/submitit chain (those layers can swallow tracebacks into</span>
