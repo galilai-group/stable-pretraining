@@ -67,7 +67,6 @@ write_to_template = "version = \"{version}\"\n"
 trackio = ["trackio", "gradio_client"]
 # SwanLab experiment tracking
 swanlab = ["swanlab"]
-# Development and documentation tools
 dev = [
     "pytest",
     "coverage",
