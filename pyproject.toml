@@ -12,7 +12,7 @@ dependencies = [
     "torch",
     "torchvision",
     "torchmetrics",
-    "lightning<=2.6.1",
+    "lightning",
     "hydra-core",
     "omegaconf",
     "loguru",
