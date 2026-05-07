@@ -26,14 +26,6 @@ dependencies = [
     "zstandard",
     "typer",
     "transformers",
-    # ``huggingface_hub`` <0.36.2 constructs glob patterns like
-    # ``train[-._ 0-9/]**`` (``**`` glued to a character class) when
-    # resolving HF dataset shards via ``HfFileSystem.glob``. ``fsspec``'s
-    # strict glob_translate rejects these as invalid,
-    # breaking every ``HFDataset(...)`` call. 0.36.2 fixed the pattern
-    # construction. Pin until our minimum versions of ``datasets`` /
-    # ``transformers`` guarantee the fix transitively.
-    "huggingface_hub>=0.36.2",
     "pillow>=11.3.0",
     "wandb",
     "hydra-submitit-launcher",
@@ -75,15 +67,8 @@ write_to_template = "version = \"{version}\"\n"
 trackio = ["trackio", "gradio_client"]
 # SwanLab experiment tracking
 swanlab = ["swanlab"]
-# Development and documentation tools. Inlines the trackio + swanlab deps
-# (rather than referencing the standalone extras) so uv's pubgrub resolver
-# doesn't choke on a self-referential graph. The standalone ``[trackio]``
-# and ``[swanlab]`` extras above remain available for users who want just
-# one without the rest of the dev toolchain.
+# Development and documentation tools
 dev = [
-    "trackio",
-    "gradio_client",
-    "swanlab",
     "pytest",
     "coverage",
     "pytest-cov",

@@ -1,10 +1,28 @@
 """Pytest configuration and shared fixtures."""
 
+import os
+
+# Determinism plumbing — must be applied before ``import torch`` so BLAS
+# thread counts and the cuBLAS workspace are locked from process start.
+# Different thread counts produce different gemm partial-sum orders, which
+# drifts multi-step training losses at the ~1e-3 level across machines
+# (Mac MKL vs Linux OpenBLAS, 16-core dev box vs 2-core CI runner, etc.).
+# ``setdefault`` so a user can override locally for performance.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+
 import shutil
 from pathlib import Path
 
 import pytest
 import torch
+
+# ``warn_only=True`` so ops without a deterministic kernel warn instead
+# of raising — surfaces future drift sources without breaking the suite.
+torch.use_deterministic_algorithms(True, warn_only=True)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 
 def pytest_configure(config):
