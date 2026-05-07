@@ -522,9 +522,10 @@ class TestEarlyPreemptFallback:
     def test_resolve_load_path_after_early_preempt_treats_as_fresh(
         self, tmp_path, monkeypatch
     ):
-        """After the early-preempt fallback, ``_resolve_load_path`` skips the
-        requeue last.ckpt requirement and returns the user's ckpt_path
-        (or None).
+        """After the early-preempt fallback, ``_resolve_load_path`` returns the user's ckpt_path.
+
+        Skips the requeue last.ckpt requirement and returns the user's
+        ckpt_path (or None).
         """
         from stable_pretraining.manager import Manager
         from stable_pretraining.tests.utils import (
