@@ -190,8 +190,9 @@ def _ddp_launch_key() -> Optional[str]:
 
 # Rank-N waits up to this many seconds for rank-0 to publish run_dir before
 # falling back to local resolution. Generous to absorb slow NFS mkdir + the
-# actual time rank-0 spends in `_try_restore_run_dir`. Override via env var
-# `SPT_RANK_HANDOFF_TIMEOUT_S` if the cluster's NFS is unusually slow.
+# actual time rank-0 spends resolving (requeue index lookup, mkdir, etc.).
+# Override via env var ``SPT_RANK_HANDOFF_TIMEOUT_S`` if the cluster's NFS
+# is unusually slow.
 try:
     _RANK_HANDOFF_TIMEOUT_S = float(
         os.environ.get("SPT_RANK_HANDOFF_TIMEOUT_S", "60.0")
@@ -202,13 +203,81 @@ _RANK_HANDOFF_POLL_S = 0.05
 
 
 class _RunDirCallback(Callback):
-    """Internal callback that persists the run directory path inside every checkpoint."""
+    """Internal callback that persists the run directory path inside every checkpoint.
 
-    def __init__(self, run_dir: str):
+    Also acts as a defensive *guard* on the SLURM index: at
+    ``on_train_start`` (after the user's setup is done, before any
+    training step) it verifies that
+    ``<cache_dir>/.slurm_index/<SLURM_JOB_ID[_TASK_ID]>`` exists and
+    points at this run's ``run_dir``. If it's missing or stale, the
+    callback re-writes it (atomically) and logs loudly so it's obvious
+    in the run output. This is a belt-and-braces check — every code
+    path in :meth:`Manager._resolve_run_dir` already calls
+    :meth:`Manager._write_slurm_index`, but a future regression in
+    that wiring would otherwise only surface as a cryptic
+    ``RuntimeError`` on the *next* requeue, hours into a sweep.
+    """
+
+    def __init__(self, run_dir: str, cache_dir: Optional[str] = None):
         self.run_dir = run_dir
+        self.cache_dir = cache_dir
 
     def on_save_checkpoint(self, trainer, pl_module, checkpoint):
         checkpoint["spt_run_dir"] = self.run_dir
+
+    @rank_zero_only
+    def on_train_start(self, trainer, pl_module):
+        slurm_key = _slurm_session_key()
+        if slurm_key is None or self.cache_dir is None:
+            return
+        idx_path = Path(self.cache_dir) / ".slurm_index" / slurm_key
+        if idx_path.is_file():
+            return  # index already there for this SLURM session — done
+
+        # Missing index by the time training starts means
+        # ``Manager._resolve_run_dir`` settled on a ``run_dir`` without
+        # going through ``_write_slurm_index`` — a real regression in
+        # that wiring. Don't self-heal: papering over the bug here lets
+        # it persist silently. Kill the run loudly with every piece of
+        # state we have so it can be diagnosed quickly.
+        idx_dir = Path(self.cache_dir) / ".slurm_index"
+        existing_entries = (
+            sorted(p.name for p in idx_dir.iterdir() if p.is_file())
+            if idx_dir.is_dir()
+            else []
+        )
+        slurm_env = {
+            k: os.environ.get(k)
+            for k in (
+                "SLURM_JOB_ID",
+                "SLURM_ARRAY_JOB_ID",
+                "SLURM_ARRAY_TASK_ID",
+                "SLURM_RESTART_COUNT",
+                "SLURM_PROCID",
+                "SLURMD_NODENAME",
+            )
+        }
+        diagnostic = (
+            "SLURM-index guard FAILED: index file is missing at training "
+            f"start — this should never happen.\n"
+            f"  expected path : {idx_path}\n"
+            f"  expected → run_dir : {self.run_dir}\n"
+            f"  cache_dir : {self.cache_dir}\n"
+            f"  slurm_key : {slurm_key}\n"
+            f"  index dir exists : {idx_dir.is_dir()}\n"
+            f"  index dir contents ({len(existing_entries)} entries): "
+            f"{existing_entries[:20]}"
+            f"{' ...' if len(existing_entries) > 20 else ''}\n"
+            f"  SLURM env : {slurm_env}\n"
+            "Possible causes: a code path in Manager._resolve_run_dir "
+            "settled on a run_dir without calling _write_slurm_index "
+            "(regression), the index dir was wiped between resolution "
+            "and now, or the cache_dir on this node differs from the "
+            "one used to write the entry. Refusing to silently rewrite — "
+            "fix the root cause."
+        )
+        logging.error(diagnostic)
+        raise RuntimeError(diagnostic)
 
 
 @catch_errors_class()
@@ -220,9 +289,26 @@ class Manager(submitit.helpers.Checkpointable):
         module (Union[dict, DictConfig, pl.LightningModule]): Lightning module configuration or instance.
         data (Union[dict, DictConfig, pl.LightningDataModule]): Data module configuration or instance.
         seed (int, optional): Random seed for reproducibility. Defaults to None.
-        ckpt_path (str, optional): Path to checkpoint for resuming training. Defaults to "last".
-        resume_weights_only (bool | None, optional): Forwarded to ``Trainer.fit(weights_only=...)``
-            when supported by the installed Lightning version. Defaults to ``False``.
+        ckpt_path (str, optional): **Absolute** path to a checkpoint to load
+            from at the very start of a *fresh* run. Loaded once at step 0;
+            after that the run lives in its own freshly-created ``run_dir``
+            and produces its own ``last.ckpt``. **Ignored** on SLURM requeue
+            — see below. Must be absolute and must exist on disk; otherwise
+            ``Manager`` raises before training. Defaults to ``None`` (train
+            from scratch / pretrained backbone).
+        weights_only (bool, optional): Controls how ``ckpt_path`` is loaded
+            on a fresh run. Forwarded to ``Trainer.fit(weights_only=...)``
+            when supported by the installed Lightning version. ``True``
+            (the PyTorch ≥ 2.6 default for ``torch.load``) loads only model
+            weights — optimizer / scheduler / RNG state are discarded, which
+            is the usual "transfer-learning init" semantics. Set ``False``
+            to fully restore everything from the checkpoint.
+
+            **Has no effect on SLURM requeue**: when ``SLURM_RESTART_COUNT
+            >= 1`` the Manager always loads ``<run_dir>/checkpoints/last.ckpt``
+            with full state (``weights_only=False``) regardless of this flag,
+            because the goal is to resume in-flight training exactly where
+            preempt struck.
         compile (bool, optional): Should we compile the given module. Defaults to False.
     """
 
@@ -233,23 +319,54 @@ class Manager(submitit.helpers.Checkpointable):
         data: Union[dict, DictConfig, pl.LightningDataModule],
         seed: int = None,
         ckpt_path: str = None,
-        resume_weights_only: Optional[bool] = False,
+        weights_only: bool = True,
         compile: bool = False,
     ):
         if seed is None:
             logging.warning(
                 "User didn't specify seed, runs won't be exactly reproducible!"
             )
+        # Fail-fast on bad user input BEFORE any heavy setup
+        # (trainer/module/data instantiation), so a typo doesn't waste
+        # multi-second config loads / hydra instantiation.
+        # Strict validation of ckpt_path: must be absolute + must exist.
+        # We refuse a relative path because a fresh-run resolver creates a
+        # run_dir under cache_dir, so a relative path is ambiguous (resolved
+        # against what — CWD? run_dir? cache_dir?). We refuse a missing file
+        # because falling back to "no ckpt" silently turns a fine-tune
+        # request into a from-scratch run, which is a common foot-gun.
+        if ckpt_path is not None:
+            p = Path(ckpt_path).expanduser()
+            if not p.is_absolute():
+                raise ValueError(
+                    f"`ckpt_path` must be an absolute path; got {ckpt_path!r}. "
+                    "Pass a fully-qualified path so loading is unambiguous "
+                    "regardless of where the process is launched from."
+                )
+            p = p.with_suffix(".ckpt")
+            if not p.is_file():
+                raise FileNotFoundError(
+                    f"`ckpt_path` was set to {p} but no such file exists. "
+                    "Refusing to silently start training from scratch."
+                )
+            ckpt_path = p
+        self.ckpt_path = ckpt_path
+        self.weights_only = bool(weights_only)
+        logging.info(
+            f"  Manager init: ckpt_path={self.ckpt_path}, "
+            f"weights_only={self.weights_only}"
+        )
+        # Flips to True if `_resolve_run_dir` detects the "SLURM says
+        # requeue but no index exists" early-preempt scenario and falls
+        # back to fresh-run resolution. `_resolve_load_path` reads it so
+        # it doesn't insist on a non-existent ``last.ckpt``.
+        self._early_preempt_fallback: bool = False
+
         self.compile = compile
         self._register_trainer(trainer)
         self._register_module(module)
         self._register_data(data)
-
         self.seed = seed
-        if ckpt_path is not None:
-            ckpt_path = Path(ckpt_path).with_suffix(".ckpt").resolve()
-        self.ckpt_path = ckpt_path
-        self.resume_weights_only = resume_weights_only
 
     def _maybe_restore_wandb_run_id(self):
         """Inject a previous wandb run ID into the logger BEFORE wandb.init() fires.
@@ -508,6 +625,8 @@ class Manager(submitit.helpers.Checkpointable):
                 log_header(f"RunDirectory (rank {rank}, adopted from rank-0)")
                 logging.info(f"  run_dir: {self._run_dir}")
                 logging.info(f"  run_id:  {self._run_id}")
+                # Non-rank-0 doesn't write the index (rank-0 owns that); we
+                # just record what we adopted.
                 return self._run_dir
             # Timeout — fall through. We log loudly inside the helper. Falling
             # back to local resolution is safer than crashing because only
@@ -519,21 +638,135 @@ class Manager(submitit.helpers.Checkpointable):
                 "but ModelCheckpoint paths may diverge."
             )
 
-        # Try to restore from a previous run. Raises RuntimeError if SLURM
-        # signals a requeue but the index is missing or stale (caller should
-        # propagate — silent fallback would lose history).
-        restored = self._try_restore_run_dir(cache_dir)
-        if restored is not None:
-            self._run_dir = restored
-            self._run_id = restored.name
-            log_header("RunDirectory (restored)")
-            logging.info(f"  run_dir: {self._run_dir}")
-            logging.info(f"  run_id:  {self._run_id}")
-            if launch_key is not None and is_rank_zero:
-                self._publish_rank_zero_handoff(cache_dir, launch_key, restored)
-            return self._run_dir
+        # ============================================================
+        # SLURM requeue branch — RESTART_COUNT >= 1 means the *same*
+        # SLURM_JOB_ID has already had a previous invocation that
+        # presumably wrote the index entry. Look it up and reuse the
+        # original run_dir; do nothing else (no index rewrite, no
+        # ckpt_path handling — load-path resolution will pick
+        # ``<run_dir>/checkpoints/last.ckpt`` later).
+        # ============================================================
+        slurm_key = _slurm_session_key()
+        in_requeue = _is_slurm_requeue()
+        log_header("RunDirectory: requeue probe")
+        logging.info(f"  SLURM session key   = {slurm_key or '(no SLURM)'}")
+        logging.info(
+            f"  SLURM_RESTART_COUNT = {os.environ.get('SLURM_RESTART_COUNT', '0')}"
+        )
+        logging.info(f"  in_requeue          = {in_requeue}")
 
-        # Fresh run — generate a new uuid and create the dir.
+        if in_requeue:
+            if slurm_key is None:
+                # SLURM said requeue but no JOB_ID — pathological env, fail loud.
+                raise RuntimeError(
+                    "SLURM_RESTART_COUNT >= 1 but SLURM_JOB_ID is unset. "
+                    "Cannot resolve which run to resume — refusing to start "
+                    "a fresh run that would lose prior history."
+                )
+            idx_path = cache_dir / ".slurm_index" / slurm_key
+            logging.info(f"  → looking up index file: {idx_path}")
+            if not idx_path.is_file():
+                # SLURM bumped RESTART_COUNT but no index entry exists. Two
+                # possible causes — and they have opposite correct responses:
+                #
+                #   (a) Early preempt: prior task was killed before reaching
+                #       Manager.__init__ (e.g. cluster-wide eviction during
+                #       the submitit pickle load). Nothing was written, no
+                #       run_dir was created, no state was lost. Correct
+                #       response: fall through to fresh-run.
+                #
+                #   (b) Partial write: a prior attempt under this JOB_ID got
+                #       far enough to mkdir+stamp a run_dir but died before
+                #       (or during) writing the index. There IS an orphan
+                #       run_dir on disk we'd be ignoring. Correct response:
+                #       raise — the user needs to know.
+                #
+                # Distinguish by scanning ``cache_dir/runs/`` for any
+                # ``run_meta.json`` that was stamped with our SLURM_JOB_ID.
+                # If we find one, it's case (b): orphan. Otherwise case (a):
+                # nothing exists, safe to start fresh.
+                orphans = self._find_orphans_for_slurm_key(
+                    cache_dir, slurm_key=slurm_key
+                )
+                if orphans:
+                    raise RuntimeError(
+                        f"SLURM reports requeue (RESTART_COUNT="
+                        f"{os.environ.get('SLURM_RESTART_COUNT')}) for key "
+                        f"'{slurm_key}', the index file at {idx_path} is "
+                        "missing, AND yet there is/are run_dir(s) on disk "
+                        f"already stamped with this SLURM_JOB_ID: "
+                        f"{[str(p) for p in orphans]}. This is not the "
+                        "early-preempt case (that would leave no artefact). "
+                        "Most likely the prior attempt died after creating "
+                        "its run_dir but before writing the index. Inspect "
+                        f"those dirs and either (i) point the index at the "
+                        "right one manually, or (ii) delete them if you'd "
+                        "rather start fresh."
+                    )
+                logging.warning(
+                    f"! SLURM_RESTART_COUNT="
+                    f"{os.environ.get('SLURM_RESTART_COUNT')} but no index "
+                    f"entry at {idx_path}, and no run_dir under {cache_dir} "
+                    f"is stamped with SLURM_JOB_ID={os.environ.get('SLURM_JOB_ID')}. "
+                    "Diagnosis: prior task was preempted before reaching "
+                    "Manager.__init__ (typical: cluster-wide eviction "
+                    "during submitit pickle load). Treating this as a "
+                    "fresh run — nothing was lost because nothing was "
+                    "written. A new index entry will be created below."
+                )
+                in_requeue = False  # fall through to the fresh-run branch
+                self._early_preempt_fallback = True
+            else:
+                try:
+                    recorded = Path(idx_path.read_text().strip())
+                except OSError as exc:
+                    raise RuntimeError(
+                        f"Failed to read SLURM index {idx_path}: {exc}"
+                    ) from exc
+                if not recorded.is_dir():
+                    raise RuntimeError(
+                        f"SLURM index for '{slurm_key}' points at {recorded}, "
+                        "but that directory no longer exists. Stale index or "
+                        f"manual deletion. Either restore the dir or remove {idx_path} "
+                        "to start fresh."
+                    )
+
+                self._run_dir = recorded
+                self._run_id = recorded.name
+                log_header("RunDirectory (REQUEUE — restored from index)")
+                logging.info(f"  run_dir = {self._run_dir}")
+                logging.info(f"  run_id  = {self._run_id}")
+                if self.ckpt_path is not None:
+                    logging.warning(
+                        f"! REQUEUE — ignoring user ckpt_path={self.ckpt_path}. "
+                        "On requeue we always resume from "
+                        f"<run_dir>/checkpoints/last.ckpt (full state); user "
+                        "ckpt_path is only consumed on the FIRST (fresh) "
+                        "invocation under a SLURM_JOB_ID."
+                    )
+                if launch_key is not None and is_rank_zero:
+                    self._publish_rank_zero_handoff(cache_dir, launch_key, recorded)
+                return self._run_dir
+
+        # ============================================================
+        # Fresh-run branch — covers both no-SLURM and
+        # SLURM RESTART_COUNT=0 (first invocation under this JOB_ID).
+        # Always creates a brand-new run_dir.
+        # ============================================================
+        log_header("RunDirectory: fresh")
+        if self.ckpt_path is not None:
+            # Already validated absolute+exists in __init__, but log it.
+            logging.info(f"  user ckpt_path = {self.ckpt_path}")
+            logging.info(f"  weights_only   = {self.weights_only}")
+            logging.info(
+                "  → checkpoint will be loaded at step 0 of this fresh run; "
+                "training otherwise lives in a brand-new run_dir."
+            )
+        else:
+            logging.info(
+                "  no user ckpt_path — training from scratch / pretrained backbone."
+            )
+
         now = datetime.now()
         run_id = _generate_run_id()
         run_dir = (
@@ -544,28 +777,45 @@ class Manager(submitit.helpers.Checkpointable):
             / run_id
         )
         run_dir.mkdir(parents=True, exist_ok=True)
+        logging.info(f"  created run_dir = {run_dir}")
 
-        # Write sidecar so a future invocation that explicitly receives
-        # the ckpt_path can find this directory via Strategy 1.
+        # Hard sanity check: a freshly-created uuid'd dir cannot already
+        # contain a last.ckpt. If it does, something is very wrong (uuid
+        # collision, stale FS state, caller reusing a path they shouldn't,
+        # ...). Fail loud — this is impossible by construction in normal
+        # operation.
+        stale_last = run_dir / "checkpoints" / "last.ckpt"
+        if stale_last.exists():
+            raise RuntimeError(
+                f"Sanity check failed: just-created fresh run_dir {run_dir} "
+                f"already contains {stale_last}. This should be impossible "
+                f"(run_id was a fresh uuid). Possible causes: filesystem "
+                "weirdness (NFS stale mount, uuid collision in a test), "
+                "or a caller reusing a path that should have been unique. "
+                "Refusing to start training in a non-empty fresh run_dir."
+            )
+
+        # Write sidecar so external tooling (registry scanner, etc.) can
+        # discover the run_id from any path under run_dir.
+        # We stamp the SLURM_JOB_ID (and array task id, if any) so a future
+        # requeue can detect "orphan partial-writes from a prior attempt
+        # under this same JOB_ID" — that's how the early-preempt fallback
+        # in the requeue branch tells "nothing happened" apart from "a
+        # prior attempt did partial work then died" (see that branch).
         meta = {"run_dir": str(run_dir), "run_id": run_id}
+        slurm_job_id_env = os.environ.get("SLURM_JOB_ID")
+        if slurm_job_id_env:
+            meta["slurm_job_id"] = slurm_job_id_env
+            slurm_array_task = os.environ.get("SLURM_ARRAY_TASK_ID")
+            if slurm_array_task:
+                meta["slurm_array_task_id"] = slurm_array_task
         (run_dir / _RUN_META_FILENAME).write_text(json.dumps(meta))
+        logging.info(f"  wrote run_meta.json with run_id={run_id}")
 
-        # Record SLURM-key → run_dir mapping so a SLURM-requeued process
-        # finds us via Strategy 2. The index is overwritten on each fresh
-        # run, but the LOOKUP is gated on SLURM_RESTART_COUNT ≥ 1, so
-        # interactive re-invocations write but never read — and therefore
-        # always get fresh dirs.
-        slurm_key = _slurm_session_key()
-        index_msg = "(no SLURM, skipped)"
-        if slurm_key is not None:
-            idx_dir = cache_dir / ".slurm_index"
-            try:
-                idx_dir.mkdir(parents=True, exist_ok=True)
-                (idx_dir / slurm_key).write_text(str(run_dir))
-                index_msg = f"{idx_dir / slurm_key} → {run_dir}"
-            except OSError as exc:
-                index_msg = f"FAILED to write index: {exc}"
-                logging.warning(f"! Could not record SLURM index: {exc}")
+        # Record SLURM-key → run_dir so a future preempt-and-requeue
+        # cycle finds us. No-op outside SLURM.
+        index_msg = self._write_slurm_index(cache_dir, run_dir)
+        logging.info(f"  SLURM index = {index_msg}")
 
         self._run_dir = run_dir
         self._run_id = run_id
@@ -576,15 +826,100 @@ class Manager(submitit.helpers.Checkpointable):
         if launch_key is not None and is_rank_zero:
             self._publish_rank_zero_handoff(cache_dir, launch_key, run_dir)
 
-        log_header("RunDirectory: fresh")
-        logging.info(f"  run_dir          = {self._run_dir}")
-        logging.info(f"  run_id (uuid)    = {self._run_id}")
-        logging.info(f"  SLURM index      = {index_msg}")
-        logging.info(
-            "  → future SLURM requeue (SLURM_RESTART_COUNT ≥ 1) for the same "
-            "job/task will resume into this directory."
-        )
+        if slurm_key is not None:
+            logging.info(
+                "  → future SLURM requeue (SLURM_RESTART_COUNT ≥ 1) for "
+                f"key '{slurm_key}' will resume into this directory via the "
+                "index entry written above."
+            )
         return self._run_dir
+
+    @staticmethod
+    def _find_orphans_for_slurm_key(cache_dir: Path, slurm_key: str) -> list[Path]:
+        """Return run_dirs whose ``run_meta.json`` matches the given SLURM key.
+
+        Used by the requeue-with-missing-index branch to distinguish:
+
+        * **early-preempt** (no result) — nothing exists for this key, the
+          prior attempt died before stamping a run_dir.
+        * **partial write** (≥1 hit) — a prior attempt under this same
+          ``SLURM_JOB_ID`` got far enough to mkdir + stamp a run_dir but
+          died before writing the index. Caller should raise.
+
+        The scan walks ``cache_dir/runs/**/run_meta.json`` and matches the
+        full ``slurm_key`` (job id, optionally ``_<array_task_id>``). A
+        malformed or unreadable ``run_meta.json`` is skipped (best-effort
+        — we'd rather miss a degenerate case than crash on it).
+        """
+        runs_root = cache_dir / "runs"
+        if not runs_root.is_dir():
+            return []
+        # slurm_key is "<JOB_ID>" or "<JOB_ID>_<TASK_ID>"; pull them apart so
+        # we match exactly what the fresh-run branch stamped.
+        if "_" in slurm_key:
+            job_id, _, task_id = slurm_key.partition("_")
+        else:
+            job_id, task_id = slurm_key, None
+        hits: list[Path] = []
+        for meta_file in runs_root.rglob(_RUN_META_FILENAME):
+            try:
+                meta = json.loads(meta_file.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            if not isinstance(meta, dict):
+                continue
+            if str(meta.get("slurm_job_id", "")) != job_id:
+                continue
+            if str(meta.get("slurm_array_task_id") or "") != (task_id or ""):
+                continue
+            hits.append(meta_file.parent)
+        return hits
+
+    @staticmethod
+    def _write_slurm_index(cache_dir: Path, run_dir: Path) -> str:
+        """Record ``SLURM_JOB_ID[_TASK_ID] → run_dir`` iff missing.
+
+        Semantics — match SLURM's lifecycle:
+
+        * **First invocation under a SLURM_JOB_ID** (fresh run, or first
+          time hitting Strategy 1 under this job ID): index doesn't
+          exist yet → atomic-write it.
+        * **Subsequent requeues of the same SLURM_JOB_ID**: index already
+          exists from the first invocation → leave it alone.
+        * **Different SLURM_JOB_ID**: writes to a different filename
+          (different ``slurm_key``) so we never touch another session's
+          entry.
+
+        Atomic write via sibling temp + ``fsync`` + ``os.replace`` so a
+        process killed mid-write never leaves a partial file. Returns a
+        human-readable status string for logging.
+        """
+        slurm_key = _slurm_session_key()
+        if slurm_key is None:
+            return "(no SLURM, skipped)"
+        idx_dir = cache_dir / ".slurm_index"
+        idx_path = idx_dir / slurm_key
+        if idx_path.is_file():
+            # Same SLURM_JOB_ID, requeue cycle — keep the original
+            # mapping written by the first invocation.
+            return f"{idx_path} (already present, kept)"
+        tmp_path = idx_dir / f".{slurm_key}.tmp.{os.getpid()}"
+        try:
+            idx_dir.mkdir(parents=True, exist_ok=True)
+            with open(tmp_path, "w") as f:
+                f.write(str(run_dir))
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, idx_path)
+            return f"{idx_path} → {run_dir}"
+        except OSError as exc:
+            logging.warning(f"! Could not record SLURM index: {exc}")
+            try:
+                if tmp_path.exists():
+                    tmp_path.unlink()
+            except OSError:
+                pass
+            return f"FAILED to write index: {exc}"
 
     # -- DDP rank-0 handoff (used by `_resolve_run_dir`) -----------------------
 
@@ -646,111 +981,6 @@ class Manager(submitit.helpers.Checkpointable):
         )
         return None
 
-    def _try_restore_run_dir(self, cache_dir: Path) -> Optional[Path]:
-        """Attempt to find a previous run directory for this job.
-
-        Two strategies, each loudly logged so the user can follow exactly
-        what's happening at startup:
-
-            1. Sidecar next to ``ckpt_path`` (explicit checkpoint from user).
-            2. SLURM requeue lookup, fires only when ``SLURM_RESTART_COUNT ≥ 1``.
-               The lookup key is the SLURM job/array-task id; the value is
-               the run dir recorded by the original invocation in
-               ``cache_dir/.slurm_index/<key>``. Interactive ``srun --pty``
-               reruns never bump RESTART_COUNT so they don't even consult
-               the index — each invocation gets a fresh dir.
-
-        Raises ``RuntimeError`` if SLURM signals a requeue
-        (``SLURM_RESTART_COUNT ≥ 1``) but the index file is missing or
-        points at a directory that no longer exists. Silently falling back
-        to a fresh dir in this case would lose the prior training history
-        and produce surprising re-trains, so we surface it loudly instead.
-        """
-        log_header("RunDirectory: restoration probe")
-        slurm_key = _slurm_session_key()
-        restart = os.environ.get("SLURM_RESTART_COUNT", "0")
-        logging.info(f"  SLURM_RESTART_COUNT = {restart}")
-        logging.info(f"  SLURM session key   = {slurm_key or '(no SLURM)'}")
-        logging.info(f"  ckpt_path           = {self.ckpt_path}")
-
-        # Strategy 1: sidecar next to ckpt_path
-        if self.ckpt_path is not None and self.ckpt_path.is_file():
-            meta_path = self.ckpt_path.parent / _RUN_META_FILENAME
-            if meta_path.is_file():
-                logging.info(f"  Strategy 1: ckpt-sidecar found at {meta_path}")
-                try:
-                    meta = json.loads(meta_path.read_text())
-                    run_dir = Path(meta["run_dir"])
-                    if run_dir.is_dir():
-                        logging.success(
-                            f"  → reusing run_dir from ckpt sidecar: {run_dir}"
-                        )
-                        return run_dir
-                    logging.warning(
-                        f"  ! Sidecar pointed at {run_dir} but the directory "
-                        "is gone; falling through to next strategy."
-                    )
-                except Exception as exc:
-                    logging.warning(
-                        f"  ! Could not parse {meta_path}: {exc}; "
-                        "falling through to next strategy."
-                    )
-            else:
-                logging.info(
-                    "  Strategy 1: no run_meta.json next to ckpt_path; skipping."
-                )
-        else:
-            logging.info("  Strategy 1: no usable ckpt_path; skipping.")
-
-        # Strategy 2: SLURM requeue index lookup
-        if not _is_slurm_requeue():
-            logging.info(
-                "  Strategy 2: skipped — SLURM_RESTART_COUNT < 1, this is a "
-                "fresh invocation (or non-SLURM)."
-            )
-            return None
-
-        if slurm_key is None:
-            logging.warning(
-                "  Strategy 2: SLURM_RESTART_COUNT ≥ 1 but SLURM_JOB_ID is "
-                "not set. Cannot resolve a requeue without a session key — "
-                "treating as fresh run."
-            )
-            return None
-
-        idx_file = cache_dir / ".slurm_index" / slurm_key
-        logging.info(f"  Strategy 2: checking SLURM index → {idx_file}")
-        if not idx_file.is_file():
-            raise RuntimeError(
-                f"SLURM reports this is a requeue (SLURM_RESTART_COUNT="
-                f"{restart}) for job key '{slurm_key}', but no index file "
-                f"exists at {idx_file}. The original run's index entry was "
-                "never written (or was deleted). Refusing to silently start "
-                "a fresh run — that would lose the prior training history. "
-                "If you intended a fresh run, manually clear "
-                "SLURM_RESTART_COUNT or remove the requeue checkpoint."
-            )
-        try:
-            recorded = Path(idx_file.read_text().strip())
-        except OSError as exc:
-            raise RuntimeError(
-                f"SLURM requeue (key='{slurm_key}'): index file {idx_file} "
-                f"exists but could not be read: {exc}."
-            ) from exc
-
-        if not recorded.is_dir():
-            raise RuntimeError(
-                f"SLURM requeue (key='{slurm_key}'): index points at "
-                f"{recorded}, but that directory no longer exists. Manual "
-                "deletion or a stale index entry. Either restore the dir "
-                f"or delete the index entry ({idx_file}) to start fresh."
-            )
-
-        logging.success(
-            f"  → reusing run_dir from SLURM index ({slurm_key}): {recorded}"
-        )
-        return recorded
-
     def _inject_run_dir_into_trainer_config(self, run_dir: Path) -> None:
         """Set ``default_root_dir`` in the trainer config before instantiation.
 
@@ -777,35 +1007,83 @@ class Manager(submitit.helpers.Checkpointable):
                 "Consider passing the trainer as a config dict instead."
             )
 
-    def _resolve_load_path(self, run_dir: Path) -> Optional[str]:
-        """Determine what checkpoint to pass to ``trainer.fit(ckpt_path=...)``.
+    def _resolve_load_path(self, run_dir: Path) -> tuple[Optional[str], Optional[bool]]:
+        """Decide what to load and how, given the resolved ``run_dir``.
 
-        Priority:
-            1. User's explicit ``ckpt_path`` (if it exists on disk).
-            2. ``{run_dir}/checkpoints/last.ckpt`` (requeue from cache_dir).
-            3. ``None`` (fresh run).
+        Returns ``(ckpt_path, weights_only)`` to pass to
+        ``Trainer.fit(...)``. Both can be ``None`` (train from scratch).
 
-        This is purely the *load* path.  Where new checkpoints are *saved*
-        is controlled separately by ``_configure_cache_dir_checkpointing``.
+        Behaviour matrix:
+
+        =========================================  ===============================  =================
+        State                                       ckpt_path                        weights_only
+        =========================================  ===============================  =================
+        SLURM requeue (RESTART_COUNT >= 1)         ``<run_dir>/checkpoints/last.ckpt``  ``False`` (forced)
+        Fresh run + user ``ckpt_path`` set         user's absolute path             user's flag (default ``True``)
+        Fresh run + no user ``ckpt_path``          ``None``                         ``None``
+        =========================================  ===============================  =================
+
+        On requeue we *always* full-restore (optimizer, scheduler, RNG)
+        from ``last.ckpt`` and ignore any user-given ``ckpt_path`` —
+        loading a stale pretrain checkpoint mid-run would discard
+        whatever progress was made. We log loudly when this overrides
+        the user's ``ckpt_path`` so it's obvious in run logs.
+
+        Raises ``RuntimeError`` on requeue if ``last.ckpt`` is missing
+        (preempt before the first save — there's nothing to resume from).
         """
-        # 1. User explicitly provided a checkpoint
-        if self.ckpt_path is not None:
-            if self.ckpt_path.is_file():
-                logging.info(f"  Load checkpoint (user): {self.ckpt_path}")
-                return str(self.ckpt_path)
-            logging.warning(
-                f"  {self.ckpt_path} specified but does not exist, "
-                "falling back to auto-detection"
+        log_header("LoadPath resolution")
+        in_requeue = _is_slurm_requeue()
+        # If `_resolve_run_dir` already decided this is an early-preempt
+        # fallback (SLURM RESTART_COUNT≥1 but no index entry → fresh
+        # run_dir), behave exactly like a fresh run for load-path purposes:
+        # there's no `last.ckpt` to resume from, but the user's ckpt_path
+        # (if any) is still a legitimate fresh-run starting point.
+        if self._early_preempt_fallback:
+            logging.info(
+                "  early_preempt_fallback=True — SLURM env says requeue but "
+                "the index was missing; treating as fresh for load-path."
             )
+            in_requeue = False
+        logging.info(f"  in_requeue = {in_requeue}")
+        logging.info(f"  user ckpt_path = {self.ckpt_path}")
+        logging.info(f"  user weights_only = {self.weights_only}")
 
-        # 2. Auto-detect requeue checkpoint in run_dir
-        auto_ckpt = run_dir / "checkpoints" / "last.ckpt"
-        if auto_ckpt.is_file():
-            logging.info(f"  Load checkpoint (requeue): {auto_ckpt}")
-            return str(auto_ckpt)
+        if in_requeue:
+            last_ckpt = run_dir / "checkpoints" / "last.ckpt"
+            if self.ckpt_path is not None:
+                logging.warning(
+                    f"! REQUEUE — ignoring user ckpt_path={self.ckpt_path}. "
+                    "On requeue we always resume from "
+                    f"{last_ckpt} (full state restore) so in-flight training "
+                    "picks up exactly where it left off. The user ckpt_path "
+                    "is only consumed on the FIRST (fresh) invocation."
+                )
+            if not last_ckpt.is_file():
+                raise RuntimeError(
+                    f"REQUEUE but no last.ckpt to resume from at {last_ckpt}. "
+                    "The original run was preempted before saving its first "
+                    "checkpoint, OR the requeue-checkpoint callback was "
+                    "disabled (spt.set(requeue_checkpoint=False)). Either "
+                    "way there is no in-flight state to recover. Refusing "
+                    "to silently restart from scratch."
+                )
+            logging.info(
+                f"  → loading {last_ckpt} with weights_only=False (full state)"
+            )
+            return str(last_ckpt), False
 
-        # 3. Fresh run
-        return None
+        # Fresh run.
+        if self.ckpt_path is None:
+            logging.info("  → no ckpt_path; training from scratch.")
+            return None, None
+
+        # ckpt_path was already validated (absolute + exists) in __init__.
+        logging.info(
+            f"  → loading user ckpt_path={self.ckpt_path} with "
+            f"weights_only={self.weights_only}"
+        )
+        return str(self.ckpt_path), self.weights_only
 
     def _configure_cache_dir_checkpointing(self) -> None:
         """Ensure all checkpoints are saved into ``run_dir/checkpoints/``.
@@ -880,6 +1158,14 @@ class Manager(submitit.helpers.Checkpointable):
             )
             self._trainer.callbacks.append(requeue_saver)
             logging.info("  Added requeue checkpoint (filename='last')")
+        elif "SLURM_JOB_ID" in os.environ:
+            logging.warning(
+                "! Requeue checkpoint disabled "
+                "(spt.set(requeue_checkpoint=False)) but running under SLURM. "
+                "If this run is preempted the next requeue will fail with "
+                "'REQUEUE but no last.ckpt to resume from' — Manager looks "
+                "for that file to recover in-flight state."
+            )
         else:
             logging.info(
                 "  Requeue checkpoint disabled (spt.set(requeue_checkpoint=False))"
@@ -1129,9 +1415,16 @@ class Manager(submitit.helpers.Checkpointable):
                 raise ValueError("`trainer` should be a Trainer")
             logging.success("✓ trainer instantiated")
 
-        # Persist run_dir in every checkpoint so requeue can restore it
+        # Persist run_dir in every checkpoint so requeue can restore it.
+        # Also passes cache_dir so the callback can verify (and self-heal)
+        # the SLURM index entry on ``on_train_start`` — see
+        # :class:`_RunDirCallback` for the rationale.
         if run_dir is not None:
-            self._trainer.callbacks.append(_RunDirCallback(str(run_dir)))
+            cfg = get_config()
+            cache_dir = cfg.cache_dir
+            self._trainer.callbacks.append(
+                _RunDirCallback(str(run_dir), cache_dir=cache_dir)
+            )
 
         # Always inject RegistryLogger + CSVLogger (works with or without cache_dir)
         self._inject_registry_logger()
@@ -1174,27 +1467,21 @@ class Manager(submitit.helpers.Checkpointable):
             # cache_dir mode: save always goes to run_dir/checkpoints/,
             # load is resolved separately (user ckpt_path or requeue auto-detect)
             self._configure_cache_dir_checkpointing()
-            ckpt_path = self._resolve_load_path(run_dir)
+            ckpt_path, weights_only_for_load = self._resolve_load_path(run_dir)
         else:
-            # Legacy mode: ckpt_path controls both load and save location
+            # Legacy mode (no cache_dir configured): ckpt_path controls both
+            # load and save location. No SLURM-requeue auto-discovery — the
+            # user is responsible for resume.
             if "SLURM_JOB_ID" in os.environ and self.ckpt_path is None:
                 logging.warning(
-                    "Using SLURM but no ckpt_path, if requeued it will start "
-                    "from scratch. Consider using spt.set(cache_dir=...) or "
-                    "passing a value to the Manager's `ckpt_path`."
+                    "Using SLURM but no cache_dir + no ckpt_path: a requeue "
+                    "will restart from scratch. Configure cache_dir via "
+                    "spt.set(cache_dir=...) for proper preempt/requeue."
                 )
             else:
                 self._configure_checkpointing()
-
-            if self.ckpt_path is not None and self.ckpt_path.is_file():
-                ckpt_path = str(self.ckpt_path)
-            elif self.ckpt_path is not None and not self.ckpt_path.is_file():
-                logging.warning(
-                    f"{self.ckpt_path} specified, but does not exist, using None for now!"
-                )
-                ckpt_path = None
-            else:
-                ckpt_path = None
+            ckpt_path = str(self.ckpt_path) if self.ckpt_path else None
+            weights_only_for_load = self.weights_only
 
         if self.compile:
             logging.warning("Compiling module!")
@@ -1205,11 +1492,14 @@ class Manager(submitit.helpers.Checkpointable):
             "ckpt_path": ckpt_path,
         }
         if "weights_only" in inspect.signature(self._trainer.fit).parameters:
-            fit_kwargs["weights_only"] = self.resume_weights_only
-        elif self.resume_weights_only is not None:
+            if ckpt_path is not None:
+                fit_kwargs["weights_only"] = weights_only_for_load
+        elif ckpt_path is not None and weights_only_for_load is not None:
             logging.warning(
-                "Installed Lightning Trainer.fit does not accept `weights_only`; "
-                f"ignoring manager.resume_weights_only={self.resume_weights_only}."
+                "! Installed Lightning Trainer.fit does not accept "
+                "`weights_only`; ignoring requested "
+                f"weights_only={weights_only_for_load}. The checkpoint at "
+                f"{ckpt_path} will be loaded with Lightning's default policy."
             )
 
         # Inject the full flattened Hydra config into the module's hparams
@@ -1218,8 +1508,8 @@ class Manager(submitit.helpers.Checkpointable):
         self._inject_hydra_hparams()
 
         log_header("TrainerFit")
-        logging.info(f"  ckpt_path: {ckpt_path}")
-        logging.info(f"  resume_weights_only: {self.resume_weights_only}")
+        logging.info(f"  ckpt_path:     {ckpt_path}")
+        logging.info(f"  weights_only:  {weights_only_for_load}")
         # Wrap fit() so any callback/model error gets a full, flushed,
         # multi-stream traceback in stdout BEFORE it climbs the
         # Hydra/submitit chain (those layers can swallow tracebacks into

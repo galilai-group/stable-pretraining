@@ -255,25 +255,6 @@ class TestResolveRunDir:
         assert meta["run_dir"] == str(run_dir)
         assert "run_id" in meta
 
-    def test_restores_from_sidecar(self, cache_dir):
-        """If ckpt_path has a run_meta.json sibling, restore that run_dir."""
-        prev_run_dir = cache_dir / "runs" / "20260101" / "120000" / "previd123456"
-        prev_run_dir.mkdir(parents=True)
-        (prev_run_dir / _RUN_META_FILENAME).write_text(
-            json.dumps({"run_dir": str(prev_run_dir), "run_id": "previd123456"})
-        )
-        ckpt_dir = prev_run_dir / "checkpoints"
-        ckpt_dir.mkdir()
-        ckpt_path = ckpt_dir / "last.ckpt"
-        ckpt_path.touch()
-        (ckpt_dir / _RUN_META_FILENAME).write_text(
-            json.dumps({"run_dir": str(prev_run_dir), "run_id": "previd123456"})
-        )
-
-        manager = self._make_manager(ckpt_path=ckpt_path)
-        run_dir = manager._resolve_run_dir()
-        assert run_dir == prev_run_dir
-
     def test_restores_via_slurm_index_on_requeue(self, cache_dir, monkeypatch):
         """SLURM requeue reuses the indexed run_dir.
 
@@ -367,17 +348,25 @@ class TestResolveRunDir:
         d2 = m2._resolve_run_dir()
         assert d1 != d2, "interactive re-runs must not share a run_dir"
 
-    def test_requeue_without_index_raises(self, cache_dir, monkeypatch):
-        """Missing index entry on a SLURM requeue must error loudly.
+    def test_requeue_without_index_falls_through_to_fresh(self, cache_dir, monkeypatch):
+        """Requeue + no index + no orphan run_dir = early-preempt fallback.
 
-        Silently starting fresh would lose training history; raise instead.
+        Cluster-wide eviction during submitit pickle load can produce
+        ``RESTART_COUNT≥1`` with no artefact on disk — the prior task
+        died before reaching ``Manager.__init__``. There's nothing to
+        recover; treat as a fresh run. The strict raise is reserved for
+        the orphan scenario (see ``TestEarlyPreemptFallback`` in
+        ``test_slurm_index.py``).
         """
         monkeypatch.setenv("SLURM_JOB_ID", "77777")
         monkeypatch.setenv("SLURM_RESTART_COUNT", "1")
-        # Note: no .slurm_index/77777 file exists.
+        # No .slurm_index/77777 and no run_dir stamped with this JOB_ID.
         manager = self._make_manager()
-        with pytest.raises(RuntimeError, match="no index file exists"):
-            manager._resolve_run_dir()
+        run_dir = manager._resolve_run_dir()
+        assert run_dir is not None and run_dir.is_dir()
+        assert manager._early_preempt_fallback is True
+        # Index now written so a future requeue will find this attempt.
+        assert (cache_dir / ".slurm_index" / "77777").is_file()
 
     def test_requeue_with_stale_index_raises(self, cache_dir, monkeypatch):
         """If the index points at a directory that's been deleted, error."""
@@ -727,101 +716,12 @@ class TestInjectRunDir:
 # ============================================================================
 
 
-class TestResolveLoadPath:
-    """Tests for resolving checkpoint load paths."""
-
-    def test_returns_user_ckpt_path_when_exists(self, tmp_path):
-        """User's explicit ckpt_path is used for loading."""
-        user_ckpt = tmp_path / "pretrained.ckpt"
-        user_ckpt.touch()
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-            ckpt_path=str(user_ckpt),
-        )
-        run_dir = tmp_path / "run"
-        run_dir.mkdir()
-        result = manager._resolve_load_path(run_dir)
-        assert result == str(user_ckpt.resolve())
-
-    def test_returns_none_when_user_ckpt_path_missing_and_no_last_ckpt(self, tmp_path):
-        """User's ckpt_path doesn't exist and no last.ckpt → None."""
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-            ckpt_path=str(tmp_path / "nonexistent.ckpt"),
-        )
-        run_dir = tmp_path / "run"
-        run_dir.mkdir()
-        result = manager._resolve_load_path(run_dir)
-        assert result is None
-
-    def test_falls_back_to_last_ckpt_when_user_ckpt_path_missing(self, tmp_path):
-        """User's ckpt_path doesn't exist but last.ckpt does → load last.ckpt.
-
-        This is the requeue scenario: a stale ckpt_path from a previous job
-        no longer exists, but last.ckpt was saved in the run_dir.
-        """
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-            ckpt_path=str(tmp_path / "nonexistent.ckpt"),
-        )
-        run_dir = tmp_path / "run"
-        ckpt_dir = run_dir / "checkpoints"
-        ckpt_dir.mkdir(parents=True)
-        (ckpt_dir / "last.ckpt").touch()
-
-        result = manager._resolve_load_path(run_dir)
-        assert result == str(ckpt_dir / "last.ckpt")
-
-    def test_auto_detects_requeue_checkpoint(self, tmp_path):
-        """When no ckpt_path but run_dir/checkpoints/last.ckpt exists, load it."""
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-        )
-        run_dir = tmp_path / "run"
-        ckpt_dir = run_dir / "checkpoints"
-        ckpt_dir.mkdir(parents=True)
-        (ckpt_dir / "last.ckpt").touch()
-
-        result = manager._resolve_load_path(run_dir)
-        assert result == str(ckpt_dir / "last.ckpt")
-
-    def test_returns_none_for_fresh_run(self, tmp_path):
-        """No ckpt_path and no existing checkpoint → None (fresh run)."""
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-        )
-        run_dir = tmp_path / "run"
-        run_dir.mkdir()
-        result = manager._resolve_load_path(run_dir)
-        assert result is None
-
-    def test_user_ckpt_path_takes_priority_over_requeue(self, tmp_path):
-        """If user passes ckpt_path AND requeue checkpoint exists, user wins."""
-        user_ckpt = tmp_path / "pretrained.ckpt"
-        user_ckpt.touch()
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-            ckpt_path=str(user_ckpt),
-        )
-        run_dir = tmp_path / "run"
-        ckpt_dir = run_dir / "checkpoints"
-        ckpt_dir.mkdir(parents=True)
-        (ckpt_dir / "last.ckpt").touch()
-
-        result = manager._resolve_load_path(run_dir)
-        assert result == str(user_ckpt.resolve())
+# ``Manager._resolve_load_path`` is now covered in test_slurm_index.py
+# (see ``TestResolveLoadPath`` there) — the new behavior matrix is:
+# fresh run + user ckpt_path → load user path with user weights_only;
+# SLURM requeue → forced load of <run_dir>/checkpoints/last.ckpt with
+# weights_only=False; user ckpt_path under requeue is ignored with a
+# warning.
 
 
 # ============================================================================
@@ -1184,6 +1084,9 @@ class TestManagerCallWithCacheDir:
         monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
 
         user_ckpt = cache_dir / "custom" / "my_model.ckpt"
+        # ckpt_path validation requires the file to exist at __init__.
+        user_ckpt.parent.mkdir(parents=True, exist_ok=True)
+        user_ckpt.touch()
 
         trainer_cfg = OmegaConf.create(
             {
@@ -1267,23 +1170,21 @@ class TestManagerCallWithCacheDir:
         meta = json.loads(meta_path.read_text())
         assert Path(meta["run_dir"]) == manager._run_dir
 
-    def test_requeue_loads_from_run_dir_not_ckpt_path(self, cache_dir, monkeypatch):
-        """Simulate requeue: run_dir has last.ckpt, no user ckpt_path.
+    def test_user_ckpt_path_forwarded_with_fresh_run_dir(self, cache_dir, monkeypatch):
+        """User ckpt_path is forwarded to ``fit`` AND a FRESH run_dir is used.
 
-        The fit call should receive the auto-detected checkpoint.
+        Strategy-1-style sidecar restoration is gone: outside of a SLURM
+        requeue (RESTART_COUNT≥1) every invocation creates a new uuid'd
+        run_dir, regardless of where the user's ckpt_path lives.
         """
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
         monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
 
-        # Pre-create a "previous run" directory with a checkpoint
         prev_run_dir = cache_dir / "runs" / "20260101" / "120000" / "prev12345678"
         ckpt_dir = prev_run_dir / "checkpoints"
         ckpt_dir.mkdir(parents=True)
         (ckpt_dir / "last.ckpt").touch()
-        (ckpt_dir / _RUN_META_FILENAME).write_text(
-            json.dumps({"run_dir": str(prev_run_dir), "run_id": "prev12345678"})
-        )
-        # Manager has ckpt_path pointing to the prev checkpoint (for sidecar discovery)
         trainer_cfg = OmegaConf.create(
             {
                 "_target_": "lightning.pytorch.Trainer",
@@ -1318,10 +1219,11 @@ class TestManagerCallWithCacheDir:
         monkeypatch.setattr(pl.Trainer, "fit", mock_fit)
         manager()
 
-        # Should have loaded from the user's ckpt_path
+        # User ckpt_path forwarded to fit verbatim.
         assert captured_kwargs["ckpt_path"] == str((ckpt_dir / "last.ckpt").resolve())
-        # And the run_dir should be the restored prev_run_dir (same directory)
-        assert manager._run_dir == prev_run_dir
+        # But the run_dir is FRESH — never the prev_run_dir.
+        assert manager._run_dir != prev_run_dir
+        assert manager._run_dir.is_dir()
 
     def test_slurm_requeue_no_ckpt_path_auto_loads(self, cache_dir, monkeypatch):
         """SLURM requeue auto-loads ``last.ckpt`` from the indexed dir.

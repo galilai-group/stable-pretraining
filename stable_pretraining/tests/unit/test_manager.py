@@ -115,6 +115,8 @@ class TestConfigureCheckpointing:
         """
         ckpt_path = tmp_path / "checkpoints" / "last.ckpt"
         ckpt_path.parent.mkdir()
+        # Manager.__init__ now validates that ckpt_path exists.
+        ckpt_path.touch()
         callbacks = [ModelCheckpoint(dirpath=str(ckpt_path.parent), save_last=True)]
         manager = manager_factory(
             callbacks=callbacks, ckpt_path=ckpt_path, trainer_enable_checkpointing=True
@@ -141,6 +143,9 @@ class TestConfigureCheckpointing:
                      `ModelCheckpoint` callback that saves to the specified path.
         """
         ckpt_path = tmp_path / "checkpoints" / "safety_net.ckpt"
+        # Manager.__init__ now validates that ckpt_path exists.
+        ckpt_path.parent.mkdir(parents=True, exist_ok=True)
+        ckpt_path.touch()
         manager = manager_factory(
             callbacks=[], ckpt_path=ckpt_path, trainer_enable_checkpointing=True
         )
@@ -209,12 +214,12 @@ class TestConfigureCheckpointing:
 class TestResumeWeightsOnly:
     """Tests resume weights_only forwarding behavior in Manager."""
 
-    @pytest.mark.parametrize("resume_weights_only", [False, True])
-    def test_forward_resume_weights_only_when_supported(
+    @pytest.mark.parametrize("weights_only", [False, True])
+    def test_forward_weights_only_when_supported(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
-        resume_weights_only: bool,
+        weights_only: bool,
     ):
         ckpt_path = tmp_path / "resume.ckpt"
         ckpt_path.touch()
@@ -245,7 +250,7 @@ class TestResumeWeightsOnly:
             module=BoringModule(),
             data=BoringDataModule(),
             ckpt_path=str(ckpt_path),
-            resume_weights_only=resume_weights_only,
+            weights_only=weights_only,
         )
 
         monkeypatch.setattr(manager, "init_and_sync_wandb", lambda: None)
@@ -262,9 +267,9 @@ class TestResumeWeightsOnly:
         assert captured["module"] is manager.instantiated_module
         assert captured["datamodule"] is manager.instantiated_data
         assert captured["ckpt_path"] == str(ckpt_path.resolve())
-        assert captured["weights_only"] is resume_weights_only
+        assert captured["weights_only"] is weights_only
 
-    def test_ignore_resume_weights_only_when_trainer_fit_does_not_support_it(
+    def test_ignore_weights_only_when_trainer_fit_does_not_support_it(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -286,7 +291,7 @@ class TestResumeWeightsOnly:
             module=BoringModule(),
             data=BoringDataModule(),
             ckpt_path=str(ckpt_path),
-            resume_weights_only=True,
+            weights_only=True,
         )
 
         monkeypatch.setattr(manager, "init_and_sync_wandb", lambda: None)

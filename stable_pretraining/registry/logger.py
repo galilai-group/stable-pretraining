@@ -5,15 +5,19 @@
 
 :class:`RegistryLogger` is a thin subclass of Lightning's
 :class:`~lightning.pytorch.loggers.CSVLogger`.  It writes the standard
-CSV + hparams artifacts **and** an indexable ``sidecar.json`` + a
-``heartbeat`` file in the run directory.
+CSV + hparams artifacts **and** an indexable ``sidecar.json``, a
+fast-readable ``summary.json`` (per-metric stats), and a ``heartbeat``
+file in the run directory.
 
 Nothing in the training path touches SQLite or a network server:
 
 * ``log_hyperparams`` → CSV hparams + sidecar snapshot.
-* ``log_metrics``     → CSV metrics row + summary accumulator + heartbeat touch.
-* ``save``            → CSV flush + sidecar rewrite (atomic).
-* ``finalize``        → terminal status in sidecar.
+* ``log_metrics``     → CSV metrics row + per-metric stats accumulator
+                        (last / min / max / count) + heartbeat touch.
+* ``save``            → CSV flush + sidecar rewrite + summary.json
+                        rewrite (both atomic). Lightning calls this at
+                        epoch boundaries and on the flush cadence.
+* ``finalize``        → terminal status in sidecar + final summary flush.
 * ``after_save_checkpoint`` → ``checkpoint_path`` in sidecar.
 
 A separate scanner (see :mod:`stable_pretraining.registry._scanner`)
@@ -25,11 +29,13 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any, Optional, Union
 
 import csv as _csv
 
+from loguru import logger as logging
 from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.loggers.csv_logs import ExperimentWriter as _LightningCSVWriter
 from lightning.pytorch.utilities.rank_zero import rank_zero_only
@@ -151,12 +157,19 @@ class RegistryLogger(CSVLogger):
         self._notes = notes or ""
         self._hparams: dict[str, Any] = {}
         self._summary: dict[str, Any] = {}
+        # Per-metric extended stats for summary.json: each entry is a dict
+        # with last / min / max / count. Updated incrementally on every
+        # log_metrics.
+        self._metric_stats: dict[str, dict[str, Any]] = {}
         self._checkpoint_path: Optional[str] = None
         self._status = "running"
-        # Last step seen via log_metrics — used to attach a step to media
-        # events when the caller of log_image / log_video does not supply one
-        # (matches Lightning's WandbLogger behaviour).
+        # Last step / epoch seen via log_metrics — step is used to attach a
+        # step to media events when log_image / log_video doesn't supply one
+        # (matches Lightning's WandbLogger behaviour). Epoch is read from
+        # the metrics dict (Lightning auto-injects an "epoch" key) and is
+        # surfaced as a top-level field in summary.json.
         self._last_step: int = 0
+        self._last_epoch: int = 0
         # Replace Lightning's truncate-on-init writer with our appending one
         # so SLURM preempt/requeue cycles don't erase prior training history.
         self._experiment = _AppendingExperimentWriter(log_dir=str(run_dir))
@@ -164,6 +177,15 @@ class RegistryLogger(CSVLogger):
         # the registry can order runs chronologically regardless of how
         # often we flush.
         self._created_at: Optional[float] = None
+        # First-write flag for summary.json — used to log a one-shot info
+        # line on creation, then debug lines on subsequent rewrites so we
+        # don't spam every flush.
+        self._summary_written: bool = False
+        logging.info(
+            f"[RegistryLogger] run_id={self._run_id} "
+            f"run_dir={self._run_dir} — sidecar.json + summary.json + "
+            "metrics.csv will live here"
+        )
 
     # -- identity ---------------------------------------------------------------
 
@@ -192,12 +214,36 @@ class RegistryLogger(CSVLogger):
         super().log_metrics(metrics, step)
         if step is not None:
             self._last_step = int(step)
+        # Lightning auto-injects "epoch" into the metrics dict; surface it
+        # as a top-level field in summary.json.
+        if "epoch" in metrics:
+            ep = _to_scalar(metrics["epoch"])
+            if ep is not None:
+                self._last_epoch = int(ep)
 
-        # Sidecar-side: accumulate last-value-per-key summary.
         for k, v in metrics.items():
             scalar = _to_scalar(v)
-            if scalar is not None:
-                self._summary[k] = scalar
+            if scalar is None:
+                continue
+            # Sidecar-side: accumulate last-value-per-key summary (kept for
+            # backward compatibility with the scanner / SQLite cache).
+            self._summary[k] = scalar
+            # summary.json-side: extended stats with last/min/max/count.
+            stats = self._metric_stats.get(k)
+            if stats is None:
+                self._metric_stats[k] = {
+                    "last": scalar,
+                    "min": scalar,
+                    "max": scalar,
+                    "count": 1,
+                }
+            else:
+                stats["last"] = scalar
+                stats["count"] += 1
+                if scalar < stats["min"]:
+                    stats["min"] = scalar
+                if scalar > stats["max"]:
+                    stats["max"] = scalar
 
         # Heartbeat: cheap, fire-and-forget; used by the scanner to
         # distinguish running / stalled / dead without contacting SLURM.
@@ -207,6 +253,10 @@ class RegistryLogger(CSVLogger):
     def save(self) -> None:
         super().save()
         self._write_sidecar()
+        # Lightning calls save() at flush cadence and at epoch boundaries —
+        # piggyback the summary flush on the same path so summary.json is
+        # always fresh after each epoch.
+        self._write_summary_safe()
 
     @rank_zero_only
     def finalize(self, status: str) -> None:
@@ -217,6 +267,7 @@ class RegistryLogger(CSVLogger):
         # never logged — super() handles that no-op correctly.
         super().finalize(status)
         self._write_sidecar()
+        self._write_summary_safe()
 
     def after_save_checkpoint(self, checkpoint_callback: Any) -> None:
         # This callback fires on every rank; we gate on rank_zero via
@@ -374,6 +425,50 @@ class RegistryLogger(CSVLogger):
         """
         try:
             self._write_sidecar()
+        except OSError:
+            pass
+
+    # -- summary.json -----------------------------------------------------------
+
+    @rank_zero_only
+    def _write_summary(self) -> None:
+        """Atomically (re)write ``summary.json`` with per-metric stats.
+
+        Format is intentionally tight (a flat ``{metric: stats_dict}`` map)
+        so a downstream reader can parse it with a single ``json.load`` and
+        reach any metric's last/min/max in O(1).
+        """
+        data = {
+            "schema_version": 1,
+            "run_id": self._run_id,
+            "run_dir": str(self._run_dir),
+            "updated_at": time.time(),
+            "step": self._last_step,
+            "epoch": self._last_epoch,
+            "metrics": dict(self._metric_stats),
+        }
+        path = self._run_dir / "summary.json"
+        _sidecar.atomic_json_write(path, data)
+        msg = (
+            f"[RegistryLogger] summary.json flushed "
+            f"({len(self._metric_stats)} metrics, step={self._last_step}, "
+            f"epoch={self._last_epoch}) → {path}"
+        )
+        if not self._summary_written:
+            logging.info(msg)
+            self._summary_written = True
+        else:
+            logging.debug(msg)
+
+    @rank_zero_only
+    def _write_summary_safe(self) -> None:
+        """Same as :meth:`_write_summary` but swallows I/O errors.
+
+        ``summary.json`` is auxiliary — a failed write must never take down
+        a training run.
+        """
+        try:
+            self._write_summary()
         except OSError:
             pass
 
