@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g4d234ce88 documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g0cd795470 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ca3cbe1c"></script>
+    <script src="../../../_static/documentation_options.js?v=8fa3b740"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g4d234ce88 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g0cd795470 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -437,12 +437,190 @@
             <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! Unrecognized logger!&quot;</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">print_signal_info</span><span class="p">():</span>
-    <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;SignalHandlers&quot;</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SIGUSR1: `</span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGUSR1</span><span class="p">)</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SIGUSR2: `</span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGUSR2</span><span class="p">)</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SIGCONT: `</span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGCONT</span><span class="p">)</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SIGTERM: `</span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_describe_handler</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Human-readable description of a signal handler — module, qualname, origin tag.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">handler</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;None&gt;&quot;</span>
+    <span class="k">if</span> <span class="n">handler</span> <span class="o">==</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIG_DFL</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;SIG_DFL (default OS action — terminate process)&quot;</span>
+    <span class="k">if</span> <span class="n">handler</span> <span class="o">==</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIG_IGN</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;SIG_IGN (ignored)&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">handler</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
+    <span class="n">mod</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="s2">&quot;__module__&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+    <span class="n">qual</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="s2">&quot;__qualname__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span>
+        <span class="n">handler</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">bound</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span> <span class="s2">&quot;__self__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">bound</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">bound</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="n">mod</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">bound</span><span class="p">)</span><span class="o">.</span><span class="vm">__module__</span>
+        <span class="n">qual</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="nb">getattr</span><span class="p">(</span><span class="n">handler</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;__name__&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">qual</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">origin</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;submitit&quot;</span> <span class="ow">in</span> <span class="n">mod</span><span class="p">:</span>
+        <span class="n">origin</span> <span class="o">=</span> <span class="s2">&quot; [submitit]&quot;</span>
+    <span class="k">elif</span> <span class="s2">&quot;pytorch_lightning&quot;</span> <span class="ow">in</span> <span class="n">mod</span> <span class="ow">or</span> <span class="s2">&quot;lightning&quot;</span> <span class="ow">in</span> <span class="n">mod</span><span class="p">:</span>
+        <span class="n">origin</span> <span class="o">=</span> <span class="s2">&quot; [lightning]&quot;</span>
+    <span class="k">elif</span> <span class="s2">&quot;stable_pretraining&quot;</span> <span class="ow">in</span> <span class="n">mod</span> <span class="ow">or</span> <span class="n">qual</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span>
+        <span class="s2">&quot;_install_sigterm_preempt_handler&quot;</span>
+    <span class="p">):</span>
+        <span class="n">origin</span> <span class="o">=</span> <span class="s2">&quot; [spt]&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&lt;</span><span class="si">{</span><span class="n">mod</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">qual</span><span class="si">}</span><span class="s2">&gt;</span><span class="si">{</span><span class="n">origin</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">print_signal_info</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;current&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Dump the currently-bound signal handlers for the four signals we care about.</span>
+
+<span class="sd">    ``label`` is folded into the section header so successive dumps are easy to</span>
+<span class="sd">    distinguish in the log (e.g. ``&quot;pre-fit&quot;``, ``&quot;post-fit&quot;``).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">log_header</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SignalHandlers (</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">sig</span> <span class="ow">in</span> <span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGUSR1</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGUSR2</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGCONT</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">sig</span><span class="o">.</span><span class="n">name</span><span class="si">:</span><span class="s2">&lt;8</span><span class="si">}</span><span class="s2"> → </span><span class="si">{</span><span class="n">_describe_handler</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">sig</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">SIGTERMException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Marker exception for SIGTERM-triggered preemption.</span>
+
+<span class="sd">    Raised by the pre-fit SIGTERM handler only as a last-resort fallback</span>
+<span class="sd">    when forwarding to submitit&#39;s USR signal fails. The normal path is</span>
+<span class="sd">    silent: SIGTERM → forward to USR_SIG → submitit&#39;s</span>
+<span class="sd">    ``SignalHandler.checkpoint_and_try_requeue`` runs requeue + sys.exit(-1).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_install_sigterm_preempt_handler</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Install a pre-fit SIGTERM handler that triggers submitit&#39;s requeue.</span>
+
+<span class="sd">    Why: PyTorch Lightning&#39;s ``_SignalConnector`` treats SIGTERM as a</span>
+<span class="sd">    graceful stop — ``fit()`` returns normally, submitit sees a successful</span>
+<span class="sd">    completion, and the job is *not* requeued. Submitit&#39;s own preempt path</span>
+<span class="sd">    is bound to ``SIGUSR2`` (or ``$SUBMITIT_PREEMPT_SIGNAL``); when SLURM</span>
+<span class="sd">    sends SIGTERM directly (e.g., short grace period, ``scancel`` during</span>
+<span class="sd">    preempt) the requeue mechanism never fires.</span>
+
+<span class="sd">    Fix: install our SIGTERM handler before ``Trainer.fit()`` so Lightning&#39;s</span>
+<span class="sd">    ``_SignalConnector.register_signal_handlers`` appends it to the</span>
+<span class="sd">    composed chain (see ``signal_connector.py``: it preserves an existing</span>
+<span class="sd">    SIGTERM handler) — and Lightning leaves submitit&#39;s USR_SIG handler in</span>
+<span class="sd">    place because it skips USR registration when one already exists. Our</span>
+<span class="sd">    handler forwards SIGTERM to USR_SIG, which causes submitit&#39;s</span>
+<span class="sd">    ``checkpoint_and_try_requeue`` to fire on the next interpreter tick.</span>
+
+<span class="sd">    No-op outside SLURM (handler is only useful when submitit installed a</span>
+<span class="sd">    USR_SIG handler upstream).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;SIGTERM preempt handler — install&quot;</span><span class="p">)</span>
+    <span class="n">job_id</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_JOB_ID&quot;</span><span class="p">)</span>
+    <span class="n">restart</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_RESTART_COUNT&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span>
+    <span class="n">proc_id</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_PROCID&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)</span>
+    <span class="n">node_id</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_NODEID&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM_JOB_ID         = </span><span class="si">{</span><span class="n">job_id</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM_RESTART_COUNT  = </span><span class="si">{</span><span class="n">restart</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM_PROCID         = </span><span class="si">{</span><span class="n">proc_id</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM_NODEID         = </span><span class="si">{</span><span class="n">node_id</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">job_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">&quot;  → not under SLURM (SLURM_JOB_ID unset); leaving SIGTERM handler &quot;</span>
+            <span class="s2">&quot;as-is. Forwarding to submitit&#39;s USR signal would be a no-op since &quot;</span>
+            <span class="s2">&quot;submitit isn&#39;t running upstream.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">preempt_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SUBMITIT_PREEMPT_SIGNAL&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">usr_sig</span> <span class="o">=</span> <span class="n">submitit</span><span class="o">.</span><span class="n">JobEnvironment</span><span class="o">.</span><span class="n">_usr_sig</span><span class="p">()</span>
+        <span class="n">usr_src</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;$SUBMITIT_PREEMPT_SIGNAL=</span><span class="si">{</span><span class="n">preempt_env</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="k">if</span> <span class="n">preempt_env</span>
+            <span class="k">else</span> <span class="s2">&quot;submitit default (USR2)&quot;</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">usr_sig</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGUSR2</span>
+        <span class="n">usr_src</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;fallback to SIGUSR2 (submitit query failed: </span><span class="si">{</span><span class="n">e</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;  submitit preempt signal = </span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">Signals</span><span class="p">(</span><span class="n">usr_sig</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;(signum=</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">usr_sig</span><span class="p">)</span><span class="si">}</span><span class="s2">; source: </span><span class="si">{</span><span class="n">usr_src</span><span class="si">}</span><span class="s2">)&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">prior_term</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span>
+    <span class="n">prior_usr</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">usr_sig</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  prior SIGTERM handler   = </span><span class="si">{</span><span class="n">_describe_handler</span><span class="p">(</span><span class="n">prior_term</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;  prior </span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">Signals</span><span class="p">(</span><span class="n">usr_sig</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> handler   = &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_describe_handler</span><span class="p">(</span><span class="n">prior_usr</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">prior_usr</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  ! </span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">Signals</span><span class="p">(</span><span class="n">usr_sig</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> has no callable handler — &quot;</span>
+            <span class="s2">&quot;submitit may not have installed its SignalHandler yet. Forwarding &quot;</span>
+            <span class="s2">&quot;SIGTERM to it will hit the OS default action instead of &quot;</span>
+            <span class="s2">&quot;checkpoint_and_try_requeue. Requeue will likely NOT happen.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_handler</span><span class="p">(</span><span class="n">signum</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="c1"># Signal handlers run between Python bytecodes — keep work minimal.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sig_name</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">Signals</span><span class="p">(</span><span class="n">signum</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">sig_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">signum</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">host</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">uname</span><span class="p">()</span><span class="o">.</span><span class="n">nodename</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">host</span> <span class="o">=</span> <span class="s2">&quot;?&quot;</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;SLURM_PROCID&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;LOCAL_RANK&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;RANK&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="n">ts</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(</span><span class="n">timespec</span><span class="o">=</span><span class="s2">&quot;seconds&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;🛑 [SIGTERM-handler] </span><span class="si">{</span><span class="n">sig_name</span><span class="si">}</span><span class="s2"> (signum=</span><span class="si">{</span><span class="n">signum</span><span class="si">}</span><span class="s2">) caught at </span><span class="si">{</span><span class="n">ts</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;on host=</span><span class="si">{</span><span class="n">host</span><span class="si">}</span><span class="s2"> pid=</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span><span class="si">}</span><span class="s2"> rank=</span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;   This handler runs AFTER lightning&#39;s _sigterm_notifier_fn and &quot;</span>
+            <span class="s2">&quot;_sigterm_handler_fn (lightning composed us in via _HandlersCompose; &quot;</span>
+            <span class="s2">&quot;see signal_connector.py:66-68).&quot;</span>
+        <span class="p">)</span>
+        <span class="n">forward_name</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">Signals</span><span class="p">(</span><span class="n">usr_sig</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+        <span class="c1"># Re-check the USR_SIG binding at fire time — surfaces any drift caused</span>
+        <span class="c1"># by lightning&#39;s teardown / a third-party handler that grabbed it.</span>
+        <span class="n">cur_usr</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">usr_sig</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   </span><span class="si">{</span><span class="n">forward_name</span><span class="si">}</span><span class="s2"> currently bound to </span><span class="si">{</span><span class="n">_describe_handler</span><span class="p">(</span><span class="n">cur_usr</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="s2">&quot;— this is what we are about to invoke via os.kill.&quot;</span>
+        <span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   Forwarding SIGTERM → </span><span class="si">{</span><span class="n">forward_name</span><span class="si">}</span><span class="s2"> so submitit&#39;s &quot;</span>
+            <span class="s2">&quot;SignalHandler.checkpoint_and_try_requeue takes over: &quot;</span>
+            <span class="s2">&quot;(1) self.checkpoint() dumps state, (2) scontrol requeue submits a &quot;</span>
+            <span class="s2">&quot;fresh job, (3) sys.exit(-1) terminates this process.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span> <span class="n">usr_sig</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;   ✗ os.kill(pid=</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span><span class="si">}</span><span class="s2">, sig=</span><span class="si">{</span><span class="n">forward_name</span><span class="si">}</span><span class="s2">) FAILED: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">e</span><span class="si">!r}</span><span class="s2">. Raising SIGTERMException as a fallback so the in-flight &quot;</span>
+                <span class="s2">&quot;fit() unwinds visibly instead of looking like a clean exit.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="n">SIGTERMException</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;SIGTERM received but forward to </span><span class="si">{</span><span class="n">forward_name</span><span class="si">}</span><span class="s2"> failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;   ✓ os.kill(pid=</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span><span class="si">}</span><span class="s2">, sig=</span><span class="si">{</span><span class="n">forward_name</span><span class="si">}</span><span class="s2">) sent. &quot;</span>
+            <span class="s2">&quot;submitit&#39;s handler will fire on the next interpreter bytecode.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">_handler</span><span class="p">)</span>
+    <span class="n">new_term</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;  ✓ Installed pre-fit SIGTERM handler: </span><span class="si">{</span><span class="n">_describe_handler</span><span class="p">(</span><span class="n">new_term</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;    → forwards to </span><span class="si">{</span><span class="n">signal</span><span class="o">.</span><span class="n">Signals</span><span class="p">(</span><span class="n">usr_sig</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> on receipt; &quot;</span>
+        <span class="s2">&quot;lightning&#39;s _SignalConnector will compose this handler into its chain &quot;</span>
+        <span class="s2">&quot;(notifier → bypass → ours) when Trainer.fit() runs.&quot;</span>
+    <span class="p">)</span>
 
 
 <span class="n">_RUN_META_FILENAME</span> <span class="o">=</span> <span class="s2">&quot;run_meta.json&quot;</span>
@@ -1803,7 +1981,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_restore_swanlab_run</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">init_and_sync_wandb</span><span class="p">()</span>
         <span class="n">print_logger_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
-        <span class="n">print_signal_info</span><span class="p">()</span>
+        <span class="n">print_signal_info</span><span class="p">(</span><span class="s2">&quot;after submitit setup, before spt SIGTERM install&quot;</span><span class="p">)</span>
 
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;Callbacks&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  count: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -1856,6 +2034,19 @@
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrainerFit&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ckpt_path:     </span><span class="si">{</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  weights_only:  </span><span class="si">{</span><span class="n">weights_only_for_load</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Install pre-fit SIGTERM forwarder BEFORE Lightning&#39;s SignalConnector</span>
+        <span class="c1"># runs (it composes our handler in rather than overwriting). Without</span>
+        <span class="c1"># this, SLURM-delivered SIGTERM looks like a clean exit to submitit</span>
+        <span class="c1"># and the job is not requeued. See _install_sigterm_preempt_handler.</span>
+        <span class="n">_install_sigterm_preempt_handler</span><span class="p">()</span>
+        <span class="n">print_signal_info</span><span class="p">(</span><span class="s2">&quot;after spt SIGTERM install, before Trainer.fit()&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">&quot;  → entering Trainer.fit(); lightning&#39;s _SignalConnector will now &quot;</span>
+            <span class="s2">&quot;register its own handlers. SIGTERM will become &quot;</span>
+            <span class="s2">&quot;_HandlersCompose([_sigterm_notifier_fn, _sigterm_handler_fn, &quot;</span>
+            <span class="s2">&quot;spt._handler]); USR-sig binding from submitit is preserved &quot;</span>
+            <span class="s2">&quot;(lightning skips USR registration when one already exists).&quot;</span>
+        <span class="p">)</span>
         <span class="c1"># Wrap fit() so any callback/model error gets a full, flushed,</span>
         <span class="c1"># multi-stream traceback in stdout BEFORE it climbs the</span>
         <span class="c1"># Hydra/submitit chain (those layers can swallow tracebacks into</span>
@@ -1885,9 +2076,22 @@
             <span class="n">_sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Trainer.fit raised — re-raising after loud log&quot;</span><span class="p">)</span>
+                <span class="n">print_signal_info</span><span class="p">(</span><span class="s2">&quot;after Trainer.fit() raised&quot;</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                 <span class="k">pass</span>
             <span class="k">raise</span>
+        <span class="c1"># Lightning&#39;s _SignalConnector.teardown restores _original_handlers on</span>
+        <span class="c1"># exit — log what we ended up with so a downstream handler change is</span>
+        <span class="c1"># immediately visible in the run log.</span>
+        <span class="n">print_signal_info</span><span class="p">(</span><span class="s2">&quot;after Trainer.fit() returned&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="p">,</span> <span class="s2">&quot;_signal_connector&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">_signal_connector</span><span class="p">,</span> <span class="s2">&quot;received_sigterm&quot;</span><span class="p">,</span> <span class="kc">False</span>
+        <span class="p">):</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;  ⚠ Trainer reports received_sigterm=True — fit() exited &quot;</span>
+                <span class="s2">&quot;because of SIGTERM. If our forwarder ran, submitit should &quot;</span>
+                <span class="s2">&quot;have already requeued before this line.&quot;</span>
+            <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_dump_wandb_data</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
