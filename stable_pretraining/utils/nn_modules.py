@@ -212,6 +212,33 @@ class UnsortedQueue(torch.nn.Module):
         assert 0 not in v.numpy()
         return True
 
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
+        out_key = prefix + "out"
+        if out_key in state_dict:
+            self.out.resize_(state_dict[out_key].shape)
+        super()._load_from_state_dict(
+            state_dict,
+            prefix,
+            local_metadata,
+            strict,
+            missing_keys,
+            unexpected_keys,
+            error_msgs,
+        )
+
+    def load_state_dict(self, state_dict, strict=True, assign=False):
+        self.out.resize_(state_dict["out"].shape)
+        super().load_state_dict(state_dict, strict, assign)
+
 
 class OrderedQueue(torch.nn.Module):
     """A queue that maintains insertion order of elements.
@@ -409,6 +436,29 @@ class OrderedQueue(torch.nn.Module):
         assert torch.allclose(v3, expected)
 
         return True
+
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
+        out_key = prefix + "out"
+        if out_key in state_dict:
+            self.out.resize_(state_dict[out_key].shape)
+        super()._load_from_state_dict(
+            state_dict,
+            prefix,
+            local_metadata,
+            strict,
+            missing_keys,
+            unexpected_keys,
+            error_msgs,
+        )
 
     def load_state_dict(self, state_dict, strict=True, assign=False):
         self.out.resize_(state_dict["out"].shape)
