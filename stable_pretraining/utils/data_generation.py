@@ -7,7 +7,7 @@ import torch
 import tqdm
 from torchvision.transforms import v2
 
-from .nn_modules import Normalize
+from ..backbone.nn_modules import Normalize
 
 
 def _apply_inet_transforms(x):

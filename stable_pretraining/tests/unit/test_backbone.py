@@ -273,7 +273,7 @@ class TestDeviceAndDtype:
         wrapped = wrapped.to(torch.float64)
         assert next(wrapped.parameters()).dtype == torch.float64
 
-    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+    @pytest.mark.gpu
     def test_cuda(self):
         model = SimpleModel()
         wrapped = spt.backbone.EvalOnly(model)

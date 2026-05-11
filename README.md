@@ -823,3 +823,53 @@ Core contributors (in order of joining the project):
 - [Hugues Van Assel](https://github.com/huguesva)
 - [Sami BuGhanem](https://github.com/sami-bg)
 - [Lucas Maes](https://github.com/lucas-maes)
+
+
+## Benchmarks — Imagenette ViT-S/16, 200 epochs
+
+> **Caveat.** These are **out-of-the-box** results on Imagenette
+> (10-class subset of ImageNet, 224×224) at 200 epochs with ViT-S/16,
+> using each method's **paper-default ImageNet-1k hyperparameters**
+> scaled to the batch size used here. **No per-method hyperparameter
+> tuning was performed.** Several methods (e.g. MIM-family at short
+> schedules, whitening methods at small batch) are known to need
+> longer training or larger batches to reach their headline accuracy.
+> Treat the table as a sanity-check sweep over the 27 method classes,
+> not a SOTA comparison.
+
+Online linear probe and 20-NN probe top-1 accuracy on Imagenette,
+single A100, no W&B. Full details, hyperparameters per method, and
+reproduction commands:
+[`benchmarks/imagenet10/RESULTS.md`](benchmarks/imagenet10/RESULTS.md).
+
+| Method | Family | KNN top-1 | Linear top-1 |
+|---|---|---:|---:|
+| SwAV          | multi-crop clustering          | 86.4% | **89.7%** |
+| LeJEPA        | multi-view + sliced Epps-Pulley | 85.4% | 87.1% |
+| DINO          | self-distill + multi-crop      | 83.8% | 86.1% |
+| MoCo v3       | contrastive + EMA              | 82.6% | 84.7% |
+| MAE           | masked-image modeling          | 72.1% | 84.1% |
+| Barlow Twins  | decorrelation                  | 81.2% | 83.0% |
+| NNCLR         | contrastive + queue            | 75.6% | 80.2% |
+| VICReg        | variance / invariance / cov.   | 75.0% | 79.4% |
+| SimCLR        | NT-Xent contrastive            | 73.3% | 74.9% |
+| VICRegL       | VICReg + local matching        | 67.2% | 72.7% |
+| CMAE          | MAE + contrastive              | 61.9% | 72.2% |
+| MoCo v2       | momentum + queue               | 70.0% | 70.8% |
+| BYOL          | EMA target + predictor         | 56.0% | 63.9% |
+| SimSiam       | siamese + stop-grad            | 54.9% | 62.8% |
+| iBOT          | DINO + masked-patch loss       | 43.3% | 57.9% |
+| MSN           | masked-siamese                 | 50.6% | 57.6% |
+| DINOv3 *      | DINOv2 + registers + KoLeo     | 39.2% | 48.9% |
+| DINOv2 *      | DINO + iBOT + Sinkhorn         | 31.5% | 42.1% |
+| TiCO          | EMA-cov contrast (LARS)        | 23.7% | 33.7% |
+| IJEPA         | predictive (joint embedding)   | 33.2% | 34.0% |
+| Data2Vec      | EMA contextual features        | 31.0% | 26.3% |
+| MaskFeat      | masked HOG features            | 27.8% | 25.6% |
+| SimMIM        | masked pixel modeling          | 30.9% | 22.5% |
+| W-MSE         | whitening + MSE                | 16.9% | 15.9% |
+| PIRL          | jigsaw + memory bank           | 17.4% | 15.6% |
+| BEiT (placeholder tokenizer) | discrete-token masking | 22.0% | 15.3% |
+| iGPT (AIM-style) | autoregressive              | 18.8% | 12.8% |
+
+\* = run still climbing at time of writing.

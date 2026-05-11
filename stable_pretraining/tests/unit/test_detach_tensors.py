@@ -3,9 +3,11 @@ import torch
 import dataclasses
 import collections
 import sys
-from stable_pretraining.utils import detach_tensors
+from stable_pretraining.callbacks.utils import detach_tensors
 from typing import NamedTuple
 from dataclasses import dataclass
+
+pytestmark = pytest.mark.unit
 
 
 # --- Helper classes for testing ---
@@ -710,7 +712,7 @@ class TestEdgeCases:
         assert result.device.type == "cpu"
         assert not result.requires_grad
 
-    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+    @pytest.mark.gpu
     def test_tensor_devices_cuda(self):
         """Test tensors on CUDA."""
         cuda_tensor = torch.randn(2, 2, requires_grad=True, device="cuda")
@@ -719,7 +721,7 @@ class TestEdgeCases:
         assert result.device.type == "cuda"
         assert not result.requires_grad
 
-    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+    @pytest.mark.gpu
     def test_mixed_devices(self):
         """Test tensors on different devices in same structure."""
         data = {

@@ -88,7 +88,7 @@ class TestVideoLoadingUnit:
 
     def test_image_to_video_encoder_initialization(self):
         """Test ImageToVideoEncoder wrapper initialization."""
-        with patch("stable_pretraining.utils.ImageToVideoEncoder") as mock_encoder:
+        with patch("stable_pretraining.backbone.ImageToVideoEncoder") as mock_encoder:
             with patch("torchvision.models.resnet18") as mock_resnet:
                 backbone = mock_resnet()
                 encoder = mock_encoder(backbone)

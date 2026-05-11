@@ -16,13 +16,14 @@ from .joint_embedding import (
     VICRegLoss,
     BarlowTwinsLoss,
     NTXEntLoss,
+    SwAVLoss,
 )
 
 # Multimodal losses
 from .multimodal import CLIPLoss
 
 # Reconstruction losses
-from .reconstruction import mae
+from .reconstruction import mae, MAELoss
 
 # Utilities
 from .utils import (
@@ -42,9 +43,11 @@ __all__ = [
     "VICRegLoss",
     "BarlowTwinsLoss",
     "NTXEntLoss",
+    "SwAVLoss",
     "CLIPLoss",
     # Reconstruction
     "mae",
+    "MAELoss",
     # Utils
     "sinkhorn_knopp",
     "off_diagonal",

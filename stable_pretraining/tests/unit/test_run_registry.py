@@ -642,6 +642,100 @@ class TestRegistryLogger:
 
 
 # ============================================================================
+# RegistryLogger.summary.json
+# ============================================================================
+
+
+class TestRegistrySummaryFile:
+    """``summary.json``: per-metric last/min/max stats."""
+
+    def _read_summary(self, run_dir: Path) -> dict:
+        return json.loads((run_dir / "summary.json").read_text())
+
+    def test_save_writes_summary_file(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": 1.0}, step=0)
+        logger.save()
+        assert (tmp_path / "summary.json").is_file()
+
+    def test_summary_tracks_min_max(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": 1.5, "epoch": 0}, step=0)
+        logger.log_metrics({"loss": 2.0, "epoch": 0}, step=10)
+        logger.log_metrics({"loss": 0.5, "epoch": 1}, step=20)
+        logger.log_metrics({"loss": 1.0, "epoch": 1}, step=30)
+        logger.save()
+
+        s = self._read_summary(tmp_path)
+        loss = s["metrics"]["loss"]
+        assert loss["last"] == 1.0
+        assert loss["min"] == 0.5
+        assert loss["max"] == 2.0
+        assert loss["count"] == 4
+        # Top-level last-seen step + epoch.
+        assert s["step"] == 30 and s["epoch"] == 1
+
+    def test_summary_first_observation_is_both_min_and_max(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"acc": 0.42, "epoch": 7}, step=42)
+        logger.save()
+        acc = self._read_summary(tmp_path)["metrics"]["acc"]
+        assert acc["last"] == acc["min"] == acc["max"] == 0.42
+        assert acc["count"] == 1
+
+    def test_summary_skips_non_numeric(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": 1.0, "tag": "blue"}, step=0)
+        logger.save()
+        metrics = self._read_summary(tmp_path)["metrics"]
+        assert "loss" in metrics and "tag" not in metrics
+
+    def test_summary_atomic_no_partial_observable(self, tmp_path):
+        """Atomic write: no temp leaks behind, target is whole or absent."""
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": 1.0}, step=0)
+        logger.save()
+        leftovers = [p.name for p in tmp_path.iterdir() if p.name.startswith(".")]
+        assert leftovers == [], f"temp files leaked: {leftovers}"
+        # File is parseable in one shot.
+        json.loads((tmp_path / "summary.json").read_text())
+
+    def test_summary_finalize_flushes_summary(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": 0.7}, step=5)
+        logger.finalize("success")
+        loss = self._read_summary(tmp_path)["metrics"]["loss"]
+        assert loss["last"] == 0.7 and loss["count"] == 1
+
+    def test_summary_rank_zero_only(self, tmp_path):
+        """``log_metrics`` + ``save`` are gated by ``@rank_zero_only``.
+
+        On rank>0 the wrapper turns them into no-ops, so neither the
+        in-memory stats nor the on-disk file are written.
+        """
+        from lightning.pytorch.utilities import rank_zero as _rz
+
+        # rank is cached at import time; set explicitly for the test.
+        original = _rz.rank_zero_only.rank
+        _rz.rank_zero_only.rank = 1
+        try:
+            logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+            logger.log_hyperparams({})
+            logger.log_metrics({"loss": 0.1}, step=0)
+            logger.save()
+        finally:
+            _rz.rank_zero_only.rank = original
+        assert not (tmp_path / "summary.json").exists()
+        assert logger._metric_stats == {}
+
+
+# ============================================================================
 # Registry query API (via open_registry)
 # ============================================================================
 
