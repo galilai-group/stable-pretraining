@@ -13,8 +13,8 @@ from loguru import logger as logging
 
 from .registry import log as _spt_log
 
-from ..utils import OrderedQueue, get_data_from_batch_or_outputs
-from .utils import log_header
+from .queues import OrderedQueue
+from .utils import get_data_from_batch_or_outputs, log_header
 
 
 class OnlineQueue(Callback):

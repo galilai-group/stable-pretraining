@@ -33,7 +33,7 @@ from typing import Union
 from transformers.utils import ModelOutput
 
 from stable_pretraining.backbone import MAEDecoder, MaskedEncoder, PatchMasking
-from stable_pretraining.utils import MAELoss
+from stable_pretraining.losses import MAELoss
 from stable_pretraining import Module
 
 

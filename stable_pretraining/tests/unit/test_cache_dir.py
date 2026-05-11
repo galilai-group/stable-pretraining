@@ -1013,7 +1013,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         def mock_fit(self_trainer, module, **kwargs):
@@ -1066,7 +1066,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         def mock_fit(self_trainer, module, **kwargs):
@@ -1111,7 +1111,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         def mock_fit(self_trainer, module, **kwargs):
@@ -1156,7 +1156,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         def mock_fit(self_trainer, module, **kwargs):
@@ -1208,7 +1208,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         captured_kwargs = {}
@@ -1271,7 +1271,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         captured_kwargs = {}
@@ -1317,7 +1317,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         def mock_fit(self_trainer, module, **kwargs):

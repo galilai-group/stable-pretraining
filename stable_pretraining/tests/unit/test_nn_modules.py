@@ -1,14 +1,16 @@
-"""Unit tests for neural network modules in stable_pretraining.utils.nn_modules."""
+"""Unit tests for nn_modules split between backbone and callbacks."""
 
 import pytest
 import torch
 
-from stable_pretraining.utils.nn_modules import (
-    UnsortedQueue,
-    OrderedQueue,
+from stable_pretraining.backbone.nn_modules import (
     EMA,
     Normalize,
     ImageToVideoEncoder,
+)
+from stable_pretraining.callbacks.queues import (
+    UnsortedQueue,
+    OrderedQueue,
 )
 
 

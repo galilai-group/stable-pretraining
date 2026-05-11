@@ -117,7 +117,7 @@ def dump_csv_logs(
     ),
 ):
     """Compress CSV logs to the smallest possible format with aggregation."""
-    from stable_pretraining.utils.read_csv_logger import (
+    from stable_pretraining.loggers.csv_log_reader import (
         save_best_compressed,
         CSVLogAutoSummarizer,
     )

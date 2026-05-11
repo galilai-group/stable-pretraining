@@ -1,10 +1,21 @@
+import os
+import signal
+import subprocess
+import sys
+import textwrap
 import pytest
 from unittest.mock import MagicMock
 from pathlib import Path
 import lightning as pl
 from lightning.pytorch.callbacks import ModelCheckpoint
 
-from stable_pretraining.manager import Manager
+from stable_pretraining.manager import (
+    Manager,
+    SIGTERMException,
+    _describe_handler,
+    _install_sigterm_preempt_handler,
+    print_signal_info,
+)
 from stable_pretraining.tests.utils import BoringTrainer, BoringModule, BoringDataModule
 
 
@@ -259,7 +270,7 @@ class TestResumeWeightsOnly:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         manager()
@@ -300,7 +311,7 @@ class TestResumeWeightsOnly:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         manager()
@@ -310,3 +321,233 @@ class TestResumeWeightsOnly:
         assert call_kwargs["datamodule"] is manager.instantiated_data
         assert call_kwargs["ckpt_path"] == str(ckpt_path.resolve())
         assert "weights_only" not in call_kwargs
+
+
+@pytest.fixture
+def restore_sigterm():
+    """Snapshot SIGTERM/SIGUSR2 handlers and restore them after the test.
+
+    `_install_sigterm_preempt_handler` mutates process-global signal state;
+    without this fixture an earlier test could leave a handler bound and
+    poison later tests (or the pytest runner itself).
+    """
+    prior_term = signal.getsignal(signal.SIGTERM)
+    prior_usr2 = signal.getsignal(signal.SIGUSR2)
+    yield
+    signal.signal(signal.SIGTERM, prior_term)
+    signal.signal(signal.SIGUSR2, prior_usr2)
+
+
+@pytest.mark.unit
+class TestSIGTERMPreemptHandler:
+    """Covers `_install_sigterm_preempt_handler` and the inner forwarder."""
+
+    def test_no_op_outside_slurm(
+        self, monkeypatch: pytest.MonkeyPatch, restore_sigterm
+    ):
+        # Ensure SLURM_JOB_ID is unset; install should leave SIGTERM untouched.
+        monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+        prior = signal.getsignal(signal.SIGTERM)
+        _install_sigterm_preempt_handler()
+        assert signal.getsignal(signal.SIGTERM) is prior, (
+            "SIGTERM handler must not be replaced when SLURM_JOB_ID is unset"
+        )
+
+    def test_installs_handler_under_slurm(
+        self, monkeypatch: pytest.MonkeyPatch, restore_sigterm
+    ):
+        monkeypatch.setenv("SLURM_JOB_ID", "12345")
+        prior = signal.getsignal(signal.SIGTERM)
+        _install_sigterm_preempt_handler()
+        new = signal.getsignal(signal.SIGTERM)
+        assert new is not prior, "SIGTERM handler should be replaced under SLURM"
+        assert callable(new)
+        # The forwarder is a nested closure — its qualname should give it away.
+        assert "_install_sigterm_preempt_handler" in getattr(new, "__qualname__", "")
+
+    def test_handler_forwards_to_usr_signal(
+        self, monkeypatch: pytest.MonkeyPatch, restore_sigterm
+    ):
+        """When SIGTERM fires, the handler must os.kill(self, USR_SIG)."""
+        monkeypatch.setenv("SLURM_JOB_ID", "12345")
+        kills: list[tuple[int, int]] = []
+        monkeypatch.setattr(
+            "stable_pretraining.manager.os.kill",
+            lambda pid, sig: kills.append((pid, sig)),
+        )
+        _install_sigterm_preempt_handler()
+        handler = signal.getsignal(signal.SIGTERM)
+        # Invoke the handler directly with a synthetic frame; signal handlers
+        # in Python are just plain callables when called this way.
+        handler(signal.SIGTERM, None)
+        assert kills == [(os.getpid(), int(signal.SIGUSR2))], (
+            f"expected one os.kill(self, SIGUSR2) call; got {kills}"
+        )
+
+    def test_handler_raises_sigterm_exception_when_kill_fails(
+        self, monkeypatch: pytest.MonkeyPatch, restore_sigterm
+    ):
+        """If os.kill fails, the handler surfaces SIGTERMException (typed fallback)."""
+        monkeypatch.setenv("SLURM_JOB_ID", "12345")
+
+        def _broken_kill(pid, sig):
+            raise PermissionError("simulated EPERM")
+
+        monkeypatch.setattr("stable_pretraining.manager.os.kill", _broken_kill)
+        _install_sigterm_preempt_handler()
+        handler = signal.getsignal(signal.SIGTERM)
+        with pytest.raises(SIGTERMException) as ei:
+            handler(signal.SIGTERM, None)
+        assert "SIGUSR2" in str(ei.value)
+        # __cause__ should be the underlying PermissionError, not lost.
+        assert isinstance(ei.value.__cause__, PermissionError)
+
+    def test_handler_honors_submitit_preempt_signal_env(
+        self, monkeypatch: pytest.MonkeyPatch, restore_sigterm
+    ):
+        """`$SUBMITIT_PREEMPT_SIGNAL=USR1` should make us forward to SIGUSR1, not SIGUSR2."""
+        monkeypatch.setenv("SLURM_JOB_ID", "12345")
+        monkeypatch.setenv("SUBMITIT_PREEMPT_SIGNAL", "USR1")
+        # Force submitit's class attribute to re-read the env var. submitit
+        # caches USR_SIG at class-definition time, so we patch the classmethod.
+        import submitit
+
+        monkeypatch.setattr(
+            submitit.JobEnvironment,
+            "_usr_sig",
+            classmethod(lambda cls: signal.SIGUSR1),
+        )
+
+        kills: list[tuple[int, int]] = []
+        monkeypatch.setattr(
+            "stable_pretraining.manager.os.kill",
+            lambda pid, sig: kills.append((pid, sig)),
+        )
+        _install_sigterm_preempt_handler()
+        signal.getsignal(signal.SIGTERM)(signal.SIGTERM, None)
+        assert kills == [(os.getpid(), int(signal.SIGUSR1))]
+
+    def test_end_to_end_sigterm_triggers_usr_handler(self, tmp_path: Path):
+        """End-to-end (subprocess): real SIGTERM → our handler → real SIGUSR2 → sentinel."""
+        marker = tmp_path / "usr_fired.txt"
+        script = textwrap.dedent(f"""
+            import os, signal, sys, time
+            os.environ['SLURM_JOB_ID'] = '99999'
+            os.environ['SLURM_PROCID'] = '0'
+
+            def fake_submitit_usr2(signum, frame):
+                # Mimic submitit's checkpoint_and_try_requeue: write a sentinel,
+                # then sys.exit(-1) to terminate the process.
+                with open({str(marker)!r}, 'w') as f:
+                    f.write(f'{{signum}}')
+                sys.exit(-1)
+
+            signal.signal(signal.SIGUSR2, fake_submitit_usr2)
+
+            from stable_pretraining.manager import _install_sigterm_preempt_handler
+            _install_sigterm_preempt_handler()
+
+            os.kill(os.getpid(), signal.SIGTERM)
+            # Give the queued SIGUSR2 a moment to fire.
+            time.sleep(0.5)
+            print('UNREACHABLE')
+            sys.exit(0)
+        """)
+        proc = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert marker.exists(), (
+            "fake_submitit_usr2 never fired — SIGTERM was not forwarded to "
+            f"SIGUSR2.\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        )
+        assert marker.read_text() == str(int(signal.SIGUSR2))
+        # exit code from sys.exit(-1) is 255 on POSIX
+        assert proc.returncode != 0, (
+            "Subprocess exited cleanly — fake_submitit_usr2 should have called "
+            f"sys.exit(-1).\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        )
+        # The "UNREACHABLE" line must NOT appear: SIGUSR2 handler should have
+        # exited before the subsequent print could run.
+        assert "UNREACHABLE" not in proc.stdout
+
+    def test_warns_when_usr_handler_is_default(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        restore_sigterm,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        """Install must warn when USR-sig has no handler bound (requeue would no-op)."""
+        monkeypatch.setenv("SLURM_JOB_ID", "12345")
+        # Force USR2 to SIG_DFL so the "no callable handler" branch fires.
+        signal.signal(signal.SIGUSR2, signal.SIG_DFL)
+        # loguru -> stdlib bridge: capture loguru warnings via propagate.
+        import logging as stdlib_logging
+        from loguru import logger as loguru_logger
+
+        sink_id = loguru_logger.add(
+            lambda msg: stdlib_logging.getLogger("loguru-bridge").warning(
+                msg.record["message"]
+            ),
+            level="WARNING",
+        )
+        try:
+            with caplog.at_level(stdlib_logging.WARNING, logger="loguru-bridge"):
+                _install_sigterm_preempt_handler()
+        finally:
+            loguru_logger.remove(sink_id)
+        joined = "\n".join(r.message for r in caplog.records)
+        assert "no callable handler" in joined or "Requeue will likely NOT" in joined
+
+
+@pytest.mark.unit
+class TestDescribeHandler:
+    """Covers `_describe_handler` — the renderer used by `print_signal_info`."""
+
+    def test_default_action(self):
+        assert "SIG_DFL" in _describe_handler(signal.SIG_DFL)
+
+    def test_ignored(self):
+        assert "SIG_IGN" in _describe_handler(signal.SIG_IGN)
+
+    def test_none(self):
+        assert _describe_handler(None) == "<None>"
+
+    def test_callable_tagged_spt(self):
+        # The forwarder closure lives in stable_pretraining.manager
+        from stable_pretraining.manager import _install_sigterm_preempt_handler
+
+        out = _describe_handler(_install_sigterm_preempt_handler)
+        assert "[spt]" in out
+        assert "stable_pretraining" in out
+
+    def test_callable_tagged_submitit(self):
+        import submitit
+
+        # Pick any callable defined in submitit
+        fn = submitit.JobEnvironment._handle_signals
+        out = _describe_handler(fn)
+        assert "[submitit]" in out
+
+    def test_callable_tagged_lightning(self):
+        from pytorch_lightning.trainer.connectors.signal_connector import (
+            _SignalConnector,
+        )
+
+        out = _describe_handler(_SignalConnector._sigterm_notifier_fn)
+        assert "[lightning]" in out
+
+
+@pytest.mark.unit
+class TestPrintSignalInfo:
+    """Sanity-check that `print_signal_info` accepts both bare and labeled call forms."""
+
+    def test_no_label(self):
+        # Should not raise.
+        print_signal_info()
+
+    def test_with_label(self):
+        # Should not raise; label is purely cosmetic.
+        print_signal_info("post-fit")

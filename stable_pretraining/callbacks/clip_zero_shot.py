@@ -6,8 +6,7 @@ from lightning.pytorch import Callback, LightningModule, Trainer
 from loguru import logger as logging
 import torchmetrics
 
-from ..utils import get_data_from_batch_or_outputs
-from .utils import format_metrics_as_dict
+from .utils import format_metrics_as_dict, get_data_from_batch_or_outputs
 
 
 class CLIPZeroShot(Callback):

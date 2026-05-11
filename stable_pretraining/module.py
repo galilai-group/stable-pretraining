@@ -18,6 +18,22 @@ from stable_pretraining.callbacks.registry import log as _spt_log
 from stable_pretraining.callbacks.utils import log_header
 
 
+_FSDP_PREFIX_RE = re.compile(r"(^|\.)_fsdp_wrapped_module\.")
+
+
+def _strip_fsdp_prefix(qual_name: str) -> str:
+    """Remove FSDP's ``_fsdp_wrapped_module.`` segments from a qualified name.
+
+    FSDP rewrites module names to insert ``_fsdp_wrapped_module`` between the
+    wrapper and the wrapped module (e.g. ``_fsdp_wrapped_module.backbone`` or
+    ``foo._fsdp_wrapped_module.bar``). User regex patterns are written against
+    the un-wrapped names, so we strip the segments before matching.
+    """
+    if "_fsdp_wrapped_module" not in qual_name:
+        return qual_name
+    return _FSDP_PREFIX_RE.sub(lambda m: m.group(1), qual_name)
+
+
 class _NamedForward:
     """Adapter giving a callable ``__name__`` so spawn-mode workers can pickle it."""
 

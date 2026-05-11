@@ -94,12 +94,193 @@ def print_logger_info(logger):
             logging.warning("! Unrecognized logger!")
 
 
-def print_signal_info():
-    log_header("SignalHandlers")
-    logging.info(f"  SIGUSR1: `{signal.getsignal(signal.SIGUSR1)}`")
-    logging.info(f"  SIGUSR2: `{signal.getsignal(signal.SIGUSR2)}`")
-    logging.info(f"  SIGCONT: `{signal.getsignal(signal.SIGCONT)}`")
-    logging.info(f"  SIGTERM: `{signal.getsignal(signal.SIGTERM)}`")
+def _describe_handler(handler) -> str:
+    """Human-readable description of a signal handler — module, qualname, origin tag."""
+    if handler is None:
+        return "<None>"
+    if handler == signal.SIG_DFL:
+        return "SIG_DFL (default OS action — terminate process)"
+    if handler == signal.SIG_IGN:
+        return "SIG_IGN (ignored)"
+    if not callable(handler):
+        return repr(handler)
+    mod = getattr(handler, "__module__", "?") or "?"
+    qual = getattr(handler, "__qualname__", None) or getattr(
+        handler, "__name__", repr(handler)
+    )
+    bound = getattr(handler, "__self__", None)
+    if bound is not None:
+        cls = type(bound).__name__
+        mod = type(bound).__module__
+        qual = f"{cls}.{getattr(handler, '__name__', qual)}"
+    origin = ""
+    if "submitit" in mod:
+        origin = " [submitit]"
+    elif "pytorch_lightning" in mod or "lightning" in mod:
+        origin = " [lightning]"
+    elif "stable_pretraining" in mod or qual.startswith(
+        "_install_sigterm_preempt_handler"
+    ):
+        origin = " [spt]"
+    return f"<{mod}.{qual}>{origin}"
+
+
+def print_signal_info(label: str = "current"):
+    """Dump the currently-bound signal handlers for the four signals we care about.
+
+    ``label`` is folded into the section header so successive dumps are easy to
+    distinguish in the log (e.g. ``"pre-fit"``, ``"post-fit"``).
+    """
+    log_header(f"SignalHandlers ({label})")
+    for sig in (signal.SIGUSR1, signal.SIGUSR2, signal.SIGCONT, signal.SIGTERM):
+        logging.info(f"  {sig.name:<8} → {_describe_handler(signal.getsignal(sig))}")
+
+
+class SIGTERMException(Exception):
+    """Marker exception for SIGTERM-triggered preemption.
+
+    Raised by the pre-fit SIGTERM handler only as a last-resort fallback
+    when forwarding to submitit's USR signal fails. The normal path is
+    silent: SIGTERM → forward to USR_SIG → submitit's
+    ``SignalHandler.checkpoint_and_try_requeue`` runs requeue + sys.exit(-1).
+    """
+
+
+def _install_sigterm_preempt_handler() -> None:
+    """Install a SIGTERM handler that triggers submitit's requeue.
+
+    Why: PyTorch Lightning's ``_SignalConnector`` treats SIGTERM as a
+    graceful stop — ``fit()`` returns normally, submitit sees a successful
+    completion, and the job is *not* requeued. Submitit's own preempt path
+    is bound to ``SIGUSR2`` (or ``$SUBMITIT_PREEMPT_SIGNAL``); when SLURM
+    sends SIGTERM directly (e.g., short grace period, ``scancel`` during
+    preempt) the requeue mechanism never fires.
+
+    Fix: install our SIGTERM handler at the top of ``Manager.__init__`` so
+    it's already in place during the long data/DDP/hydra setup window
+    (where SLURM frequently delivers SIGTERM under cluster contention).
+    Later, when ``Trainer.fit()`` runs, Lightning's
+    ``_SignalConnector.register_signal_handlers`` appends it to the
+    composed chain (see ``signal_connector.py``: it preserves an existing
+    SIGTERM handler) — and Lightning leaves submitit's USR_SIG handler in
+    place because it skips USR registration when one already exists. Our
+    handler forwards SIGTERM to USR_SIG, which causes submitit's
+    ``checkpoint_and_try_requeue`` to fire on the next interpreter tick.
+
+    No-op outside SLURM (handler is only useful when submitit installed a
+    USR_SIG handler upstream).
+    """
+    log_header("SIGTERM preempt handler — install")
+    job_id = os.environ.get("SLURM_JOB_ID")
+    restart = os.environ.get("SLURM_RESTART_COUNT", "0")
+    proc_id = os.environ.get("SLURM_PROCID", "?")
+    node_id = os.environ.get("SLURM_NODEID", "?")
+    logging.info(f"  SLURM_JOB_ID         = {job_id!r}")
+    logging.info(f"  SLURM_RESTART_COUNT  = {restart!r}")
+    logging.info(f"  SLURM_PROCID         = {proc_id!r}")
+    logging.info(f"  SLURM_NODEID         = {node_id!r}")
+    if job_id is None:
+        logging.info(
+            "  → not under SLURM (SLURM_JOB_ID unset); leaving SIGTERM handler "
+            "as-is. Forwarding to submitit's USR signal would be a no-op since "
+            "submitit isn't running upstream."
+        )
+        return
+
+    preempt_env = os.environ.get("SUBMITIT_PREEMPT_SIGNAL")
+    try:
+        usr_sig = submitit.JobEnvironment._usr_sig()
+        usr_src = (
+            f"$SUBMITIT_PREEMPT_SIGNAL={preempt_env!r}"
+            if preempt_env
+            else "submitit default (USR2)"
+        )
+    except Exception as e:
+        usr_sig = signal.SIGUSR2
+        usr_src = f"fallback to SIGUSR2 (submitit query failed: {e!r})"
+    logging.info(
+        f"  submitit preempt signal = {signal.Signals(usr_sig).name} "
+        f"(signum={int(usr_sig)}; source: {usr_src})"
+    )
+
+    prior_term = signal.getsignal(signal.SIGTERM)
+    prior_usr = signal.getsignal(usr_sig)
+    logging.info(f"  prior SIGTERM handler   = {_describe_handler(prior_term)}")
+    logging.info(
+        f"  prior {signal.Signals(usr_sig).name} handler   = "
+        f"{_describe_handler(prior_usr)}"
+    )
+    if not callable(prior_usr):
+        logging.warning(
+            f"  ! {signal.Signals(usr_sig).name} has no callable handler — "
+            "submitit may not have installed its SignalHandler yet. Forwarding "
+            "SIGTERM to it will hit the OS default action instead of "
+            "checkpoint_and_try_requeue. Requeue will likely NOT happen."
+        )
+
+    def _handler(signum, frame):
+        # Signal handlers run between Python bytecodes — keep work minimal.
+        try:
+            sig_name = signal.Signals(signum).name
+        except ValueError:
+            sig_name = str(signum)
+        try:
+            host = os.uname().nodename
+        except Exception:
+            host = "?"
+        rank = os.environ.get(
+            "SLURM_PROCID", os.environ.get("LOCAL_RANK", os.environ.get("RANK", "?"))
+        )
+        ts = datetime.now().isoformat(timespec="seconds")
+        logging.warning(
+            f"🛑 [SIGTERM-handler] {sig_name} (signum={signum}) caught at {ts} "
+            f"on host={host} pid={os.getpid()} rank={rank}"
+        )
+        logging.warning(
+            "   This handler runs AFTER lightning's _sigterm_notifier_fn and "
+            "_sigterm_handler_fn (lightning composed us in via _HandlersCompose; "
+            "see signal_connector.py:66-68)."
+        )
+        forward_name = signal.Signals(usr_sig).name
+        # Re-check the USR_SIG binding at fire time — surfaces any drift caused
+        # by lightning's teardown / a third-party handler that grabbed it.
+        cur_usr = signal.getsignal(usr_sig)
+        logging.warning(
+            f"   {forward_name} currently bound to {_describe_handler(cur_usr)} "
+            "— this is what we are about to invoke via os.kill."
+        )
+        logging.warning(
+            f"   Forwarding SIGTERM → {forward_name} so submitit's "
+            "SignalHandler.checkpoint_and_try_requeue takes over: "
+            "(1) self.checkpoint() dumps state, (2) scontrol requeue submits a "
+            "fresh job, (3) sys.exit(-1) terminates this process."
+        )
+        try:
+            os.kill(os.getpid(), usr_sig)
+        except Exception as e:
+            logging.error(
+                f"   ✗ os.kill(pid={os.getpid()}, sig={forward_name}) FAILED: "
+                f"{e!r}. Raising SIGTERMException as a fallback so the in-flight "
+                "fit() unwinds visibly instead of looking like a clean exit."
+            )
+            raise SIGTERMException(
+                f"SIGTERM received but forward to {forward_name} failed: {e}"
+            ) from e
+        logging.warning(
+            f"   ✓ os.kill(pid={os.getpid()}, sig={forward_name}) sent. "
+            "submitit's handler will fire on the next interpreter bytecode."
+        )
+
+    signal.signal(signal.SIGTERM, _handler)
+    new_term = signal.getsignal(signal.SIGTERM)
+    logging.success(
+        f"  ✓ Installed pre-fit SIGTERM handler: {_describe_handler(new_term)}"
+    )
+    logging.info(
+        f"    → forwards to {signal.Signals(usr_sig).name} on receipt; "
+        "lightning's _SignalConnector will compose this handler into its chain "
+        "(notifier → bypass → ours) when Trainer.fit() runs."
+    )
 
 
 _RUN_META_FILENAME = "run_meta.json"
@@ -322,6 +503,13 @@ class Manager(submitit.helpers.Checkpointable):
         weights_only: bool = True,
         compile: bool = False,
     ):
+        # Install the SIGTERM→USR_SIG forwarder FIRST — before any other init
+        # work — so the long DDP / data / hydra setup window (which can take
+        # minutes on a busy cluster) is also covered. SLURM frequently
+        # delivers SIGTERM during this window; without an installed handler
+        # the default action terminates the process and submitit sees a
+        # clean exit instead of triggering requeue.
+        _install_sigterm_preempt_handler()
         if seed is None:
             logging.warning(
                 "User didn't specify seed, runs won't be exactly reproducible!"
@@ -1457,7 +1645,7 @@ class Manager(submitit.helpers.Checkpointable):
         self._maybe_restore_swanlab_run()
         self.init_and_sync_wandb()
         print_logger_info(self._trainer.logger)
-        print_signal_info()
+        print_signal_info("after submitit setup (spt SIGTERM installed in __init__)")
 
         log_header("Callbacks")
         logging.info(f"  count: {len(self._trainer.callbacks)}")
@@ -1510,6 +1698,17 @@ class Manager(submitit.helpers.Checkpointable):
         log_header("TrainerFit")
         logging.info(f"  ckpt_path:     {ckpt_path}")
         logging.info(f"  weights_only:  {weights_only_for_load}")
+        # Handler was installed at the top of Manager.__init__ so it covers
+        # the data/DDP setup window. Just confirm the binding is still ours
+        # before Lightning's _SignalConnector composes itself in.
+        print_signal_info("before Trainer.fit() (handler installed in __init__)")
+        logging.info(
+            "  → entering Trainer.fit(); lightning's _SignalConnector will now "
+            "register its own handlers. SIGTERM will become "
+            "_HandlersCompose([_sigterm_notifier_fn, _sigterm_handler_fn, "
+            "spt._handler]); USR-sig binding from submitit is preserved "
+            "(lightning skips USR registration when one already exists)."
+        )
         # Wrap fit() so any callback/model error gets a full, flushed,
         # multi-stream traceback in stdout BEFORE it climbs the
         # Hydra/submitit chain (those layers can swallow tracebacks into
@@ -1539,9 +1738,22 @@ class Manager(submitit.helpers.Checkpointable):
             _sys.stderr.flush()
             try:
                 logging.exception("Trainer.fit raised — re-raising after loud log")
+                print_signal_info("after Trainer.fit() raised")
             except Exception:
                 pass
             raise
+        # Lightning's _SignalConnector.teardown restores _original_handlers on
+        # exit — log what we ended up with so a downstream handler change is
+        # immediately visible in the run log.
+        print_signal_info("after Trainer.fit() returned")
+        if getattr(self._trainer, "_signal_connector", None) is not None and getattr(
+            self._trainer._signal_connector, "received_sigterm", False
+        ):
+            logging.warning(
+                "  ⚠ Trainer reports received_sigterm=True — fit() exited "
+                "because of SIGTERM. If our forwarder ran, submitit should "
+                "have already requeued before this line."
+            )
         self._dump_wandb_data()
 
     def _log_fsdp_info(self, *, needs_teacher_student: bool) -> None:

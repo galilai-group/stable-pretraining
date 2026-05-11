@@ -6,9 +6,12 @@ import torchmetrics
 from lightning.pytorch import LightningModule
 from loguru import logger as logging
 import types
-from ..utils import get_data_from_batch_or_outputs, detach_tensors
-
-from .utils import TrainableCallback, log_header
+from .utils import (
+    TrainableCallback,
+    detach_tensors,
+    get_data_from_batch_or_outputs,
+    log_header,
+)
 
 
 class OnlineProbe(TrainableCallback):

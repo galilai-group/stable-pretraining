@@ -670,11 +670,13 @@ class TestFlexibleTransformerDropPath:
             use_adaln=False,
         )
 
-        # Check that drop path rates increase
+        # Check that drop path rates increase. ``drop_path2`` is the MLP
+        # branch's stochastic-depth module (renamed from ``drop_path3`` so
+        # the standard self-attn-only block matches timm's key naming).
         drop_rates = []
         for block in model.blocks:
-            if hasattr(block.drop_path3, "drop_prob"):
-                drop_rates.append(block.drop_path3.drop_prob)
+            if hasattr(block.drop_path2, "drop_prob"):
+                drop_rates.append(block.drop_path2.drop_prob)
             else:
                 drop_rates.append(0.0)
 

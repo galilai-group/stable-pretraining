@@ -96,7 +96,7 @@ projector = nn.Sequential(
     nn.BatchNorm1d(2048),
     nn.ReLU(inplace=True),
     nn.Linear(2048, 128, bias=False),
-    spt.utils.BatchNorm1dNoBias(128),
+    spt.backbone.BatchNorm1dNoBias(128),
 )
 
 module = spt.Module(
