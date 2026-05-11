@@ -28,6 +28,7 @@ torch.backends.cudnn.benchmark = False
 def pytest_configure(config):
     """Configure pytest with custom markers."""
     config.addinivalue_line("markers", "unit: Unit tests (fast, no GPU required)")
+    config.addinivalue_line("markers", "cpu: Tests that must run on CPU only")
     config.addinivalue_line(
         "markers", "integration: Integration tests (slow, may require GPU)"
     )
@@ -52,22 +53,40 @@ def pytest_configure(config):
     )
 
 
+def _cuda_usable() -> bool:
+    """Return True iff CUDA is reported available *and* a small device allocation succeeds.
+
+    Plain ``torch.cuda.is_available()`` is True even when the GPU is over-subscribed
+    (returns ``cudaErrorDevicesUnavailable`` on the first allocation), which makes
+    ``skipif(not is_available())`` produce flaky failures on contended nodes — this
+    helper avoids that.
+    """
+    if not torch.cuda.is_available():
+        return False
+    try:
+        torch.empty(1, device="cuda")
+        torch.cuda.synchronize()
+        return True
+    except Exception:  # noqa: BLE001 — any CUDA-side error means unusable
+        return False
+
+
 def pytest_collection_modifyitems(config, items):
     """Auto-skip tests based on markers."""
     skip_v1 = pytest.mark.skip(reason="v1: legacy test needs updating")
-    skip_gpu = pytest.mark.skip(reason="no GPU available")
     skip_dist = pytest.mark.skip(reason="torch.distributed not available")
     skip_gpu = pytest.mark.skip(reason="GPU not usable (unavailable or busy)")
     skip_ddp = pytest.mark.skip(reason="DDP requires >=2 GPUs (use srun --gpus=N)")
 
     dist_unavailable = not torch.distributed.is_available()
+    cuda_ok = _cuda_usable()
 
     for item in items:
         if "v1" in item.keywords:
             item.add_marker(skip_v1)
         elif "ddp" in item.keywords and torch.cuda.device_count() < 2:
             item.add_marker(skip_ddp)
-        elif "gpu" in item.keywords and not torch.cuda.is_available():
+        elif "gpu" in item.keywords and not cuda_ok:
             item.add_marker(skip_gpu)
         elif "distributed" in item.keywords and dist_unavailable:
             item.add_marker(skip_dist)

@@ -162,7 +162,7 @@ def main():
                 monitor="fit/loss",
                 milestones=_stop_after_n_epochs(3),
                 direction="min",
-                after_validation=False,
+                after_validation=True,
             ),
         ],
         logger=pl.pytorch.loggers.WandbLogger(
