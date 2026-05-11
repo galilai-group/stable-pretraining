@@ -25,15 +25,15 @@ Usage
 
     # Just the equivalence suite
     modal run stable_pretraining/tests/scripts/run_gpu_tests_on_modal.py \\
-        --test stable_pretraining/tests/distributed/test_ddp_fsdp_equivalence.py
+        --test stable_pretraining/tests/distributed/test_ddp_fsdp2_equivalence.py
 
     # One specific test
     modal run stable_pretraining/tests/scripts/run_gpu_tests_on_modal.py \\
-        --test "stable_pretraining/tests/distributed/test_ddp_fsdp_equivalence.py::test_supervised_one_step_equivalence"
+        --test "stable_pretraining/tests/distributed/test_ddp_fsdp2_equivalence.py::test_supervised_one_step_equivalence"
 
     # Bigger / faster GPUs for the memory regression suite
     modal run stable_pretraining/tests/scripts/run_gpu_tests_on_modal.py --gpu A100:2 \\
-        --test stable_pretraining/tests/distributed/test_fsdp_memory.py
+        --test stable_pretraining/tests/distributed/test_fsdp2_memory.py
 
     # Override pytest marker (default: ``gpu``)
     modal run stable_pretraining/tests/scripts/run_gpu_tests_on_modal.py --marker "gpu and not slow"

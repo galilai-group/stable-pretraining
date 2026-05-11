@@ -516,7 +516,7 @@ class TeacherStudentWrapper(nn.Module):
         """
         from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 
-        from stable_pretraining.utils.fsdp import assert_aligned_wrapping
+        from stable_pretraining.utils.fsdp2 import assert_aligned_wrapping
 
         if self.teacher is self.student:
             # Zero-coefficient shortcut: a single FSDP unit for the shared

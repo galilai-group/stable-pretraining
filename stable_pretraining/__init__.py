@@ -222,12 +222,12 @@ def _do_deferred_init() -> None:
     except Exception:  # pragma: no cover - defensive
         pass
 
-    # Importing ``utils.fsdp`` registers the ``"fsdp2"`` strategy in
+    # Importing ``utils.fsdp2`` registers the ``"fsdp2"`` strategy in
     # Lightning's :class:`StrategyRegistry`, so ``Trainer(strategy="fsdp2")``
     # works without any explicit submodule import on the user's side.
     try:
         from . import utils  # noqa: F401
-        from .utils import fsdp  # noqa: F401
+        from .utils import fsdp2  # noqa: F401
     except ImportError:  # pragma: no cover - defensive
         pass
 

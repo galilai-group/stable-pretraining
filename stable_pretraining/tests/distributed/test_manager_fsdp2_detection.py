@@ -19,7 +19,7 @@ pytestmark = pytest.mark.distributed
 
 
 def test_is_fsdp_strategy_plain_object_returns_false():
-    from stable_pretraining.utils.fsdp import is_fsdp_strategy
+    from stable_pretraining.utils.fsdp2 import is_fsdp_strategy
 
     class NotAStrategy:
         pass
@@ -28,7 +28,7 @@ def test_is_fsdp_strategy_plain_object_returns_false():
 
 
 def test_is_fsdp_strategy_detects_model_parallel_strategy():
-    from stable_pretraining.utils.fsdp import (
+    from stable_pretraining.utils.fsdp2 import (
         StablePretrainingFSDP2,
         is_fsdp_strategy,
     )
@@ -43,7 +43,7 @@ def test_is_fsdp_strategy_detects_via_trainer_attr():
     ``is_fsdp_strategy`` should also accept a Trainer-like object whose
     ``.strategy`` is an FSDP2 strategy.
     """
-    from stable_pretraining.utils.fsdp import (
+    from stable_pretraining.utils.fsdp2 import (
         StablePretrainingFSDP2,
         is_fsdp_strategy,
     )
@@ -58,7 +58,7 @@ def test_is_fsdp_strategy_detects_via_trainer_attr():
 
 
 def test_describe_non_fsdp_returns_is_fsdp_false():
-    from stable_pretraining.utils.fsdp import describe_fsdp_strategy
+    from stable_pretraining.utils.fsdp2 import describe_fsdp_strategy
 
     assert describe_fsdp_strategy(object()) == {"is_fsdp": False}
 
@@ -66,7 +66,7 @@ def test_describe_non_fsdp_returns_is_fsdp_false():
 def test_describe_fsdp_exposes_fsdp2_fields():
     from torch.distributed.fsdp import MixedPrecisionPolicy
 
-    from stable_pretraining.utils.fsdp import (
+    from stable_pretraining.utils.fsdp2 import (
         StablePretrainingFSDP2,
         describe_fsdp_strategy,
     )
@@ -114,7 +114,7 @@ def test_manager_log_fsdp_info_runs_under_fsdp_without_raising():
     only the manager hook's "no exceptions" property under FSDP2.
     """
     from stable_pretraining.manager import Manager
-    from stable_pretraining.utils.fsdp import StablePretrainingFSDP2
+    from stable_pretraining.utils.fsdp2 import StablePretrainingFSDP2
 
     strat = StablePretrainingFSDP2(data_parallel_size=1, tensor_parallel_size=1)
 

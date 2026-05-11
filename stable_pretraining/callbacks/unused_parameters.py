@@ -5,7 +5,7 @@ from torch import nn
 from lightning.pytorch.callbacks import Callback
 from loguru import logger
 
-from stable_pretraining.utils.fsdp import is_fsdp_strategy
+from stable_pretraining.utils.fsdp2 import is_fsdp_strategy
 
 from .utils import log_header
 

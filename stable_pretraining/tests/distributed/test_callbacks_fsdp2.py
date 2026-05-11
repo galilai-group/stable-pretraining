@@ -7,7 +7,7 @@ callback runs its own optimizer over its own parameters; sharding those
 params under the main FSDP2 unit would put them out of reach of that
 optimizer.
 
-The :func:`stable_pretraining.utils.fsdp.default_parallelize_fn` excludes
+The :func:`stable_pretraining.utils.fsdp2.default_parallelize_fn` excludes
 callback containers from sharding via **detach-around-root**: it pops the
 ``callbacks_modules`` and ``callbacks_metrics`` ``ModuleDict``\\ s out of the
 module tree before ``fully_shard(model)`` and reattaches them after, so
@@ -48,7 +48,7 @@ def _detach_reattach(rank: int, world_size: int) -> None:
     from torch.distributed.tensor import DTensor, init_device_mesh
 
     import stable_pretraining as spt
-    from stable_pretraining.utils.fsdp import default_parallelize_fn
+    from stable_pretraining.utils.fsdp2 import default_parallelize_fn
 
     torch.manual_seed(0)
 
@@ -129,7 +129,7 @@ def _per_callback_optimizer_steps(rank: int, world_size: int) -> None:
     from torch.distributed.tensor import init_device_mesh
 
     import stable_pretraining as spt
-    from stable_pretraining.utils.fsdp import default_parallelize_fn
+    from stable_pretraining.utils.fsdp2 import default_parallelize_fn
 
     torch.manual_seed(0)
 

@@ -41,7 +41,7 @@ The simplest way to use FSDP2 is via :func:`make_fsdp_strategy`:
 .. code-block:: python
 
     import lightning as pl
-    from stable_pretraining.utils.fsdp import make_fsdp_strategy
+    from stable_pretraining.utils.fsdp2 import make_fsdp_strategy
 
     strategy = make_fsdp_strategy()  # auto-detects num_gpus, sensible defaults
 
@@ -94,7 +94,7 @@ PyTorch hooks per call. Multi-forward is supported by design. This is the
 principal reason the integration wires FSDP2 specifically.
 
 
-Why ``stable_pretraining/utils/fsdp.py`` exists
+Why ``stable_pretraining/utils/fsdp2.py`` exists
 -----------------------------------------------
 
 Lightning 2.x exposes FSDP2 through :class:`ModelParallelStrategy`, which
@@ -108,7 +108,7 @@ unlike :class:`FSDPStrategy`:
   (the strategy's ``setup`` raises ``TypeError`` otherwise).
 
 FSDP1 had built-in equivalents for all four of these. FSDP2 doesn't yet,
-so the wiring is on the user's side. ``utils/fsdp.py`` is that wiring,
+so the wiring is on the user's side. ``utils/fsdp2.py`` is that wiring,
 pre-baked correctly so every benchmark file doesn't reinvent it. Once
 Lightning ships a string shortcut for FSDP2 and ``ModelParallelStrategy``
 adds ``ignored_modules``, large chunks of this module simplify away.
@@ -198,7 +198,7 @@ For finer-grained control (different param / reduce / output dtypes,
 .. code-block:: python
 
     from torch.distributed.fsdp import MixedPrecisionPolicy
-    from stable_pretraining.utils.fsdp import make_fsdp_strategy
+    from stable_pretraining.utils.fsdp2 import make_fsdp_strategy
 
     policy = MixedPrecisionPolicy(
         param_dtype=torch.bfloat16,
@@ -225,7 +225,7 @@ cleanest way to do this is via a custom ``parallelize_fn`` passed to
 
     from functools import partial
     from stable_pretraining import Module
-    from stable_pretraining.utils.fsdp import default_parallelize_fn
+    from stable_pretraining.utils.fsdp2 import default_parallelize_fn
     from my_arch import MyBlock
 
     module = Module(
@@ -291,9 +291,9 @@ context if you're tracing a bug.
 See also
 --------
 
-- :func:`stable_pretraining.utils.fsdp.make_fsdp_strategy`
-- :func:`stable_pretraining.utils.fsdp.default_parallelize_fn`
-- :func:`stable_pretraining.utils.fsdp.assert_aligned_wrapping`
+- :func:`stable_pretraining.utils.fsdp2.make_fsdp_strategy`
+- :func:`stable_pretraining.utils.fsdp2.default_parallelize_fn`
+- :func:`stable_pretraining.utils.fsdp2.assert_aligned_wrapping`
 - :class:`stable_pretraining.TeacherStudentWrapper`
 - :class:`stable_pretraining.callbacks.OnlineProbe`
 - ``benchmarks/imagenet10/lejepa_vit_small_fsdp.py`` — worked example

@@ -35,7 +35,7 @@ from .loggers.swanlab import find_swanlab_logger
 from .utils import get_required_fn_parameters
 from stable_pretraining.callbacks.utils import log_header
 from stable_pretraining.utils.error_handling import catch_errors_class
-from stable_pretraining.utils.fsdp import (
+from stable_pretraining.utils.fsdp2 import (
     describe_fsdp_strategy,
     is_fsdp_strategy,
 )

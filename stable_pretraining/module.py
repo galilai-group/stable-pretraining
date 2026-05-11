@@ -13,7 +13,7 @@ from prettytable import PrettyTable
 from lightning.pytorch.core.optimizer import LightningOptimizer
 from .optim import create_optimizer, create_scheduler
 from stable_pretraining.utils.error_handling import catch_errors_class
-from stable_pretraining.utils.fsdp import default_parallelize_fn
+from stable_pretraining.utils.fsdp2 import default_parallelize_fn
 from stable_pretraining.callbacks.registry import log as _spt_log
 from stable_pretraining.callbacks.utils import log_header
 
@@ -230,11 +230,11 @@ class Module(pl.LightningModule):
         ``self._device_mesh`` before invoking ``configure_model``. When
         present, we run either the user-supplied ``parallelize_fn`` (passed
         to ``Module(parallelize_fn=...)``) or
-        :func:`stable_pretraining.utils.fsdp.default_parallelize_fn`. When
+        :func:`stable_pretraining.utils.fsdp2.default_parallelize_fn`. When
         absent (single GPU, DDP, etc.), this is a no-op — the method exists
         purely so :class:`TrainableCallback` has something to wrap.
 
-        See ``docs/source/fsdp.rst`` for customization patterns.
+        See ``docs/source/fsdp2.rst`` for customization patterns.
         """
         device_mesh = getattr(self, "_device_mesh", None)
         if device_mesh is None:

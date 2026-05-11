@@ -18,7 +18,7 @@ non-default settings (e.g. a custom :class:`MixedPrecisionPolicy`):
 
 ```python
 from torch.distributed.fsdp import MixedPrecisionPolicy
-from stable_pretraining.utils.fsdp import StablePretrainingFSDP2
+from stable_pretraining.utils.fsdp2 import StablePretrainingFSDP2
 
 strategy = StablePretrainingFSDP2(
     mp_policy=MixedPrecisionPolicy(
@@ -124,7 +124,7 @@ def default_parallelize_fn(
     ``mp_policy`` controls *how* sharded units cast dtypes. For standard
     mixed precision use ``Trainer(precision="bf16-mixed")``; pass a
     :class:`MixedPrecisionPolicy` here only for non-default policies (e.g.
-    ``reduce_dtype`` ≠ ``param_dtype``). See ``docs/source/fsdp.rst``.
+    ``reduce_dtype`` ≠ ``param_dtype``). See ``docs/source/fsdp2.rst``.
     """
     # ModelParallelStrategy always passes a 2-D mesh, even at TP=1.
     shard_mesh = device_mesh["data_parallel"] if device_mesh.ndim > 1 else device_mesh

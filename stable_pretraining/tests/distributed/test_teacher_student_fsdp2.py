@@ -8,7 +8,7 @@ matching ``shape`` / ``dtype`` is necessary but not sufficient — the
 ``placements`` and ``device_mesh`` must also agree, otherwise ``zip``
 silently pairs non-corresponding shards (corruption, not a crash).
 
-:func:`stable_pretraining.utils.fsdp.assert_aligned_wrapping` enforces all
+:func:`stable_pretraining.utils.fsdp2.assert_aligned_wrapping` enforces all
 four properties. These tests cover its truth table directly with crafted
 DTensors (so they run anywhere ``torch.distributed`` is importable, no
 fully_shard call needed).
@@ -31,7 +31,7 @@ pytestmark = pytest.mark.distributed
 
 def test_aligned_wrapping_accepts_identical_plain_modules():
     r"""Plain ``nn.Parameter``\ s with matching shape/dtype must be accepted."""
-    from stable_pretraining.utils.fsdp import assert_aligned_wrapping
+    from stable_pretraining.utils.fsdp2 import assert_aligned_wrapping
 
     student = nn.Linear(4, 4)
     teacher = nn.Linear(4, 4)
@@ -40,7 +40,7 @@ def test_aligned_wrapping_accepts_identical_plain_modules():
 
 
 def test_aligned_wrapping_rejects_param_count_mismatch():
-    from stable_pretraining.utils.fsdp import assert_aligned_wrapping
+    from stable_pretraining.utils.fsdp2 import assert_aligned_wrapping
 
     student = nn.Sequential(nn.Linear(4, 4), nn.Linear(4, 4))
     teacher = nn.Sequential(nn.Linear(4, 4))
@@ -49,7 +49,7 @@ def test_aligned_wrapping_rejects_param_count_mismatch():
 
 
 def test_aligned_wrapping_rejects_shape_mismatch():
-    from stable_pretraining.utils.fsdp import assert_aligned_wrapping
+    from stable_pretraining.utils.fsdp2 import assert_aligned_wrapping
 
     student = nn.Linear(4, 4)
     teacher = nn.Linear(4, 8)
@@ -58,7 +58,7 @@ def test_aligned_wrapping_rejects_shape_mismatch():
 
 
 def test_aligned_wrapping_rejects_dtype_mismatch():
-    from stable_pretraining.utils.fsdp import assert_aligned_wrapping
+    from stable_pretraining.utils.fsdp2 import assert_aligned_wrapping
 
     student = nn.Linear(4, 4).to(torch.float32)
     teacher = nn.Linear(4, 4).to(torch.float64)
@@ -68,7 +68,7 @@ def test_aligned_wrapping_rejects_dtype_mismatch():
 
 def test_aligned_wrapping_rejects_buffer_dtype_mismatch():
     """Buffer dtype check (parity with the param dtype check)."""
-    from stable_pretraining.utils.fsdp import assert_aligned_wrapping
+    from stable_pretraining.utils.fsdp2 import assert_aligned_wrapping
 
     student = nn.BatchNorm1d(4)
     teacher = nn.BatchNorm1d(4)
@@ -96,7 +96,7 @@ def _placement_mismatch_raises(rank: int, world_size: int) -> None:
         init_device_mesh,
     )
 
-    from stable_pretraining.utils.fsdp import assert_aligned_wrapping
+    from stable_pretraining.utils.fsdp2 import assert_aligned_wrapping
 
     mesh = init_device_mesh("cpu", (world_size,))
 
@@ -144,7 +144,7 @@ def _matched_dtensor_passes(rank: int, world_size: int) -> None:
     """
     from torch.distributed.tensor import Shard, distribute_tensor, init_device_mesh
 
-    from stable_pretraining.utils.fsdp import assert_aligned_wrapping
+    from stable_pretraining.utils.fsdp2 import assert_aligned_wrapping
 
     mesh = init_device_mesh("cpu", (world_size,))
     base = torch.randn(world_size * 2, 4)
@@ -172,7 +172,7 @@ def test_matched_dtensor_passes_world_size_2():
 def _dtensor_vs_plain_raises(rank: int, world_size: int) -> None:
     from torch.distributed.tensor import Shard, distribute_tensor, init_device_mesh
 
-    from stable_pretraining.utils.fsdp import assert_aligned_wrapping
+    from stable_pretraining.utils.fsdp2 import assert_aligned_wrapping
 
     mesh = init_device_mesh("cpu", (world_size,))
     base = torch.randn(world_size * 2, 4)

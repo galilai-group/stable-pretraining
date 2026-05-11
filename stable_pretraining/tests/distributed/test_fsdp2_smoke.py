@@ -33,7 +33,7 @@ pytestmark = pytest.mark.distributed
 def test_strategy_subclass_is_model_parallel_strategy():
     from lightning.pytorch.strategies import ModelParallelStrategy
 
-    from stable_pretraining.utils.fsdp import StablePretrainingFSDP2
+    from stable_pretraining.utils.fsdp2 import StablePretrainingFSDP2
 
     strat = StablePretrainingFSDP2(data_parallel_size=1, tensor_parallel_size=1)
     assert isinstance(strat, ModelParallelStrategy)
@@ -42,7 +42,7 @@ def test_strategy_subclass_is_model_parallel_strategy():
 def test_fsdp2_registered_in_strategy_registry():
     from lightning.pytorch.strategies import StrategyRegistry
 
-    import stable_pretraining.utils.fsdp  # noqa: F401  triggers registration
+    import stable_pretraining.utils.fsdp2  # noqa: F401  triggers registration
 
     assert "fsdp2" in StrategyRegistry.available_strategies()
 
@@ -50,7 +50,7 @@ def test_fsdp2_registered_in_strategy_registry():
 def test_strategy_stashes_mp_policy():
     from torch.distributed.fsdp import MixedPrecisionPolicy
 
-    from stable_pretraining.utils.fsdp import StablePretrainingFSDP2
+    from stable_pretraining.utils.fsdp2 import StablePretrainingFSDP2
 
     policy = MixedPrecisionPolicy(param_dtype=torch.bfloat16)
     strat = StablePretrainingFSDP2(
@@ -61,7 +61,7 @@ def test_strategy_stashes_mp_policy():
 
 def test_recognized_block_classes_includes_known_libraries():
     """The registry recognizes timm + HF + torchvision block classes when installed."""
-    from stable_pretraining.utils.fsdp import recognized_block_classes
+    from stable_pretraining.utils.fsdp2 import recognized_block_classes
 
     classes = recognized_block_classes()
     names = {c.__name__ for c in classes}
@@ -76,7 +76,7 @@ def _unrecognized_model_worker(rank: int, world_size: int) -> None:
     """
     from torch.distributed.tensor import init_device_mesh
 
-    from stable_pretraining.utils.fsdp import (
+    from stable_pretraining.utils.fsdp2 import (
         UnsupportedModelError,
         default_parallelize_fn,
     )
@@ -101,7 +101,7 @@ def test_default_parallelize_fn_raises_on_unrecognized_model():
 
 def test_find_callback_containers_locates_module_dicts():
     import stable_pretraining as spt
-    from stable_pretraining.utils.fsdp import find_callback_containers
+    from stable_pretraining.utils.fsdp2 import find_callback_containers
 
     module = spt.Module(model=tiny_backbone(), forward=lambda self, b, s: {"loss": 0})
     containers = find_callback_containers(module)
@@ -131,7 +131,7 @@ def _smoke_wrap_and_step(rank: int, world_size: int) -> None:
     from torch.distributed.tensor import DTensor, init_device_mesh
 
     import stable_pretraining as spt
-    from stable_pretraining.utils.fsdp import (
+    from stable_pretraining.utils.fsdp2 import (
         default_parallelize_fn,
         find_callback_containers,
     )
