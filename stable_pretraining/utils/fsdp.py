@@ -1,9 +1,21 @@
-"""FSDP2 integration helpers — see ``docs/source/fsdp.rst`` for design notes.
+"""FSDP2 Integration Helpers.
 
 Wires :func:`torch.distributed.fsdp.fully_shard` (FSDP2) into Lightning by
 registering a thin :class:`ModelParallelStrategy` subclass under the
-``"fsdp2"`` :class:`StrategyRegistry` name. After import, users can do
-``Trainer(strategy="fsdp2")`` and the rest is automatic.
+``"fsdp2"`` :class:`StrategyRegistry` name.
+
+After import, users can simply do:
+
+```python
+from stable_pretraining.utils.fsdp import StablePretrainingFSDP2
+
+strategy = StablePretrainingFSDP2()
+trainer = pl.Trainer(strategy=strategy)
+```
+
+and the rest is automatic.
+
+Supports Blocks from timm, HuggingFace, stable-pretraining, and torchvision.
 """
 
 from __future__ import annotations
@@ -13,24 +25,19 @@ from typing import Iterable, Optional
 
 import torch
 import torch.nn as nn
-from loguru import logger as logging
+from loguru import logger
 
-try:
-    from lightning.pytorch.strategies import (
-        ModelParallelStrategy,
-        StrategyRegistry,
-    )
-    from torch.distributed.fsdp import MixedPrecisionPolicy, fully_shard
-    from torch.distributed.tensor import DTensor
+from lightning.pytorch.strategies import ModelParallelStrategy, StrategyRegistry
+from torch.distributed.fsdp import MixedPrecisionPolicy, fully_shard
+from torch.distributed.tensor import DTensor
 
-    _FSDP_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    _FSDP_AVAILABLE = False
-    ModelParallelStrategy = object  # type: ignore[misc,assignment]
-    StrategyRegistry = None  # type: ignore[assignment]
-    MixedPrecisionPolicy = object  # type: ignore[misc,assignment]
-    DTensor = object  # type: ignore[misc,assignment]
-    fully_shard = None  # type: ignore[assignment]
+from timm.models.vision_transformer import Block as TimmViTBlock
+from torchvision.models.resnet import (
+    BasicBlock as TorchvisionResNetBasicBlock,
+    Bottleneck as TorchvisionResNetBottleneck,
+)
+from transformers.models.vit.modeling_vit import ViTLayer as HuggingFaceViTLayer
+from stable_pretraining.backbone import TransformerBlock as SPTTransformerBlock
 
 
 __all__ = [
@@ -39,31 +46,38 @@ __all__ = [
     "UnsupportedModelError",
     "assert_aligned_wrapping",
     "find_callback_containers",
-    "recognized_block_classes",
+    "RECOGNIZED_BLOCK_CLASSES",
     "is_fsdp_strategy",
     "describe_fsdp_strategy",
 ]
 
 
-class UnsupportedModelError(RuntimeError):
-    """Raised when :func:`default_parallelize_fn` recognizes no block class.
+RECOGNIZED_BLOCK_CLASSES: set[type[nn.Module]] = {
+    TimmViTBlock,
+    HuggingFaceViTLayer,
+    TorchvisionResNetBasicBlock,
+    TorchvisionResNetBottleneck,
+    SPTTransformerBlock,
+}
 
-    The default parallelize_fn ships with a curated registry of transformer
-    block classes from timm, HuggingFace Transformers, and torchvision
-    (:func:`recognized_block_classes`). Models outside that registry need a
-    custom ``parallelize_fn`` — see ``docs/source/fsdp.rst``. The error is
-    raised at strategy setup, not at training time, so a misconfiguration
-    surfaces immediately rather than as silently-degraded throughput.
+
+class UnsupportedModelError(RuntimeError):
+    """Raised at strategy setup when no recognized block class is found.
+
+    Pass a custom ``parallelize_fn`` to ``spt.Module`` (or
+    ``block_classes={YourBlock}`` directly to :func:`default_parallelize_fn`)
+    for models outside :data:`RECOGNIZED_BLOCK_CLASSES`. The error fires at
+    setup, not at training time, so misconfiguration surfaces immediately.
     """
 
 
 def find_callback_containers(model: nn.Module) -> list[nn.Module]:
     """Return the ``callbacks_modules`` / ``callbacks_metrics`` containers on ``model``."""
-    containers: list[nn.Module] = []
-    for name, sub in model.named_modules():
-        if name.endswith("callbacks_modules") or name.endswith("callbacks_metrics"):
-            containers.append(sub)
-    return containers
+    return [
+        sub
+        for name, sub in model.named_modules()
+        if name.endswith("callbacks_modules") or name.endswith("callbacks_metrics")
+    ]
 
 
 def _find_container_attachment(model: nn.Module, container: nn.Module):
@@ -75,105 +89,39 @@ def _find_container_attachment(model: nn.Module, container: nn.Module):
     raise RuntimeError(f"Could not locate container {container!r} in model tree.")
 
 
-_RECOGNIZED_BLOCK_CLASSES: Optional[set[type[nn.Module]]] = None
-
-
-def recognized_block_classes() -> set[type[nn.Module]]:
-    """Lazy singleton registry of transformer / residual block classes we recognize.
-
-    Imported via try/except from {timm, transformers, torchvision} so we
-    don't hard-depend on any of them. The set is empty if none of those
-    packages are installed.
-
-    Currently registered: ``timm.models.vision_transformer.Block``,
-    ``transformers.models.vit.modeling_vit.ViTLayer``,
-    ``torchvision.models.resnet.{BasicBlock, Bottleneck}``. Add to this
-    list when a benchmark surfaces a new architecture; until then,
-    out-of-scope models route through the user-supplied ``parallelize_fn``
-    escape hatch on :class:`stable_pretraining.Module`.
-    """
-    global _RECOGNIZED_BLOCK_CLASSES
-    if _RECOGNIZED_BLOCK_CLASSES is not None:
-        return _RECOGNIZED_BLOCK_CLASSES
-    classes: set[type[nn.Module]] = set()
-    try:
-        from timm.models.vision_transformer import Block as TimmViTBlock
-
-        classes.add(TimmViTBlock)
-    except ImportError:
-        pass
-    try:
-        from transformers.models.vit.modeling_vit import ViTLayer
-
-        classes.add(ViTLayer)
-    except ImportError:
-        pass
-    try:
-        from torchvision.models.resnet import BasicBlock, Bottleneck
-
-        classes.update({BasicBlock, Bottleneck})
-    except ImportError:
-        pass
-    _RECOGNIZED_BLOCK_CLASSES = classes
-    return classes
-
-
 def default_parallelize_fn(
     model: nn.Module,
     device_mesh,
     *,
     block_classes: Optional[Iterable[type[nn.Module]]] = None,
-    mp_policy: Optional["MixedPrecisionPolicy"] = None,
-):
+    mp_policy: Optional[MixedPrecisionPolicy] = None,
+) -> nn.Module:
     r"""Apply FSDP2 sharding: per-block (auto-detected) + root.
 
-    Decides *what* gets sharded (which modules become FSDP units): block
-    classes are sharded per-instance, the root is sharded last, and
-    callback containers are detached around the root sweep so they stay
-    plain ``nn.Module``\ s.
+    Decides *what* gets sharded: blocks in :data:`RECOGNIZED_BLOCK_CLASSES`
+    (or the explicit ``block_classes``) are sharded per-instance, the root
+    is sharded last, and callback containers are detached around the root
+    sweep so they stay plain ``nn.Module``\ s.
 
-    ``mp_policy`` controls *how* the sharded units cast dtypes — orthogonal
-    to "what gets sharded". For standard mixed precision use
-    ``Trainer(precision="bf16-mixed")``; for non-default policies (e.g.
-    ``reduce_dtype`` ≠ ``param_dtype``) pass a :class:`MixedPrecisionPolicy`
-    here. See ``docs/source/fsdp.rst``.
+    ``mp_policy`` controls *how* sharded units cast dtypes. For standard
+    mixed precision use ``Trainer(precision="bf16-mixed")``; pass a
+    :class:`MixedPrecisionPolicy` here only for non-default policies (e.g.
+    ``reduce_dtype`` ≠ ``param_dtype``). See ``docs/source/fsdp.rst``.
     """
-    if not _FSDP_AVAILABLE:
-        raise RuntimeError("FSDP is not available in this PyTorch build.")
-
-    # 2-D mesh from ModelParallelStrategy (always 2-D, even at TP=1) → take DP submesh.
-    if device_mesh.ndim > 1:
-        mesh_dim_names = getattr(device_mesh, "mesh_dim_names", None)
-        if mesh_dim_names and "data_parallel" in mesh_dim_names:
-            shard_mesh = device_mesh["data_parallel"]
-        else:
-            raise RuntimeError(
-                f"default_parallelize_fn received a {device_mesh.ndim}-D mesh "
-                f"without a 'data_parallel' dim name. Pass a custom "
-                f"``parallelize_fn`` to ``spt.Module`` for non-standard mesh layouts."
-            )
-    else:
-        shard_mesh = device_mesh
+    # ModelParallelStrategy always passes a 2-D mesh, even at TP=1.
+    shard_mesh = device_mesh["data_parallel"] if device_mesh.ndim > 1 else device_mesh
 
     if block_classes is None:
-        recognized = recognized_block_classes()
         present_types = {type(m) for m in model.modules()}
-        block_classes = present_types & recognized
+        block_classes = present_types & RECOGNIZED_BLOCK_CLASSES
         if not block_classes:
-            registered_names = sorted(c.__name__ for c in recognized) or [
-                "(none — install timm / transformers / torchvision)"
-            ]
             raise UnsupportedModelError(
-                f"default_parallelize_fn could not find a recognized "
-                f"transformer block class in {type(model).__name__}. "
-                f"Recognized classes (from installed packages): "
-                f"{registered_names}. For unsupported models, pass a "
-                f"custom ``parallelize_fn`` to ``spt.Module`` (or a "
-                f"``block_classes={{YourBlock}}`` kwarg here); see "
-                f"``docs/source/fsdp.rst``."
+                f"No recognized block class found in {type(model).__name__}. "
+                f"Recognized: {sorted(c.__name__ for c in RECOGNIZED_BLOCK_CLASSES)}. "
+                f"Pass a custom ``parallelize_fn`` or ``block_classes=`` kwarg."
             )
-    block_classes = set(block_classes)
-    logging.info(
+    block_classes = tuple(block_classes)
+    logger.info(
         f"default_parallelize_fn: per-block fully_shard over "
         f"{[c.__name__ for c in block_classes]}"
     )
@@ -182,49 +130,34 @@ def default_parallelize_fn(
     if mp_policy is not None:
         shard_kwargs["mp_policy"] = mp_policy
 
-    # Per-block first, then root. Order matters: nested units must be created
-    # before the parent, so the parent sees them as already-sharded children.
-    # Exclude ``model`` itself: ``nn.Module.modules()`` yields ``self`` first,
-    # and if ``type(model)`` happens to be in ``block_classes`` the root would
-    # be sharded twice (once here, once in the explicit ``fully_shard(model)``
-    # call below) — ``fully_shard`` is not idempotent.
-    blocks_to_shard = [
-        sub
-        for sub in model.modules()
-        if sub is not model and type(sub) in block_classes
-    ]
-    for sub in blocks_to_shard:
-        fully_shard(sub, **shard_kwargs)
+    # nested units must be created before the parent
+    n_blocks = 0
+    for sub in model.modules():
+        if sub is not model and isinstance(sub, block_classes):
+            fully_shard(sub, **shard_kwargs)
+            n_blocks += 1
 
-    # Detach callback containers around the root sweep. In the standard
-    # TrainableCallback wrap chain, ``callbacks_modules`` is empty at this
-    # point (callbacks register modules *after* configure_model returns), so
-    # detach/reattach is a no-op. But this function may also be called
-    # directly (tests, custom Module subclasses) with populated containers —
-    # in that case the root ``fully_shard`` would claim the callback params
-    # as DTensors and break each callback's standalone optimizer. Detaching
-    # makes the function safe regardless of call context.
+    # Detach callback containers around the root sweep. Usually a no-op
+    # (callbacks register modules *after* configure_model), but populated
+    # containers would have their params claimed as DTensors by the root
+    # sweep, breaking each callback's standalone optimizer
     detached: list[tuple[nn.Module, str, nn.Module]] = []
     for c in find_callback_containers(model):
         parent, attr_name = _find_container_attachment(model, c)
-        # Direct ``_modules`` mutation (rather than ``setattr``) bypasses any
-        # ``__setattr__`` hooks the parent class might bolt on, and avoids
-        # leaving a ``None`` placeholder in the dict that ``fully_shard``'s
-        # traversal might react to.
-        del parent._modules[attr_name]
+        del parent._modules[
+            attr_name
+        ]  # direct mutation: avoids __setattr__ side-effects
         detached.append((parent, attr_name, c))
 
     try:
         fully_shard(model, **shard_kwargs)
     finally:
-        # Reverse so nested containers (rare) restore correctly.
         for parent, attr_name, c in reversed(detached):
             parent._modules[attr_name] = c
 
-    logging.info(
-        f"default_parallelize_fn: applied fully_shard to "
-        f"{len(blocks_to_shard) + 1} module(s) (per-block units + root); "
-        f"detached {len(detached)} callback container(s) around root sweep"
+    logger.info(
+        f"default_parallelize_fn: sharded {n_blocks + 1} module(s) "
+        f"(per-block + root); detached {len(detached)} callback container(s)"
     )
     return model
 
@@ -232,18 +165,17 @@ def default_parallelize_fn(
 def assert_aligned_wrapping(student: nn.Module, teacher: nn.Module) -> None:
     """Assert ``student`` and ``teacher`` have identical FSDP shard layouts.
 
-    Required by :class:`TeacherStudentWrapper.update_teacher`'s in-place EMA via
-    ``zip(teacher.parameters(), student.parameters())``. For DTensor params the
-    check covers shape + dtype + ``placements`` + ``device_mesh`` (see
-    ``docs/source/fsdp.rst`` for why same-shape-different-placement is a real
-    silent-corruption hazard).
+    Required by :class:`TeacherStudentWrapper.update_teacher`'s in-place EMA
+    via ``zip(teacher.parameters(), student.parameters())``. For DTensor
+    params the check covers shape + dtype + ``placements`` + ``device_mesh`` —
+    same-shape-different-placement is a silent-corruption hazard.
     """
     s_params = list(student.parameters())
     t_params = list(teacher.parameters())
     if len(s_params) != len(t_params):
         raise AssertionError(
-            f"FSDP wrapping mismatch: student has {len(s_params)} parameter "
-            f"tensors, teacher has {len(t_params)}."
+            f"FSDP wrapping mismatch: student has {len(s_params)} parameters, "
+            f"teacher has {len(t_params)}."
         )
     for i, (sp, tp) in enumerate(zip(s_params, t_params)):
         if sp.shape != tp.shape:
@@ -294,31 +226,31 @@ def assert_aligned_wrapping(student: nn.Module, teacher: nn.Module) -> None:
             )
 
 
-class StablePretrainingFSDP2(ModelParallelStrategy):  # type: ignore[misc]
+class StablePretrainingFSDP2(ModelParallelStrategy):
     """:class:`ModelParallelStrategy` with auto-computed ``data_parallel_size``.
 
     Lightning's ``"auto"`` resolves ``data_parallel_size`` to ``num_nodes``
     (= 1 on single-node multi-GPU), which would fail the
     ``data_parallel_size * tensor_parallel_size == world_size`` check. This
-    subclass instead reads ``LOCAL_WORLD_SIZE`` (set by ``torchrun``) or
+    subclass reads ``LOCAL_WORLD_SIZE`` (set by ``torchrun``) or
     ``torch.cuda.device_count()`` when the user leaves it as ``"auto"``.
 
-    Registered under the name ``"fsdp2"`` in :class:`StrategyRegistry`, so
+    Registered under ``"fsdp2"`` in :class:`StrategyRegistry`, so
     ``Trainer(strategy="fsdp2")`` is valid. Sharding is dispatched by
     :meth:`stable_pretraining.Module.configure_model` to the
     ``parallelize_fn`` callable passed via ``Module(parallelize_fn=...)``
     (defaults to :func:`default_parallelize_fn`).
 
-    Optional ``mp_policy`` is stashed on the instance as ``_spt_mp_policy``;
+    Optional ``mp_policy`` is stashed as ``_spt_mp_policy``;
     :func:`default_parallelize_fn` reads it via ``trainer.strategy`` and
     forwards it to ``fully_shard``. Custom ``parallelize_fn`` callables are
-    free to ignore it and inject their own.
+    free to ignore it.
     """
 
     def __init__(
         self,
         *args,
-        mp_policy: Optional["MixedPrecisionPolicy"] = None,
+        mp_policy: Optional[MixedPrecisionPolicy] = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -333,38 +265,30 @@ class StablePretrainingFSDP2(ModelParallelStrategy):  # type: ignore[misc]
             else:
                 self._data_parallel_size = max(1, torch.cuda.device_count())
                 source = "torch.cuda.device_count()"
-            logging.info(
+            logger.info(
                 f"StablePretrainingFSDP2: data_parallel_size="
                 f"{self._data_parallel_size} (inferred from {source})"
             )
-        # Default to pure-FSDP (no tensor parallelism). Lightning resolves
-        # ``"auto"`` for ``tensor_parallel_size`` to ``num_processes``, which
-        # combined with our DP=num_processes default would multiply to
-        # ``num_processes ** 2`` and trip the
-        # ``data_parallel_size * tensor_parallel_size == world_size`` check.
-        # Users wanting TP must subclass and override this method (or
-        # instantiate the class directly with ``tensor_parallel_size=N``).
+        # Lightning resolves tensor_parallel_size="auto" to num_processes,
+        # which combined with our DP default trips the DP*TP == world_size
+        # check. Default to pure-FSDP so users wanting TP must pass it explicitly
         if self._tensor_parallel_size == "auto":
             self._tensor_parallel_size = 1
         super().setup_environment()
 
 
-if _FSDP_AVAILABLE and StrategyRegistry is not None:
-    StrategyRegistry.register(
-        "fsdp2",
-        StablePretrainingFSDP2,
-        description=(
-            "FSDP2 (fully_shard via ModelParallelStrategy) with auto "
-            "data_parallel_size. Sharding is dispatched by "
-            "stable_pretraining.Module.configure_model."
-        ),
-    )
+StrategyRegistry.register(
+    "fsdp2",
+    StablePretrainingFSDP2,
+    description=(
+        "FSDP2 (fully_shard via ModelParallelStrategy) with auto data_parallel_size. "
+        "Sharding is dispatched by stable_pretraining.Module.configure_model."
+    ),
+)
 
 
 def is_fsdp_strategy(strategy_or_trainer) -> bool:
     """Return True if the argument is (or wraps) an FSDP2 strategy."""
-    if not _FSDP_AVAILABLE:
-        return False
     strat = getattr(strategy_or_trainer, "strategy", strategy_or_trainer)
     return isinstance(strat, ModelParallelStrategy)
 
