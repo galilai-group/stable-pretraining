@@ -1,8 +1,10 @@
-"""LeJEPA ViT-Small on ImageNet-10 (Imagenette) under FSDP2.
+"""LeJEPA ViT-S/16 on ImageNet-10 (Imagenette). 20 epochs, 1 GPU, no W&B.
 
-Run with: ``torchrun --nproc-per-node=2 lejepa_vit_small_fsdp.py``.
+Short verification recipe — the long-form ``lejepa_vit_small.py`` runs 600
+epochs with checkpointing.
 """
 
+import sys
 from pathlib import Path
 
 import lightning as pl
@@ -11,31 +13,72 @@ import torch.nn as nn
 import torchmetrics
 
 import stable_pretraining as spt
-from stable_pretraining.callbacks.earlystop import EpochMilestones
 from stable_pretraining.data import transforms
+from stable_pretraining.methods.lejepa import LeJEPA, LeJEPAOutput
 
-from lejepa_vit_small import (
-    LeJEPA,
-    _global_transform,
-    _local_transform,
-    lejepa_forward,
-)
+
+def _photometric_transforms():
+    return [
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ColorJitter(
+            brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1, p=0.8
+        ),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.GaussianBlur(kernel_size=23, sigma=(0.1, 2.0), p=0.5),
+        transforms.RandomSolarize(threshold=128, p=0.2),
+    ]
+
+
+def _global_transform():
+    return transforms.Compose(
+        transforms.RGB(),
+        transforms.RandomResizedCrop((224, 224), scale=(0.3, 1.0)),
+        *_photometric_transforms(),
+        transforms.ToImage(**spt.data.static.ImageNet),
+    )
+
+
+def _local_transform():
+    return transforms.Compose(
+        transforms.RGB(),
+        transforms.RandomResizedCrop((96, 96), scale=(0.05, 0.3)),
+        *_photometric_transforms(),
+        transforms.ToImage(**spt.data.static.ImageNet),
+    )
+
+
+def lejepa_forward(self, batch, stage):
+    out = {}
+    images = batch.get("image")
+    if stage == "fit":
+        global_views = [batch[k]["image"] for k in batch if k.startswith("global")]
+        local_views = [batch[k]["image"] for k in batch if k.startswith("local")]
+        labels = next(
+            batch[k]["label"]
+            for k in batch
+            if k.startswith("global") or k.startswith("local")
+        )
+        output: LeJEPAOutput = self.model.forward(
+            global_views=global_views, local_views=local_views, images=images
+        )
+        out["label"] = labels.repeat(len(global_views))
+    else:
+        output: LeJEPAOutput = self.model.forward(images=images)
+        out["label"] = batch["label"].long()
+
+    out["loss"] = output.loss
+    out["embedding"] = output.embedding
+    self.log(f"{stage}/loss", output.loss, on_step=True, on_epoch=True, sync_dist=True)
+    return out
 
 
 def main():
-    import sys
-
     sys.path.append(str(Path(__file__).parent.parent))
     from utils import get_data_dir
 
-    def _stop_after_n_epochs(n: int) -> dict[int, float]:
-        return {n - 1: float("-inf")}
-
-    num_gpus = 2
-    effective_batch_size = 128
-    batch_size = effective_batch_size // num_gpus
-    num_workers = 16
-    max_epochs = 600
+    num_gpus = torch.cuda.device_count() or 1
+    batch_size = 128
+    max_epochs = int(__import__("os").environ.get("MAX_EPOCHS", 20))
     global_views = 2
     all_views = 8
 
@@ -68,9 +111,9 @@ def main():
                 transform=train_transform,
             ),
             batch_size=batch_size,
-            num_workers=num_workers,
+            num_workers=8,
             drop_last=True,
-            persistent_workers=num_workers > 0,
+            persistent_workers=True,
             shuffle=True,
         ),
         val=torch.utils.data.DataLoader(
@@ -82,8 +125,8 @@ def main():
                 transform=val_transform,
             ),
             batch_size=batch_size,
-            num_workers=num_workers,
-            persistent_workers=num_workers > 0,
+            num_workers=8,
+            persistent_workers=True,
         ),
     )
 
@@ -106,18 +149,15 @@ def main():
             },
             "scheduler": {
                 "type": "LinearWarmupCosineAnnealing",
-                "peak_step": 10 / max_epochs,
+                "peak_step": 2 / max_epochs,
                 "start_factor": 0.01,
-                "end_lr": lr / 1000,
+                "end_lr": lr / 100,
                 "total_steps": (len(data.train) // num_gpus) * max_epochs,
             },
             "interval": "step",
         },
     )
 
-    # The actual sharding happens in ``Module.configure_model`` via ``default_parallelize_fn``,
-    # which auto-detects the ``Block`` classes and applies ``fully_shard``
-    # per-block.
     trainer = pl.Trainer(
         max_epochs=max_epochs,
         num_sanity_val_steps=0,
@@ -144,47 +184,19 @@ def main():
                 input_dim=model.embed_dim,
                 k=20,
             ),
-            spt.callbacks.RankMe(
-                name="rankme",
-                target="embedding",
-                queue_length=1000,
-                target_shape=model.embed_dim,
-            ),
-            pl.pytorch.callbacks.ModelCheckpoint(
-                dirpath=str(Path(__file__).parent / "checkpoints" / "lejepa-vits-fsdp"),
-                filename="lejepa-vits-fsdp-{epoch:03d}",
-                save_top_k=-1,
-                every_n_epochs=300,
-                save_last=True,
-            ),
             pl.pytorch.callbacks.LearningRateMonitor(logging_interval="step"),
-            EpochMilestones(
-                monitor="fit/loss",
-                milestones=_stop_after_n_epochs(3),
-                direction="min",
-                after_validation=False,
-            ),
         ],
-        logger=pl.pytorch.loggers.WandbLogger(
-            entity="stable-ssl",
-            project="imagenet10-methods",
-            name="lejepa-vits-fsdp-inet10",
-            log_model=False,
+        logger=pl.pytorch.loggers.CSVLogger(
+            save_dir=str(Path(__file__).parent / "logs"),
+            name="lejepa-vits-inet10",
         ),
-        # FSDP2 / ``ModelParallelStrategy`` does not accept ``"16-mixed"``
-        # (fp16 mixed). It supports ``32-true``, ``bf16-mixed``,
-        # ``bf16-true``, and ``16-true``. ``bf16-mixed`` is the closest
-        # analogue of the DDP variant's ``"16-mixed"``: same mixed-precision
-        # forward-in-half-backward-in-full pattern, just with bfloat16 instead
-        # of float16 (no loss-scaling needed). A10G/L4/A100 all support bf16.
-        precision="bf16-mixed",
+        precision="16-mixed",
+        enable_checkpointing=False,
         devices=num_gpus,
         accelerator="gpu",
-        strategy="fsdp2",
     )
 
-    manager = spt.Manager(trainer=trainer, module=module, data=data)
-    manager()
+    spt.Manager(trainer=trainer, module=module, data=data)()
 
 
 if __name__ == "__main__":

@@ -88,6 +88,9 @@ dev = [
 select = ["E4", "E7", "E9", "F", "D"]
 ignore = ["D100", "D102", "D103", "D104", "D105", "D107"]
 
+[tool.ruff.lint.per-file-ignores]
+"stable_pretraining/tests/**" = ["D101", "D205"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 

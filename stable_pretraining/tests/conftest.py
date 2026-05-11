@@ -57,8 +57,11 @@ def pytest_collection_modifyitems(config, items):
     skip_v1 = pytest.mark.skip(reason="v1: legacy test needs updating")
     skip_gpu = pytest.mark.skip(reason="no GPU available")
     skip_dist = pytest.mark.skip(reason="torch.distributed not available")
-    dist_unavailable = not torch.distributed.is_available()
+    skip_gpu = pytest.mark.skip(reason="GPU not usable (unavailable or busy)")
     skip_ddp = pytest.mark.skip(reason="DDP requires >=2 GPUs (use srun --gpus=N)")
+
+    dist_unavailable = not torch.distributed.is_available()
+
     for item in items:
         if "v1" in item.keywords:
             item.add_marker(skip_v1)

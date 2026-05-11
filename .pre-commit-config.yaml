@@ -47,4 +47,4 @@ repos:
         require_serial: true
         args:
           - --skip=logs/**,data/**,*.ipynb
-          - --ignore-words-list=socio-economic
+          - --ignore-words-list=socio-economic,nce

@@ -7,15 +7,29 @@ registering a thin :class:`ModelParallelStrategy` subclass under the
 After import, users can simply do:
 
 ```python
+import stable_pretraining
+import lightning.pytorch as pl
+
+trainer = pl.Trainer(strategy="fsdp2")
+```
+
+and the rest is automatic. Direct instantiation is only needed for
+non-default settings (e.g. a custom :class:`MixedPrecisionPolicy`):
+
+```python
+from torch.distributed.fsdp import MixedPrecisionPolicy
 from stable_pretraining.utils.fsdp import StablePretrainingFSDP2
 
-strategy = StablePretrainingFSDP2()
+strategy = StablePretrainingFSDP2(
+    mp_policy=MixedPrecisionPolicy(
+        param_dtype=torch.bfloat16,
+        reduce_dtype=torch.float32,
+    )
+)
 trainer = pl.Trainer(strategy=strategy)
 ```
 
-and the rest is automatic.
-
-Supports Blocks from timm, HuggingFace, stable-pretraining, and torchvision.
+Supports blocks from timm, HuggingFace, stable-pretraining, and torchvision.
 """
 
 from __future__ import annotations
@@ -45,7 +59,11 @@ __all__ = [
     "StablePretrainingFSDP2",
     "UnsupportedModelError",
     "assert_aligned_wrapping",
+    "StablePretrainingFSDP2",
+    "UnsupportedModelError",
+    "assert_aligned_wrapping",
     "find_callback_containers",
+    "RECOGNIZED_BLOCK_CLASSES",
     "RECOGNIZED_BLOCK_CLASSES",
     "is_fsdp_strategy",
     "describe_fsdp_strategy",
@@ -163,17 +181,13 @@ def default_parallelize_fn(
 
 
 def assert_aligned_wrapping(student: nn.Module, teacher: nn.Module) -> None:
-    """Assert ``student`` and ``teacher`` have identical FSDP shard layouts.
-
-    Required by :class:`TeacherStudentWrapper.update_teacher`'s in-place EMA
-    via ``zip(teacher.parameters(), student.parameters())``. For DTensor
-    params the check covers shape + dtype + ``placements`` + ``device_mesh`` —
-    same-shape-different-placement is a silent-corruption hazard.
-    """
+    """Assert ``student`` and ``teacher`` have identical FSDP shard layouts."""
     s_params = list(student.parameters())
     t_params = list(teacher.parameters())
     if len(s_params) != len(t_params):
         raise AssertionError(
+            f"FSDP wrapping mismatch: student has {len(s_params)} parameters, "
+            f"teacher has {len(t_params)}."
             f"FSDP wrapping mismatch: student has {len(s_params)} parameters, "
             f"teacher has {len(t_params)}."
         )
@@ -193,11 +207,13 @@ def assert_aligned_wrapping(student: nn.Module, teacher: nn.Module) -> None:
                 raise AssertionError(
                     f"FSDP wrapping mismatch at parameter {i}: one side is a "
                     f"DTensor and the other is a plain Tensor."
+                    f"DTensor and the other is a plain Tensor."
                 )
             if sp.placements != tp.placements:
                 raise AssertionError(
                     f"FSDP wrapping mismatch at parameter {i}: student "
                     f"placements {sp.placements} vs teacher placements "
+                    f"{tp.placements}."
                     f"{tp.placements}."
                 )
             if sp.device_mesh != tp.device_mesh:
