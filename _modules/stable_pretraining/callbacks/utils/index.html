@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.utils &#8212; stable-pretraining 0.1.dev1+g0cd795470 documentation</title>
+    <title>stable_pretraining.callbacks.utils &#8212; stable-pretraining 0.1.dev1+g3001802f6 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=8fa3b740"></script>
+    <script src="../../../../_static/documentation_options.js?v=56eb65d2"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g0cd795470 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g3001802f6 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -345,17 +345,266 @@
                 <article class="bd-article">
                   
   <h1>Source code for stable_pretraining.callbacks.utils</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">collections.abc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">types</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torchmetrics</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callback</span><span class="p">,</span> <span class="n">LightningModule</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">types</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">..optim</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_optimizer</span><span class="p">,</span> <span class="n">create_scheduler</span><span class="p">,</span> <span class="n">LARS</span>
 
 <span class="n">_HEADER_WIDTH</span> <span class="o">=</span> <span class="mi">50</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_data_from_batch_or_outputs</span><span class="p">(</span>
+    <span class="n">key</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">batch</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">caller_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Callback&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get data from either outputs or batch dictionary.</span>
+
+<span class="sd">    In PyTorch Lightning, the outputs parameter in callbacks contains the return</span>
+<span class="sd">    value from training_step/validation_step, while batch contains the original</span>
+<span class="sd">    input. Since forward methods may modify batch in-place but Lightning creates</span>
+<span class="sd">    a copy for outputs, we need to check both.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        key: The key(s) to look for in the dictionaries</span>
+<span class="sd">        batch: The original batch dictionary</span>
+<span class="sd">        outputs: The outputs dictionary from training/validation step</span>
+<span class="sd">        caller_name: Name of the calling function/class for logging</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The data associated with the key, or None if not found</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">output_as_list</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">output_as_list</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+        <span class="c1"># First check outputs (which contains the forward pass results)</span>
+        <span class="k">if</span> <span class="n">outputs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">outputs</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">batch</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">caller_name</span><span class="si">}</span><span class="s2">: Key &#39;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&#39; not found in batch or outputs. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Available batch keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Available output keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">outputs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">outputs</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;None&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">output_as_list</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">out</span>
+    <span class="k">return</span> <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">detach_tensors</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recursively traverse an object and return an equivalent structure with all torch tensors detached.</span>
+
+<span class="sd">    - Preserves structure, types, and shared references.</span>
+<span class="sd">    - Handles cycles and arbitrary Python objects (including __dict__ and __slots__).</span>
+<span class="sd">    - Does not mutate the input; only rebuilds containers if needed.</span>
+<span class="sd">    - torch.nn.Parameter is replaced with a detached Tensor (not Parameter).</span>
+<span class="sd">    - Optionally supports attrs classes if &#39;attr&#39; is installed.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        obj: The input object (can be arbitrarily nested).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A new object with all torch tensors detached, or the original object if no tensors found.</span>
+<span class="sd">    Performance notes:</span>
+<span class="sd">        - Uses memoization to avoid redundant work and preserve shared/cyclic structure.</span>
+<span class="sd">        - Avoids unnecessary copies: unchanged subtrees are returned as-is (same id).</span>
+<span class="sd">        - Shallow-copies objects with __dict__ or __slots__ (does not call __init__).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">memo</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1"># Feature-detect attrs support</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">attr</span>
+
+        <span class="n">_HAS_ATTRS</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="n">_HAS_ATTRS</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detach_impl</span><span class="p">(</span><span class="n">o</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="n">oid</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">oid</span> <span class="ow">in</span> <span class="n">memo</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span>
+        <span class="c1"># Tensors (including Parameter)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">o</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+            <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="c1"># defaultdict: must preserve default_factory and handle cycles</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">o</span><span class="p">)(</span><span class="n">o</span><span class="o">.</span><span class="n">default_factory</span><span class="p">)</span>
+            <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">o</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">new_v</span> <span class="o">=</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">changed</span> <span class="o">=</span> <span class="n">changed</span> <span class="ow">or</span> <span class="p">(</span><span class="n">new_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v</span><span class="p">)</span>
+                <span class="n">result</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_v</span>
+            <span class="c1"># Always return the new result, even if not changed, to ensure correct default_factory and keys</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="c1"># dict/OrderedDict/other Mapping (excluding defaultdict)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Mapping</span><span class="p">):</span>
+            <span class="c1"># For custom mapping subclasses, try to preserve type</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">o</span><span class="p">)()</span>
+            <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">o</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">new_v</span> <span class="o">=</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">changed</span> <span class="o">=</span> <span class="n">changed</span> <span class="ow">or</span> <span class="p">(</span><span class="n">new_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v</span><span class="p">)</span>
+                <span class="n">result</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_v</span>
+            <span class="c1"># For plain dict, if nothing changed, return original</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">changed</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">dict</span><span class="p">:</span>
+                <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span>
+                <span class="k">return</span> <span class="n">o</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="c1"># Dataclasses (handle frozen and init=False fields)</span>
+        <span class="k">if</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">is_dataclass</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+            <span class="c1"># Step 1: create a shallow copy via dataclasses.replace (no field overrides)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">copy_obj</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="c1"># fallback for dataclasses with no fields</span>
+                <span class="n">copy_obj</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+            <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy_obj</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">fields</span><span class="p">(</span><span class="n">o</span><span class="p">):</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">new_v</span> <span class="o">=</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">new_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v</span><span class="p">:</span>
+                    <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">copy_obj</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">new_v</span><span class="p">)</span>
+                    <span class="n">changed</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">changed</span><span class="p">:</span>
+                <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span>
+                <span class="k">return</span> <span class="n">o</span>
+            <span class="k">return</span> <span class="n">copy_obj</span>
+        <span class="c1"># attrs classes (if available)</span>
+        <span class="k">if</span> <span class="n">_HAS_ATTRS</span> <span class="ow">and</span> <span class="n">attr</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+            <span class="c1"># Use attr.evolve to create a shallow copy, then set fields</span>
+            <span class="n">copy_obj</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">evolve</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+            <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy_obj</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">attr</span><span class="o">.</span><span class="n">fields</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">o</span><span class="p">)):</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">new_v</span> <span class="o">=</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">new_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v</span><span class="p">:</span>
+                    <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">copy_obj</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">new_v</span><span class="p">)</span>
+                    <span class="n">changed</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">changed</span><span class="p">:</span>
+                <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span>
+                <span class="k">return</span> <span class="n">o</span>
+            <span class="k">return</span> <span class="n">copy_obj</span>
+        <span class="c1"># Namedtuple (but not plain tuple)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="s2">&quot;_fields&quot;</span><span class="p">):</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">o</span><span class="p">:</span>
+                <span class="n">new_v</span> <span class="o">=</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">changed</span> <span class="o">=</span> <span class="n">changed</span> <span class="ow">or</span> <span class="p">(</span><span class="n">new_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v</span><span class="p">)</span>
+                <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_v</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">changed</span><span class="p">:</span>
+                <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span>
+                <span class="k">return</span> <span class="n">o</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">o</span><span class="p">)(</span><span class="o">*</span><span class="n">values</span><span class="p">)</span>
+            <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="c1"># List</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">o</span><span class="p">:</span>
+                <span class="n">new_v</span> <span class="o">=</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">changed</span> <span class="o">=</span> <span class="n">changed</span> <span class="ow">or</span> <span class="p">(</span><span class="n">new_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v</span><span class="p">)</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_v</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">changed</span><span class="p">:</span>
+                <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span>
+                <span class="k">return</span> <span class="n">o</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="c1"># Tuple (not namedtuple)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">o</span><span class="p">:</span>
+                <span class="n">new_v</span> <span class="o">=</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">changed</span> <span class="o">=</span> <span class="n">changed</span> <span class="ow">or</span> <span class="p">(</span><span class="n">new_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v</span><span class="p">)</span>
+                <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_v</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">changed</span><span class="p">:</span>
+                <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span>
+                <span class="k">return</span> <span class="n">o</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+            <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="c1"># Set</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="nb">set</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">o</span><span class="p">:</span>
+                <span class="n">new_v</span> <span class="o">=</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">changed</span> <span class="o">=</span> <span class="n">changed</span> <span class="ow">or</span> <span class="p">(</span><span class="n">new_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v</span><span class="p">)</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_v</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">changed</span><span class="p">:</span>
+                <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span>
+                <span class="k">return</span> <span class="n">o</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="c1"># Frozenset</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">):</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">o</span><span class="p">:</span>
+                <span class="n">new_v</span> <span class="o">=</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">changed</span> <span class="o">=</span> <span class="n">changed</span> <span class="ow">or</span> <span class="p">(</span><span class="n">new_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v</span><span class="p">)</span>
+                <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_v</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">changed</span><span class="p">:</span>
+                <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span>
+                <span class="k">return</span> <span class="n">o</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+            <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="c1"># Generic objects with __dict__ or __slots__</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="s2">&quot;__dict__&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="s2">&quot;__slots__&quot;</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+            <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="n">changed</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="c1"># __dict__ attributes</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;__dict__&quot;</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">new_v</span> <span class="o">=</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">new_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v</span><span class="p">:</span>
+                        <span class="nb">setattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">new_v</span><span class="p">)</span>
+                        <span class="n">changed</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="c1"># __slots__ attributes</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">&quot;__slots__&quot;</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="vm">__slots__</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+                        <span class="n">v</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">slot</span><span class="p">)</span>
+                        <span class="n">new_v</span> <span class="o">=</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">new_v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v</span><span class="p">:</span>
+                            <span class="nb">setattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">new_v</span><span class="p">)</span>
+                            <span class="n">changed</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">changed</span><span class="p">:</span>
+                <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span>
+                <span class="k">return</span> <span class="n">o</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="c1"># All other types: return as is</span>
+        <span class="n">memo</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span>
+        <span class="k">return</span> <span class="n">o</span>
+
+    <span class="k">return</span> <span class="n">_detach_impl</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">log_header</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">_HEADER_WIDTH</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>

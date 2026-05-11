@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+g0cd795470 documentation</title>
+    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+g3001802f6 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=8fa3b740"></script>
+    <script src="_static/documentation_options.js?v=56eb65d2"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/sg-tags.js?v=d80f6fa4"></script>
@@ -131,7 +131,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g0cd795470 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g3001802f6 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -440,6 +440,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ways-you-can-contribute">Ways You Can Contribute:</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#citation">Citation</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contributors">Contributors</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#benchmarks-imagenette-vit-s-16-200-epochs">Benchmarks — Imagenette ViT-S/16, 200 epochs</a></li>
 </ul>
             </nav>
         </div>
@@ -1448,6 +1449,172 @@ fc-cache<span class="w"> </span>-f<span class="w"> </span>-v<span class="w">   <
 <li><p><a class="reference external" href="https://github.com/lucas-maes">Lucas Maes</a></p></li>
 </ul>
 </section>
+<section id="benchmarks-imagenette-vit-s-16-200-epochs">
+<h2>Benchmarks — Imagenette ViT-S/16, 200 epochs<a class="headerlink" href="#benchmarks-imagenette-vit-s-16-200-epochs" title="Link to this heading">#</a></h2>
+<blockquote>
+<div><p><strong>Caveat.</strong> These are <strong>out-of-the-box</strong> results on Imagenette
+(10-class subset of ImageNet, 224×224) at 200 epochs with ViT-S/16,
+using each method’s <strong>paper-default ImageNet-1k hyperparameters</strong>
+scaled to the batch size used here. <strong>No per-method hyperparameter
+tuning was performed.</strong> Several methods (e.g. MIM-family at short
+schedules, whitening methods at small batch) are known to need
+longer training or larger batches to reach their headline accuracy.
+Treat the table as a sanity-check sweep over the 27 method classes,
+not a SOTA comparison.</p>
+</div></blockquote>
+<p>Online linear probe and 20-NN probe top-1 accuracy on Imagenette,
+single A100, no W&amp;B. Full details, hyperparameters per method, and
+reproduction commands:
+<a class="reference internal" href="#benchmarks/imagenet10/RESULTS.md"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">benchmarks/imagenet10/RESULTS.md</span></code></span></a>.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Family</p></th>
+<th class="head text-right"><p>KNN top-1</p></th>
+<th class="head text-right"><p>Linear top-1</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>SwAV</p></td>
+<td><p>multi-crop clustering</p></td>
+<td class="text-right"><p>86.4%</p></td>
+<td class="text-right"><p><strong>89.7%</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>LeJEPA</p></td>
+<td><p>multi-view + sliced Epps-Pulley</p></td>
+<td class="text-right"><p>85.4%</p></td>
+<td class="text-right"><p>87.1%</p></td>
+</tr>
+<tr class="row-even"><td><p>DINO</p></td>
+<td><p>self-distill + multi-crop</p></td>
+<td class="text-right"><p>83.8%</p></td>
+<td class="text-right"><p>86.1%</p></td>
+</tr>
+<tr class="row-odd"><td><p>MoCo v3</p></td>
+<td><p>contrastive + EMA</p></td>
+<td class="text-right"><p>82.6%</p></td>
+<td class="text-right"><p>84.7%</p></td>
+</tr>
+<tr class="row-even"><td><p>MAE</p></td>
+<td><p>masked-image modeling</p></td>
+<td class="text-right"><p>72.1%</p></td>
+<td class="text-right"><p>84.1%</p></td>
+</tr>
+<tr class="row-odd"><td><p>Barlow Twins</p></td>
+<td><p>decorrelation</p></td>
+<td class="text-right"><p>81.2%</p></td>
+<td class="text-right"><p>83.0%</p></td>
+</tr>
+<tr class="row-even"><td><p>NNCLR</p></td>
+<td><p>contrastive + queue</p></td>
+<td class="text-right"><p>75.6%</p></td>
+<td class="text-right"><p>80.2%</p></td>
+</tr>
+<tr class="row-odd"><td><p>VICReg</p></td>
+<td><p>variance / invariance / cov.</p></td>
+<td class="text-right"><p>75.0%</p></td>
+<td class="text-right"><p>79.4%</p></td>
+</tr>
+<tr class="row-even"><td><p>SimCLR</p></td>
+<td><p>NT-Xent contrastive</p></td>
+<td class="text-right"><p>73.3%</p></td>
+<td class="text-right"><p>74.9%</p></td>
+</tr>
+<tr class="row-odd"><td><p>VICRegL</p></td>
+<td><p>VICReg + local matching</p></td>
+<td class="text-right"><p>67.2%</p></td>
+<td class="text-right"><p>72.7%</p></td>
+</tr>
+<tr class="row-even"><td><p>CMAE</p></td>
+<td><p>MAE + contrastive</p></td>
+<td class="text-right"><p>61.9%</p></td>
+<td class="text-right"><p>72.2%</p></td>
+</tr>
+<tr class="row-odd"><td><p>MoCo v2</p></td>
+<td><p>momentum + queue</p></td>
+<td class="text-right"><p>70.0%</p></td>
+<td class="text-right"><p>70.8%</p></td>
+</tr>
+<tr class="row-even"><td><p>BYOL</p></td>
+<td><p>EMA target + predictor</p></td>
+<td class="text-right"><p>56.0%</p></td>
+<td class="text-right"><p>63.9%</p></td>
+</tr>
+<tr class="row-odd"><td><p>SimSiam</p></td>
+<td><p>siamese + stop-grad</p></td>
+<td class="text-right"><p>54.9%</p></td>
+<td class="text-right"><p>62.8%</p></td>
+</tr>
+<tr class="row-even"><td><p>iBOT</p></td>
+<td><p>DINO + masked-patch loss</p></td>
+<td class="text-right"><p>43.3%</p></td>
+<td class="text-right"><p>57.9%</p></td>
+</tr>
+<tr class="row-odd"><td><p>MSN</p></td>
+<td><p>masked-siamese</p></td>
+<td class="text-right"><p>50.6%</p></td>
+<td class="text-right"><p>57.6%</p></td>
+</tr>
+<tr class="row-even"><td><p>DINOv3 *</p></td>
+<td><p>DINOv2 + registers + KoLeo</p></td>
+<td class="text-right"><p>39.2%</p></td>
+<td class="text-right"><p>48.9%</p></td>
+</tr>
+<tr class="row-odd"><td><p>DINOv2 *</p></td>
+<td><p>DINO + iBOT + Sinkhorn</p></td>
+<td class="text-right"><p>31.5%</p></td>
+<td class="text-right"><p>42.1%</p></td>
+</tr>
+<tr class="row-even"><td><p>TiCO</p></td>
+<td><p>EMA-cov contrast (LARS)</p></td>
+<td class="text-right"><p>23.7%</p></td>
+<td class="text-right"><p>33.7%</p></td>
+</tr>
+<tr class="row-odd"><td><p>IJEPA</p></td>
+<td><p>predictive (joint embedding)</p></td>
+<td class="text-right"><p>33.2%</p></td>
+<td class="text-right"><p>34.0%</p></td>
+</tr>
+<tr class="row-even"><td><p>Data2Vec</p></td>
+<td><p>EMA contextual features</p></td>
+<td class="text-right"><p>31.0%</p></td>
+<td class="text-right"><p>26.3%</p></td>
+</tr>
+<tr class="row-odd"><td><p>MaskFeat</p></td>
+<td><p>masked HOG features</p></td>
+<td class="text-right"><p>27.8%</p></td>
+<td class="text-right"><p>25.6%</p></td>
+</tr>
+<tr class="row-even"><td><p>SimMIM</p></td>
+<td><p>masked pixel modeling</p></td>
+<td class="text-right"><p>30.9%</p></td>
+<td class="text-right"><p>22.5%</p></td>
+</tr>
+<tr class="row-odd"><td><p>W-MSE</p></td>
+<td><p>whitening + MSE</p></td>
+<td class="text-right"><p>16.9%</p></td>
+<td class="text-right"><p>15.9%</p></td>
+</tr>
+<tr class="row-even"><td><p>PIRL</p></td>
+<td><p>jigsaw + memory bank</p></td>
+<td class="text-right"><p>17.4%</p></td>
+<td class="text-right"><p>15.6%</p></td>
+</tr>
+<tr class="row-odd"><td><p>BEiT (placeholder tokenizer)</p></td>
+<td><p>discrete-token masking</p></td>
+<td class="text-right"><p>22.0%</p></td>
+<td class="text-right"><p>15.3%</p></td>
+</tr>
+<tr class="row-even"><td><p>iGPT (AIM-style)</p></td>
+<td><p>autoregressive</p></td>
+<td class="text-right"><p>18.8%</p></td>
+<td class="text-right"><p>12.8%</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>* = run still climbing at time of writing.</p>
+</section>
 </section>
 <div class="toctree-wrapper compound">
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
@@ -1558,6 +1725,7 @@ fc-cache<span class="w"> </span>-f<span class="w"> </span>-v<span class="w">   <
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ways-you-can-contribute">Ways You Can Contribute:</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#citation">Citation</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contributors">Contributors</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#benchmarks-imagenette-vit-s-16-200-epochs">Benchmarks — Imagenette ViT-S/16, 200 epochs</a></li>
 </ul>
   </nav></div>
 

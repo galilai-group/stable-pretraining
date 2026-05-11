@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g0cd795470 documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g3001802f6 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=8fa3b740"></script>
+    <script src="../../../_static/documentation_options.js?v=56eb65d2"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g0cd795470 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g3001802f6 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -490,7 +490,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_install_sigterm_preempt_handler</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Install a pre-fit SIGTERM handler that triggers submitit&#39;s requeue.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Install a SIGTERM handler that triggers submitit&#39;s requeue.</span>
 
 <span class="sd">    Why: PyTorch Lightning&#39;s ``_SignalConnector`` treats SIGTERM as a</span>
 <span class="sd">    graceful stop — ``fit()`` returns normally, submitit sees a successful</span>
@@ -499,7 +499,10 @@
 <span class="sd">    sends SIGTERM directly (e.g., short grace period, ``scancel`` during</span>
 <span class="sd">    preempt) the requeue mechanism never fires.</span>
 
-<span class="sd">    Fix: install our SIGTERM handler before ``Trainer.fit()`` so Lightning&#39;s</span>
+<span class="sd">    Fix: install our SIGTERM handler at the top of ``Manager.__init__`` so</span>
+<span class="sd">    it&#39;s already in place during the long data/DDP/hydra setup window</span>
+<span class="sd">    (where SLURM frequently delivers SIGTERM under cluster contention).</span>
+<span class="sd">    Later, when ``Trainer.fit()`` runs, Lightning&#39;s</span>
 <span class="sd">    ``_SignalConnector.register_signal_handlers`` appends it to the</span>
 <span class="sd">    composed chain (see ``signal_connector.py``: it preserves an existing</span>
 <span class="sd">    SIGTERM handler) — and Lightning leaves submitit&#39;s USR_SIG handler in</span>
@@ -845,6 +848,13 @@
         <span class="n">weights_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="nb">compile</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
+        <span class="c1"># Install the SIGTERM→USR_SIG forwarder FIRST — before any other init</span>
+        <span class="c1"># work — so the long DDP / data / hydra setup window (which can take</span>
+        <span class="c1"># minutes on a busy cluster) is also covered. SLURM frequently</span>
+        <span class="c1"># delivers SIGTERM during this window; without an installed handler</span>
+        <span class="c1"># the default action terminates the process and submitit sees a</span>
+        <span class="c1"># clean exit instead of triggering requeue.</span>
+        <span class="n">_install_sigterm_preempt_handler</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                 <span class="s2">&quot;User didn&#39;t specify seed, runs won&#39;t be exactly reproducible!&quot;</span>
@@ -1981,7 +1991,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_restore_swanlab_run</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">init_and_sync_wandb</span><span class="p">()</span>
         <span class="n">print_logger_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
-        <span class="n">print_signal_info</span><span class="p">(</span><span class="s2">&quot;after submitit setup, before spt SIGTERM install&quot;</span><span class="p">)</span>
+        <span class="n">print_signal_info</span><span class="p">(</span><span class="s2">&quot;after submitit setup (spt SIGTERM installed in __init__)&quot;</span><span class="p">)</span>
 
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;Callbacks&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  count: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -2034,12 +2044,10 @@
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrainerFit&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ckpt_path:     </span><span class="si">{</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  weights_only:  </span><span class="si">{</span><span class="n">weights_only_for_load</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="c1"># Install pre-fit SIGTERM forwarder BEFORE Lightning&#39;s SignalConnector</span>
-        <span class="c1"># runs (it composes our handler in rather than overwriting). Without</span>
-        <span class="c1"># this, SLURM-delivered SIGTERM looks like a clean exit to submitit</span>
-        <span class="c1"># and the job is not requeued. See _install_sigterm_preempt_handler.</span>
-        <span class="n">_install_sigterm_preempt_handler</span><span class="p">()</span>
-        <span class="n">print_signal_info</span><span class="p">(</span><span class="s2">&quot;after spt SIGTERM install, before Trainer.fit()&quot;</span><span class="p">)</span>
+        <span class="c1"># Handler was installed at the top of Manager.__init__ so it covers</span>
+        <span class="c1"># the data/DDP setup window. Just confirm the binding is still ours</span>
+        <span class="c1"># before Lightning&#39;s _SignalConnector composes itself in.</span>
+        <span class="n">print_signal_info</span><span class="p">(</span><span class="s2">&quot;before Trainer.fit() (handler installed in __init__)&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
             <span class="s2">&quot;  → entering Trainer.fit(); lightning&#39;s _SignalConnector will now &quot;</span>
             <span class="s2">&quot;register its own handlers. SIGTERM will become &quot;</span>
