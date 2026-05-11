@@ -1,6 +1,6 @@
 """LeJEPA ViT-S/16 on ImageNet-10 (Imagenette). 20 epochs, 1 GPU, no W&B.
 
-Short verification recipe — the long-form ``lejepa-vit-small.py`` runs 600
+Short verification recipe — the long-form ``lejepa_vit_small.py`` runs 600
 epochs with checkpointing.
 """
 

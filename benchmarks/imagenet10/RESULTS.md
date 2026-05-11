@@ -49,7 +49,7 @@ listed epoch; the numbers shown are the best so far, will improve.
 
 ## What hyperparameters were used
 
-Each `benchmarks/imagenet10/<method>-vit-small.py` script encodes one
+Each `benchmarks/imagenet10/<method>_vit_small.py` script encodes one
 method's hyperparameters. They match the original paper's
 ImageNet-1k recipe whenever there's one, scaled linearly to the batch
 size used in this sweep. Key choices:
@@ -103,7 +103,7 @@ modest batch sizes:
 ```bash
 # Single method, 200 epochs:
 MAX_EPOCHS=200 srun --gres=gpu:1 --cpus-per-task=8 --mem=32G --time=06:00:00 \
-  python benchmarks/imagenet10/<method>-vit-small.py
+  python benchmarks/imagenet10/<method>_vit_small.py
 ```
 
 Multi-crop methods (DINO, iBOT, DINOv2, DINOv3, SwAV, LeJEPA) need
@@ -127,5 +127,5 @@ benchmarks/imagenet10/
 ├── multicrop.py         # shared multi-crop (DINO/iBOT/...) helper
 ├── collect_results.py   # aggregate CSV logs into the table
 ├── RESULTS.md           # this file
-└── <method>-vit-small.py  # per-method config (≈40 LOC each)
+└── <method>_vit_small.py  # per-method config (≈40 LOC each)
 ```
