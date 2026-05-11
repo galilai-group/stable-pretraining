@@ -3,6 +3,7 @@
 Run with: ``torchrun --nproc-per-node=2 lejepa_vit_small_fsdp.py``.
 """
 
+import sys
 from pathlib import Path
 
 import lightning as pl
@@ -12,31 +13,66 @@ import torchmetrics
 
 import stable_pretraining as spt
 from stable_pretraining.data import transforms
+from stable_pretraining.methods.lejepa import LeJEPA, LeJEPAOutput
 from stable_pretraining.utils.fsdp import make_fsdp_strategy
 
-from lejepa_vit_small import (
-    LeJEPA,
-    _global_transform,
-    _local_transform,
-    lejepa_forward,
-)
+
+def _photometric_transforms():
+    return [
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ColorJitter(
+            brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1, p=0.8
+        ),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.GaussianBlur(kernel_size=23, sigma=(0.1, 2.0), p=0.5),
+        transforms.RandomSolarize(threshold=128, p=0.2),
+    ]
 
 
-class StopAfterNEpochs(pl.pytorch.callbacks.Callback):
-    """Hard-stop training after ``n`` completed epochs without compressing the schedule."""
+def _global_transform():
+    return transforms.Compose(
+        transforms.RGB(),
+        transforms.RandomResizedCrop((224, 224), scale=(0.3, 1.0)),
+        *_photometric_transforms(),
+        transforms.ToImage(**spt.data.static.ImageNet),
+    )
 
-    def __init__(self, n: int):
-        super().__init__()
-        self.n = n
 
-    def on_train_epoch_end(self, trainer, pl_module):
-        if trainer.current_epoch + 1 >= self.n:
-            trainer.should_stop = True
+def _local_transform():
+    return transforms.Compose(
+        transforms.RGB(),
+        transforms.RandomResizedCrop((96, 96), scale=(0.05, 0.3)),
+        *_photometric_transforms(),
+        transforms.ToImage(**spt.data.static.ImageNet),
+    )
+
+
+def lejepa_forward(self, batch, stage):
+    out = {}
+    images = batch.get("image")
+    if stage == "fit":
+        global_views = [batch[k]["image"] for k in batch if k.startswith("global")]
+        local_views = [batch[k]["image"] for k in batch if k.startswith("local")]
+        labels = next(
+            batch[k]["label"]
+            for k in batch
+            if k.startswith("global") or k.startswith("local")
+        )
+        output: LeJEPAOutput = self.model.forward(
+            global_views=global_views, local_views=local_views, images=images
+        )
+        out["label"] = labels.repeat(len(global_views))
+    else:
+        output: LeJEPAOutput = self.model.forward(images=images)
+        out["label"] = batch["label"].long()
+
+    out["loss"] = output.loss
+    out["embedding"] = output.embedding
+    self.log(f"{stage}/loss", output.loss, on_step=True, on_epoch=True, sync_dist=True)
+    return out
 
 
 def main():
-    import sys
-
     sys.path.append(str(Path(__file__).parent.parent))
     from utils import get_data_dir
 
@@ -173,7 +209,6 @@ def main():
                 save_last=True,
             ),
             pl.pytorch.callbacks.LearningRateMonitor(logging_interval="step"),
-            StopAfterNEpochs(stop_after_epochs),
         ],
         logger=pl.pytorch.loggers.WandbLogger(
             entity="stable-ssl",
