@@ -223,6 +223,17 @@ class Module(pl.LightningModule):
     def forward(self, *args, **kwargs):
         raise NotImplementedError("The forward() method must be implemented.")
 
+    def setup(self, stage: str) -> None:
+        """Lightning hook — reject FSDP1 with a clear redirect to FSDP2."""
+        from lightning.pytorch.strategies import FSDPStrategy
+
+        super().setup(stage)
+        if isinstance(self.trainer.strategy, FSDPStrategy):
+            raise RuntimeError(
+                "stable-pretraining does not support FSDP1 "
+                "(``Trainer(strategy='fsdp')``). Please use ``strategy='fsdp2'`` instead."
+            )
+
     def configure_model(self) -> None:
         """Lightning hook for FSDP2 — dispatches to the user's ``parallelize_fn`` or the default.
 

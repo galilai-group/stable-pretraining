@@ -45,6 +45,49 @@ def test_module_initialization():
     assert module is not None
 
 
+@pytest.mark.unit
+def test_module_rejects_fsdp1_strategy():
+    """``Module.setup`` must raise on ``Trainer(strategy='fsdp')``.
+
+    ``manual_backward`` inside ``training_step`` collides with Lightning's
+    ``_forward_redirection`` wrapping of FSDP1's ``__call__`` — the handle
+    stays in ``FORWARD`` when backward fires and the post-backward
+    assertion trips. The guard lives in ``Module.setup`` and points users
+    at ``strategy='fsdp2'`` instead.
+    """
+    from types import SimpleNamespace
+    from lightning.pytorch.strategies import FSDPStrategy
+
+    module = Module(
+        backbone=nn.Linear(1, 1),
+        forward=partial(_partial_forward, cfg={"scale": 2.0}),
+        optim={"opt": {"modules": "backbone", "optimizer": {"type": "AdamW"}}},
+    )
+    module._trainer = SimpleNamespace(strategy=FSDPStrategy())
+
+    with pytest.raises(RuntimeError, match="does not support FSDP1"):
+        module.setup(stage="fit")
+
+
+@pytest.mark.unit
+def test_module_setup_accepts_non_fsdp1_strategy():
+    """``Module.setup`` must NOT raise when the strategy isn't FSDP1.
+
+    Sanity check that the guard is specific to ``FSDPStrategy`` and
+    doesn't false-trigger on single-device / DDP / FSDP2 setups.
+    """
+    from types import SimpleNamespace
+
+    module = Module(
+        backbone=nn.Linear(1, 1),
+        forward=partial(_partial_forward, cfg={"scale": 2.0}),
+        optim={"opt": {"modules": "backbone", "optimizer": {"type": "AdamW"}}},
+    )
+    module._trainer = SimpleNamespace(strategy=object())
+
+    module.setup(stage="fit")
+
+
 @pytest.mark.integration
 def test_module_integration():
     """Integration test for the Module class with multiple optimizers.
