@@ -7,3 +7,13 @@ numpy==2.4.4
 timm==1.0.26
 transformers==5.4.0
 lightning==2.6.1
+
+# HF dataset stack: pin together because fsspec >=2025.3.0 added strict glob
+# validation that rejects patterns like ``train[-._ 0-9/]**`` built by
+# huggingface_hub.HfFileSystem.glob(). These three versions match the local
+# dev env; without pins, transitive resolution can land on incompatible
+# combos and integration tests fail with
+# ``ValueError: Invalid pattern: '**' can only be an entire path component``.
+fsspec==2026.2.0
+huggingface_hub==0.36.2
+datasets==4.0.0
