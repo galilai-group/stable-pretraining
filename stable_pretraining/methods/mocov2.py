@@ -29,7 +29,10 @@ class MoCov2Output(ModelOutput):
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     queries: Optional[torch.Tensor] = None
-    keys: Optional[torch.Tensor] = None
+    # Field name avoids ``keys`` because ``ModelOutput`` is dict-like and
+    # exposes a ``.keys()`` method; a field named ``keys`` would shadow
+    # the method and break ``ModelOutput.__setattr__``'s membership check.
+    key_embeddings: Optional[torch.Tensor] = None
 
 
 def _projector(in_dim: int, hidden_dim: int, out_dim: int) -> nn.Module:
@@ -135,5 +138,5 @@ class MoCov2(Module):
             loss=loss,
             embedding=embedding,
             queries=q,
-            keys=k,
+            key_embeddings=k,
         )

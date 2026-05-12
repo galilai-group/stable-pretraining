@@ -29,7 +29,7 @@ import lightning as pl
 import torch
 from loguru import logger as logging
 from datasets import config as hf_config
-from ..utils import with_hf_retry_ratelimit
+from ..utils.error_handling import with_hf_retry_ratelimit
 
 
 # ---------------------------------------------------------------------------
