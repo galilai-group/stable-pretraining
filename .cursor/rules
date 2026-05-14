@@ -1,0 +1,11 @@
+Read AGENTS.md at the repository root before making any changes to this codebase.
+
+Key facts:
+- Entry points: Manager (programmatic), module.py (LightningModule), forward.py (forward fns)
+- 30 SSL method classes in stable_pretraining/methods/ — check METHODS.md for the full list
+- 9 forward functions in forward.py — these are the composable form (use with spt.Module)
+- Naming: {method}_forward, {Method}Loss, {Method} class
+- All public API requires type annotations + Google-style docstrings
+- Lazy loading via PEP 562 in __init__.py — read it before touching exports
+- Batches are always dict — never unpack positionally
+- Use spt.Manager(...)() to run training, not Trainer.fit(...)

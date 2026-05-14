@@ -1,18 +1,33 @@
-# CLAUDE.md
+# stable-pretraining — Claude Instructions
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+> The full agent instructions for this repository are in [`AGENTS.md`](./AGENTS.md).
+> Read that file first and treat it as authoritative.
 
-## Project Overview
+## Claude-specific notes
 
-`stable-pretraining` is a PyTorch Lightning framework for self-supervised learning (SSL) research. The key design principle is that users only define `forward()` — not `training_step()`. All data flows as dictionaries, giving callbacks and middleware access to any intermediate value.
+### Memory and context
 
-## Commands
+- This repo has 30 SSL method classes. When working on any specific method, read its file in `stable_pretraining/methods/` before writing code — do not rely on pattern-matching from other methods, as hyperparameter defaults and architecture choices differ.
+- `METHODS.md` is the ground-truth index of all methods. Check it before claiming a method does or does not exist in the library.
+- The 9 forward functions in `forward.py` are the composable form; the 30 classes in `methods/` are the batteries-included form. Both are valid entry points — choose based on context.
+
+### Preferred workflow for code changes
+
+1. Read the relevant source file(s) in full before proposing anything
+2. State what you found before proposing changes
+3. Show diffs, not full file rewrites, for files over 100 lines
+4. After any change to `__init__.py`, verify the import still works by tracing the lazy-load path through `_LAZY_ATTRS` and `_LAZY_SUBMODULES` manually
+
+### Docstring style
+
+This project uses Google-style docstrings (configured in `pyproject.toml` under `[tool.ruff.lint.pydocstyle]`). Always match the style in `stable_pretraining/forward.py` (the best-documented file in the codebase) when writing new docstrings — it uses `Args:`, `Returns:`, and `Note:` sections.
+
+### Commands
 
 **Installation:**
 ```bash
-pip install -e .                     # Core only
-pip install -e ".[vision,tracking]"  # With timm/HF and wandb
-pip install -e ".[all]"              # Everything
+pip install -e ".[dev]"          # includes pytest, ruff, sphinx
+pip install -e .                 # core only
 ```
 
 **Running experiments:**
@@ -44,63 +59,3 @@ spt registry best val_acc -n 5     # Top 5 by metric
 spt registry export sweep.csv      # Export to CSV
 spt registry scan --full           # Rebuild SQLite cache
 ```
-
-## Architecture
-
-### Core 4-Component Design
-
-1. **Data** (`stable_pretraining/data/`) — dictionary-structured datasets, multi-view transforms (`transforms.py`), `RepeatedRandomSampler`, and HuggingFace-compatible `HFDataset`.
-
-2. **Module** (`stable_pretraining/module.py`) — `Module` extends PyTorch Lightning. Users provide a custom `forward(batch, stage)` function and the framework builds `training_step` / `validation_step` around it. Supports manual optimization for multi-optimizer methods (BYOL, DINO).
-
-3. **Manager** (`stable_pretraining/manager.py`) — orchestrates Trainer, Module, DataModule, callbacks, and loggers. Handles SLURM preemption, atomic checkpointing, and deterministic run IDs.
-
-4. **Callbacks** (`stable_pretraining/callbacks/`) — rich monitoring ecosystem. Notable ones:
-   - `OnlineProbe` — linear evaluation during training
-   - `OnlineKNN` — k-nearest neighbor evaluation
-   - `RankMe` / `LiDAR` — representation quality metrics
-   - `LatentViz` — 2D dimensionality reduction visualization
-   - `TeacherStudent` — EMA teacher weight updates
-   - `WDSchedule` — per-batch weight decay scheduling
-
-### Key Design Patterns
-
-- **Lazy loading** (PEP 562) in `__init__.py` for fast CLI startup — avoid importing anything heavy at module level.
-- **Dictionary data flow** — batches are always `dict`, never raw tensors. This is what allows callbacks to intercept intermediate values.
-- **Filesystem-first registry** — sidecars + SQLite cache under `stable_pretraining/registry/`. Zero write contention on HPC shared filesystems.
-- **Atomic checkpointing** (`utils/atomic_checkpoint.py`) — write to temp file, then rename, to survive preemption.
-- **Manual optimization** (`utils/lightning_patch.py`) — patches Lightning's training loop for multi-optimizer SSL methods.
-
-### Pre-built SSL Forward Functions
-
-`stable_pretraining/forward.py` provides ready-made `forward()` implementations for 27+ methods: SimCLR, BYOL, VICReg, Barlow Twins, SwAV, DINO, DINOv2, MAE, iBOT, MoCo v2/v3, and more. Import these directly rather than reimplementing.
-
-### Configuration System
-
-Two layers:
-1. **Hydra / OmegaConf** — YAML configs passed to `spt` CLI, supporting `${interpolation}` and multirun sweeps.
-2. **Global config** (`stable_pretraining/_config.py`) — `spt.set(key, value)` / `spt.get_config()` for runtime flags accessible anywhere without threading through call stacks.
-
-### Losses (`stable_pretraining/losses/`)
-
-Organized by SSL family:
-- Joint-embedding: `NTXEntLoss`, `BYOLLoss`, `VICRegLoss`, `BarlowTwinsLoss`, `SwAVLoss`
-- Self-distillation: `DINOv1Loss`, `DINOv2Loss`, `iBOTPatchLoss`
-- Reconstruction: `MAELoss`
-- Multimodal: `CLIPLoss`
-
-### Backbones (`stable_pretraining/backbone/`)
-
-Thin wrappers around torchvision, timm, and HuggingFace models. Built-ins include `MLP`, `ConvMixer`, `Resnet9`, `MAEDecoder`, `FlexibleTransformer`, and `TeacherStudentWrapper`.
-
-### Loggers (`stable_pretraining/loggers/`)
-
-Integrations for WandB, Trackio, and SwanLab. All loggers receive the same dictionary-structured data as callbacks.
-
-## Testing Conventions
-
-Tests live in `stable_pretraining/tests/`. Mark each test with the appropriate pytest marker (`unit`, `integration`, `gpu`, `slow`, `download`, `ddp`). CI runs only `unit` tests. Coverage is measured against `stable_pretraining/` excluding the tests themselves (see `pytest.ini`).
-
-## Linting
-
-Ruff is the single linter/formatter (Google docstring convention, max line length 88). Pre-commit hooks enforce this plus trailing whitespace, YAML validity, ShellCheck, and Codespell. Examples directory is excluded from Ruff.
