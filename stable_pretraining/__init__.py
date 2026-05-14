@@ -171,6 +171,16 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     # Registry
     "RegistryLogger": ("stable_pretraining.registry", "RegistryLogger"),
     "open_registry": ("stable_pretraining.registry", "open_registry"),
+    # Method classes (most-used; full catalog in stable_pretraining.methods)
+    "BarlowTwins": ("stable_pretraining.methods.barlow_twins", "BarlowTwins"),
+    "BYOL": ("stable_pretraining.methods.byol", "BYOL"),
+    "DINO": ("stable_pretraining.methods.dino", "DINO"),
+    "DINOv2": ("stable_pretraining.methods.dinov2", "DINOv2"),
+    "MAE": ("stable_pretraining.methods.mae", "MAE"),
+    "NNCLR": ("stable_pretraining.methods.nnclr", "NNCLR"),
+    "SimCLR": ("stable_pretraining.methods.simclr", "SimCLR"),
+    "SwAV": ("stable_pretraining.methods.swav", "SwAV"),
+    "VICReg": ("stable_pretraining.methods.vicreg", "VICReg"),
 }
 
 # Sub-packages exposed as attributes of `stable_pretraining`.
@@ -180,6 +190,7 @@ _LAZY_SUBMODULES: set[str] = {
     "data",
     "loggers",
     "losses",
+    "methods",
     "module",
     "optim",
     "registry",
@@ -294,16 +305,27 @@ __all__ = [
     # Sub-packages
     "utils",
     "data",
+    "methods",
     "module",
     "static",
     "optim",
     "losses",
     "callbacks",
     "backbone",
-    # Classes
+    # Core classes
     "Manager",
     "Module",
     "TeacherStudentWrapper",
+    # Method classes (most-used; full catalog: stable_pretraining.methods)
+    "BarlowTwins",
+    "BYOL",
+    "DINO",
+    "DINOv2",
+    "MAE",
+    "NNCLR",
+    "SimCLR",
+    "SwAV",
+    "VICReg",
     "log",
     "log_dict",
     # Loggers
