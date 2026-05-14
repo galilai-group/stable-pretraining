@@ -4,6 +4,22 @@ This module provides pre-defined forward functions for various SSL methods
 that can be used with the Module class. These functions define the training
 logic for each method and can be specified in YAML configs or Python code.
 
+Available forward functions:
+    - ``supervised_forward`` — standard supervised training
+    - ``simclr_forward`` — SimCLR contrastive learning
+    - ``byol_forward`` — BYOL momentum self-distillation
+    - ``vicreg_forward`` — VICReg variance-invariance-covariance regularization
+    - ``barlow_twins_forward`` — Barlow Twins cross-correlation alignment
+    - ``swav_forward`` — SwAV online clustering
+    - ``nnclr_forward`` — NNCLR nearest-neighbor contrastive learning
+    - ``dino_forward`` — DINO self-distillation with multi-crop
+    - ``dinov2_forward`` — DINOv2 with iBOT masked patch prediction
+
+These are the lightweight composable form of each method. For full
+``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
+iBOT, MoCo, SimMIM, VICRegL, etc.), see ``stable_pretraining/methods/``
+and the complete catalog in ``METHODS.md``.
+
 Example:
     Using in a YAML config::
 
@@ -20,6 +36,8 @@ Example:
 
         module = Module(forward=simclr_forward, backbone=backbone, projector=projector)
 """
+
+from typing import Any
 
 import torch
 
@@ -96,7 +114,7 @@ def _get_views_by_prefix(
     return global_views, local_views, all_views
 
 
-def supervised_forward(self, batch, stage):
+def supervised_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for standard supervised training.
 
     This function implements traditional supervised learning with labels,
@@ -145,7 +163,7 @@ def supervised_forward(self, batch, stage):
     return out
 
 
-def simclr_forward(self, batch, stage):
+def simclr_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for SimCLR (Simple Contrastive Learning of Representations).
 
     SimCLR learns representations by maximizing agreement between differently
@@ -206,7 +224,7 @@ def simclr_forward(self, batch, stage):
     return out
 
 
-def byol_forward(self, batch, stage):
+def byol_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for BYOL (Bootstrap Your Own Latent).
 
     BYOL learns representations without negative pairs by using a momentum-based
@@ -307,7 +325,7 @@ def byol_forward(self, batch, stage):
     return out
 
 
-def vicreg_forward(self, batch, stage):
+def vicreg_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for VICReg (Variance-Invariance-Covariance Regularization).
 
     VICReg learns representations using three criteria: variance (maintaining
@@ -369,7 +387,7 @@ def vicreg_forward(self, batch, stage):
     return out
 
 
-def barlow_twins_forward(self, batch, stage):
+def barlow_twins_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for Barlow Twins.
 
     Barlow Twins learns representations by making the cross-correlation matrix
@@ -431,7 +449,7 @@ def barlow_twins_forward(self, batch, stage):
     return out
 
 
-def swav_forward(self, batch, stage):
+def swav_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for SwAV (Swapping Assignments between Views).
 
     SwAV learns representations by predicting the cluster assignment (code) of one
@@ -500,7 +518,7 @@ def _find_nearest_neighbors(query, support_set):
     return support_set[indices]
 
 
-def nnclr_forward(self, batch, stage):
+def nnclr_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for NNCLR (Nearest-Neighbor Contrastive Learning).
 
     NNCLR learns representations by using the nearest neighbor of an augmented
@@ -595,7 +613,7 @@ def nnclr_forward(self, batch, stage):
     return out
 
 
-def dino_forward(self, batch, stage):
+def dino_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for DINO (self-DIstillation with NO labels).
 
     DINO learns representations through self-distillation where a student network
@@ -785,7 +803,7 @@ def dino_forward(self, batch, stage):
     return out
 
 
-def dinov2_forward(self, batch, stage):
+def dinov2_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for DINOv2 with iBOT.
 
     DINOv2 combines two self-supervised losses:

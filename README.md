@@ -463,17 +463,19 @@ spt.set(default_loggers={"registry": False})
 
 `stable-pretraining` ships with ready-to-use forward functions and matching loss functions for popular self-supervised learning methods:
 
-| Method | Forward | Loss | Description |
-|--------|---------|------|-------------|
+| Method | Forward fn | Loss | Description |
+|--------|-----------|------|-------------|
 | Supervised | `forward.supervised_forward` | any | Standard supervised training with labels |
 | SimCLR | `forward.simclr_forward` | `NTXEntLoss` | Contrastive learning with 2 augmented views |
 | BYOL | `forward.byol_forward` | `BYOLLoss` | Momentum-based self-distillation without negatives |
 | VICReg | `forward.vicreg_forward` | `VICRegLoss` | Variance-invariance-covariance regularization |
 | Barlow Twins | `forward.barlow_twins_forward` | `BarlowTwinsLoss` | Cross-correlation matrix alignment to identity |
-| SwAV | `forward.swav_forward` | `sinkhorn_knopp` | Online clustering with Sinkhorn-Knopp normalization |
+| SwAV | `forward.swav_forward` | `SwAVLoss` | Online clustering with Sinkhorn-Knopp normalization |
 | NNCLR | `forward.nnclr_forward` | `NTXEntLoss` | Nearest-neighbor contrastive learning |
 | DINO | `forward.dino_forward` | `DINOv1Loss` | Self-distillation with multi-crop and centering |
-| DINOv2 | `forward.dinov2_forward` | `DINOv2Loss` | DINO + iBOT masked patch prediction |
+| DINOv2 | `forward.dinov2_forward` | `DINOv2Loss`, `iBOTPatchLoss` | DINO + iBOT masked patch prediction |
+
+The table above covers forward functions for use with `spt.Module`. For 30 full `LightningModule` implementations (BEiT, CMAE, Data2Vec, iBOT, iGPT, IJEPA, LeJEPA, MAE, MaskFeat, MIMRefiner, MoCov2, MoCov3, MSN, PIRL, SimMIM, SimSiam, TiCO, VICRegL, WMSE, and more), see [`METHODS.md`](METHODS.md) and `stable_pretraining/methods/`.
 
 ## Backbones
 

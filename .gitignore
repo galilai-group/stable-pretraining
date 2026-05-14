@@ -161,6 +161,7 @@ multirun/
 ./data/
 examples/data/
 wandb/
+DISCOVERABILITY_PLAN.md
 
 *.ckpt
 *.pt
