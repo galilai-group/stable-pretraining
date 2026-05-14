@@ -36,16 +36,20 @@ class LARS(Optimizer):
         The application of momentum in the SGD part is modified according to
         the PyTorch standards. LARS scaling fits into the equation in the
         following fashion.
+
         .. math::
+
             \begin{aligned}
-                g_{t+1} & = \text{lars_lr} * (\beta * p_{t} + g_{t+1}), \\
-                v_{t+1} & = \\mu * v_{t} + g_{t+1}, \\
+                g_{t+1} & = \text{lars\_lr} * (\beta * p_{t} + g_{t+1}), \\
+                v_{t+1} & = \mu * v_{t} + g_{t+1}, \\
                 p_{t+1} & = p_{t} - \text{lr} * v_{t+1},
-            \\end{aligned}
-        where :math:`p`, :math:`g`, :math:`v`, :math:`\\mu` and :math:`\beta` denote the
-        parameters, gradient, velocity, momentum, and weight decay respectively.
-        The :math:`lars_lr` is defined by Eq. 6 in the paper.
-        The Nesterov version is analogously modified.
+            \end{aligned}
+
+        where :math:`p`, :math:`g`, :math:`v`, :math:`\mu` and
+        :math:`\beta` denote the parameters, gradient, velocity, momentum,
+        and weight decay respectively. The :math:`\text{lars\_lr}` is
+        defined by Eq. 6 in the paper. The Nesterov version is
+        analogously modified.
 
     .. warning::
         Parameters with weight decay set to 0 will automatically be excluded from

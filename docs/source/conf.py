@@ -51,16 +51,45 @@ autosummary_generate = True
 napoleon_google_docstring = True
 napoleon_numpy_docstring = True
 
+# myst-parser: register markdown headings (level 1-3) as cross-ref targets so
+# in-document anchor links like ``[Foo](#foo)`` resolve. Without this, MyST
+# emits ``myst.xref_missing`` warnings even though the rendered HTML *does*
+# contain the auto-generated id.
+myst_heading_anchors = 3
+
 copybutton_exclude = ".linenos, .gp"
 
 intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
     "python": ("https://docs.python.org/3/", None),
+    "lightning": ("https://lightning.ai/docs/pytorch/stable/", None),
+    "omegaconf": ("https://omegaconf.readthedocs.io/en/latest/", None),
 }
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+# Exclude the auto-generated ``sphinx-apidoc`` output that the CI step
+# ``sphinx-apidoc -o docs/source stable_pretraining/`` drops at the source
+# root. The hand-written ``api/*.rst`` already covers every module, and
+# parsing both sets produces dozens of "duplicate object description"
+# warnings (each symbol gets indexed twice).
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "stable_pretraining*.rst",
+    "modules.rst",
+]
+
+# References that we don't want to chase. Lightning + omegaconf intersphinx
+# resolves most class names; the remainder are plain English nouns that
+# napoleon mistakenly treats as type names ("optional", "callable",
+# "Dictionary containing ..."), or built-ins it can't link.
+nitpick_ignore_regex = [
+    (r"py:.*", r"^optional$"),
+    (r"py:.*", r"^callable$"),
+    (r"py:.*", r"^Dictionary containing.*"),
+]
 
 sphinx_gallery_conf = {
     "examples_dirs": ["../../examples/"],
@@ -104,21 +133,13 @@ html_theme = "sphinx_book_theme"
 html_static_path = []
 # html_favicon =
 # html_logo =
+# Options accepted by sphinx_book_theme. The earlier list also held a
+# bunch of sphinx_rtd_theme options (analytics_anonymize_ip, logo_only,
+# prev_next_buttons_location, …) which the book theme silently rejected
+# with a warning per option — removed.
 html_theme_options = {
-    # "analytics_id": "",  # Provided by Google in your dashboard G-
-    "analytics_anonymize_ip": False,
-    "logo_only": True,
-    "display_version": True,
-    "prev_next_buttons_location": "bottom",
-    "style_external_links": False,
-    "vcs_pageview_mode": "",
-    "style_nav_header_background": "white",
-    # Toc options
     "collapse_navigation": True,
-    "sticky_navigation": True,
     "navigation_depth": 4,
-    "includehidden": True,
-    "titles_only": False,
 }
 
 # Separator substitution : Writing |sep| in the rst file will display a horizontal line.

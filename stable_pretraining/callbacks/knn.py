@@ -7,11 +7,10 @@ from lightning.pytorch import Callback, LightningModule, Trainer
 from loguru import logger as logging
 from torch import Tensor
 
-from ..utils import get_data_from_batch_or_outputs
 from ..utils.distance_metrics import compute_pairwise_distances_chunked
 
 from .queue import find_or_create_queue_callback
-from .utils import format_metrics_as_dict, log_header
+from .utils import format_metrics_as_dict, get_data_from_batch_or_outputs, log_header
 
 
 class OnlineKNN(Callback):

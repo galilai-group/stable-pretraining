@@ -17,55 +17,96 @@ from stable_pretraining.callbacks.registry import log as _spt_log
 from stable_pretraining.callbacks.utils import log_header
 
 
+class _NamedForward:
+    """Adapter giving a callable ``__name__`` so spawn-mode workers can pickle it."""
+
+    __name__ = "forward"
+
+    def __init__(self, fn):
+        self._fn = fn
+
+    def __call__(self, *args, **kwargs):
+        return self._fn(*args, **kwargs)
+
+
+def _ensure_named_callable(fn):
+    return fn if hasattr(fn, "__name__") else _NamedForward(fn)
+
+
 @catch_errors_class()
 class Module(pl.LightningModule):
     """PyTorch Lightning module using manual optimization with multi-optimizer support.
 
-    Core usage
-    - Provide a custom `forward(self, batch, stage)` via the `forward` argument at init.
-    - During training, `forward` must return a dict with `state["loss"]` (a single joint loss).
-      When multiple optimizers are configured, this joint loss is used for all optimizers.
+    **Core usage**
 
-    Optimizer configuration (`self.optim`)
-    - Single optimizer:
-      {"optimizer": str|dict|partial|Class, "scheduler": <see below>, "interval": "step"|"epoch", "frequency": int}
-      - Optimizer accepted forms:
-        * string name (e.g., "AdamW", "SGD") from torch.optim
-        * dict: {"type": "AdamW", "lr": 1e-3, ...}
-        * functools.partial: partial(torch.optim.AdamW, lr=1e-3)
-        * optimizer class: torch.optim.AdamW
-    - Multiple optimizers:
-      {
-        name: {
-          "modules": "regex",                # assign params by module-name pattern (children inherit)
-          "optimizer": str|dict|partial|Class, # optimizer factory (same accepted forms as above)
-          "scheduler": str|dict|partial|Class, # flexible scheduler config (see below)
-          "interval": "step"|"epoch",       # scheduler interval
-          "frequency": int,                   # optimizer step frequency
-          "monitor": str                      # (optional) for ReduceLROnPlateau; alternatively set inside scheduler dict
-        }, ...
-      }
+    - Provide a custom ``forward(self, batch, stage)`` via the ``forward``
+      argument at init.
+    - During training, ``forward`` must return a dict with ``state["loss"]``
+      (a single joint loss). When multiple optimizers are configured, this
+      joint loss is used for all optimizers.
 
-    Parameter assignment (multi-optimizer)
-    - Modules are matched by regex on their qualified name. Children inherit the parent's assignment
-      unless they match a more specific pattern. Only direct parameters of each module are collected
-      to avoid duplication.
+    **Optimizer configuration** (``self.optim``)
 
-    Schedulers (flexible)
-    - Accepted forms: string name (e.g., "CosineAnnealingLR", "StepLR"), dict with {"type": "...", ...},
-      functools.partial, or a scheduler class. Smart defaults are applied when params are omitted for
-      common schedulers (CosineAnnealingLR, OneCycleLR, StepLR, ExponentialLR, ReduceLROnPlateau,
-      LinearLR, ConstantLR). For ReduceLROnPlateau, a `monitor` key is added (default: "val_loss").
-      You may specify `monitor` either alongside the optimizer config (top level) or inside the
-      scheduler dict itself.
-    - The resulting Lightning scheduler dict includes `interval` and `frequency` (or `scheduler_frequency`).
+    - Single optimizer::
 
-    Training loop behavior
-    - Manual optimization (`automatic_optimization = False`).
-    - Gradient accumulation: scales loss by 1/N where N = Trainer.accumulate_grad_batches and steps on the boundary.
-    - Per-optimizer step frequency: each optimizer steps only when its frequency boundary is met (in addition to accumulation boundary).
-    - Gradient clipping: uses Trainer's `gradient_clip_val` and `gradient_clip_algorithm` before each step.
-    - Returns the `state` dict from `forward` unchanged for logging/inspection.
+        {"optimizer": str|dict|partial|Class,
+         "scheduler": <see below>,
+         "interval": "step"|"epoch",
+         "frequency": int}
+
+      Optimizer accepted forms:
+
+      * string name (e.g., ``"AdamW"``, ``"SGD"``) from ``torch.optim``
+      * dict: ``{"type": "AdamW", "lr": 1e-3, ...}``
+      * ``functools.partial``: ``partial(torch.optim.AdamW, lr=1e-3)``
+      * optimizer class: ``torch.optim.AdamW``
+
+    - Multiple optimizers::
+
+        {
+          name: {
+            "modules": "regex",                  # assign params by module-name pattern (children inherit)
+            "optimizer": str|dict|partial|Class, # optimizer factory (same accepted forms as above)
+            "scheduler": str|dict|partial|Class, # flexible scheduler config (see below)
+            "interval": "step"|"epoch",          # scheduler interval
+            "frequency": int,                    # optimizer step frequency
+            "monitor": str                       # (optional) for ReduceLROnPlateau
+          }, ...
+        }
+
+    **Parameter assignment** (multi-optimizer)
+
+    - Modules are matched by regex on their qualified name. Children
+      inherit the parent's assignment unless they match a more specific
+      pattern. Only direct parameters of each module are collected to
+      avoid duplication.
+
+    **Schedulers** (flexible)
+
+    - Accepted forms: string name (e.g., ``"CosineAnnealingLR"``,
+      ``"StepLR"``), dict with ``{"type": "...", ...}``,
+      ``functools.partial``, or a scheduler class. Smart defaults are
+      applied when params are omitted for common schedulers
+      (``CosineAnnealingLR``, ``OneCycleLR``, ``StepLR``,
+      ``ExponentialLR``, ``ReduceLROnPlateau``, ``LinearLR``,
+      ``ConstantLR``). For ``ReduceLROnPlateau``, a ``monitor`` key is
+      added (default: ``"val_loss"``). You may specify ``monitor`` either
+      alongside the optimizer config (top level) or inside the scheduler
+      dict itself.
+    - The resulting Lightning scheduler dict includes ``interval`` and
+      ``frequency`` (or ``scheduler_frequency``).
+
+    **Training loop behavior**
+
+    - Manual optimization (``automatic_optimization = False``).
+    - Gradient accumulation: scales loss by ``1/N`` where
+      ``N = Trainer.accumulate_grad_batches`` and steps on the boundary.
+    - Per-optimizer step frequency: each optimizer steps only when its
+      frequency boundary is met (in addition to accumulation boundary).
+    - Gradient clipping: uses Trainer's ``gradient_clip_val`` and
+      ``gradient_clip_algorithm`` before each step.
+    - Returns the ``state`` dict from ``forward`` unchanged for
+      logging/inspection.
     """
 
     _warned_named_parameters = False
@@ -111,7 +152,9 @@ class Module(pl.LightningModule):
             logging.warning(msg)
             raise ValueError(msg)
         else:
-            setattr(self, "forward", types.MethodType(forward, self))
+            setattr(
+                self, "forward", types.MethodType(_ensure_named_callable(forward), self)
+            )
 
         for key, value in kwargs.items():
             logging.info(f"  Setting attribute: self.{key} = {type(value)}")

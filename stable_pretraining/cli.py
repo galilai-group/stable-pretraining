@@ -117,7 +117,7 @@ def dump_csv_logs(
     ),
 ):
     """Compress CSV logs to the smallest possible format with aggregation."""
-    from stable_pretraining.utils.read_csv_logger import (
+    from stable_pretraining.loggers.csv_log_reader import (
         save_best_compressed,
         CSVLogAutoSummarizer,
     )
@@ -196,6 +196,83 @@ def dump_csv_logs(
         raise typer.Exit(code=1)
     except Exception as e:
         typer.echo(f"Error during processing: {e}", err=True)
+        raise typer.Exit(code=1)
+
+
+# ========== WEB VIEWER COMMAND ==========
+
+
+def _resolve_cache_dir_only(cache: Optional[str]) -> Optional[Path]:
+    """Resolve the spt cache_dir.
+
+    Preference: explicit flag > ``SPT_CACHE_DIR`` env var >
+    ``spt.set(cache_dir=...)`` global config. Returns ``None`` if nothing
+    is configured (no error — caller decides).
+    """
+    import os as _os
+
+    if cache is not None:
+        return Path(cache).expanduser().resolve()
+    env = _os.environ.get("SPT_CACHE_DIR")
+    if env:
+        return Path(env).expanduser().resolve()
+    try:
+        from stable_pretraining._config import get_config
+
+        cd = get_config().cache_dir
+        if cd:
+            return Path(cd).expanduser().resolve()
+    except Exception:
+        pass
+    return None
+
+
+@app.command(name="web")
+def web(
+    directory: Optional[str] = typer.Argument(
+        None,
+        help="Directory to scan. Defaults to the spt cache_dir/runs if unset.",
+    ),
+    host: str = typer.Option("127.0.0.1", "--host"),
+    port: int = typer.Option(4242, "--port"),
+    poll: float = typer.Option(
+        1.0, "--poll", help="Seconds between mtime polls (NFS-safe; no inotify)"
+    ),
+    cache: Optional[str] = typer.Option(
+        None, "--cache-dir", help="Override cache_dir root"
+    ),
+):
+    """Launch a local wandb-like web viewer over RegistryLogger runs.
+
+    Without a DIRECTORY argument, scans ``{cache_dir}/runs`` where
+    ``cache_dir`` is resolved from ``--cache-dir`` > ``SPT_CACHE_DIR`` env
+    var > ``spt.set(cache_dir=...)`` global config.
+    """
+    from stable_pretraining.web import serve
+
+    if directory is not None:
+        dir_path = Path(directory).expanduser().resolve()
+    else:
+        cd = _resolve_cache_dir_only(cache)
+        if cd is None:
+            typer.echo(
+                "Error: no DIRECTORY given and no cache_dir configured. "
+                "Pass a path, --cache-dir, or set SPT_CACHE_DIR.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        runs = cd / "runs"
+        dir_path = runs if runs.is_dir() else cd
+        typer.echo(f"[spt web] no path given; using cache_dir → {dir_path}")
+
+    if not dir_path.is_dir():
+        typer.echo(f"Error: '{dir_path}' is not a directory", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        serve(dir_path, host=host, port=port, poll_interval=poll)
+    except OSError as e:
+        typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=1)
 
 

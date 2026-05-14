@@ -1,5 +1,5 @@
 stable_pretraining.data
-=================
+=======================
 .. module:: stable_pretraining.data
 .. currentmodule:: stable_pretraining.data
 
@@ -69,7 +69,7 @@ Samplers
    RandomBatchSampler
 
 Utility Functions
-----------------
+-----------------
 
 .. autosummary::
    :toctree: gen_modules/

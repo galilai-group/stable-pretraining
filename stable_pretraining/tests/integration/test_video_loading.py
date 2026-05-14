@@ -101,7 +101,7 @@ class TestVideoLoadingIntegration:
         loader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
 
         # Create video encoder with ResNet18
-        embedding = stable_pretraining.utils.ImageToVideoEncoder(
+        embedding = stable_pretraining.backbone.ImageToVideoEncoder(
             torchvision.models.resnet18()
         )
 
@@ -182,7 +182,7 @@ class TestVideoLoadingIntegration:
         )  # [batch, frames, channels, height, width]
 
         for backbone in backbones:
-            encoder = stable_pretraining.utils.ImageToVideoEncoder(backbone)
+            encoder = stable_pretraining.backbone.ImageToVideoEncoder(backbone)
 
             # Extract features
             with torch.no_grad():

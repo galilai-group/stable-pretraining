@@ -148,10 +148,13 @@ def test_spt_hf_fidelity_flow(tmp_path):
         logger=False,
     )
 
-    # Inject/Redirect Callback
+    # Inject/Redirect Callback. The default is now per_step=False (writes
+    # to ``last/`` and overwrites). This test asserts against a per-step
+    # path (``step_{N}/hf_backbone``), so opt it back into per-step mode.
     for cb in trainer.callbacks:
         if "HuggingFaceCheckpointCallback" in cb.__class__.__name__:
             cb.save_dir = hf_save_dir
+            cb.per_step = True
 
     # DataLoader with dict-based batches
     dl = torch.utils.data.DataLoader(
@@ -200,6 +203,221 @@ def test_spt_hf_fidelity_flow(tmp_path):
         "The reloaded model prediction differs from the trained state!"
     )
     logger.success("SPT-Native Fidelity and Zero-Knowledge Load Verified.")
+
+
+# =============================================================================
+# 5. Behavior tests: per_step default, folder creation, error robustness
+# =============================================================================
+
+
+def _make_simple_lightning_module():
+    """Minimal LightningModule wrapping a single HF submodule for unit tests."""
+
+    class M(pl.LightningModule):
+        def __init__(self):
+            super().__init__()
+            self.hf = SimpleHFModel(SimpleHFConfig(dim=8))
+
+        def forward(self, x):
+            return self.hf(x)
+
+        def training_step(self, batch, batch_idx):
+            x, _ = batch
+            out = self(x)
+            return torch.nn.functional.mse_loss(out, torch.zeros_like(out))
+
+        def configure_optimizers(self):
+            return torch.optim.SGD(self.parameters(), lr=1e-3)
+
+    return M()
+
+
+def _trivial_loader():
+    x = torch.randn(2, 8)
+    y = torch.zeros(2)
+    return torch.utils.data.DataLoader(
+        torch.utils.data.TensorDataset(x, y), batch_size=1
+    )
+
+
+@pytest.mark.unit
+def test_hf_callback_default_uses_last_subdir(tmp_path):
+    """Default (per_step=False) overwrites a single 'last/' subdir.
+
+    It must not accumulate per-step folders.
+    """
+    from stable_pretraining.callbacks.hf_models import HuggingFaceCheckpointCallback
+
+    save_dir = tmp_path / "hf"
+    cb = HuggingFaceCheckpointCallback(save_dir=str(save_dir))
+    assert cb.per_step is False, "default must be per_step=False"
+
+    model = _make_simple_lightning_module()
+    trainer = pl.Trainer(
+        default_root_dir=str(tmp_path),
+        accelerator="cpu",
+        devices=1,
+        max_steps=2,
+        max_epochs=1,
+        num_sanity_val_steps=0,
+        limit_val_batches=0,
+        enable_checkpointing=True,
+        logger=False,
+        callbacks=[cb],
+    )
+    trainer.fit(model, _trivial_loader())
+    trainer.save_checkpoint(tmp_path / "manual1.ckpt")
+    trainer.save_checkpoint(tmp_path / "manual2.ckpt")
+
+    # Only "last" should exist; no step_N subdirs
+    assert (save_dir / "last").exists(), "default save_dir/last must be created"
+    step_dirs = [p.name for p in save_dir.iterdir() if p.name.startswith("step_")]
+    assert step_dirs == [], (
+        f"per_step=False must NOT create step_N subdirs, got {step_dirs}"
+    )
+    assert (save_dir / "last" / "hf").exists(), "submodule subdir under last/ missing"
+
+
+@pytest.mark.unit
+def test_hf_callback_per_step_keeps_step_subdirs(tmp_path):
+    """per_step=True keeps each step's snapshot in its own folder."""
+    from stable_pretraining.callbacks.hf_models import HuggingFaceCheckpointCallback
+
+    save_dir = tmp_path / "hf"
+    cb = HuggingFaceCheckpointCallback(save_dir=str(save_dir), per_step=True)
+    assert cb.per_step is True
+
+    model = _make_simple_lightning_module()
+    trainer = pl.Trainer(
+        default_root_dir=str(tmp_path),
+        accelerator="cpu",
+        devices=1,
+        max_steps=2,
+        max_epochs=1,
+        num_sanity_val_steps=0,
+        limit_val_batches=0,
+        enable_checkpointing=True,
+        logger=False,
+        callbacks=[cb],
+    )
+    trainer.fit(model, _trivial_loader())
+    trainer.save_checkpoint(tmp_path / "manual1.ckpt")
+    trainer.save_checkpoint(tmp_path / "manual2.ckpt")
+
+    step_dirs = sorted(p.name for p in save_dir.iterdir() if p.name.startswith("step_"))
+    assert len(step_dirs) >= 1, (
+        f"per_step=True must create step_N subdirs, got {step_dirs}"
+    )
+    # Should NOT create "last" when per_step=True
+    assert not (save_dir / "last").exists(), "per_step=True should not write 'last/'"
+
+
+@pytest.mark.unit
+def test_hf_callback_creates_missing_save_dir(tmp_path):
+    """The callback must create a missing save_dir on first export.
+
+    Even when ``save_dir`` is a deeply-nested path that doesn't yet exist,
+    the callback should ``mkdir -p`` it rather than crash.
+    """
+    from stable_pretraining.callbacks.hf_models import HuggingFaceCheckpointCallback
+
+    # Three nested levels of nonexistent dirs
+    save_dir = tmp_path / "does" / "not" / "exist" / "yet" / "hf"
+    assert not save_dir.exists()
+
+    cb = HuggingFaceCheckpointCallback(save_dir=str(save_dir))
+    model = _make_simple_lightning_module()
+    trainer = pl.Trainer(
+        default_root_dir=str(tmp_path),
+        accelerator="cpu",
+        devices=1,
+        max_steps=1,
+        max_epochs=1,
+        num_sanity_val_steps=0,
+        limit_val_batches=0,
+        enable_checkpointing=True,
+        logger=False,
+        callbacks=[cb],
+    )
+    trainer.fit(model, _trivial_loader())
+    trainer.save_checkpoint(tmp_path / "manual.ckpt")
+
+    assert save_dir.exists(), "callback must create deeply-nested missing save_dir"
+    assert (save_dir / "last" / "hf").exists()
+
+
+@pytest.mark.unit
+def test_hf_callback_default_swallows_errors(tmp_path):
+    """Default raise_on_error=False keeps training alive on export errors.
+
+    An export failure is logged but does NOT propagate, so training
+    continues. Enforces the 'callbacks must not kill training' contract.
+    """
+    from stable_pretraining.callbacks.hf_models import HuggingFaceCheckpointCallback
+
+    cb = HuggingFaceCheckpointCallback(save_dir=str(tmp_path / "hf"))
+    assert cb.raise_on_error is False
+
+    # Force a guaranteed failure: monkey-patch _do_export to always raise.
+    def _boom(*a, **kw):
+        raise FileNotFoundError("simulated missing dir during export")
+
+    cb._do_export = _boom
+
+    model = _make_simple_lightning_module()
+    trainer = pl.Trainer(
+        default_root_dir=str(tmp_path),
+        accelerator="cpu",
+        devices=1,
+        max_steps=2,
+        max_epochs=1,
+        num_sanity_val_steps=0,
+        limit_val_batches=0,
+        enable_checkpointing=True,
+        logger=False,
+        callbacks=[cb],
+    )
+    # Should NOT raise — error is logged and swallowed.
+    trainer.fit(model, _trivial_loader())
+    trainer.save_checkpoint(tmp_path / "manual.ckpt")
+    # Confirm we actually reached the end of training
+    assert trainer.current_epoch >= 0
+
+
+@pytest.mark.unit
+def test_hf_callback_raise_on_error_propagates(tmp_path):
+    """raise_on_error=True restores the legacy fail-fast behavior.
+
+    Failures kill training. Useful for unit tests that need to assert
+    export correctness.
+    """
+    from stable_pretraining.callbacks.hf_models import HuggingFaceCheckpointCallback
+
+    cb = HuggingFaceCheckpointCallback(
+        save_dir=str(tmp_path / "hf"), raise_on_error=True
+    )
+
+    def _boom(*a, **kw):
+        raise FileNotFoundError("simulated missing dir during export")
+
+    cb._do_export = _boom
+
+    model = _make_simple_lightning_module()
+    trainer = pl.Trainer(
+        default_root_dir=str(tmp_path),
+        accelerator="cpu",
+        devices=1,
+        max_steps=1,
+        max_epochs=1,
+        num_sanity_val_steps=0,
+        limit_val_batches=0,
+        enable_checkpointing=True,
+        logger=False,
+        callbacks=[cb],
+    )
+    with pytest.raises(FileNotFoundError):
+        trainer.fit(model, _trivial_loader())
+        trainer.save_checkpoint(tmp_path / "manual.ckpt")
 
 
 if __name__ == "__main__":

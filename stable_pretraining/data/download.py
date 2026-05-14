@@ -34,12 +34,17 @@ def bulk_download(
 ):
     """Download multiple files concurrently.
 
-    Example:
+    Example::
+
         import stable_pretraining
-        stable_pretraining.data.bulk_download([
-            "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",
-            "https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz",
-        ], "todelete")
+
+        stable_pretraining.data.bulk_download(
+            [
+                "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",
+                "https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz",
+            ],
+            "todelete",
+        )
 
     Args:
         urls (Iterable[str]): List of URLs to download

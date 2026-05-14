@@ -31,8 +31,6 @@ cd stable-pretraining
 pip install -e .
 ```
 
-For advanced installation options, see [Installation](#installation) below.
-
 ## Core Structure
 
 `stable-pretraining` simplifies complex ML workflows into 4 intuitive components:
@@ -164,7 +162,7 @@ Monitor and evaluate your models in real-time during training. Callbacks are key
 
 Callbacks that need rolling feature stores (`OnlineKNN`, `RankMe`, `LiDAR`, `LatentViz`) share memory through an automatic queue management system. If two callbacks monitor the same key with different queue lengths, a single queue is allocated at the maximum length and shared, eliminating redundant computation.
 
-**Why callbacks matter:** Get real-time feedback on representation quality, catch issues like collapse early, and track multiple metrics simultaneously. For detailed usage and practical considerations, see the [Callback guide](stable_pretraining/callbacks/README.md).
+**Why callbacks matter:** Get real-time feedback on representation quality, catch issues like collapse early, and track multiple metrics simultaneously. For detailed usage and practical considerations, see the [Callback guide](https://github.com/rbalestr-lab/stable-pretraining/blob/main/stable_pretraining/callbacks/README.md).
 
 **Example:**
 ```python
@@ -237,11 +235,12 @@ print(spt.get_config())
 | `log_rank` | `int` or `"all"` | `0` | Which distributed rank(s) may produce log output. |
 | `default_callbacks` | `dict` | all enabled | Toggle individual default callbacks: `"progress_bar"`, `"registry"`, `"logging"`, `"env_dump"`, `"trainer_info"`, `"sklearn_checkpoint"`, `"wandb_checkpoint"`, `"module_summary"`, `"slurm_info"`, `"unused_params"`, `"hf_checkpoint"`. |
 | `default_loggers` | `dict` | all enabled | Toggle default loggers: `"registry"` (SQLite run registry + per-step CSV logger, added as a pair). |
-| `cache_dir` | `str` or `None` | `None` (or `SPT_CACHE_DIR` env var) | Root directory for all training outputs. See [Output Directory](#output-directory-cache_dir) below. |
+| `cache_dir` | `str` or `None` | `None` (or `SPT_CACHE_DIR` env var) | Root directory for all training outputs. See [Output Directory](#output-directory-cache-dir) below. |
 | `requeue_checkpoint` | `bool` | `True` | Auto-add a `last.ckpt` checkpoint every epoch for SLURM requeue. Set to `False` to save time/disk when preemption is not a concern. Only applies when `cache_dir` is set. |
 
 Settings apply immediately and persist for the process lifetime. `spt.set()` can be called multiple times; only the settings you pass are updated.
 
+(output-directory-cache-dir)=
 ## Output Directory (`cache_dir`)
 
 By default, Lightning and Hydra scatter training outputs (checkpoints, logs, wandb data) based on the current working directory or Hydra's `run.dir`. This causes collisions when multiple sweep jobs start at the same time and resolve to the same path.
@@ -743,19 +742,6 @@ The library is not yet available on PyPI. You can install it from the source cod
     <details>
     <summary>Click to expand setup instructions</summary>
 
-    **Install Computer Modern fonts:**
-    ```bash
-    mkdir -p ~/.local/share/fonts
-    cp assets/cm-unicode-0.7.0\ 2/*.ttf ~/.local/share/fonts/
-    fc-cache -f -v
-    # verify: fc-list | grep cmu
-    ```
-
-    **Clear matplotlib font cache:**
-    ```bash
-    python -c "import shutil, matplotlib; shutil.rmtree(matplotlib.get_cachedir())"
-    ```
-
     **Install TeX Live (minimal, no sudo):**
     ```bash
     cd /tmp
@@ -763,7 +749,6 @@ The library is not yet available on PyPI. You can install it from the source cod
     tar xzf install-tl-unx.tar.gz
     cd install-tl-*/
     ./install-tl --texdir ~/texlive --no-interaction --scheme=scheme-basic
-    ~/texlive/bin/x86_64-linux/tlmgr install type1cm cm-super dvipng collection-fontsrecommended amsmath amssymb bm underscore xcolor
     ```
 
     Add to your `~/.bashrc` (or equivalent):
@@ -771,17 +756,43 @@ The library is not yet available on PyPI. You can install it from the source cod
     export PATH="$HOME/texlive/bin/x86_64-linux:$PATH"
     ```
 
-    **Verify:**
+    **Install required LaTeX packages.** Pin a known-good CTAN mirror first (the default redirector occasionally serves corrupt files or unreachable hosts), then install one package per line so any failure is visible:
     ```bash
-    python -c "
+    tlmgr option repository https://ctan.math.illinois.edu/systems/texlive/tlnet
+    for pkg in type1cm cm-super dvipng collection-fontsrecommended \
+               amsmath amsfonts tools underscore xcolor iftex epstopdf-pkg; do
+      tlmgr install "$pkg" || echo "FAILED: $pkg"
+    done
+    ```
+
+    Notes on the package list:
+    - `amsfonts` provides `amssymb.sty`; `tools` provides `bm.sty`; `iftex` provides `ifvtex.sty`. Naming these as `amssymb`/`bm`/`ifvtex` directly will fail with "package not present in repository".
+    - If `tlmgr` reports checksum mismatches, switch to a different mirror (e.g. `https://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/tlnet`) and rerun.
+
+    **Computer Modern TTF fonts (only if you also use `usetex=False`):** with `usetex=True`, all matplotlib text is rendered by LaTeX using TeX Live's bundled fonts and this step is unnecessary. Install the TTFs only if you want CMU for matplotlib's own text rendering (no LaTeX roundtrip):
+    ```bash
+    mkdir -p ~/.local/share/fonts
+    cp assets/cm-unicode-0.7.0\ 2/*.ttf ~/.local/share/fonts/
+    fc-cache -f -v   # requires fontconfig; skip if unavailable
+    # verify: fc-list | grep cmu
+    ```
+
+    **Clear matplotlib font cache** (after either step above):
+    ```bash
+    python -c "import shutil, matplotlib; shutil.rmtree(matplotlib.get_cachedir(), ignore_errors=True)"
+    ```
+
+    **Verify** (heredoc with single-quoted `'PY'` so the shell does not touch `$`):
+    ```bash
+    python - <<'PY'
     import matplotlib; matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
-    plt.figure(); plt.title(r'\$\sum_{i=1}^n x_i\$')
+    plt.figure(); plt.title(r'$\sum_{i=1}^n x_i$')
     plt.savefig('/tmp/tex_test.png')
     print('Success!')
-    "
+    PY
     ```
 
     </details>
@@ -812,3 +823,53 @@ Core contributors (in order of joining the project):
 - [Hugues Van Assel](https://github.com/huguesva)
 - [Sami BuGhanem](https://github.com/sami-bg)
 - [Lucas Maes](https://github.com/lucas-maes)
+
+
+## Benchmarks — Imagenette ViT-S/16, 200 epochs
+
+> **Caveat.** These are **out-of-the-box** results on Imagenette
+> (10-class subset of ImageNet, 224×224) at 200 epochs with ViT-S/16,
+> using each method's **paper-default ImageNet-1k hyperparameters**
+> scaled to the batch size used here. **No per-method hyperparameter
+> tuning was performed.** Several methods (e.g. MIM-family at short
+> schedules, whitening methods at small batch) are known to need
+> longer training or larger batches to reach their headline accuracy.
+> Treat the table as a sanity-check sweep over the 27 method classes,
+> not a SOTA comparison.
+
+Online linear probe and 20-NN probe top-1 accuracy on Imagenette,
+single A100, no W&B. Full details, hyperparameters per method, and
+reproduction commands:
+[`benchmarks/imagenet10/RESULTS.md`](benchmarks/imagenet10/RESULTS.md).
+
+| Method | Family | KNN top-1 | Linear top-1 |
+|---|---|---:|---:|
+| SwAV          | multi-crop clustering          | 86.4% | **89.7%** |
+| LeJEPA        | multi-view + sliced Epps-Pulley | 85.4% | 87.1% |
+| DINO          | self-distill + multi-crop      | 83.8% | 86.1% |
+| MoCo v3       | contrastive + EMA              | 82.6% | 84.7% |
+| MAE           | masked-image modeling          | 72.1% | 84.1% |
+| Barlow Twins  | decorrelation                  | 81.2% | 83.0% |
+| NNCLR         | contrastive + queue            | 75.6% | 80.2% |
+| VICReg        | variance / invariance / cov.   | 75.0% | 79.4% |
+| SimCLR        | NT-Xent contrastive            | 73.3% | 74.9% |
+| VICRegL       | VICReg + local matching        | 67.2% | 72.7% |
+| CMAE          | MAE + contrastive              | 61.9% | 72.2% |
+| MoCo v2       | momentum + queue               | 70.0% | 70.8% |
+| BYOL          | EMA target + predictor         | 56.0% | 63.9% |
+| SimSiam       | siamese + stop-grad            | 54.9% | 62.8% |
+| iBOT          | DINO + masked-patch loss       | 43.3% | 57.9% |
+| MSN           | masked-siamese                 | 50.6% | 57.6% |
+| DINOv3 *      | DINOv2 + registers + KoLeo     | 39.2% | 48.9% |
+| DINOv2 *      | DINO + iBOT + Sinkhorn         | 31.5% | 42.1% |
+| TiCO          | EMA-cov contrast (LARS)        | 23.7% | 33.7% |
+| IJEPA         | predictive (joint embedding)   | 33.2% | 34.0% |
+| Data2Vec      | EMA contextual features        | 31.0% | 26.3% |
+| MaskFeat      | masked HOG features            | 27.8% | 25.6% |
+| SimMIM        | masked pixel modeling          | 30.9% | 22.5% |
+| W-MSE         | whitening + MSE                | 16.9% | 15.9% |
+| PIRL          | jigsaw + memory bank           | 17.4% | 15.6% |
+| BEiT (placeholder tokenizer) | discrete-token masking | 22.0% | 15.3% |
+| iGPT (AIM-style) | autoregressive              | 18.8% | 12.8% |
+
+\* = run still climbing at time of writing.

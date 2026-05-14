@@ -149,6 +149,12 @@ cython_debug/
 # Docs
 docs/source/auto_examples/
 docs/source/gen_modules/
+# Sphinx autosummary writes per-symbol stubs here; CI regenerates them.
+docs/source/api/gen_modules/
+# Output of ``sphinx-apidoc -o docs/source stable_pretraining/`` (CI step):
+# regenerated on every doc build, should not be tracked.
+docs/source/stable_pretraining*.rst
+docs/source/modules.rst
 
 outputs/
 multirun/
@@ -167,4 +173,5 @@ wandb/
 *.err
 *.out
 
-._version.py
+# setuptools-scm writes this on install; never track.
+stable_pretraining/_version.py

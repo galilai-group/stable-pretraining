@@ -36,8 +36,14 @@ dependencies = [
     "scikit-learn>=1.7.0",
     "richuru",
     "opt-einsum",
-    "lance",
-    "opencv-python",
+    # ``pylance`` is the official Lance package on PyPI; it ships the
+    # ``lance.*`` Python namespace. The unrelated package literally named
+    # "lance" on PyPI is a different project — do not depend on it.
+    "pylance",
+    # ``opencv-python-headless`` is the standard wheel for non-display
+    # systems (ML / HPC). Same Python API as ``opencv-python`` but doesn't
+    # require system-level libGL/X11 libraries.
+    "opencv-python-headless",
 ]
 
 dynamic = ["version"]

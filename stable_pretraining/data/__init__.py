@@ -22,7 +22,16 @@ from .synthetic_data import (
     swiss_roll,
 )
 from .utils import fold_views, random_split
-from .video import LanceVideoSegments, build_lance_video_dataset
+
+# Video (Lance-backed) — guard against environments where the cv2 native lib
+# can't load (e.g. missing libGL on a headless server with the GUI wheel
+# installed). The library still works for everything else.
+try:
+    from .video import LanceVideoSegments, build_lance_video_dataset  # noqa: F401
+
+    _VIDEO_AVAILABLE = True
+except ImportError:
+    _VIDEO_AVAILABLE = False
 
 # Backward compatibility
 static = dataset_stats
@@ -68,7 +77,7 @@ __all__ = [
     # Legacy compatibility
     "noise",
     "manifold",
-    # Video (Lance-backed random-access segment dataset)
-    "LanceVideoSegments",
-    "build_lance_video_dataset",
 ]
+
+if _VIDEO_AVAILABLE:
+    __all__.extend(["LanceVideoSegments", "build_lance_video_dataset"])

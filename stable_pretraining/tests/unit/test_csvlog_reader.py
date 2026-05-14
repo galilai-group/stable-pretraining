@@ -1,7 +1,7 @@
 import pandas as pd
 import yaml
 from unittest.mock import patch
-from stable_pretraining.utils import CSVLogAutoSummarizer
+from stable_pretraining.loggers import CSVLogAutoSummarizer
 import pytest
 
 

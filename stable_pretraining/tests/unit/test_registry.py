@@ -268,6 +268,117 @@ class TestBufferFlush:
         assert len(w) == 1
         assert "dropped" in str(w[0].message)
 
+
+@pytest.mark.unit
+class TestInStepInBatchEnd:
+    """Regression: ``_IN_STEP`` must stay True through ``on_train_batch_end``.
+
+    Other callbacks (e.g. TeacherStudentCallback) that log inside that hook
+    must get inline-logged with the current ``trainer.global_step`` instead
+    of being buffered and replayed at the next batch's step. This guards
+    against the EMA-coefficient step-stamp drift seen in the OceanCurrent
+    v2 sweeps.
+    """
+
+    def test_in_step_true_during_on_train_batch_end(
+        self, dummy_model, dummy_dataloader
+    ):
+        """Late on_train_batch_end callbacks should still see _IN_STEP=True.
+
+        A callback firing AFTER ``ModuleRegistryCallback.on_train_batch_end``
+        must observe ``_IN_STEP=True`` so its ``log()`` goes inline (not
+        buffered).
+        """
+        registry_cb = ModuleRegistryCallback()
+        seen_in_step = []
+
+        class SnoopCallback(pl.Callback):
+            def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+                # By the time this fires, the ModuleRegistryCallback has already
+                # processed its own on_train_batch_end. _IN_STEP must remain True.
+                seen_in_step.append(_IN_STEP.get("default", False))
+
+        # Order matters: registry callback first so its hooks fire first.
+        trainer = pl.Trainer(
+            max_epochs=1,
+            callbacks=[registry_cb, SnoopCallback()],
+            enable_checkpointing=False,
+            logger=False,
+            enable_progress_bar=False,
+            accelerator="cpu",
+        )
+        trainer.fit(dummy_model, dummy_dataloader)
+
+        assert len(seen_in_step) > 0, "snoop callback never fired"
+        assert all(seen_in_step), (
+            f"expected _IN_STEP=True at every on_train_batch_end, got {seen_in_step}"
+        )
+
+    def test_log_in_batch_end_is_inline_not_buffered(
+        self, dummy_model, dummy_dataloader
+    ):
+        """log() inside on_train_batch_end must be inline, not buffered.
+
+        Before the fix, it landed in ``_METRIC_BUFFER`` because ``_IN_STEP``
+        had already been flipped False by the time the user callback ran.
+        """
+        registry_cb = ModuleRegistryCallback()
+        n_buffered_at_call = []
+
+        class LoggerCallback(pl.Callback):
+            def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+                pre = len(_METRIC_BUFFER.get("default", []))
+                log("ema_in_batch_end", torch.tensor(0.5))
+                post = len(_METRIC_BUFFER.get("default", []))
+                # If buffer length grew → metric was buffered (BUG).
+                # If it stayed the same → metric was inline-logged (FIX).
+                n_buffered_at_call.append(post - pre)
+
+        trainer = pl.Trainer(
+            max_epochs=1,
+            callbacks=[registry_cb, LoggerCallback()],
+            enable_checkpointing=False,
+            logger=False,
+            enable_progress_bar=False,
+            accelerator="cpu",
+        )
+        trainer.fit(dummy_model, dummy_dataloader)
+
+        assert len(n_buffered_at_call) > 0
+        assert all(d == 0 for d in n_buffered_at_call), (
+            f"log() in on_train_batch_end should be inline, but {sum(d for d in n_buffered_at_call if d > 0)} "
+            f"of {len(n_buffered_at_call)} calls were buffered"
+        )
+
+    def test_in_step_false_after_train_epoch_end(self, dummy_model, dummy_dataloader):
+        """_IN_STEP must exit cleanly at the train_epoch_end boundary.
+
+        The exit moved from ``on_train_batch_end`` to ``on_train_epoch_end``;
+        verify it actually flips False at the epoch boundary so we don't
+        leak a True value into pre-fit / post-fit log calls.
+        """
+        registry_cb = ModuleRegistryCallback()
+        seen_after_epoch_end = []
+
+        class SnoopAtFitEnd(pl.Callback):
+            def on_train_end(self, trainer, pl_module):
+                # on_train_end fires AFTER on_train_epoch_end.
+                seen_after_epoch_end.append(_IN_STEP.get("default", False))
+
+        trainer = pl.Trainer(
+            max_epochs=1,
+            callbacks=[registry_cb, SnoopAtFitEnd()],
+            enable_checkpointing=False,
+            logger=False,
+            enable_progress_bar=False,
+            accelerator="cpu",
+        )
+        trainer.fit(dummy_model, dummy_dataloader)
+
+        assert seen_after_epoch_end == [False], (
+            f"expected _IN_STEP=False after train epoch end, got {seen_after_epoch_end}"
+        )
+
     def test_teardown_clean_when_no_buffer(self, dummy_model):
         """Teardown should not warn if no buffered metrics."""
         callback = ModuleRegistryCallback()

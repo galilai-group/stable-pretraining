@@ -330,7 +330,7 @@ def vicreg_forward(self, batch, stage):
             - 'label': Labels if present (for probes/callbacks)
 
     Note:
-        Introduced in the VICReg paper :cite:`bardes2022vicreg`.
+        Introduced in the VICReg paper :cite:`bardes2021vicreg`.
     """
     out = {}
 

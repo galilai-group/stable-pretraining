@@ -154,6 +154,14 @@ class ModuleRegistryCallback(Callback):
         self._enter_step(trainer, pl_module)
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        # Keep _IN_STEP=True through batch_end so other callbacks that log here
+        # (e.g. TeacherStudentCallback writing the EMA coefficient) inline-log
+        # with the correct trainer.global_step instead of buffering and being
+        # flushed at the next batch with a stale step. Exit is moved to the
+        # epoch boundary, where between-epoch logs are still legal.
+        pass
+
+    def on_train_epoch_end(self, trainer, pl_module):
         self._exit_step(trainer, pl_module)
 
     # Validation
@@ -165,6 +173,9 @@ class ModuleRegistryCallback(Callback):
     def on_validation_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0
     ):
+        pass  # see on_train_batch_end note
+
+    def on_validation_epoch_end(self, trainer, pl_module):
         self._exit_step(trainer, pl_module)
 
     # Test
@@ -176,6 +187,9 @@ class ModuleRegistryCallback(Callback):
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0
     ):
+        pass
+
+    def on_test_epoch_end(self, trainer, pl_module):
         self._exit_step(trainer, pl_module)
 
     # Predict
@@ -187,4 +201,7 @@ class ModuleRegistryCallback(Callback):
     def on_predict_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0
     ):
+        pass
+
+    def on_predict_epoch_end(self, trainer, pl_module):
         self._exit_step(trainer, pl_module)

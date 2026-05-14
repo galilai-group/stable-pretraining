@@ -141,6 +141,7 @@ class DataModule(pl.LightningDataModule):
         return kwargs
 
     def train_dataloader(self):
+        """Return the training DataLoader."""
         if isinstance(self.train, DataLoader):
             loader = self.train
         else:
@@ -181,6 +182,7 @@ class DataModule(pl.LightningDataModule):
         return loader
 
     def val_dataloader(self):
+        """Return the validation DataLoader (or an empty list if unset)."""
         if self.val is None:
             return []
         if isinstance(self.val, DataLoader):
@@ -197,6 +199,7 @@ class DataModule(pl.LightningDataModule):
         return DataLoader(dataset=self.val_dataset, **kwargs)
 
     def test_dataloader(self):
+        """Return the test DataLoader."""
         if isinstance(self.test, DataLoader):
             if hasattr(self.test.dataset, "set_pl_trainer"):
                 self.test.dataset.set_pl_trainer(self._trainer)
@@ -211,6 +214,7 @@ class DataModule(pl.LightningDataModule):
         return DataLoader(dataset=self.test_dataset, **kwargs)
 
     def predict_dataloader(self):
+        """Return the prediction DataLoader."""
         if isinstance(self.predict, DataLoader):
             if hasattr(self.predict.dataset, "set_pl_trainer"):
                 self.predict.dataset.set_pl_trainer(self._trainer)

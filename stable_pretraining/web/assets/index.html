@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>spt web</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.31/dist/uPlot.min.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">spt&nbsp;web</div>
+    <div id="status-row">
+      <span id="run-count">0 runs</span>
+      <span class="status-stat" id="stat-running"   title="running runs">·  <span class="dot running"></span><span class="n">0</span> running</span>
+      <span class="status-stat" id="stat-completed" title="completed runs">·  <span class="dot completed"></span><span class="n">0</span> done</span>
+      <span class="status-stat" id="stat-failed"    title="failed runs">·  <span class="dot failed"></span><span class="n">0</span> failed</span>
+    </div>
+    <div class="spacer"></div>
+    <button id="theme-toggle" class="icon-btn" type="button" title="toggle light/dark theme" aria-label="toggle theme"></button>
+  </header>
+  <aside id="sidebar">
+    <input id="run-search" placeholder="search runs / tags / hparams" autocomplete="off" spellcheck="false">
+    <div id="filters-section">
+      <div class="filters-header">
+        <span>filters</span>
+        <button id="add-filter-btn" type="button" title="add filter">+</button>
+      </div>
+      <div id="filters-list"></div>
+      <div id="filter-draft" hidden></div>
+    </div>
+    <div id="group-sort">
+      <label>group by
+        <select id="group-by"><option value="">none</option></select>
+      </label>
+      <label>sort by
+        <div class="sort-row">
+          <select id="sort-by"></select>
+          <button id="sort-dir" title="toggle direction">↓</button>
+        </div>
+      </label>
+    </div>
+    <div id="sidebar-actions">
+      <button id="select-all">select all</button>
+      <button id="clear-all">clear</button>
+    </div>
+    <div id="run-list"></div>
+  </aside>
+  <main id="main-panel">
+    <nav id="tabs" class="tabs" role="tablist">
+      <button class="tab active" data-tab="figures" type="button">figures</button>
+      <button class="tab" data-tab="out" type="button">.out</button>
+      <button class="tab" data-tab="err" type="button">.err</button>
+    </nav>
+    <div id="tab-figures" class="tab-pane active">
+      <div id="figures-controls">
+        <label class="control">smoothing
+          <input id="smoothing" type="range" min="0" max="0.99" step="0.01" value="0">
+          <span id="smoothing-val">0.00</span>
+        </label>
+        <label class="control">x-axis
+          <select id="x-axis">
+            <option value="step" selected>step</option>
+            <option value="epoch">epoch</option>
+          </select>
+        </label>
+        <label class="control"><input id="log-y" type="checkbox"> log&nbsp;y</label>
+        <input id="metric-search" type="search" placeholder="filter metrics by name..."
+               autocomplete="off" spellcheck="false">
+        <span id="metric-search-status" class="metric-search-status"></span>
+      </div>
+      <div id="charts"><div class="empty-state">select a run on the left to plot its metrics</div></div>
+    </div>
+    <div id="tab-out" class="tab-pane">
+      <div class="logs-controls">
+        <label class="control">stream
+          <select id="logs-stream-selector"></select>
+        </label>
+        <button id="logs-refresh" class="icon-btn" type="button" title="refresh">↻</button>
+      </div>
+      <pre id="logs-out" class="log-view"></pre>
+    </div>
+    <div id="tab-err" class="tab-pane">
+      <div class="logs-controls">
+        <label class="control">stream
+          <select id="logs-err-stream-selector"></select>
+        </label>
+        <button id="logs-err-refresh" class="icon-btn" type="button" title="refresh">↻</button>
+      </div>
+      <pre id="logs-err" class="log-view"></pre>
+    </div>
+  </main>
+</div>
+<div id="image-lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="image preview">
+  <button id="lightbox-close" class="lightbox-close" type="button" title="close (Esc)" aria-label="close">×</button>
+  <img id="lightbox-img" alt="">
+  <div id="lightbox-caption" class="lightbox-caption"></div>
+</div>
+<div id="scan-progress" hidden>
+  <div class="scan-progress-card">
+    <div class="scan-progress-title">loading runs<span id="scan-progress-dots"></span></div>
+    <div class="scan-progress-bar"><div id="scan-progress-fill"></div></div>
+    <div id="scan-progress-text">discovering...</div>
+  </div>
+</div>
+<div id="detail-overlay" hidden>
+  <div id="detail-card" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <div class="detail-header">
+      <span id="detail-dot" class="detail-dot"></span>
+      <div id="detail-title"></div>
+      <button id="detail-close" title="close (Esc)" aria-label="close">×</button>
+    </div>
+    <input id="detail-filter" placeholder="filter keys" autocomplete="off" spellcheck="false">
+    <div id="detail-body"></div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.31/dist/uPlot.iife.min.js"></script>
+<script src="/assets/app.js"></script>
+</body>
+</html>

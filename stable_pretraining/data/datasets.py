@@ -53,6 +53,18 @@ class DatasetMixin:
         """Attach a Lightning trainer so its state is injected into samples."""
         self._trainer = trainer
 
+    def __getstate__(self):
+        # Drop the trainer back-reference. Pickle-walking it reaches
+        # `trainer.train_dataloader._iterator`, a
+        # `_MultiProcessingDataLoaderIter`, which raises on __getstate__.
+        # Spawn-mode DataLoader workers therefore can't serialise any
+        # dataset that has had `set_pl_trainer` called on it.
+        # Workers see only a snapshot of trainer state at spawn time
+        # anyway; `process_sample` already handles `_trainer is None`.
+        state = self.__dict__.copy()
+        state["_trainer"] = None
+        return state
+
     def process_sample(self, sample, **kwargs):
         """Run a raw sample dict through trainer-injection and transforms.
 
@@ -143,8 +155,14 @@ class Subset(Dataset):
         return len(self.indices)
 
     def __getattr__(self, name):
-        if name == "dataset":
-            raise AttributeError("dataset")
+        # Don't proxy dunders to the wrapped dataset. Pickle/copy/etc. on
+        # the Subset must use Subset's own machinery, not the inner ds's.
+        # On Python <3.11 ``object.__getstate__`` doesn't exist, so a bare
+        # proxy makes pickle read the inner dataset's ``__getstate__`` and
+        # serialize the wrong state (inner's ``__dict__`` under Subset's
+        # class), breaking spawn-mode DataLoader workers.
+        if name == "dataset" or (name.startswith("__") and name.endswith("__")):
+            raise AttributeError(name)
         return getattr(self.dataset, name)
 
 

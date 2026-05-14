@@ -1,4 +1,10 @@
-"""Multi-layer probe for vision models."""
+"""
+Multi-layer Probe for Vision Models
+===================================
+
+Train probes attached to multiple layers of a frozen backbone to monitor
+representation quality across depth.
+"""
 
 import hydra
 import lightning as pl

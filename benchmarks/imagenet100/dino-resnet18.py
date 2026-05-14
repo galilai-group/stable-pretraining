@@ -166,7 +166,7 @@ projector = nn.Sequential(
     nn.BatchNorm1d(2048),
     nn.GELU(),
     nn.Linear(2048, 256),
-    spt.utils.nn_modules.L2Norm(),
+    spt.backbone.L2Norm(),
     nn.Linear(256, 4096, bias=False),  # Prototypes layer
 )
 

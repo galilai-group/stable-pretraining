@@ -44,6 +44,21 @@ class EnvironmentDumpCallback(Callback):
             f"  EnvironmentDumpCallback initialized (filename={filename}, async={async_dump})"
         )
 
+    def __getstate__(self):
+        """Return picklable state.
+
+        ``threading.Thread`` holds a ``_thread.lock`` (``_tstate_lock``)
+        which is not picklable. Drop ``_dump_thread`` so spawn-mode
+        DataLoader workers can serialise this callback when it is
+        reachable from the trainer/module graph (see issue #416).
+
+        The dump thread is fire-and-forget on the main process only; the
+        worker side has no use for the handle.
+        """
+        state = self.__dict__.copy()
+        state["_dump_thread"] = None
+        return state
+
     @rank_zero_only
     def setup(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule, stage: str

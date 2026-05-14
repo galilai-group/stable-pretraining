@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Optional, Tuple, Literal, Union
 import timm
-from timm.layers import DropPath, Mlp, trunc_normal_
+from timm.layers import DropPath, Mlp, PatchEmbed, trunc_normal_
 from loguru import logger
 from .patch_masking import PatchMasking
 from dataclasses import dataclass
@@ -997,22 +997,26 @@ class TransformerBlock(nn.Module):
             if use_layer_scale:
                 self.ls1 = nn.Parameter(layer_scale_init * torch.ones(dim))
 
-        # Cross-attention
+        # Cross-attention. Norms are named ``norm_xattn_q`` / ``norm_xattn_kv``
+        # so the standard ViT (cross_attn=False) state_dict has only ``norm1``
+        # and ``norm2`` — exactly matching timm/torchvision/HF key names.
         if cross_attn:
-            self.norm2_q = nn.LayerNorm(dim, elementwise_affine=not use_adaln)
-            self.norm2_kv = nn.LayerNorm(dim, elementwise_affine=not use_adaln)
+            self.norm_xattn_q = nn.LayerNorm(dim, elementwise_affine=not use_adaln)
+            self.norm_xattn_kv = nn.LayerNorm(dim, elementwise_affine=not use_adaln)
             self.cross_attn = CrossAttention(
                 dim,
                 num_heads=num_heads,
                 attn_drop=attn_drop,
                 proj_drop=proj_drop,
             )
-            self.drop_path2 = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
+            self.drop_path_xattn = (
+                DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
+            )
             if use_layer_scale:
-                self.ls2 = nn.Parameter(layer_scale_init * torch.ones(dim))
+                self.ls_xattn = nn.Parameter(layer_scale_init * torch.ones(dim))
 
         # MLP
-        self.norm3 = nn.LayerNorm(dim, elementwise_affine=not use_adaln)
+        self.norm2 = nn.LayerNorm(dim, elementwise_affine=not use_adaln)
         mlp_hidden = int(dim * mlp_ratio)
         if mlp_type == "swiglu":
             self.mlp = SwiGLU(dim, mlp_hidden, dim, drop=proj_drop)
@@ -1023,9 +1027,9 @@ class TransformerBlock(nn.Module):
                 act_layer=act_layer,
                 drop=proj_drop,
             )
-        self.drop_path3 = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
+        self.drop_path2 = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         if use_layer_scale:
-            self.ls3 = nn.Parameter(layer_scale_init * torch.ones(dim))
+            self.ls2 = nn.Parameter(layer_scale_init * torch.ones(dim))
 
         # AdaLN modulation
         if use_adaln:
@@ -1084,17 +1088,17 @@ class TransformerBlock(nn.Module):
             if self.use_cross_attn:
                 shift, scale, gate = mods[i], mods[i + 1], mods[i + 2]
                 i += 3
-                x = x + gate * self.drop_path2(
+                x = x + gate * self.drop_path_xattn(
                     self.cross_attn(
-                        modulate(self.norm2_q(x), shift, scale),
-                        self.norm2_kv(context),
+                        modulate(self.norm_xattn_q(x), shift, scale),
+                        self.norm_xattn_kv(context),
                         attn_mask=cross_attn_mask,
                     )
                 )
 
             shift, scale, gate = mods[i], mods[i + 1], mods[i + 2]
-            x = x + gate * self.drop_path3(
-                self.mlp(modulate(self.norm3(x), shift, scale))
+            x = x + gate * self.drop_path2(
+                self.mlp(modulate(self.norm2(x), shift, scale))
             )
         else:
             # Standard forward (with optional LayerScale)
@@ -1110,18 +1114,18 @@ class TransformerBlock(nn.Module):
 
             if self.use_cross_attn:
                 cross_out = self.cross_attn(
-                    self.norm2_q(x),
-                    self.norm2_kv(context),
+                    self.norm_xattn_q(x),
+                    self.norm_xattn_kv(context),
                     attn_mask=cross_attn_mask,
                 )
                 if self.use_layer_scale:
-                    cross_out = self.ls2 * cross_out
-                x = x + self.drop_path2(cross_out)
+                    cross_out = self.ls_xattn * cross_out
+                x = x + self.drop_path_xattn(cross_out)
 
-            mlp_out = self.mlp(self.norm3(x))
+            mlp_out = self.mlp(self.norm2(x))
             if self.use_layer_scale:
-                mlp_out = self.ls3 * mlp_out
-            x = x + self.drop_path3(mlp_out)
+                mlp_out = self.ls2 * mlp_out
+            x = x + self.drop_path2(mlp_out)
 
         return x
 
@@ -1298,6 +1302,21 @@ class FlexibleTransformer(nn.Module):
         num_prefix_tokens: int = 1,
         num_registers: int = 0,
         add_mask_token: bool = False,
+        # Modern transformer features forwarded to every TransformerBlock.
+        # Use ``pos_embed_type='none'`` together with ``use_rope='2d'`` (or
+        # ``'3d'``) to get pure RoPE-2D/3D positional encoding (no additive
+        # pos_embed). Caveat: RoPE-2D/3D in the underlying ``Attention``
+        # treats the entire token sequence as a (grid_h × grid_w) grid, so
+        # combining it with non-zero ``num_prefix_tokens`` or
+        # ``num_registers`` is not generally meaningful — those extra tokens
+        # share the patch-grid rotation. For a pure image encoder with
+        # RoPE-2D set ``num_prefix_tokens=0, num_registers=0``.
+        use_rope: "bool | Literal['1d', '2d', '3d'] | None" = None,
+        use_qk_norm: bool = False,
+        mlp_type: Literal["gelu", "swiglu"] = "gelu",
+        use_layer_scale: bool = False,
+        layer_scale_init: float = 1e-5,
+        max_grid_size: int = 32,
     ):
         super().__init__()
         if hidden_dim % num_heads != 0:
@@ -1311,6 +1330,28 @@ class FlexibleTransformer(nn.Module):
         self.use_cross_attn = cross_attn
         self.use_adaln = use_adaln
         self.add_mask_token = add_mask_token
+        self.rope_mode = _normalize_rope_mode(use_rope)
+        # Stash the (grid_h, grid_w[, grid_d]) tuple needed by RoPE-2D/3D.
+        # The blocks need it on every forward call.
+        self._rope_grid: Optional[Tuple[int, ...]] = None
+        if self.rope_mode in ("2d", "3d"):
+            if grid_size is None:
+                raise ValueError(
+                    f"use_rope={self.rope_mode!r} requires grid_size at __init__"
+                )
+            if isinstance(grid_size, int):
+                grid_size_tuple = (grid_size, grid_size)
+            else:
+                grid_size_tuple = tuple(grid_size)
+            if self.rope_mode == "2d" and len(grid_size_tuple) != 2:
+                raise ValueError(
+                    f"use_rope='2d' needs grid_size=(H, W); got {grid_size_tuple!r}"
+                )
+            if self.rope_mode == "3d" and len(grid_size_tuple) != 3:
+                raise ValueError(
+                    f"use_rope='3d' needs grid_size=(T, H, W); got {grid_size_tuple!r}"
+                )
+            self._rope_grid = grid_size_tuple
 
         # Input/output projections
         self.context_proj = nn.Linear(input_dim, hidden_dim)
@@ -1407,6 +1448,12 @@ class FlexibleTransformer(nn.Module):
                     self_attn=self_attn,
                     cross_attn=cross_attn,
                     use_adaln=use_adaln,
+                    use_rope=use_rope,
+                    use_qk_norm=use_qk_norm,
+                    mlp_type=mlp_type,
+                    use_layer_scale=use_layer_scale,
+                    layer_scale_init=layer_scale_init,
+                    max_grid_size=max_grid_size,
                     drop_path=dpr[i],
                     attn_drop=attn_drop,
                     proj_drop=proj_drop,
@@ -1605,7 +1652,8 @@ class FlexibleTransformer(nn.Module):
             # attn_mask not typically used here, but could be passed for cross-attn masking
             for block in self.blocks:
                 queries = block(
-                    queries, context=context, cond=cond, attn_mask=attn_mask
+                    queries, context=context, cond=cond, attn_mask=attn_mask,
+                    grid_size=self._rope_grid,
                 )
             out = self.output_proj(self.final_norm(queries))
 
@@ -1626,7 +1674,8 @@ class FlexibleTransformer(nn.Module):
             )
 
         for block in self.blocks:
-            x = block(x, cond=cond, attn_mask=expanded_attn_mask)
+            x = block(x, cond=cond, attn_mask=expanded_attn_mask,
+                      grid_size=self._rope_grid)
         x = self.final_norm(x)
 
         # Extract register outputs if needed
@@ -2135,3 +2184,466 @@ class PositionalEncoding2D(nn.Module):
         patch_pos = patch_pos.permute(0, 2, 3, 1).reshape(1, target_h * target_w, D)
 
         return torch.cat([prefix_pos, patch_pos], dim=1)
+
+
+class ViT(nn.Module):
+    """Vision Transformer (Dosovitskiy et al., 2021).
+
+    A standard ViT encoder/classifier composed from the building blocks in this
+    module: ``PatchEmbed`` → optional CLS / register tokens → positional embed →
+    stack of :class:`TransformerBlock` → final ``LayerNorm`` → optional pool →
+    optional classification head.
+
+    Configurations match timm / torchvision / HF: same ``embed_dim``, ``depth``,
+    ``num_heads``, and ``mlp_ratio`` for the standard tiny / small / base /
+    large / huge variants. Use the factory functions (``vit_tiny_patch16_224``,
+    ``vit_base_patch16_224``, ...) for the named presets.
+
+    Checkpoint compatibility: with the default settings (``cross_attn`` not in
+    use, ``use_qk_norm=False``, ``layer_norm_eps=1e-6``), the parameter names
+    and tensor shapes are identical to timm's ViT, so a timm pretrained
+    state_dict loads cleanly with ``model.load_state_dict(timm_state_dict)``
+    and produces bit-identical outputs. Enabling ``use_qk_norm=True`` adds a
+    ``qk_norm`` submodule whose keys differ from timm's ``q_norm`` / ``k_norm``
+    convention; loading a non-matching checkpoint will fail loudly.
+
+    :param img_size: Input image size (int or (H, W)).
+    :param patch_size: Patch size (int or (H, W)).
+    :param in_chans: Number of input channels.
+    :param num_classes: Number of classes for the head. ``0`` means no head
+        (use the model as a feature extractor; ``forward`` returns the pooled
+        feature when ``global_pool != ''`` else the token sequence).
+    :param embed_dim: Token embedding dimension.
+    :param depth: Number of transformer blocks.
+    :param num_heads: Number of attention heads. Must divide ``embed_dim``.
+    :param mlp_ratio: MLP hidden dim multiplier (``mlp_hidden = embed_dim * mlp_ratio``).
+    :param class_token: If True, prepend a learnable CLS token.
+    :param num_reg_tokens: Number of learnable register tokens (DINOv2-style).
+    :param global_pool: Pooling for the classification head:
+
+        - ``'token'``: use the CLS token (requires ``class_token=True``)
+        - ``'avg'``: mean over patch tokens
+        - ``'avg_token'``: average of CLS and mean of patches
+        - ``''``: no pooling — ``forward`` returns the full token sequence
+
+    :param pos_embed_type: ``'learned'`` (default, matches timm/HF), ``'sincos_2d'``,
+        or ``'none'`` (typically paired with ``use_rope``).
+    :param drop_rate: Dropout applied after positional embedding.
+    :param attn_drop: Dropout on attention weights inside blocks.
+    :param proj_drop: Dropout on attention output / MLP projection.
+    :param drop_path_rate: Stochastic depth rate; linearly increased through layers.
+    :param use_rope: Optional Rotary Position Embedding mode (forwarded to blocks).
+        See :class:`Attention`. Note RoPE-2D treats the full token sequence as a
+        2D grid, so combining with ``class_token``/``num_reg_tokens`` is awkward.
+    :param use_qk_norm: Enable Query-Key normalization in attention.
+    :param mlp_type: ``'gelu'`` (default) or ``'swiglu'``.
+    :param use_layer_scale: Enable LayerScale on residual connections.
+    :param layer_scale_init: Initial LayerScale value.
+    :param layer_norm_eps: Epsilon for every ``LayerNorm`` in the model
+        (blocks + final norm). Defaults to ``1e-6`` to match timm and
+        torchvision (both use ``partial(nn.LayerNorm, eps=1e-6)``). HF's
+        ``ViTModel`` uses ``1e-12``; pass that explicitly for HF parity.
+
+    Example::
+
+        # Feature extractor (no head): forward returns the pooled CLS feature
+        model = ViT(img_size=224, patch_size=16, embed_dim=768, depth=12,
+                    num_heads=12, num_classes=0)
+        feats = model(torch.randn(2, 3, 224, 224))  # [2, 768]
+
+        # Classifier
+        model = ViT(num_classes=1000)
+        logits = model(torch.randn(2, 3, 224, 224))  # [2, 1000]
+
+        # Token-level features (no pooling, no head)
+        model = ViT(num_classes=0, global_pool='')
+        tokens = model(torch.randn(2, 3, 224, 224))  # [2, 1 + 196, 768]
+    """
+
+    def __init__(
+        self,
+        img_size: Union[int, Tuple[int, int]] = 224,
+        patch_size: Union[int, Tuple[int, int]] = 16,
+        in_chans: int = 3,
+        num_classes: int = 0,
+        embed_dim: int = 768,
+        depth: int = 12,
+        num_heads: int = 12,
+        mlp_ratio: float = 4.0,
+        class_token: bool = True,
+        num_reg_tokens: int = 0,
+        global_pool: Literal["token", "avg", "avg_token", ""] = "token",
+        pos_embed_type: Literal["learned", "sincos_2d", "none"] = "learned",
+        drop_rate: float = 0.0,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+        drop_path_rate: float = 0.0,
+        use_rope: "bool | Literal['1d', '2d', '3d'] | None" = None,
+        use_qk_norm: bool = False,
+        mlp_type: Literal["gelu", "swiglu"] = "gelu",
+        use_layer_scale: bool = False,
+        layer_scale_init: float = 1e-5,
+        layer_norm_eps: float = 1e-6,
+    ):
+        super().__init__()
+        if global_pool == "token" and not class_token:
+            raise ValueError("global_pool='token' requires class_token=True")
+        if global_pool == "" and num_classes > 0:
+            raise ValueError(
+                "num_classes > 0 requires global_pool != '' (need to pool before head)"
+            )
+        if global_pool not in ("token", "avg", "avg_token", ""):
+            raise ValueError(
+                f"global_pool must be one of 'token', 'avg', 'avg_token', ''; got {global_pool!r}"
+            )
+
+        self.num_classes = num_classes
+        self.embed_dim = embed_dim
+        self.global_pool = global_pool
+        self.has_class_token = class_token
+        self.num_reg_tokens = num_reg_tokens
+        self.num_prefix_tokens = (1 if class_token else 0) + num_reg_tokens
+
+        self.patch_embed = PatchEmbed(
+            img_size=img_size,
+            patch_size=patch_size,
+            in_chans=in_chans,
+            embed_dim=embed_dim,
+        )
+        num_patches = self.patch_embed.num_patches
+        gs = self.patch_embed.grid_size
+        self.grid_size = gs if isinstance(gs, tuple) else (gs, gs)
+        ps = self.patch_embed.patch_size
+        self.patch_size = ps if isinstance(ps, tuple) else (ps, ps)
+
+        if class_token:
+            self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+            trunc_normal_(self.cls_token, std=0.02)
+        else:
+            self.register_parameter("cls_token", None)
+        if num_reg_tokens > 0:
+            self.reg_token = nn.Parameter(torch.zeros(1, num_reg_tokens, embed_dim))
+            trunc_normal_(self.reg_token, std=0.02)
+        else:
+            self.register_parameter("reg_token", None)
+
+        self.rope_mode = _normalize_rope_mode(use_rope)
+        self.use_rope = self.rope_mode is not None
+        if self.use_rope:
+            # RoPE encodes positions inside attention; no additive pos embed.
+            self.register_parameter("pos_embed", None)
+            self.pos_embed_type = "none"
+        else:
+            self.pos_embed_type = pos_embed_type
+            total_pos = self.num_prefix_tokens + num_patches
+            if pos_embed_type == "learned":
+                self.pos_embed = nn.Parameter(torch.zeros(1, total_pos, embed_dim))
+                trunc_normal_(self.pos_embed, std=0.02)
+            elif pos_embed_type == "sincos_2d":
+                pe = get_sincos_pos_embed(
+                    embed_dim, num_patches, mode="2d", grid_size=self.grid_size
+                )
+                if self.num_prefix_tokens > 0:
+                    pe = torch.cat(
+                        [torch.zeros(self.num_prefix_tokens, embed_dim), pe], dim=0
+                    )
+                self.register_buffer("pos_embed", pe.unsqueeze(0))
+            elif pos_embed_type == "none":
+                self.register_parameter("pos_embed", None)
+            else:
+                raise ValueError(
+                    f"pos_embed_type must be 'learned', 'sincos_2d', or 'none'; got {pos_embed_type!r}"
+                )
+
+        self.pos_drop = nn.Dropout(drop_rate)
+
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]
+        self.blocks = nn.ModuleList(
+            [
+                TransformerBlock(
+                    dim=embed_dim,
+                    num_heads=num_heads,
+                    mlp_ratio=mlp_ratio,
+                    self_attn=True,
+                    cross_attn=False,
+                    use_adaln=False,
+                    use_rope=use_rope,
+                    use_qk_norm=use_qk_norm,
+                    mlp_type=mlp_type,
+                    use_layer_scale=use_layer_scale,
+                    layer_scale_init=layer_scale_init,
+                    drop_path=dpr[i],
+                    attn_drop=attn_drop,
+                    proj_drop=proj_drop,
+                )
+                for i in range(depth)
+            ]
+        )
+        self.norm = nn.LayerNorm(embed_dim)
+
+        if num_classes > 0:
+            self.head = nn.Linear(embed_dim, num_classes)
+            trunc_normal_(self.head.weight, std=0.02)
+            nn.init.zeros_(self.head.bias)
+        else:
+            self.head = nn.Identity()
+
+        # Apply chosen eps to every LayerNorm (default 1e-6 = timm/torchvision).
+        # nn.LayerNorm.eps is a plain float attribute; safe to override post-init.
+        for mod in self.modules():
+            if isinstance(mod, nn.LayerNorm):
+                mod.eps = layer_norm_eps
+
+    def _resolved_pos_embed(
+        self, grid_h: int, grid_w: int
+    ) -> Optional[torch.Tensor]:
+        if self.pos_embed is None:
+            return None
+        if (grid_h, grid_w) == self.grid_size:
+            return self.pos_embed
+        return interpolate_pos_embed(
+            self.pos_embed, self.grid_size, (grid_h, grid_w), self.num_prefix_tokens
+        )
+
+    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
+        """Encode an image batch to a token sequence (after final norm).
+
+        :param x: ``[B, C, H, W]``
+        :return: ``[B, num_prefix + N, embed_dim]``
+        """
+        B, _, H, W = x.shape
+        ph, pw = self.patch_size
+        grid_h, grid_w = H // ph, W // pw
+
+        x = self.patch_embed(x)
+        if x.ndim == 4:
+            x = x.flatten(2).transpose(1, 2)
+
+        prefix = []
+        if self.cls_token is not None:
+            prefix.append(self.cls_token.expand(B, -1, -1))
+        if self.reg_token is not None:
+            prefix.append(self.reg_token.expand(B, -1, -1))
+        if prefix:
+            x = torch.cat(prefix + [x], dim=1)
+
+        pos = self._resolved_pos_embed(grid_h, grid_w)
+        if pos is not None:
+            x = x + pos
+        x = self.pos_drop(x)
+
+        block_kwargs = {"grid_size": (grid_h, grid_w)} if self.use_rope else {}
+        for blk in self.blocks:
+            x = blk(x, **block_kwargs)
+        return self.norm(x)
+
+    def forward_head(self, x: torch.Tensor) -> torch.Tensor:
+        """Pool tokens and apply the classification head.
+
+        :param x: Token sequence ``[B, num_prefix + N, embed_dim]``.
+        :return: Pooled features (``[B, embed_dim]``) or class logits
+            (``[B, num_classes]``) depending on ``num_classes``. If
+            ``global_pool == ''``, returns the full sequence unchanged
+            (``head`` is required to be Identity in that case).
+        """
+        if self.global_pool == "token":
+            x = x[:, 0]
+        elif self.global_pool == "avg":
+            x = x[:, self.num_prefix_tokens :].mean(dim=1)
+        elif self.global_pool == "avg_token":
+            patch_avg = x[:, self.num_prefix_tokens :].mean(dim=1)
+            x = 0.5 * (x[:, 0] + patch_avg)
+        return self.head(x)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.forward_head(self.forward_features(x))
+
+
+# -----------------------------------------------------------------------------
+# Standard ViT presets — configurations match timm / torchvision / HF.
+#
+# Sizes (Dosovitskiy et al. 2021; Touvron et al. 2021 for Tiny):
+#   Tiny:     embed_dim=192,  depth=12, num_heads=3
+#   Small:    embed_dim=384,  depth=12, num_heads=6
+#   Base:     embed_dim=768,  depth=12, num_heads=12
+#   Large:    embed_dim=1024, depth=24, num_heads=16
+#   Huge:     embed_dim=1280, depth=32, num_heads=16
+#   Giant:    embed_dim=1408, depth=40, num_heads=16, mlp_ratio=48/11
+#   Gigantic: embed_dim=1664, depth=48, num_heads=16, mlp_ratio=64/13
+#
+# All variants use mlp_ratio=4 unless noted, qkv_bias=True (Attention default),
+# class_token=True, global_pool='token', and learned absolute pos embeddings.
+# -----------------------------------------------------------------------------
+
+
+def vit_tiny_patch16_224(**kwargs) -> ViT:
+    """ViT-Tiny/16 @ 224. ``embed_dim=192, depth=12, heads=3``."""
+    return ViT(
+        img_size=224, patch_size=16, embed_dim=192, depth=12, num_heads=3, **kwargs
+    )
+
+
+def vit_tiny_patch16_384(**kwargs) -> ViT:
+    """ViT-Tiny/16 @ 384."""
+    return ViT(
+        img_size=384, patch_size=16, embed_dim=192, depth=12, num_heads=3, **kwargs
+    )
+
+
+def vit_small_patch32_224(**kwargs) -> ViT:
+    """ViT-Small/32 @ 224. ``embed_dim=384, depth=12, heads=6``."""
+    return ViT(
+        img_size=224, patch_size=32, embed_dim=384, depth=12, num_heads=6, **kwargs
+    )
+
+
+def vit_small_patch32_384(**kwargs) -> ViT:
+    """ViT-Small/32 @ 384."""
+    return ViT(
+        img_size=384, patch_size=32, embed_dim=384, depth=12, num_heads=6, **kwargs
+    )
+
+
+def vit_small_patch16_224(**kwargs) -> ViT:
+    """ViT-Small/16 @ 224."""
+    return ViT(
+        img_size=224, patch_size=16, embed_dim=384, depth=12, num_heads=6, **kwargs
+    )
+
+
+def vit_small_patch16_384(**kwargs) -> ViT:
+    """ViT-Small/16 @ 384."""
+    return ViT(
+        img_size=384, patch_size=16, embed_dim=384, depth=12, num_heads=6, **kwargs
+    )
+
+
+def vit_small_patch14_224(**kwargs) -> ViT:
+    """ViT-Small/14 @ 224 (DINOv2 patch size)."""
+    return ViT(
+        img_size=224, patch_size=14, embed_dim=384, depth=12, num_heads=6, **kwargs
+    )
+
+
+def vit_small_patch8_224(**kwargs) -> ViT:
+    """ViT-Small/8 @ 224 (DINO patch size)."""
+    return ViT(
+        img_size=224, patch_size=8, embed_dim=384, depth=12, num_heads=6, **kwargs
+    )
+
+
+def vit_base_patch32_224(**kwargs) -> ViT:
+    """ViT-Base/32 @ 224. ``embed_dim=768, depth=12, heads=12``."""
+    return ViT(
+        img_size=224, patch_size=32, embed_dim=768, depth=12, num_heads=12, **kwargs
+    )
+
+
+def vit_base_patch32_384(**kwargs) -> ViT:
+    """ViT-Base/32 @ 384."""
+    return ViT(
+        img_size=384, patch_size=32, embed_dim=768, depth=12, num_heads=12, **kwargs
+    )
+
+
+def vit_base_patch16_224(**kwargs) -> ViT:
+    """ViT-Base/16 @ 224."""
+    return ViT(
+        img_size=224, patch_size=16, embed_dim=768, depth=12, num_heads=12, **kwargs
+    )
+
+
+def vit_base_patch16_384(**kwargs) -> ViT:
+    """ViT-Base/16 @ 384."""
+    return ViT(
+        img_size=384, patch_size=16, embed_dim=768, depth=12, num_heads=12, **kwargs
+    )
+
+
+def vit_base_patch14_224(**kwargs) -> ViT:
+    """ViT-Base/14 @ 224 (DINOv2 patch size)."""
+    return ViT(
+        img_size=224, patch_size=14, embed_dim=768, depth=12, num_heads=12, **kwargs
+    )
+
+
+def vit_base_patch8_224(**kwargs) -> ViT:
+    """ViT-Base/8 @ 224 (DINO patch size)."""
+    return ViT(
+        img_size=224, patch_size=8, embed_dim=768, depth=12, num_heads=12, **kwargs
+    )
+
+
+def vit_large_patch32_224(**kwargs) -> ViT:
+    """ViT-Large/32 @ 224. ``embed_dim=1024, depth=24, heads=16``."""
+    return ViT(
+        img_size=224, patch_size=32, embed_dim=1024, depth=24, num_heads=16, **kwargs
+    )
+
+
+def vit_large_patch32_384(**kwargs) -> ViT:
+    """ViT-Large/32 @ 384."""
+    return ViT(
+        img_size=384, patch_size=32, embed_dim=1024, depth=24, num_heads=16, **kwargs
+    )
+
+
+def vit_large_patch16_224(**kwargs) -> ViT:
+    """ViT-Large/16 @ 224."""
+    return ViT(
+        img_size=224, patch_size=16, embed_dim=1024, depth=24, num_heads=16, **kwargs
+    )
+
+
+def vit_large_patch16_384(**kwargs) -> ViT:
+    """ViT-Large/16 @ 384."""
+    return ViT(
+        img_size=384, patch_size=16, embed_dim=1024, depth=24, num_heads=16, **kwargs
+    )
+
+
+def vit_large_patch14_224(**kwargs) -> ViT:
+    """ViT-Large/14 @ 224 (CLIP / DINOv2 patch size)."""
+    return ViT(
+        img_size=224, patch_size=14, embed_dim=1024, depth=24, num_heads=16, **kwargs
+    )
+
+
+def vit_huge_patch14_224(**kwargs) -> ViT:
+    """ViT-Huge/14 @ 224. ``embed_dim=1280, depth=32, heads=16``."""
+    return ViT(
+        img_size=224, patch_size=14, embed_dim=1280, depth=32, num_heads=16, **kwargs
+    )
+
+
+def vit_huge_patch16_224(**kwargs) -> ViT:
+    """ViT-Huge/16 @ 224."""
+    return ViT(
+        img_size=224, patch_size=16, embed_dim=1280, depth=32, num_heads=16, **kwargs
+    )
+
+
+def vit_giant_patch14_224(**kwargs) -> ViT:
+    """ViT-Giant/14 @ 224. ``embed_dim=1408, depth=40, heads=16, mlp_ratio=48/11``."""
+    return ViT(
+        img_size=224,
+        patch_size=14,
+        embed_dim=1408,
+        depth=40,
+        num_heads=16,
+        mlp_ratio=48 / 11,
+        **kwargs,
+    )
+
+
+def vit_gigantic_patch14_224(**kwargs) -> ViT:
+    """ViT-Gigantic/14 @ 224. ``embed_dim=1664, depth=48, heads=16, mlp_ratio=64/13``."""
+    return ViT(
+        img_size=224,
+        patch_size=14,
+        embed_dim=1664,
+        depth=48,
+        num_heads=16,
+        mlp_ratio=64 / 13,
+        **kwargs,
+    )

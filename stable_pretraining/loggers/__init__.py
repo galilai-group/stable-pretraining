@@ -3,7 +3,13 @@
 
 """Lightning loggers for stable_pretraining."""
 
+from .csv_log_reader import CSVLogAutoSummarizer
 from .trackio import TrackioLogger, load_project_df
 from .swanlab import SwanLabLogger
 
-__all__ = ["TrackioLogger", "SwanLabLogger", "load_project_df"]
+__all__ = [
+    "CSVLogAutoSummarizer",
+    "TrackioLogger",
+    "SwanLabLogger",
+    "load_project_df",
+]

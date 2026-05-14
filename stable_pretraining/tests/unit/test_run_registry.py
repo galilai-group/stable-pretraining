@@ -529,6 +529,211 @@ class TestRegistryLogger:
         second = sidecar.read_sidecar(sidecar.sidecar_path(tmp_path))["created_at"]
         assert first == second
 
+    @pytest.mark.unit
+    def test_resume_appends_to_existing_metrics_csv(self, tmp_path):
+        """Resuming a run must append to metrics.csv, not truncate it.
+
+        Preempt/requeue cycles depend on this. Lightning's stock
+        ``_ExperimentWriter`` deletes the file in ``_check_log_dir_exists``;
+        our ``_AppendingExperimentWriter`` overrides that to a no-op and
+        bootstraps ``metrics_keys`` from the existing header.
+        """
+        import csv
+
+        # First "session": log two epochs and save.
+        lg1 = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        lg1.log_hyperparams({})
+        lg1.log_metrics({"loss": 1.5, "acc": 0.3}, step=0)
+        lg1.log_metrics({"loss": 1.2, "acc": 0.5}, step=1)
+        lg1.save()
+
+        csv_path = tmp_path / "metrics.csv"
+        assert csv_path.exists(), "first session must create metrics.csv"
+        first_session_rows = list(csv.DictReader(open(csv_path)))
+        assert len(first_session_rows) == 2
+
+        # Second "session": create a fresh logger on the same dir, log
+        # one more epoch, save. Old rows MUST still be there.
+        lg2 = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        lg2.log_hyperparams({})
+        lg2.log_metrics({"loss": 0.9, "acc": 0.7}, step=2)
+        lg2.save()
+
+        rows = list(csv.DictReader(open(csv_path)))
+        assert len(rows) == 3, f"expected 3 rows after resume-append, got {len(rows)}"
+        assert float(rows[0]["loss"]) == 1.5, "first session row 0 must survive"
+        assert float(rows[1]["loss"]) == 1.2, "first session row 1 must survive"
+        assert float(rows[2]["loss"]) == 0.9, "second session row must be appended"
+
+    @pytest.mark.unit
+    def test_resume_preserves_csv_column_order(self, tmp_path):
+        """Resuming a run must preserve the on-disk CSV column order.
+
+        Lightning's parent ``_record_new_keys`` does
+        ``self.metrics_keys.sort()``, which scrambles columns relative to
+        the on-disk header on resume (header keeps insertion order;
+        in-memory list becomes alphabetical). Our override appends new
+        keys without sorting so resumed rows align with the original
+        header.
+        """
+        import csv
+
+        # First session: write metrics whose keys are non-alphabetical.
+        # If the parent's sort ran, the on-disk column order would become
+        # ['acc', 'loss', 'step'] but the header (written first) retains
+        # ['loss', 'acc', 'step'].
+        lg1 = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        lg1.log_hyperparams({})
+        lg1.log_metrics({"loss": 1.0, "acc": 0.5}, step=0)
+        lg1.save()
+
+        csv_path = tmp_path / "metrics.csv"
+        # Capture the header order written by the first session.
+        with open(csv_path) as f:
+            header = next(csv.reader(f))
+
+        # Second session: append a row.
+        lg2 = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        lg2.log_hyperparams({})
+        lg2.log_metrics({"loss": 0.8, "acc": 0.7}, step=1)
+        lg2.save()
+
+        # Header order should be unchanged, and resumed-row values must
+        # land in the correct column (not scrambled by alphabetical sort).
+        with open(csv_path) as f:
+            reader = csv.DictReader(f)
+            new_header = reader.fieldnames
+            rows = list(reader)
+        assert new_header == header, (
+            f"column order changed on resume: was {header}, now {new_header}"
+        )
+        assert float(rows[-1]["loss"]) == 0.8, "loss column scrambled on append"
+        assert float(rows[-1]["acc"]) == 0.7, "acc column scrambled on append"
+
+    @pytest.mark.unit
+    def test_resume_with_new_metric_added_midrun(self, tmp_path):
+        """A new metric introduced mid-run extends the header in place.
+
+        When the second session logs a *new* metric the first didn't, old
+        rows must survive (with empty value for the new column) and the
+        new row must hold the new value at the new column.
+        """
+        import csv
+
+        lg1 = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        lg1.log_hyperparams({})
+        lg1.log_metrics({"loss": 1.0}, step=0)
+        lg1.save()
+
+        lg2 = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        lg2.log_hyperparams({})
+        lg2.log_metrics({"loss": 0.5, "eval/r2": 0.42}, step=1)
+        lg2.save()
+
+        csv_path = tmp_path / "metrics.csv"
+        rows = list(csv.DictReader(open(csv_path)))
+        assert len(rows) == 2, f"expected 2 rows, got {len(rows)}"
+        # Old row preserved; the new column shows up empty for it.
+        assert float(rows[0]["loss"]) == 1.0
+        assert rows[0]["eval/r2"] == "", "old row should have empty new-column value"
+        # New row has the new metric populated.
+        assert float(rows[1]["loss"]) == 0.5
+        assert float(rows[1]["eval/r2"]) == 0.42
+
+
+# ============================================================================
+# RegistryLogger.summary.json
+# ============================================================================
+
+
+class TestRegistrySummaryFile:
+    """``summary.json``: per-metric last/min/max stats."""
+
+    def _read_summary(self, run_dir: Path) -> dict:
+        return json.loads((run_dir / "summary.json").read_text())
+
+    def test_save_writes_summary_file(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": 1.0}, step=0)
+        logger.save()
+        assert (tmp_path / "summary.json").is_file()
+
+    def test_summary_tracks_min_max(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": 1.5, "epoch": 0}, step=0)
+        logger.log_metrics({"loss": 2.0, "epoch": 0}, step=10)
+        logger.log_metrics({"loss": 0.5, "epoch": 1}, step=20)
+        logger.log_metrics({"loss": 1.0, "epoch": 1}, step=30)
+        logger.save()
+
+        s = self._read_summary(tmp_path)
+        loss = s["metrics"]["loss"]
+        assert loss["last"] == 1.0
+        assert loss["min"] == 0.5
+        assert loss["max"] == 2.0
+        assert loss["count"] == 4
+        # Top-level last-seen step + epoch.
+        assert s["step"] == 30 and s["epoch"] == 1
+
+    def test_summary_first_observation_is_both_min_and_max(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"acc": 0.42, "epoch": 7}, step=42)
+        logger.save()
+        acc = self._read_summary(tmp_path)["metrics"]["acc"]
+        assert acc["last"] == acc["min"] == acc["max"] == 0.42
+        assert acc["count"] == 1
+
+    def test_summary_skips_non_numeric(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": 1.0, "tag": "blue"}, step=0)
+        logger.save()
+        metrics = self._read_summary(tmp_path)["metrics"]
+        assert "loss" in metrics and "tag" not in metrics
+
+    def test_summary_atomic_no_partial_observable(self, tmp_path):
+        """Atomic write: no temp leaks behind, target is whole or absent."""
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": 1.0}, step=0)
+        logger.save()
+        leftovers = [p.name for p in tmp_path.iterdir() if p.name.startswith(".")]
+        assert leftovers == [], f"temp files leaked: {leftovers}"
+        # File is parseable in one shot.
+        json.loads((tmp_path / "summary.json").read_text())
+
+    def test_summary_finalize_flushes_summary(self, tmp_path):
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": 0.7}, step=5)
+        logger.finalize("success")
+        loss = self._read_summary(tmp_path)["metrics"]["loss"]
+        assert loss["last"] == 0.7 and loss["count"] == 1
+
+    def test_summary_rank_zero_only(self, tmp_path):
+        """``log_metrics`` + ``save`` are gated by ``@rank_zero_only``.
+
+        On rank>0 the wrapper turns them into no-ops, so neither the
+        in-memory stats nor the on-disk file are written.
+        """
+        from lightning.pytorch.utilities import rank_zero as _rz
+
+        # rank is cached at import time; set explicitly for the test.
+        original = _rz.rank_zero_only.rank
+        _rz.rank_zero_only.rank = 1
+        try:
+            logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+            logger.log_hyperparams({})
+            logger.log_metrics({"loss": 0.1}, step=0)
+            logger.save()
+        finally:
+            _rz.rank_zero_only.rank = original
+        assert not (tmp_path / "summary.json").exists()
+        assert logger._metric_stats == {}
+
 
 # ============================================================================
 # Registry query API (via open_registry)

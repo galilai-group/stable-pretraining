@@ -7,6 +7,6 @@ if __name__ == "__main__":
     parser.add_argument("--path", type=Path, required=True)
     args = parser.parse_args()
 
-    reader = spt.utils.CSVLogAutoSummarizer(args.path)
+    reader = spt.loggers.CSVLogAutoSummarizer(args.path)
     df = reader.collect()
     print(df)

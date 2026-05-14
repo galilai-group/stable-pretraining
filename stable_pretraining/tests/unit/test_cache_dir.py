@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -168,44 +169,34 @@ class TestRequeueCheckpointConfig:
 
 
 class TestGenerateRunId:
-    """Tests for run ID generation."""
+    """``_generate_run_id`` always returns a fresh uuid4 hex (12 chars).
 
-    def test_uuid_fallback(self, monkeypatch):
-        monkeypatch.delenv("SLURM_JOB_ID", raising=False)
-        monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
+    SLURM/torchrun env-var awareness moved out of run_id generation entirely;
+    requeue resume is handled by the SLURM-index lookup in
+    ``_resolve_run_dir`` instead. See ``TestSlurmRequeueIndex`` below.
+    """
+
+    def test_returns_12_hex_chars(self):
         run_id = _generate_run_id()
         assert len(run_id) == 12
         assert run_id.isalnum()
 
-    def test_two_uuids_are_different(self, monkeypatch):
-        monkeypatch.delenv("SLURM_JOB_ID", raising=False)
-        monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
+    def test_two_calls_are_different(self):
         assert _generate_run_id() != _generate_run_id()
 
-    def test_slurm_job_id(self, monkeypatch):
+    def test_unaffected_by_slurm_env_vars(self, monkeypatch):
+        """SLURM env vars must not leak into run_id.
+
+        SLURM_JOB_ID etc. used to be baked into run_id, but the new design
+        keeps run_id always-uuid and uses SLURM env vars only for the index
+        lookup.
+        """
         monkeypatch.setenv("SLURM_JOB_ID", "12345")
-        assert _generate_run_id() == "12345"
-
-    def test_torchelastic_run_id(self, monkeypatch):
-        monkeypatch.delenv("SLURM_JOB_ID", raising=False)
-        monkeypatch.setenv("TORCHELASTIC_RUN_ID", "abc123")
-        assert _generate_run_id() == "abc123"
-
-    def test_slurm_takes_priority(self, monkeypatch):
-        monkeypatch.setenv("SLURM_JOB_ID", "99999")
-        monkeypatch.setenv("TORCHELASTIC_RUN_ID", "abc123")
-        assert _generate_run_id() == "99999"
-
-    def test_slurm_deterministic_across_calls(self, monkeypatch):
-        monkeypatch.setenv("SLURM_JOB_ID", "77777")
-        monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
-        assert _generate_run_id() == _generate_run_id() == "77777"
-
-    def test_slurm_array_job(self, monkeypatch):
-        """Array tasks within the same job should get different run_ids."""
-        monkeypatch.setenv("SLURM_JOB_ID", "100")
         monkeypatch.setenv("SLURM_ARRAY_TASK_ID", "3")
-        assert _generate_run_id() == "100_3"
+        monkeypatch.setenv("TORCHELASTIC_RUN_ID", "abc123")
+        run_id = _generate_run_id()
+        assert "12345" not in run_id and "abc123" not in run_id
+        assert len(run_id) == 12
 
     def test_slurm_array_tasks_differ(self, monkeypatch):
         monkeypatch.setenv("SLURM_JOB_ID", "100")
@@ -264,44 +255,28 @@ class TestResolveRunDir:
         assert meta["run_dir"] == str(run_dir)
         assert "run_id" in meta
 
-    def test_restores_from_sidecar(self, cache_dir):
-        """If ckpt_path has a run_meta.json sibling, restore that run_dir."""
+    def test_restores_via_slurm_index_on_requeue(self, cache_dir, monkeypatch):
+        """SLURM requeue reuses the indexed run_dir.
+
+        Same SLURM_JOB_ID *and* SLURM_RESTART_COUNT≥1 *and* a recorded
+        ``.slurm_index/<key>`` entry → reuse the original run_dir.
+        """
+        monkeypatch.setenv("SLURM_JOB_ID", "99999")
+        monkeypatch.setenv("SLURM_RESTART_COUNT", "1")
+        # Pre-existing run from the original (pre-requeue) invocation.
         prev_run_dir = cache_dir / "runs" / "20260101" / "120000" / "previd123456"
         prev_run_dir.mkdir(parents=True)
-        (prev_run_dir / _RUN_META_FILENAME).write_text(
-            json.dumps({"run_dir": str(prev_run_dir), "run_id": "previd123456"})
-        )
-        ckpt_dir = prev_run_dir / "checkpoints"
-        ckpt_dir.mkdir()
-        ckpt_path = ckpt_dir / "last.ckpt"
-        ckpt_path.touch()
-        (ckpt_dir / _RUN_META_FILENAME).write_text(
-            json.dumps({"run_dir": str(prev_run_dir), "run_id": "previd123456"})
-        )
+        idx_dir = cache_dir / ".slurm_index"
+        idx_dir.mkdir()
+        (idx_dir / "99999").write_text(str(prev_run_dir))
 
-        manager = self._make_manager(ckpt_path=ckpt_path)
-        run_dir = manager._resolve_run_dir()
-        assert run_dir == prev_run_dir
-
-    def test_restores_by_slurm_job_id_without_ckpt_path(self, cache_dir, monkeypatch):
-        """On SLURM requeue: no ckpt_path but same SLURM_JOB_ID → finds prev run_dir."""
-        monkeypatch.setenv("SLURM_JOB_ID", "99999")
-        # Simulate a previous run for this SLURM job
-        prev_run_dir = cache_dir / "runs" / "20260101" / "120000" / "99999"
-        prev_run_dir.mkdir(parents=True)
-        (prev_run_dir / _RUN_META_FILENAME).write_text(
-            json.dumps({"run_dir": str(prev_run_dir), "run_id": "99999"})
-        )
-        ckpt_dir = prev_run_dir / "checkpoints"
-        ckpt_dir.mkdir()
-        (ckpt_dir / "last.ckpt").touch()
-
-        # Manager with NO ckpt_path — this is the requeue scenario
         manager = self._make_manager(ckpt_path=None)
         run_dir = manager._resolve_run_dir()
         assert run_dir == prev_run_dir
 
-    def test_fresh_run_when_sidecar_missing(self, cache_dir):
+    def test_fresh_run_when_sidecar_missing(self, cache_dir, monkeypatch):
+        # Don't trigger the requeue path while testing sidecar fallback.
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
         ckpt = cache_dir / "stale.ckpt"
         ckpt.parent.mkdir(parents=True, exist_ok=True)
         ckpt.touch()
@@ -310,7 +285,8 @@ class TestResolveRunDir:
         assert run_dir is not None
         assert run_dir.is_dir()
 
-    def test_fresh_run_when_sidecar_corrupt(self, cache_dir):
+    def test_fresh_run_when_sidecar_corrupt(self, cache_dir, monkeypatch):
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
         ckpt = cache_dir / "corrupt.ckpt"
         ckpt.parent.mkdir(parents=True, exist_ok=True)
         ckpt.touch()
@@ -320,16 +296,94 @@ class TestResolveRunDir:
         assert run_dir is not None
         assert run_dir.is_dir()
 
-    def test_uses_slurm_job_id(self, cache_dir, monkeypatch):
+    def test_run_id_is_uuid_even_with_slurm_job_id(self, cache_dir, monkeypatch):
+        """run_id stays a 12-char uuid even under SLURM.
+
+        The SLURM_JOB_ID is recorded in the side index, not embedded in
+        run_id.
+        """
         monkeypatch.setenv("SLURM_JOB_ID", "42")
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
         manager = self._make_manager()
         run_dir = manager._resolve_run_dir()
-        assert run_dir.name == "42"
+        assert run_dir.name != "42"
+        assert len(run_dir.name) == 12 and run_dir.name.isalnum()
+
+    def test_fresh_run_writes_slurm_index(self, cache_dir, monkeypatch):
+        """Fresh SLURM run records its run_dir in the index.
+
+        Writing ``cache_dir/.slurm_index/<key>`` is what lets a future
+        requeue (Strategy 2) find the original directory.
+        """
+        monkeypatch.setenv("SLURM_JOB_ID", "12345")
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
+        manager = self._make_manager()
+        run_dir = manager._resolve_run_dir()
+        idx = cache_dir / ".slurm_index" / "12345"
+        assert idx.is_file()
+        assert idx.read_text().strip() == str(run_dir)
+
+    def test_array_task_index_key_includes_task_id(self, cache_dir, monkeypatch):
+        """SLURM_ARRAY_TASK_ID disambiguates tasks within the same array job."""
+        monkeypatch.setenv("SLURM_JOB_ID", "100")
+        monkeypatch.setenv("SLURM_ARRAY_TASK_ID", "3")
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
+        manager = self._make_manager()
+        manager._resolve_run_dir()
+        assert (cache_dir / ".slurm_index" / "100_3").is_file()
+        assert not (cache_dir / ".slurm_index" / "100").exists()
+
+    def test_interactive_rerun_gets_fresh_dir(self, cache_dir, monkeypatch):
+        """Interactive SLURM reruns get distinct run dirs.
+
+        Two consecutive Manager calls inside the same SLURM allocation (same
+        SLURM_JOB_ID, RESTART_COUNT=0) must produce DIFFERENT run dirs —
+        this was the whole point of the redesign.
+        """
+        monkeypatch.setenv("SLURM_JOB_ID", "55555")
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
+        m1 = self._make_manager()
+        d1 = m1._resolve_run_dir()
+        m2 = self._make_manager()
+        d2 = m2._resolve_run_dir()
+        assert d1 != d2, "interactive re-runs must not share a run_dir"
+
+    def test_requeue_without_index_falls_through_to_fresh(self, cache_dir, monkeypatch):
+        """Requeue + no index + no orphan run_dir = early-preempt fallback.
+
+        Cluster-wide eviction during submitit pickle load can produce
+        ``RESTART_COUNT≥1`` with no artefact on disk — the prior task
+        died before reaching ``Manager.__init__``. There's nothing to
+        recover; treat as a fresh run. The strict raise is reserved for
+        the orphan scenario (see ``TestEarlyPreemptFallback`` in
+        ``test_slurm_index.py``).
+        """
+        monkeypatch.setenv("SLURM_JOB_ID", "77777")
+        monkeypatch.setenv("SLURM_RESTART_COUNT", "1")
+        # No .slurm_index/77777 and no run_dir stamped with this JOB_ID.
+        manager = self._make_manager()
+        run_dir = manager._resolve_run_dir()
+        assert run_dir is not None and run_dir.is_dir()
+        assert manager._early_preempt_fallback is True
+        # Index now written so a future requeue will find this attempt.
+        assert (cache_dir / ".slurm_index" / "77777").is_file()
+
+    def test_requeue_with_stale_index_raises(self, cache_dir, monkeypatch):
+        """If the index points at a directory that's been deleted, error."""
+        monkeypatch.setenv("SLURM_JOB_ID", "88888")
+        monkeypatch.setenv("SLURM_RESTART_COUNT", "1")
+        idx_dir = cache_dir / ".slurm_index"
+        idx_dir.mkdir(parents=True, exist_ok=True)
+        (idx_dir / "88888").write_text("/nonexistent/path/that/does/not/exist")
+        manager = self._make_manager()
+        with pytest.raises(RuntimeError, match="no longer exists"):
+            manager._resolve_run_dir()
 
     def test_tilde_expanded(self, monkeypatch):
         spt_set(cache_dir="~/spt_test_cache")
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
         monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
         manager = Manager(
             trainer=BoringTrainer(enable_checkpointing=False, logger=False),
             module=BoringModule(),
@@ -344,15 +398,259 @@ class TestResolveRunDir:
             shutil.rmtree(run_dir.parent.parent.parent.parent)
 
     def test_sets_run_id_attribute(self, cache_dir, monkeypatch):
+        """run_id mirrors the run_dir name (uuid), regardless of SLURM env."""
         monkeypatch.setenv("SLURM_JOB_ID", "555")
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
         manager = Manager(
             trainer=BoringTrainer(enable_checkpointing=False, logger=False),
             module=BoringModule(),
             data=BoringDataModule(),
         )
         manager._resolve_run_dir()
-        assert manager._run_id == "555"
-        assert manager._run_dir.name == "555"
+        assert manager._run_id == manager._run_dir.name
+        assert len(manager._run_id) == 12 and manager._run_id.isalnum()
+
+
+# ============================================================================
+# DDP rank coordination — rank-0 publishes run_dir, rank-N waits for it
+# ============================================================================
+
+
+class TestDDPRankHandoff:
+    """Rank-0 publishes run_dir; rank-N blocks on the handoff and adopts it.
+
+    The bug being guarded against: every rank used to call ``_generate_run_id``
+    and ``datetime.now()`` independently, so each rank created its own
+    ``runs/<datetime>/<uuid>/`` and last-writer-wins for ``.slurm_index/<key>``.
+    On preempt+requeue, the published index entry could point at a non-rank-0
+    directory that was never written to → silent loss of training history.
+
+    The fix: rank 0 picks the dir, atomically publishes it under
+    ``cache_dir/.rank_handoff/<launch_key>``; ranks 1..N block on that file
+    and adopt its value.
+    """
+
+    def _make_manager(self):
+        from stable_pretraining.tests.utils import (
+            BoringTrainer,
+            BoringModule,
+            BoringDataModule,
+        )
+
+        return Manager(
+            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
+            module=BoringModule(),
+            data=BoringDataModule(),
+        )
+
+    @staticmethod
+    def _set_rank(monkeypatch, rank: int) -> None:
+        """Override Lightning's cached rank for the duration of one test.
+
+        ``rank_zero_only.rank`` is set at module-import time from env vars and
+        cached, so monkeypatching env vars after import has no effect on it.
+        We patch the attribute directly — this is exactly what Lightning's own
+        Strategy does at setup time when it learns the real rank from the
+        process group.
+        """
+        from lightning.pytorch.utilities.rank_zero import rank_zero_only
+
+        monkeypatch.setattr(rank_zero_only, "rank", rank, raising=False)
+
+    # -- launch-key uniqueness ------------------------------------------------
+
+    def test_launch_key_slurm_batch(self, monkeypatch):
+        from stable_pretraining.manager import _ddp_launch_key
+
+        monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
+        monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
+        monkeypatch.delenv("MASTER_ADDR", raising=False)
+        monkeypatch.setenv("SLURM_JOB_ID", "98341")
+        assert _ddp_launch_key() == "slurm-98341"
+
+    def test_launch_key_slurm_array(self, monkeypatch):
+        from stable_pretraining.manager import _ddp_launch_key
+
+        monkeypatch.setenv("SLURM_JOB_ID", "98341")
+        monkeypatch.setenv("SLURM_ARRAY_TASK_ID", "5")
+        assert _ddp_launch_key() == "slurm-98341_5"
+
+    def test_launch_key_torchelastic(self, monkeypatch):
+        from stable_pretraining.manager import _ddp_launch_key
+
+        for v in ("SLURM_JOB_ID", "SLURM_ARRAY_TASK_ID", "MASTER_ADDR", "MASTER_PORT"):
+            monkeypatch.delenv(v, raising=False)
+        monkeypatch.setenv("TORCHELASTIC_RUN_ID", "abc123")
+        assert _ddp_launch_key() == "elastic-abc123"
+
+    def test_launch_key_local_ddp(self, monkeypatch):
+        from stable_pretraining.manager import _ddp_launch_key
+
+        for v in ("SLURM_JOB_ID", "SLURM_ARRAY_TASK_ID", "TORCHELASTIC_RUN_ID"):
+            monkeypatch.delenv(v, raising=False)
+        monkeypatch.setenv("MASTER_ADDR", "127.0.0.1")
+        monkeypatch.setenv("MASTER_PORT", "29500")
+        key = _ddp_launch_key()
+        assert key.startswith("local-127.0.0.1-29500-")
+
+    def test_launch_key_none_for_single_process(self, monkeypatch):
+        from stable_pretraining.manager import _ddp_launch_key
+
+        for v in (
+            "SLURM_JOB_ID",
+            "SLURM_ARRAY_TASK_ID",
+            "TORCHELASTIC_RUN_ID",
+            "MASTER_ADDR",
+            "MASTER_PORT",
+        ):
+            monkeypatch.delenv(v, raising=False)
+        assert _ddp_launch_key() is None
+
+    # -- end-to-end: rank-0 publishes, rank-N adopts -------------------------
+
+    def test_rank_zero_publishes_handoff_after_fresh_dir(self, cache_dir, monkeypatch):
+        # Force a known launch_key + rank 0.
+        monkeypatch.setenv("SLURM_JOB_ID", "777")
+        monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
+        self._set_rank(monkeypatch, 0)
+
+        manager = self._make_manager()
+        run_dir = manager._resolve_run_dir()
+        assert run_dir is not None and run_dir.is_dir()
+
+        handoff = cache_dir / ".rank_handoff" / "slurm-777"
+        assert handoff.is_file(), "rank-0 must publish handoff"
+        assert handoff.read_text().strip() == str(run_dir)
+
+    def test_rank_n_adopts_handoff(self, cache_dir, monkeypatch):
+        """Rank 1 reads rank-0's published path instead of computing its own."""
+        # Pre-populate the handoff file as if rank 0 already wrote it.
+        published = cache_dir / "runs" / "20260101" / "120000" / "rank0uuid1234"
+        published.mkdir(parents=True)
+        ho_dir = cache_dir / ".rank_handoff"
+        ho_dir.mkdir(parents=True)
+        (ho_dir / "slurm-777").write_text(str(published))
+
+        # Pretend we're rank 1 of the same launch.
+        monkeypatch.setenv("SLURM_JOB_ID", "777")
+        monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
+        self._set_rank(monkeypatch, 1)
+
+        manager = self._make_manager()
+        run_dir = manager._resolve_run_dir()
+        assert run_dir == published
+
+    def test_rank_n_falls_back_on_timeout(self, cache_dir, monkeypatch):
+        """Rank-N falls back to local resolution if rank-0 never publishes.
+
+        If rank-0 crashed before publishing, rank-N must fall back rather than
+        block forever. Data integrity is preserved because only rank-0 writes
+        via ``@rank_zero_only`` loggers.
+        """
+        import stable_pretraining.manager as mgr_mod
+
+        monkeypatch.setattr(mgr_mod, "_RANK_HANDOFF_TIMEOUT_S", 0.2)
+        monkeypatch.setenv("SLURM_JOB_ID", "777")
+        monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
+        self._set_rank(monkeypatch, 1)
+
+        manager = self._make_manager()
+        run_dir = manager._resolve_run_dir()
+        # Returned a real dir despite no handoff (graceful fallback).
+        assert run_dir is not None and run_dir.is_dir()
+
+    def test_rank_n_ignores_dangling_handoff(self, cache_dir, monkeypatch):
+        """Stale handoff (pointing at a vanished dir) is ignored.
+
+        A handoff file from a crashed prior launch may point at a non-existent
+        directory; rank-N keeps polling until a valid pointer arrives or the
+        timeout elapses, then falls back to local resolution.
+        """
+        import stable_pretraining.manager as mgr_mod
+
+        monkeypatch.setattr(mgr_mod, "_RANK_HANDOFF_TIMEOUT_S", 0.3)
+        # Stale pointer to a directory that doesn't exist.
+        ho_dir = cache_dir / ".rank_handoff"
+        ho_dir.mkdir(parents=True)
+        (ho_dir / "slurm-777").write_text(str(cache_dir / "vanished"))
+
+        monkeypatch.setenv("SLURM_JOB_ID", "777")
+        monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
+        self._set_rank(monkeypatch, 1)
+
+        manager = self._make_manager()
+        # Falls back to local resolution rather than chasing the dangling ptr.
+        run_dir = manager._resolve_run_dir()
+        assert run_dir is not None and run_dir.is_dir()
+        assert "vanished" not in str(run_dir)
+
+    def test_polling_picks_up_handoff_written_after_wait_starts(self, cache_dir):
+        """Rank-N's poll picks up a handoff that appears mid-wait.
+
+        Rank-N starts polling on an empty dir; rank-0 publishes shortly after;
+        rank-N must return the published path before timeout.
+
+        This bypasses ``Manager.__call__`` entirely — pure-function semantics
+        of the helpers — so it avoids the cross-thread ``os.environ`` mess
+        that real DDP doesn't have (each rank is a separate process).
+        """
+        import threading
+
+        manager = self._make_manager()
+        target = cache_dir / "runs" / "20260101" / "120000" / "publishedID"
+        target.mkdir(parents=True)
+
+        # Run wait in a background thread; publish from main after a short delay.
+        result = {}
+
+        def poll():
+            result["adopted"] = manager._wait_for_rank_zero_handoff(
+                cache_dir, "slurm-test"
+            )
+
+        t = threading.Thread(target=poll)
+        t.start()
+        time.sleep(0.1)  # rank-N is now polling
+        manager._publish_rank_zero_handoff(cache_dir, "slurm-test", target)
+        t.join(timeout=5)
+
+        assert result.get("adopted") == target
+
+    def test_publish_is_atomic(self, cache_dir):
+        """Handoff is written via atomic temp+replace.
+
+        Rank-0 writes the handoff file via temp+``replace`` so a rank-N reader
+        never sees a partially-written file.
+        """
+        manager = self._make_manager()
+        target = cache_dir / "runs" / "20260101" / "120000" / "atomicID"
+        target.mkdir(parents=True)
+        manager._publish_rank_zero_handoff(cache_dir, "slurm-test", target)
+        handoff = cache_dir / ".rank_handoff" / "slurm-test"
+        assert handoff.is_file()
+        # No leftover .tmp file from the rename trick.
+        assert not handoff.with_name(handoff.name + ".tmp").exists()
+        assert handoff.read_text() == str(target)
+
+    def test_single_process_skips_handoff(self, cache_dir, monkeypatch):
+        """No DDP env vars → ``_ddp_launch_key`` is None → no handoff file."""
+        for v in (
+            "SLURM_JOB_ID",
+            "SLURM_ARRAY_TASK_ID",
+            "TORCHELASTIC_RUN_ID",
+            "MASTER_ADDR",
+            "MASTER_PORT",
+            "RANK",
+            "LOCAL_RANK",
+            "SLURM_PROCID",
+        ):
+            monkeypatch.delenv(v, raising=False)
+
+        manager = self._make_manager()
+        run_dir = manager._resolve_run_dir()
+        assert run_dir is not None and run_dir.is_dir()
+        assert not (cache_dir / ".rank_handoff").exists()
 
 
 # ============================================================================
@@ -418,101 +716,12 @@ class TestInjectRunDir:
 # ============================================================================
 
 
-class TestResolveLoadPath:
-    """Tests for resolving checkpoint load paths."""
-
-    def test_returns_user_ckpt_path_when_exists(self, tmp_path):
-        """User's explicit ckpt_path is used for loading."""
-        user_ckpt = tmp_path / "pretrained.ckpt"
-        user_ckpt.touch()
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-            ckpt_path=str(user_ckpt),
-        )
-        run_dir = tmp_path / "run"
-        run_dir.mkdir()
-        result = manager._resolve_load_path(run_dir)
-        assert result == str(user_ckpt.resolve())
-
-    def test_returns_none_when_user_ckpt_path_missing_and_no_last_ckpt(self, tmp_path):
-        """User's ckpt_path doesn't exist and no last.ckpt → None."""
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-            ckpt_path=str(tmp_path / "nonexistent.ckpt"),
-        )
-        run_dir = tmp_path / "run"
-        run_dir.mkdir()
-        result = manager._resolve_load_path(run_dir)
-        assert result is None
-
-    def test_falls_back_to_last_ckpt_when_user_ckpt_path_missing(self, tmp_path):
-        """User's ckpt_path doesn't exist but last.ckpt does → load last.ckpt.
-
-        This is the requeue scenario: a stale ckpt_path from a previous job
-        no longer exists, but last.ckpt was saved in the run_dir.
-        """
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-            ckpt_path=str(tmp_path / "nonexistent.ckpt"),
-        )
-        run_dir = tmp_path / "run"
-        ckpt_dir = run_dir / "checkpoints"
-        ckpt_dir.mkdir(parents=True)
-        (ckpt_dir / "last.ckpt").touch()
-
-        result = manager._resolve_load_path(run_dir)
-        assert result == str(ckpt_dir / "last.ckpt")
-
-    def test_auto_detects_requeue_checkpoint(self, tmp_path):
-        """When no ckpt_path but run_dir/checkpoints/last.ckpt exists, load it."""
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-        )
-        run_dir = tmp_path / "run"
-        ckpt_dir = run_dir / "checkpoints"
-        ckpt_dir.mkdir(parents=True)
-        (ckpt_dir / "last.ckpt").touch()
-
-        result = manager._resolve_load_path(run_dir)
-        assert result == str(ckpt_dir / "last.ckpt")
-
-    def test_returns_none_for_fresh_run(self, tmp_path):
-        """No ckpt_path and no existing checkpoint → None (fresh run)."""
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-        )
-        run_dir = tmp_path / "run"
-        run_dir.mkdir()
-        result = manager._resolve_load_path(run_dir)
-        assert result is None
-
-    def test_user_ckpt_path_takes_priority_over_requeue(self, tmp_path):
-        """If user passes ckpt_path AND requeue checkpoint exists, user wins."""
-        user_ckpt = tmp_path / "pretrained.ckpt"
-        user_ckpt.touch()
-        manager = Manager(
-            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
-            module=BoringModule(),
-            data=BoringDataModule(),
-            ckpt_path=str(user_ckpt),
-        )
-        run_dir = tmp_path / "run"
-        ckpt_dir = run_dir / "checkpoints"
-        ckpt_dir.mkdir(parents=True)
-        (ckpt_dir / "last.ckpt").touch()
-
-        result = manager._resolve_load_path(run_dir)
-        assert result == str(user_ckpt.resolve())
+# ``Manager._resolve_load_path`` is now covered in test_slurm_index.py
+# (see ``TestResolveLoadPath`` there) — the new behavior matrix is:
+# fresh run + user ckpt_path → load user path with user weights_only;
+# SLURM requeue → forced load of <run_dir>/checkpoints/last.ckpt with
+# weights_only=False; user ckpt_path under requeue is ignored with a
+# warning.
 
 
 # ============================================================================
@@ -804,7 +1013,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         def mock_fit(self_trainer, module, **kwargs):
@@ -857,7 +1066,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         def mock_fit(self_trainer, module, **kwargs):
@@ -875,6 +1084,9 @@ class TestManagerCallWithCacheDir:
         monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
 
         user_ckpt = cache_dir / "custom" / "my_model.ckpt"
+        # ckpt_path validation requires the file to exist at __init__.
+        user_ckpt.parent.mkdir(parents=True, exist_ok=True)
+        user_ckpt.touch()
 
         trainer_cfg = OmegaConf.create(
             {
@@ -899,7 +1111,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         def mock_fit(self_trainer, module, **kwargs):
@@ -944,7 +1156,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         def mock_fit(self_trainer, module, **kwargs):
@@ -958,23 +1170,21 @@ class TestManagerCallWithCacheDir:
         meta = json.loads(meta_path.read_text())
         assert Path(meta["run_dir"]) == manager._run_dir
 
-    def test_requeue_loads_from_run_dir_not_ckpt_path(self, cache_dir, monkeypatch):
-        """Simulate requeue: run_dir has last.ckpt, no user ckpt_path.
+    def test_user_ckpt_path_forwarded_with_fresh_run_dir(self, cache_dir, monkeypatch):
+        """User ckpt_path is forwarded to ``fit`` AND a FRESH run_dir is used.
 
-        The fit call should receive the auto-detected checkpoint.
+        Strategy-1-style sidecar restoration is gone: outside of a SLURM
+        requeue (RESTART_COUNT≥1) every invocation creates a new uuid'd
+        run_dir, regardless of where the user's ckpt_path lives.
         """
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
         monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
 
-        # Pre-create a "previous run" directory with a checkpoint
         prev_run_dir = cache_dir / "runs" / "20260101" / "120000" / "prev12345678"
         ckpt_dir = prev_run_dir / "checkpoints"
         ckpt_dir.mkdir(parents=True)
         (ckpt_dir / "last.ckpt").touch()
-        (ckpt_dir / _RUN_META_FILENAME).write_text(
-            json.dumps({"run_dir": str(prev_run_dir), "run_id": "prev12345678"})
-        )
-        # Manager has ckpt_path pointing to the prev checkpoint (for sidecar discovery)
         trainer_cfg = OmegaConf.create(
             {
                 "_target_": "lightning.pytorch.Trainer",
@@ -998,7 +1208,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         captured_kwargs = {}
@@ -1009,27 +1219,34 @@ class TestManagerCallWithCacheDir:
         monkeypatch.setattr(pl.Trainer, "fit", mock_fit)
         manager()
 
-        # Should have loaded from the user's ckpt_path
+        # User ckpt_path forwarded to fit verbatim.
         assert captured_kwargs["ckpt_path"] == str((ckpt_dir / "last.ckpt").resolve())
-        # And the run_dir should be the restored prev_run_dir (same directory)
-        assert manager._run_dir == prev_run_dir
+        # But the run_dir is FRESH — never the prev_run_dir.
+        assert manager._run_dir != prev_run_dir
+        assert manager._run_dir.is_dir()
 
     def test_slurm_requeue_no_ckpt_path_auto_loads(self, cache_dir, monkeypatch):
-        """SLURM requeue: no ckpt_path, same SLURM_JOB_ID.
+        """SLURM requeue auto-loads ``last.ckpt`` from the indexed dir.
 
-        Should find prev run_dir by job ID and auto-load last.ckpt.
+        With RESTART_COUNT≥1 and a ``.slurm_index/<key>`` entry, the
+        index-recorded run_dir is reused and its ``last.ckpt`` is picked up.
         """
         monkeypatch.setenv("SLURM_JOB_ID", "88888")
+        monkeypatch.setenv("SLURM_RESTART_COUNT", "1")
         monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
 
         # Simulate a previous run for this SLURM job
-        prev_run_dir = cache_dir / "runs" / "20260101" / "100000" / "88888"
+        prev_run_dir = cache_dir / "runs" / "20260101" / "100000" / "previd123456"
         ckpt_dir = prev_run_dir / "checkpoints"
         ckpt_dir.mkdir(parents=True)
         (ckpt_dir / "last.ckpt").touch()
         (prev_run_dir / _RUN_META_FILENAME).write_text(
-            json.dumps({"run_dir": str(prev_run_dir), "run_id": "88888"})
+            json.dumps({"run_dir": str(prev_run_dir), "run_id": "previd123456"})
         )
+        # The new mechanism: index file points at the prev run.
+        idx = cache_dir / ".slurm_index"
+        idx.mkdir()
+        (idx / "88888").write_text(str(prev_run_dir))
 
         trainer_cfg = OmegaConf.create(
             {
@@ -1054,7 +1271,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         captured_kwargs = {}
@@ -1100,7 +1317,7 @@ class TestManagerCallWithCacheDir:
             "stable_pretraining.manager.print_logger_info", lambda _: None
         )
         monkeypatch.setattr(
-            "stable_pretraining.manager.print_signal_info", lambda: None
+            "stable_pretraining.manager.print_signal_info", lambda *a, **kw: None
         )
 
         def mock_fit(self_trainer, module, **kwargs):

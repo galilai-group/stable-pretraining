@@ -171,7 +171,7 @@ projector = nn.Sequential(
     nn.BatchNorm1d(2048),
     nn.GELU(),
     nn.Linear(2048, 256),
-    spt.utils.nn_modules.L2Norm(),
+    spt.backbone.L2Norm(),
     nn.Linear(256, 65536, bias=False),  # Prototypes layer
 )
 
@@ -191,7 +191,7 @@ patch_projector = nn.Sequential(
     nn.BatchNorm1d(2048),
     nn.GELU(),
     nn.Linear(2048, 256),
-    spt.utils.nn_modules.L2Norm(),
+    spt.backbone.L2Norm(),
     nn.Linear(256, 65536, bias=False),  # Prototypes layer
 )
 

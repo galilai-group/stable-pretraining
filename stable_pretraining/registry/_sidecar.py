@@ -79,25 +79,19 @@ def make_sidecar(
     }
 
 
-def write_sidecar(run_dir: Union[str, Path], data: Dict[str, Any]) -> Path:
-    """Atomically write ``data`` to ``{run_dir}/sidecar.json``.
+def atomic_json_write(dest: Union[str, Path], data: Dict[str, Any]) -> Path:
+    """Atomically (re)write a JSON file using tmp + fsync + ``os.replace``.
 
-    Uses ``tempfile.mkstemp`` in the destination directory + ``fsync`` +
-    ``os.replace`` so readers never observe a partial write and the
-    rename is atomic on POSIX.
-
-    Returns the sidecar path.  Raises on I/O failure — the caller is
-    responsible for swallowing exceptions during teardown if needed.
+    The temp file lands in the destination's parent directory so the
+    final rename is same-filesystem atomic (NFS-safe). A reader can
+    never observe a partial write: the target either points at the old
+    content or the new one.
     """
-    run_dir = Path(run_dir)
-    run_dir.mkdir(parents=True, exist_ok=True)
-    dest = run_dir / SIDECAR_NAME
-
-    # Stamp updated_at at write time so it reflects the actual flush.
-    data = dict(data)
-    data["updated_at"] = time.time()
-
-    fd, tmp = tempfile.mkstemp(dir=str(run_dir), prefix=".sidecar.", suffix=".tmp")
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(
+        dir=str(dest.parent), prefix=f".{dest.name}.", suffix=".tmp"
+    )
     try:
         with os.fdopen(fd, "w") as f:
             json.dump(data, f, indent=2, sort_keys=False, default=_json_default)
@@ -111,6 +105,19 @@ def write_sidecar(run_dir: Union[str, Path], data: Dict[str, Any]) -> Path:
             pass
         raise
     return dest
+
+
+def write_sidecar(run_dir: Union[str, Path], data: Dict[str, Any]) -> Path:
+    """Atomically write ``data`` to ``{run_dir}/sidecar.json``.
+
+    Returns the sidecar path.  Raises on I/O failure — the caller is
+    responsible for swallowing exceptions during teardown if needed.
+    """
+    run_dir = Path(run_dir)
+    # Stamp updated_at at write time so it reflects the actual flush.
+    data = dict(data)
+    data["updated_at"] = time.time()
+    return atomic_json_write(run_dir / SIDECAR_NAME, data)
 
 
 def read_sidecar(path: Union[str, Path]) -> Optional[Dict[str, Any]]:

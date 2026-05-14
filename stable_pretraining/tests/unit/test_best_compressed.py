@@ -6,7 +6,7 @@ import numpy as np
 import os
 
 
-from stable_pretraining.utils.read_csv_logger import (
+from stable_pretraining.loggers.csv_log_reader import (
     _strip_extensions,
     _optimize_dataframe,
     _get_extension,

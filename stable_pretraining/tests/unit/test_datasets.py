@@ -7,6 +7,31 @@ import pytest
 import torch
 from omegaconf import OmegaConf
 
+from stable_pretraining.data.datasets import Dataset
+
+
+class _InnerDatasetWithGetstate(Dataset):
+    """Module-level dataset used by the Subset pickle round-trip test.
+
+    Pickle requires classes to be resolvable by qualname, so this lives at
+    module scope. Defines its own ``__getstate__`` to mimic LanceDataset
+    / HDF5Dataset — the trigger for the Subset.__getattr__ proxy bug on
+    Python <3.11.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.color = "red"
+
+    def __getitem__(self, idx):
+        return {"x": idx}
+
+    def __len__(self):
+        return 5
+
+    def __getstate__(self):
+        return self.__dict__.copy()
+
 
 @pytest.mark.unit
 class TestDatasetUnit:
@@ -457,3 +482,64 @@ class TestDatasetUnit:
             _ = subset.dataset
         with pytest.raises(AttributeError):
             _ = subset.column_names
+
+    def test_subset_pickle_roundtrip_with_inner_getstate(self):
+        """Pickle round-trip works when the inner dataset defines ``__getstate__``.
+
+        Regression: on Python <3.11 ``object.__getstate__`` doesn't exist,
+        so attribute lookup for ``__getstate__`` fell through Subset's
+        ``__getattr__`` proxy to the inner dataset's ``__getstate__``.
+        Pickle then dumped the inner dataset's state under Subset's class.
+        Workers that unpickle the result observe a "Subset" with the
+        inner ds's ``__dict__`` and crash on first ``self.dataset`` access.
+
+        This bites real-world setups using LanceDataset (which forces
+        spawn-mode workers and defines ``__getstate__`` to drop a
+        non-picklable handle); HDF5Dataset hides the bug because its
+        workers fork.
+        """
+        import pickle
+
+        from stable_pretraining.data.datasets import Subset
+
+        subset = Subset(_InnerDatasetWithGetstate(), [0, 1, 2])
+        roundtripped = pickle.loads(pickle.dumps(subset))
+
+        assert roundtripped.dataset is not None
+        assert roundtripped.indices == [0, 1, 2]
+        assert roundtripped.dataset.color == "red"
+        assert len(roundtripped) == 3
+
+    def test_dataset_mixin_drops_trainer_on_pickle(self):
+        """``DatasetMixin.__getstate__`` must drop ``_trainer``.
+
+        Regression: ``set_pl_trainer()`` stores ``self._trainer``, and
+        the trainer transitively reaches ``train_dataloader._iterator``
+        (a ``_MultiProcessingDataLoaderIter`` that raises
+        ``NotImplementedError`` on ``__getstate__``). Spawn-mode
+        DataLoader workers can therefore not pickle any dataset that
+        has had a trainer attached unless ``__getstate__`` drops the
+        back-reference.
+        """
+        from stable_pretraining.data.datasets import Dataset
+
+        class _FakeTrainer:
+            global_step = 0
+            current_epoch = 0
+
+        class _DS(Dataset):
+            def __getitem__(self, idx):
+                return {"x": idx}
+
+            def __len__(self):
+                return 3
+
+        ds = _DS()
+        ds.set_pl_trainer(_FakeTrainer())
+        assert ds._trainer is not None
+
+        state = ds.__getstate__()
+        assert state["_trainer"] is None
+
+        # Live attribute is preserved; only the pickled snapshot is None.
+        assert ds._trainer is not None

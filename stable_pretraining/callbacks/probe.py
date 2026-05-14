@@ -6,9 +6,12 @@ import torchmetrics
 from lightning.pytorch import LightningModule
 from loguru import logger as logging
 import types
-from ..utils import get_data_from_batch_or_outputs, detach_tensors
-
-from .utils import TrainableCallback, log_header
+from .utils import (
+    TrainableCallback,
+    detach_tensors,
+    get_data_from_batch_or_outputs,
+    log_header,
+)
 
 
 class OnlineProbe(TrainableCallback):
@@ -20,46 +23,45 @@ class OnlineProbe(TrainableCallback):
     and training loop. This allows monitoring representation quality throughout training
     without modifying the base model.
 
-    Key features:
-    - Automatic gradient detachment to prevent probe gradients affecting the main model
-    - Independent optimizer and scheduler management
-    - Support for gradient accumulation
-    - Mixed precision training compatibility through automatic dtype conversion
-    - Metric tracking and logging
+    **Key features**
+
+    * Automatic gradient detachment to prevent probe gradients affecting the main model.
+    * Independent optimizer and scheduler management.
+    * Support for gradient accumulation.
+    * Mixed precision training compatibility through automatic dtype conversion.
+    * Metric tracking and logging.
 
     Args:
-        module: The spt.LightningModule to probe.
+        module: The ``spt.LightningModule`` to probe.
         name: Unique identifier for this probe instance. Used for logging and storing
             metrics/modules.
         input: Key in batch dict or outputs dict containing input features to probe.
         target: Key in batch dict containing ground truth target labels.
-        probe: The probe module to train. Can be a nn.Module instance, callable that
+        probe: The probe module to train. Can be a ``nn.Module`` instance, callable that
             returns a module, or Hydra config to instantiate.
-        loss: Loss function for probe training (e.g., nn.CrossEntropyLoss()).
-        optimizer: Optimizer configuration for the probe. Can be:
-            - str: optimizer name (e.g., "AdamW", "SGD", "LARS")
-            - dict: {"type": "AdamW", "lr": 1e-3, ...}
-            - partial: pre-configured optimizer factory
-            - optimizer instance or callable
-            - None: uses LARS(lr=0.1, clip_lr=True, eta=0.02, exclude_bias_n_norm=True,
-              weight_decay=0), which is the standard for SSL linear probes (default)
-        scheduler: Learning rate scheduler configuration. Can be:
-            - str: scheduler name (e.g., "CosineAnnealingLR", "StepLR")
-            - dict: {"type": "CosineAnnealingLR", "T_max": 1000, ...}
-            - partial: pre-configured scheduler factory
-            - scheduler instance or callable
-            - None: uses ConstantLR(factor=1.0), maintaining constant learning rate (default)
+        loss: Loss function for probe training (e.g., ``nn.CrossEntropyLoss()``).
+        optimizer: Optimizer configuration for the probe. Accepted forms — string name
+            (``"AdamW"``, ``"SGD"``, ``"LARS"``), a dict like
+            ``{"type": "AdamW", "lr": 1e-3, ...}``, a pre-configured ``functools.partial``,
+            an optimizer instance, or a callable. ``None`` uses
+            ``LARS(lr=0.1, clip_lr=True, eta=0.02, exclude_bias_n_norm=True, weight_decay=0)``
+            (the standard for SSL linear probes, default).
+        scheduler: Learning rate scheduler configuration. Accepted forms — string name
+            (``"CosineAnnealingLR"``, ``"StepLR"``), a dict
+            ``{"type": "CosineAnnealingLR", "T_max": 1000, ...}``, a partial, a scheduler
+            instance, or a callable. ``None`` uses ``ConstantLR(factor=1.0)``
+            (constant LR, default).
         accumulate_grad_batches: Number of batches to accumulate gradients before
             optimizer step. Default is 1 (no accumulation).
         metrics: Metrics to track during training/validation. Can be dict, list, tuple,
             or single metric instance.
 
     Note:
-        - The probe module is stored in pl_module.callbacks_modules[name]
-        - Metrics are stored in pl_module.callbacks_metrics[name]
-        - Predictions are stored in batch dict with key '{name}_preds'
-        - Loss is logged as 'train/{name}_loss'
-        - Metrics are logged with prefix 'train/{name}_' and 'eval/{name}_'
+        * The probe module is stored in ``pl_module.callbacks_modules[name]``.
+        * Metrics are stored in ``pl_module.callbacks_metrics[name]``.
+        * Predictions are stored in batch dict with key ``'{name}_preds'``.
+        * Loss is logged as ``'train/{name}_loss'``.
+        * Metrics are logged with prefix ``'train/{name}_'`` and ``'eval/{name}_'``.
     """
 
     def __init__(

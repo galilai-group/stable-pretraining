@@ -6,7 +6,8 @@ import pytest
 import torch
 import torch.nn as nn
 import torchmetrics
-from stable_pretraining.utils import patchify, unpatchify
+from stable_pretraining.backbone import patchify, unpatchify
+from stable_pretraining.losses import MAELoss
 
 
 @pytest.fixture
@@ -661,3 +662,124 @@ class TestMAEUnit:
 
         assert masked_patches.shape[0] == masked_predictions.shape[0]
         assert masked_patches.shape[1] == 768
+
+
+# =============================================================================
+# MAELoss Tests
+# =============================================================================
+
+
+def _mae_inputs(N=2, C=3, H=32, W=32, patch_size=16, mask_ratio=0.5, seed=0):
+    """Build a (pred, imgs, mask) triple compatible with MAELoss(patch_size)."""
+    torch.manual_seed(seed)
+    imgs = torch.randn(N, C, H, W)
+    T = (H // patch_size) * (W // patch_size)
+    P = patch_size * patch_size * C
+    pred = torch.randn(N, T, P)
+    num_masked = max(1, int(round(T * mask_ratio)))
+    mask = torch.zeros(N, T)
+    mask[:, :num_masked] = 1.0
+    return pred, imgs, mask
+
+
+@pytest.mark.unit
+class TestMAELoss:
+    def test_mse_perfect_prediction_gives_zero_loss(self):
+        loss_fn = MAELoss(patch_size=16, loss_type="mse", patch_normalize=False)
+        _, imgs, mask = _mae_inputs()
+        target_patches = loss_fn.patchify(imgs)
+        loss = loss_fn(target_patches, imgs, mask)
+        assert torch.allclose(loss, torch.tensor(0.0), atol=1e-6)
+
+    def test_mse_loss_is_positive_for_random(self):
+        loss_fn = MAELoss(patch_size=16, loss_type="mse", patch_normalize=False)
+        pred, imgs, mask = _mae_inputs()
+        loss = loss_fn(pred, imgs, mask)
+        assert loss.item() > 0
+        assert loss.ndim == 0
+
+    def test_patch_normalize_changes_loss(self):
+        pred, imgs, mask = _mae_inputs()
+        no_norm = MAELoss(patch_size=16, loss_type="mse", patch_normalize=False)(
+            pred, imgs, mask
+        )
+        with_norm = MAELoss(patch_size=16, loss_type="mse", patch_normalize=True)(
+            pred, imgs, mask
+        )
+        assert not torch.allclose(no_norm, with_norm)
+
+    def test_mask_only_vs_full_reduction_differs(self):
+        pred, imgs, mask = _mae_inputs()
+        masked = MAELoss(
+            patch_size=16, loss_type="mse", mask_only=True, patch_normalize=False
+        )(pred, imgs, mask)
+        full = MAELoss(
+            patch_size=16, loss_type="mse", mask_only=False, patch_normalize=False
+        )(pred, imgs, mask)
+        # Different denominators / coverage -> different scalar
+        assert not torch.allclose(masked, full)
+
+    def test_sum_reduction_scales_with_count(self):
+        pred, imgs, mask = _mae_inputs()
+        mean_loss = MAELoss(
+            patch_size=16,
+            loss_type="mse",
+            reduction="mean",
+            patch_normalize=False,
+        )(pred, imgs, mask)
+        sum_loss = MAELoss(
+            patch_size=16,
+            loss_type="mse",
+            reduction="sum",
+            patch_normalize=False,
+        )(pred, imgs, mask)
+        # mean = sum / mask.sum()  (when mask_only=True)
+        assert torch.allclose(sum_loss, mean_loss * mask.sum())
+
+    def test_cosine_loss_zero_when_pred_equals_target(self):
+        loss_fn = MAELoss(patch_size=16, loss_type="cosine", patch_normalize=False)
+        _, imgs, mask = _mae_inputs()
+        target_patches = loss_fn.patchify(imgs)
+        loss = loss_fn(target_patches, imgs, mask)
+        assert torch.allclose(loss, torch.tensor(0.0), atol=1e-5)
+
+    def test_smooth_l1_runs(self):
+        loss_fn = MAELoss(patch_size=16, loss_type="smooth_l1", patch_normalize=False)
+        pred, imgs, mask = _mae_inputs()
+        loss = loss_fn(pred, imgs, mask)
+        assert loss.item() > 0
+
+    def test_unknown_loss_type_raises(self):
+        loss_fn = MAELoss(patch_size=16, loss_type="bogus", patch_normalize=False)
+        pred, imgs, mask = _mae_inputs()
+        with pytest.raises(ValueError, match="Unknown loss_type"):
+            loss_fn(pred, imgs, mask)
+
+    def test_custom_loss_requires_registration(self):
+        loss_fn = MAELoss(patch_size=16, loss_type="custom", patch_normalize=False)
+        pred, imgs, mask = _mae_inputs()
+        with pytest.raises(ValueError, match="no custom loss registered"):
+            loss_fn(pred, imgs, mask)
+
+    def test_custom_loss_is_used(self):
+        loss_fn = MAELoss(patch_size=16, loss_type="custom", patch_normalize=False)
+        loss_fn.register_custom_loss(lambda p, t: (p - t).abs().mean(dim=-1))
+        pred, imgs, mask = _mae_inputs()
+        out = loss_fn(pred, imgs, mask)
+        assert out.item() > 0
+
+    def test_shape_mismatch_raises(self):
+        loss_fn = MAELoss(patch_size=16, loss_type="mse", patch_normalize=False)
+        pred, imgs, mask = _mae_inputs()
+        wrong = pred[:, :, :-1]  # last dim off by one
+        with pytest.raises(AssertionError):
+            loss_fn(wrong, imgs, mask)
+
+    def test_indivisible_image_size_raises(self):
+        loss_fn = MAELoss(patch_size=16, loss_type="mse", patch_normalize=False)
+        imgs = torch.randn(2, 3, 30, 30)
+        T = 4
+        pred = torch.randn(2, T, 16 * 16 * 3)
+        mask = torch.ones(2, T)
+        with pytest.raises(AssertionError, match="divisible by patch_size"):
+            loss_fn(pred, imgs, mask)
