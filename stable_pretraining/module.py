@@ -228,6 +228,19 @@ class Module(pl.LightningModule):
             yield param
 
     def rescale_loss_for_grad_acc(self, loss):
+        """Scale loss down by the gradient accumulation factor before ``manual_backward``.
+
+        When ``Trainer(accumulate_grad_batches=N)`` is set, gradients from N consecutive
+        steps are summed before an optimizer step. Dividing the loss by N ensures the
+        accumulated gradient is equivalent in magnitude to the gradient from a single
+        full batch, preventing the effective learning rate from growing with N.
+
+        Args:
+            loss: The raw loss tensor returned by ``forward``.
+
+        Returns:
+            torch.Tensor: ``loss / accumulate_grad_batches``.
+        """
         accum = max(
             int(
                 getattr(
@@ -241,16 +254,36 @@ class Module(pl.LightningModule):
         return loss / accum
 
     def after_manual_backward(self):
+        """Hook called immediately after ``manual_backward`` in ``training_step``.
+
+        Override in a subclass to insert logic that must run after gradients are
+        computed but before any optimizer step or ``zero_grad`` — for example,
+        gradient norm logging, custom gradient clipping, or EMA teacher weight
+        updates that depend on the current gradient. The default implementation
+        does nothing.
+        """
         pass
 
     def training_step(self, batch, batch_idx):
-        """Manual optimization training step with support for multiple optimizers.
+        """Run one training step with manual optimization across all configured optimizers.
 
-        Expected output from forward during training (stage="fit"):
-        - state["loss"]: torch.Tensor - Single joint loss for all optimizers
+        Calls ``forward(batch, stage="fit")`` to obtain a ``state`` dict, then performs
+        a single ``manual_backward`` on ``state["loss"]``. Each optimizer steps only when
+        its frequency boundary is met (``(batch_idx + 1) % frequency == 0``). Gradient
+        clipping is applied per-optimizer using either the per-optimizer override or the
+        Trainer's ``gradient_clip_val``. Learning rate is logged as ``hparams/lr_{name}``
+        after each step. ``zero_grad`` is called only on optimizers that actually stepped
+        this iteration.
 
-        When multiple optimizers are configured, the same loss is used for all of them.
-        Each optimizer updates its assigned parameters based on gradients from this joint loss.
+        Args:
+            batch: Input batch dict from the training dataloader. Must be a ``dict`` —
+                a non-dict batch raises ``ValueError``.
+            batch_idx: Index of the current batch within the epoch. Injected into the
+                batch dict as ``batch["batch_idx"]`` before forwarding.
+
+        Returns:
+            dict: The ``state`` dict returned by ``forward``, passed unchanged to
+                Lightning's callback hooks (``on_train_batch_end``).
         """
         if type(batch) is not dict:
             msg = f"! batch is expected to be a dict! Not as {type(batch)}"
@@ -332,6 +365,14 @@ class Module(pl.LightningModule):
         return state
 
     def on_train_start(self):
+        """Validate and log the optimizer configuration at the start of training.
+
+        Runs once before the first training step. Fills in any missing per-optimizer
+        metadata (gradient clip value, clip algorithm, step frequency) by falling back
+        to the Trainer's global settings. Logs a summary table of optimizer index, name,
+        class, clip value, and clip algorithm so misconfigured setups are caught early
+        rather than silently misbehaving mid-run.
+        """
         log_header("Optimizers")
         optimizers = self.optimizers()
         if not isinstance(optimizers, (list, tuple)):
@@ -382,14 +423,55 @@ class Module(pl.LightningModule):
         logging.success("✓ Optimizer check complete:\n{}", table)
 
     def validation_step(self, batch, batch_idx):
+        """Run the forward pass for a single validation batch.
+
+        Calls ``forward(batch, stage="validate")`` with gradients disabled (Lightning
+        handles ``torch.no_grad()``). The returned dict is passed to every registered
+        callback via ``on_validation_batch_end``, making all keys — including
+        ``"embedding"`` and ``"label"`` — available to ``OnlineProbe``, ``OnlineKNN``,
+        ``RankMe``, and similar evaluation callbacks without any extra wiring.
+
+        Args:
+            batch: Input batch dict from the validation dataloader.
+            batch_idx: Index of the current batch within the epoch.
+
+        Returns:
+            dict: Output dict returned by ``forward``.
+        """
         batch["batch_idx"] = batch_idx
         return self.forward(batch, stage="validate")
 
     def test_step(self, batch, batch_idx):
+        """Run the forward pass for a single test batch.
+
+        Mirrors ``validation_step`` but passes ``stage="test"`` to ``forward``, allowing
+        forward functions to distinguish test-time behaviour if needed. The returned dict
+        is forwarded to Lightning's ``on_test_batch_end`` callback hooks.
+
+        Args:
+            batch: Input batch dict from the test dataloader.
+            batch_idx: Index of the current batch within the epoch.
+
+        Returns:
+            dict: Output dict returned by ``forward``.
+        """
         batch["batch_idx"] = batch_idx
         return self.forward(batch, stage="test")
 
     def predict_step(self, batch, batch_idx):
+        """Run the forward pass for a single prediction batch.
+
+        Passes ``stage="predict"`` to ``forward`` so forward functions can omit loss
+        computation and return only inference outputs (e.g., embeddings). Used by
+        ``Trainer.predict()`` for large-scale feature extraction without a label set.
+
+        Args:
+            batch: Input batch dict from the prediction dataloader.
+            batch_idx: Index of the current batch within the epoch.
+
+        Returns:
+            dict: Output dict returned by ``forward``.
+        """
         batch["batch_idx"] = batch_idx
         return self.forward(batch, stage="predict")
 
