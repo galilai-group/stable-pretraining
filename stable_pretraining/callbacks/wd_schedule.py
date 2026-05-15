@@ -15,10 +15,18 @@ class WeightDecayUpdater(Callback):
     - Checkpointable: state is saved/restored with Trainer checkpoints
     - Extensive Loguru logging
     Args:
-        schedule_type (str): One of 'constant', 'linear', 'cosine', 'exponential'
-        start_value (float): Initial weight decay value
-        end_value (float): Final weight decay value (for non-constant schedules)
-        param_group_indices (list[int] or None): List of param group indices to update. If None, updates all.
+        schedule_type: Decay schedule shape. One of ``"constant"``, ``"linear"``,
+            ``"cosine"``, or ``"exponential"``. Default is ``"cosine"``.
+        start_value: Weight decay value at step 0. Default is ``0.01``.
+        end_value: Weight decay value at the final step. Ignored when
+            ``schedule_type="constant"``. Default is ``0.0``.
+        param_group_indices: Indices of optimizer param groups to update. ``None``
+            updates all param groups. Default is ``None``.
+        opt_idx: Index of the optimizer to target when the module uses multiple
+            optimizers (e.g., BYOL, DINO). ``None`` applies to whichever optimizer
+            triggers ``on_before_optimizer_step``. Default is ``None``.
+        verbose: If ``True``, log the weight decay value at each update step.
+            ``None`` inherits the global ``spt`` verbosity setting.
     """
 
     def __init__(

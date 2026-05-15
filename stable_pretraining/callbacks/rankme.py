@@ -17,10 +17,15 @@ class RankMe(Callback):
     helps detect dimensional collapse in self-supervised learning.
 
     Args:
-        name: Unique name for this callback instance
-        target: Key in batch dict containing the feature embeddings to monitor
-        queue_length: Required queue length
-        target_shape: Shape of the target embeddings (e.g., 768 for 768-dim features)
+        name: Unique name for this callback instance. Used for logging and metric keys.
+        target: Key in the batch dict containing the feature embeddings to monitor.
+        queue_length: Size of the circular buffer for caching embeddings across
+            validation batches. Larger values give a more representative estimate.
+        target_shape: Shape of the target embeddings — either a single int (e.g.,
+            ``768``) or a sequence whose product is used (e.g., ``(16, 48)``).
+        verbose: If ``True``, log entropy, top singular value, and condition number
+            in addition to the RankMe score. ``None`` inherits the global ``spt``
+            verbosity setting.
     """
 
     def __init__(

@@ -51,8 +51,12 @@ class LiDAR(Callback):
         target_shape: Shape of the target embeddings (e.g., 768 for 768-dim features)
         n_classes: Number of surrogate classes (clean samples) for LDA computation
         samples_per_class: Number of augmented samples per class
-        delta: Regularization constant added to within-class covariance (default: 1e-4)
-        epsilon: Small constant for numerical stability (default: 1e-8)
+        delta: Regularization constant added to the within-class scatter matrix to
+            ensure it is invertible. Default is ``1e-4``.
+        epsilon: Small constant added for numerical stability when computing the
+            eigenvalue entropy. Default is ``1e-8``.
+        verbose: If ``True``, log per-class scatter diagnostics in addition to the
+            LiDAR score. ``None`` inherits the global ``spt`` verbosity setting.
     """
 
     def __init__(

@@ -19,10 +19,13 @@ class TeacherStudentCallback(Callback):
     model hierarchy and updates them at the appropriate times during training.
 
     Args:
-        update_frequency (int): How often to update the teacher (in batches).
-            Default is 1 (every batch).
-        update_after_backward (bool): If True, updates happen after backward pass.
-            If False, updates happen after optimizer step. Default is True.
+        update_frequency: How often to update the teacher network, measured in
+            optimizer steps. Default is ``1`` (every step).
+        update_after_backward: If ``True``, the EMA update fires after the backward
+            pass (before the optimizer step). If ``False``, it fires after the
+            optimizer step. Default is ``False``.
+        verbose: If ``True``, log the EMA coefficient and update count each step.
+            ``None`` inherits the global ``spt`` verbosity setting.
 
     Example:
         >>> backbone = ResNet18()

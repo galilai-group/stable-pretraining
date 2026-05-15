@@ -46,6 +46,8 @@ class OnlineKNN(Callback):
             to compute all distances at once. Default is -1.
         distance_metric: Distance metric for finding nearest neighbors. Options are
             'euclidean', 'squared_euclidean', 'cosine', 'manhattan'. Default is 'euclidean'.
+        verbose: If ``True``, log extra per-step detail. ``None`` inherits the
+            global ``spt`` verbosity setting.
 
     Raises:
         ValueError: If k <= 0, temperature <= 0, or chunk_size is invalid.
