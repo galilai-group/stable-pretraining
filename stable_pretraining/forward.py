@@ -139,6 +139,22 @@ def supervised_forward(self, batch: dict[str, Any], stage: str) -> dict[str, tor
     Note:
         Unlike SSL methods, this function uses actual labels for training
         and is primarily used for evaluation or supervised baselines.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import supervised_forward
+
+            backbone = spt.backbone.from_torchvision("resnet50")
+            module = spt.Module(
+                forward=supervised_forward,
+                backbone=backbone,
+                classifier=torch.nn.Linear(2048, 10),
+                supervised_loss=torch.nn.CrossEntropyLoss(),
+                optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+            )
     """
     out = {}
     out["embedding"] = self.backbone(batch["image"])
@@ -186,6 +202,22 @@ def simclr_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
 
     Note:
         Introduced in the SimCLR paper :cite:`chen2020simple`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import simclr_forward
+
+            backbone = spt.backbone.from_torchvision("resnet50")
+            module = spt.Module(
+                forward=simclr_forward,
+                backbone=backbone,
+                projector=torch.nn.Linear(2048, 128),
+                simclr_loss=spt.losses.NTXEntLoss(temperature=0.5),
+                optim={"optimizer": {"type": "LARS", "lr": 5}},
+            )
     """
     out = {}
 
@@ -248,6 +280,24 @@ def byol_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
 
     Note:
         Introduced in the BYOL paper :cite:`grill2020bootstrap`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import byol_forward
+
+            backbone = spt.TeacherStudentWrapper(spt.backbone.from_torchvision("resnet50"))
+            projector = spt.TeacherStudentWrapper(torch.nn.Linear(2048, 256))
+            module = spt.Module(
+                forward=byol_forward,
+                backbone=backbone,
+                projector=projector,
+                predictor=torch.nn.Linear(256, 256),
+                byol_loss=spt.losses.BYOLLoss(),
+                optim={"optimizer": {"type": "Adam", "lr": 3e-4}},
+            )
     """
     out = {}
 
@@ -349,6 +399,22 @@ def vicreg_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
 
     Note:
         Introduced in the VICReg paper :cite:`bardes2021vicreg`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import vicreg_forward
+
+            backbone = spt.backbone.from_torchvision("resnet50")
+            module = spt.Module(
+                forward=vicreg_forward,
+                backbone=backbone,
+                projector=torch.nn.Linear(2048, 2048),
+                vicreg_loss=spt.losses.VICRegLoss(),
+                optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+            )
     """
     out = {}
 
@@ -411,6 +477,22 @@ def barlow_twins_forward(self, batch: dict[str, Any], stage: str) -> dict[str, t
 
     Note:
         Introduced in the Barlow Twins paper :cite:`zbontar2021barlow`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import barlow_twins_forward
+
+            backbone = spt.backbone.from_torchvision("resnet50")
+            module = spt.Module(
+                forward=barlow_twins_forward,
+                backbone=backbone,
+                projector=torch.nn.Linear(2048, 8192),
+                barlow_loss=spt.losses.BarlowTwinsLoss(lambda_coeff=5e-3),
+                optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+            )
     """
     out = {}
 
@@ -455,6 +537,24 @@ def swav_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
     SwAV learns representations by predicting the cluster assignment (code) of one
     view from the representation of another view. For small-batch training, this function
     manages a feature queue to stabilize the training process.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import swav_forward
+
+            backbone = spt.backbone.from_torchvision("resnet50")
+            prototypes = torch.nn.Linear(128, 3000, bias=False)
+            module = spt.Module(
+                forward=swav_forward,
+                backbone=backbone,
+                projector=torch.nn.Linear(2048, 128),
+                prototypes=prototypes,
+                swav_loss=spt.losses.SwAVLoss(),
+                optim={"optimizer": {"type": "LARS", "lr": 5}},
+            )
     """
     out = {}
     views = _get_views_list(batch)
@@ -545,6 +645,25 @@ def nnclr_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Te
 
     Note:
         Introduced in the NNCLR paper :cite:`dwibedi2021little`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import nnclr_forward
+
+            backbone = spt.backbone.from_torchvision("resnet50")
+            module = spt.Module(
+                forward=nnclr_forward,
+                backbone=backbone,
+                projector=torch.nn.Linear(2048, 256),
+                predictor=torch.nn.Linear(256, 256),
+                nnclr_loss=spt.losses.NTXEntLoss(temperature=0.5),
+                support_set_size=16384,
+                projection_dim=256,
+                optim={"optimizer": {"type": "LARS", "lr": 5}},
+            )
     """
     out = {}
 
@@ -644,6 +763,25 @@ def dino_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
         Introduced in the DINO paper :cite:`caron2021emerging`.
         Requires TeacherStudentWrapper for both backbone and projector,
         and assumes first 2 views in batch are global views.
+
+    Example:
+        ::
+
+            import stable_pretraining as spt
+            from stable_pretraining.forward import dino_forward
+
+            backbone = spt.TeacherStudentWrapper(spt.backbone.vit_hf("google/vit-base-patch16-224"))
+            projector = spt.TeacherStudentWrapper(spt.backbone.MLP(768, [2048], 65536))
+            module = spt.Module(
+                forward=dino_forward,
+                backbone=backbone,
+                projector=projector,
+                dino_loss=spt.losses.DINOv1Loss(out_dim=65536),
+                warmup_temperature_teacher=0.04,
+                temperature_teacher=0.07,
+                warmup_epochs_temperature_teacher=30,
+                optim={"optimizer": {"type": "Adam", "lr": 5e-4}},
+            )
     """
     out = {}
 
@@ -837,6 +975,29 @@ def dinov2_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
         Introduced in the DINOv2 paper.
         Requires TeacherStudentWrapper for backbone, projector, and patch_projector.
         Assumes first 2 views in batch are global views.
+
+    Example:
+        ::
+
+            import stable_pretraining as spt
+            from stable_pretraining.forward import dinov2_forward
+
+            vit = spt.backbone.vit_hf("google/vit-base-patch16-224", use_mask_token=True)
+            backbone = spt.TeacherStudentWrapper(vit)
+            projector = spt.TeacherStudentWrapper(spt.backbone.MLP(768, [2048], 65536))
+            patch_projector = spt.TeacherStudentWrapper(spt.backbone.MLP(768, [2048], 65536))
+            module = spt.Module(
+                forward=dinov2_forward,
+                backbone=backbone,
+                projector=projector,
+                patch_projector=patch_projector,
+                dinov2_loss=spt.losses.DINOv2Loss(out_dim=65536),
+                warmup_temperature_teacher=0.04,
+                temperature_teacher=0.07,
+                warmup_epochs_temperature_teacher=30,
+                mask_ratio=0.3,
+                optim={"optimizer": {"type": "Adam", "lr": 5e-4}},
+            )
     """
     out = {}
 
