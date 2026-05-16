@@ -5,8 +5,6 @@
 # which static analysers cannot follow. This stub gives them an explicit map
 # from every public name to its actual type without triggering real imports.
 
-from typing import Any, Optional
-
 # ---------------------------------------------------------------------------
 # Availability flags
 # ---------------------------------------------------------------------------

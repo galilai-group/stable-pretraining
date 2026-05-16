@@ -114,7 +114,9 @@ def _get_views_by_prefix(
     return global_views, local_views, all_views
 
 
-def supervised_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+def supervised_forward(
+    self, batch: dict[str, Any], stage: str
+) -> dict[str, torch.Tensor]:
     """Forward function for standard supervised training.
 
     This function implements traditional supervised learning with labels,
@@ -288,7 +290,9 @@ def byol_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
             import stable_pretraining as spt
             from stable_pretraining.forward import byol_forward
 
-            backbone = spt.TeacherStudentWrapper(spt.backbone.from_torchvision("resnet50"))
+            backbone = spt.TeacherStudentWrapper(
+                spt.backbone.from_torchvision("resnet50")
+            )
             projector = spt.TeacherStudentWrapper(torch.nn.Linear(2048, 256))
             module = spt.Module(
                 forward=byol_forward,
@@ -453,7 +457,9 @@ def vicreg_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
     return out
 
 
-def barlow_twins_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+def barlow_twins_forward(
+    self, batch: dict[str, Any], stage: str
+) -> dict[str, torch.Tensor]:
     """Forward function for Barlow Twins.
 
     Barlow Twins learns representations by making the cross-correlation matrix
@@ -770,7 +776,9 @@ def dino_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
             import stable_pretraining as spt
             from stable_pretraining.forward import dino_forward
 
-            backbone = spt.TeacherStudentWrapper(spt.backbone.vit_hf("google/vit-base-patch16-224"))
+            backbone = spt.TeacherStudentWrapper(
+                spt.backbone.vit_hf("google/vit-base-patch16-224")
+            )
             projector = spt.TeacherStudentWrapper(spt.backbone.MLP(768, [2048], 65536))
             module = spt.Module(
                 forward=dino_forward,
@@ -982,10 +990,14 @@ def dinov2_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
             import stable_pretraining as spt
             from stable_pretraining.forward import dinov2_forward
 
-            vit = spt.backbone.vit_hf("google/vit-base-patch16-224", use_mask_token=True)
+            vit = spt.backbone.vit_hf(
+                "google/vit-base-patch16-224", use_mask_token=True
+            )
             backbone = spt.TeacherStudentWrapper(vit)
             projector = spt.TeacherStudentWrapper(spt.backbone.MLP(768, [2048], 65536))
-            patch_projector = spt.TeacherStudentWrapper(spt.backbone.MLP(768, [2048], 65536))
+            patch_projector = spt.TeacherStudentWrapper(
+                spt.backbone.MLP(768, [2048], 65536)
+            )
             module = spt.Module(
                 forward=dinov2_forward,
                 backbone=backbone,
