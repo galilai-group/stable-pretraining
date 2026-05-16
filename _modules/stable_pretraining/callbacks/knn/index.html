@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.knn &#8212; stable-pretraining 0.1.dev1+g8c0a9cb70 documentation</title>
+    <title>stable_pretraining.callbacks.knn &#8212; stable-pretraining 0.1.dev1+g4d312aa4d documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=b10a734c"></script>
+    <script src="../../../../_static/documentation_options.js?v=4724a765"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g8c0a9cb70 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g4d312aa4d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -421,6 +421,14 @@
 <span class="sd">        input_dim: Expected dimensionality of input features. Can be int, tuple/list</span>
 <span class="sd">            (will be flattened to product), or None to accept any dimension.</span>
 <span class="sd">        target_dim: Expected dimensionality of targets. None accepts any dimension.</span>
+<span class="sd">        num_classes: Total number of classes in the dataset. If ``None`` (default),</span>
+<span class="sd">            the class count is inferred from the maximum label observed in the</span>
+<span class="sd">            queue and current batch. **Always pass this explicitly when possible**:</span>
+<span class="sd">            inference can produce a count smaller than the true number of classes</span>
+<span class="sd">            when the queue has not yet seen every class (early training, small</span>
+<span class="sd">            queue, many classes), which causes the prediction tensor to be</span>
+<span class="sd">            narrower than the metric expects (e.g., ``torchmetrics.MulticlassAccuracy(10)``</span>
+<span class="sd">            crashes if predictions are shape ``(B, 7)`` instead of ``(B, 10)``).</span>
 <span class="sd">        k: Number of nearest neighbors to consider for voting. Default is 5.</span>
 <span class="sd">        temperature: Temperature parameter for distance weighting. Lower values give</span>
 <span class="sd">            more weight to closer neighbors. Default is 0.07.</span>
@@ -450,6 +458,7 @@
         <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
         <span class="n">input_dim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">target_dim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_classes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">k</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
         <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.07</span><span class="p">,</span>
         <span class="n">chunk_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
@@ -466,6 +475,8 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;temperature must be positive, got </span><span class="si">{</span><span class="n">temperature</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">chunk_size</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">chunk_size</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;chunk_size must be positive or -1, got </span><span class="si">{</span><span class="n">chunk_size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num_classes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">num_classes</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;num_classes must be positive, got </span><span class="si">{</span><span class="n">num_classes</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">input_dim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
             <span class="n">input_dim</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">input_dim</span><span class="p">))</span>
@@ -476,6 +487,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">queue_length</span> <span class="o">=</span> <span class="n">queue_length</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">input_dim</span> <span class="o">=</span> <span class="n">input_dim</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">target_dim</span> <span class="o">=</span> <span class="n">target_dim</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span> <span class="o">=</span> <span class="n">num_classes</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="n">k</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="n">temperature</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">chunk_size</span> <span class="o">=</span> <span class="n">chunk_size</span>
@@ -487,6 +499,8 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_target_queue</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># Latch for the inference warning so we only emit it once per callback.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warned_inferred_num_classes</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">state_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -568,7 +582,7 @@
             <span class="k">return</span>
 
         <span class="n">predictions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_knn_predictions</span><span class="p">(</span>
-            <span class="n">input_data</span><span class="p">,</span> <span class="n">cached_features</span><span class="p">,</span> <span class="n">cached_labels</span>
+            <span class="n">input_data</span><span class="p">,</span> <span class="n">cached_features</span><span class="p">,</span> <span class="n">cached_labels</span><span class="p">,</span> <span class="n">target_data</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">predictions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -586,10 +600,11 @@
         <span class="n">features</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
         <span class="n">cached_features</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
         <span class="n">cached_labels</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">current_targets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute KNN predictions.&quot;&quot;&quot;</span>
         <span class="n">batch_size</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-        <span class="n">num_classes</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cached_labels</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">num_classes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_num_classes</span><span class="p">(</span><span class="n">cached_labels</span><span class="p">,</span> <span class="n">current_targets</span><span class="p">)</span>
 
         <span class="n">predictions</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
             <span class="n">batch_size</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">features</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span>
@@ -625,6 +640,46 @@
 
         <span class="n">predictions</span> <span class="o">=</span> <span class="p">(</span><span class="n">dist_weight</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">one_hot_labels</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">predictions</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_num_classes</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cached_labels</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">current_targets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the class count for one-hot prediction allocation (#373).</span>
+
+<span class="sd">        When ``self.num_classes`` is set, it is honored — and we validate that</span>
+<span class="sd">        all observed labels fit. When it is ``None``, we infer from</span>
+<span class="sd">        ``max(cached_labels, current_targets) + 1`` and emit a one-time warning</span>
+<span class="sd">        explaining the risk (the queue may not yet contain every class, in</span>
+<span class="sd">        which case the prediction width can be smaller than the metric&#39;s</span>
+<span class="sd">        ``num_classes`` argument and trigger a shape mismatch).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">observed_max</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cached_labels</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">current_targets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">current_targets</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">observed_max</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">observed_max</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">current_targets</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">observed_max</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;OnlineKNN[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">]: configured num_classes=&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span><span class="si">}</span><span class="s2"> but observed label </span><span class="si">{</span><span class="n">observed_max</span><span class="si">}</span><span class="s2"> &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;&gt;= num_classes. Increase num_classes to at least &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">observed_max</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_classes</span>
+
+        <span class="n">inferred</span> <span class="o">=</span> <span class="n">observed_max</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warned_inferred_num_classes</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;OnlineKNN[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">]: inferring num_classes=</span><span class="si">{</span><span class="n">inferred</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;from observed labels (max=</span><span class="si">{</span><span class="n">observed_max</span><span class="si">}</span><span class="s2">). This may not &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;match the true class count if the queue has not yet seen &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;every class — pass num_classes=&lt;int&gt; explicitly to avoid &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;a shape mismatch with metrics like MulticlassAccuracy.&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_warned_inferred_num_classes</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="n">inferred</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_log_metrics</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span><span class="p">,</span> <span class="n">predictions</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">targets</span><span class="p">:</span> <span class="n">Tensor</span>
