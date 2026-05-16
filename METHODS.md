@@ -80,7 +80,7 @@ module:
 
 ## Using Method Classes
 
-Method classes are full `LightningModule` subclasses. All 30 are importable from
+Method classes are full `LightningModule` subclasses. All are importable from
 `stable_pretraining.methods`:
 
 ```python

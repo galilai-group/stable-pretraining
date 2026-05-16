@@ -4,20 +4,22 @@ Unreleased
 
 **Discoverability improvements**
 
-- ``METHODS.md``: new root-level catalog table covering all 30 method classes and
-  9 forward functions with columns for forward fn, loss class, key callbacks, and
+- ``METHODS.md``: new root-level catalog table covering every method class and
+  forward function with columns for forward fn, loss class, key callbacks, and
   paper reference. ``stable_pretraining/forward.py`` module docstring now
   cross-references ``stable_pretraining/methods/`` and ``METHODS.md`` for the full
   ``LightningModule`` catalog.
-- Type annotations on all 9 forward functions in ``stable_pretraining/forward.py``:
+- Type annotations on the forward functions in ``stable_pretraining/forward.py``:
   ``batch: dict[str, Any]``, ``stage: str``, and ``-> dict[str, torch.Tensor]``
   return types. Added ``stable_pretraining/py.typed`` PEP 561 marker so mypy and
   pyright treat the package as typed.
 - Top-level namespace: ``stable_pretraining.methods`` is now exposed as a lazy
-  submodule. The nine most-used method classes (``SimCLR``, ``BYOL``, ``DINO``,
-  ``DINOv2``, ``VICReg``, ``MAE``, ``NNCLR``, ``SwAV``, ``BarlowTwins``) are
-  hoisted into the top-level ``__all__`` and ``_LAZY_ATTRS``, making
-  ``import stable_pretraining as spt; spt.SimCLR`` work without a deep import.
+  submodule. A curated set of common method classes (``SimCLR``, ``BYOL``,
+  ``DINO``, ``DINOv2``, ``VICReg``, ``MAE``, ``NNCLR``, ``SwAV``,
+  ``BarlowTwins``) are hoisted into the top-level ``__all__`` and
+  ``_LAZY_ATTRS``, making ``import stable_pretraining as spt; spt.SimCLR``
+  work without a deep import. The full catalog remains under
+  ``stable_pretraining.methods``.
 - Agent compatibility files: ``AGENTS.md`` (canonical instructions for all coding
   agents — repository layout, import patterns, core concepts, naming conventions,
   step-by-step guide for adding a new SSL method, and key design decisions);

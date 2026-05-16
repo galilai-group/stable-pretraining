@@ -2,7 +2,7 @@
 
 ## What this library does
 
-`stable-pretraining` is a PyTorch Lightning framework for self-supervised learning (SSL) research. It provides 9 composable forward functions and 30 full `LightningModule` method classes covering SimCLR, BYOL, VICReg, Barlow Twins, SwAV, NNCLR, DINO, DINOv2, MAE, BEiT, MoCo, and more — all built on top of `lightning`. The key design principle is that **users only define `forward(self, batch, stage)`** — the framework builds `training_step` and `validation_step` around it, with all data flowing as dicts so callbacks can intercept any intermediate value without modifying the forward function.
+`stable-pretraining` is a PyTorch Lightning framework for self-supervised learning (SSL) research. It provides composable forward functions and full `LightningModule` method classes covering SimCLR, BYOL, VICReg, Barlow Twins, SwAV, NNCLR, DINO, DINOv2, MAE, BEiT, MoCo, and more — all built on top of `lightning`. See [`METHODS.md`](./METHODS.md) for the complete catalog. The key design principle is that **users only define `forward(self, batch, stage)`** — the framework builds `training_step` and `validation_step` around it, with all data flowing as dicts so callbacks can intercept any intermediate value without modifying the forward function.
 
 ## Repository layout
 
@@ -11,8 +11,8 @@ stable_pretraining/
   __init__.py       # lazy-loaded public API (PEP 562); add new exports here
   module.py         # Module — LightningModule all methods share; wraps user forward fn
   manager.py        # Manager — programmatic entry point; prefer over Trainer directly
-  forward.py        # 9 forward functions (simclr_forward, byol_forward, …)
-  methods/          # 30 LightningModule subclasses, one per SSL method
+  forward.py        # forward functions (simclr_forward, byol_forward, …)
+  methods/          # LightningModule subclasses, one per SSL method
   callbacks/        # evaluation and training callbacks (OnlineProbe, OnlineKNN, RankMe, …)
   losses/           # loss classes ({Method}Loss naming convention)
   backbone/         # encoder wrappers (torchvision, timm, HuggingFace)
@@ -24,7 +24,7 @@ stable_pretraining/
   _config.py        # global config: spt.set(key, value) / spt.get_config()
 examples/           # runnable .py scripts and YAML configs
 docs/               # Sphinx source
-METHODS.md          # ground-truth index of all 30 methods + forward functions
+METHODS.md          # ground-truth index of all methods + forward functions
 ```
 
 ## How to import
@@ -56,7 +56,7 @@ rankme = spt.RankMe(...)
 **Direct module imports:**
 ```python
 from stable_pretraining.forward import simclr_forward, byol_forward
-from stable_pretraining.methods import SimCLR, BYOL, DINO, VICReg, MAE  # all 30 available
+from stable_pretraining.methods import SimCLR, BYOL, DINO, VICReg, MAE  # full list in METHODS.md
 from stable_pretraining.callbacks import OnlineProbe, OnlineKNN, RankMe, LiDAR
 from stable_pretraining.losses import NTXEntLoss, BYOLLoss, VICRegLoss
 ```
