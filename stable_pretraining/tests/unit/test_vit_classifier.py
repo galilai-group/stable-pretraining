@@ -79,6 +79,8 @@ TIMM_PARITY = [
 
 @pytest.mark.unit
 class TestViTConstruction:
+    """Tests for :class:`ViT` constructor argument handling."""
+
     def test_default_no_head(self):
         m = ViT(num_classes=0)
         assert m.embed_dim == 768
@@ -134,6 +136,8 @@ class TestViTConstruction:
 
 @pytest.mark.unit
 class TestViTForwardShapes:
+    """Tests for :class:`ViT` forward output shapes across pooling modes."""
+
     def test_default_pooled_feature(self):
         m = ViT(num_classes=0)
         y = m(torch.randn(2, 3, 224, 224))
@@ -174,6 +178,8 @@ class TestViTForwardShapes:
 
 @pytest.mark.unit
 class TestViTValidation:
+    """Tests for :class:`ViT` constructor input validation."""
+
     def test_token_pool_requires_class_token(self):
         with pytest.raises(ValueError, match="global_pool='token' requires"):
             ViT(class_token=False, global_pool="token")
@@ -198,6 +204,8 @@ class TestViTValidation:
 
 @pytest.mark.unit
 class TestViTGradients:
+    """Tests for :class:`ViT` gradient flow through the architecture."""
+
     def test_backward_classifier(self):
         m = ViT(num_classes=10)
         y = m(torch.randn(2, 3, 224, 224))
@@ -254,7 +262,7 @@ def test_param_count_matches_timm(name, factory):
     # Timm sometimes adds a no-op pre_logits or other 0-param layers, but
     # parameter totals must match exactly.
     assert n_ours == n_theirs, (
-        f"{name}: ours={n_ours/1e6:.3f}M  timm={n_theirs/1e6:.3f}M"
+        f"{name}: ours={n_ours / 1e6:.3f}M  timm={n_theirs / 1e6:.3f}M"
     )
 
 
@@ -307,4 +315,6 @@ class TestTimmCheckpointLoading:
         ours = factory(num_classes=0)
         for mod in ours.modules():
             if isinstance(mod, torch.nn.LayerNorm):
-                assert mod.eps == 1e-6, f"LayerNorm eps={mod.eps} != 1e-6 (timm default)"
+                assert mod.eps == 1e-6, (
+                    f"LayerNorm eps={mod.eps} != 1e-6 (timm default)"
+                )

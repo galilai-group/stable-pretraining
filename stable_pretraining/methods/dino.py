@@ -37,7 +37,9 @@ class DINOOutput(ModelOutput):
     student_logits: Optional[torch.Tensor] = None
 
 
-def _build_dino_projector(in_dim: int, hidden_dim: int, bottleneck_dim: int, n_prototypes: int) -> nn.Module:
+def _build_dino_projector(
+    in_dim: int, hidden_dim: int, bottleneck_dim: int, n_prototypes: int
+) -> nn.Module:
     """Standard DINO projector: 3-layer MLP + L2 norm + linear prototypes.
 
     The prototypes layer is bias-free; weight-norm is applied via the L2Norm

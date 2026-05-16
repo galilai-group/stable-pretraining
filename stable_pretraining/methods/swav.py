@@ -25,6 +25,8 @@ from stable_pretraining.losses import SwAVLoss
 
 @dataclass
 class SwAVOutput(ModelOutput):
+    """Structured output of the :class:`SwAV` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     projection: Optional[torch.Tensor] = None
@@ -109,7 +111,9 @@ class SwAV(Module):
         * ``forward(images=...)`` — eval / single-image embedding extraction.
         """
         # Eval / single-image
-        if images is not None or (view1 is not None and view2 is None and global_views is None):
+        if images is not None or (
+            view1 is not None and view2 is None and global_views is None
+        ):
             single = images if images is not None else view1
             embedding = self.backbone(single)
             return SwAVOutput(
@@ -125,7 +129,9 @@ class SwAV(Module):
             views = [view1, view2]
             n_global = 2
         else:
-            raise ValueError("SwAV.forward needs either (view1, view2), (global_views, ...), or images")
+            raise ValueError(
+                "SwAV.forward needs either (view1, view2), (global_views, ...), or images"
+            )
 
         # Encode + project every view.
         hs = [self.backbone(v) for v in views]

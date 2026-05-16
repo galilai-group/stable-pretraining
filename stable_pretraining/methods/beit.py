@@ -30,6 +30,8 @@ from stable_pretraining.backbone import patchify
 
 @dataclass
 class BEiTOutput(ModelOutput):
+    """Structured output of the :class:`BEiT` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     logits: Optional[torch.Tensor] = None
@@ -38,9 +40,12 @@ class BEiTOutput(ModelOutput):
 
 
 def patch_kmeans_tokenizer(vocab_size: int, patch_size: int, in_channels: int = 3):
-    """Return a dummy tokenizer that hashes flattened patches into ``vocab_size``
-    buckets via a fixed random projection. Useful for end-to-end smoke tests
-    only — replace with a DALL-E or VQ-VAE tokenizer for real training."""
+    """Return a dummy tokenizer that hashes flattened patches into buckets.
+
+    Uses a fixed random projection to ``vocab_size`` buckets. Useful for
+    end-to-end smoke tests only — replace with a DALL-E or VQ-VAE
+    tokenizer for real training.
+    """
     proj = None
 
     def _tok(images: torch.Tensor) -> torch.Tensor:
@@ -48,7 +53,9 @@ def patch_kmeans_tokenizer(vocab_size: int, patch_size: int, in_channels: int = 
         patches = patchify(images, (in_channels, patch_size, patch_size))  # [B, N, P]
         if proj is None or proj.shape[0] != patches.shape[-1]:
             g = torch.Generator(device="cpu").manual_seed(0)
-            proj = torch.randn(patches.shape[-1], vocab_size, generator=g).to(patches.device)
+            proj = torch.randn(patches.shape[-1], vocab_size, generator=g).to(
+                patches.device
+            )
         scores = patches.float() @ proj.to(patches.device)
         return scores.argmax(dim=-1)  # [B, N]
 
@@ -91,7 +98,9 @@ class BEiT(Module):
             self.encoder = encoder_name
 
         with torch.no_grad():
-            seq = self.encoder.forward_features(torch.zeros(1, 3, image_size, image_size))
+            seq = self.encoder.forward_features(
+                torch.zeros(1, 3, image_size, image_size)
+            )
         self._has_cls = (
             hasattr(self.encoder, "cls_token")
             and self.encoder.cls_token is not None
@@ -114,7 +123,9 @@ class BEiT(Module):
             vocab_size=vocab_size, patch_size=patch_size
         )
 
-    def _encode_with_mask(self, images: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    def _encode_with_mask(
+        self, images: torch.Tensor, mask: torch.Tensor
+    ) -> torch.Tensor:
         vit = self.encoder
         x = vit.patch_embed(images)
         m = mask.unsqueeze(-1)

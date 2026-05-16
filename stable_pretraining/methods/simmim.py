@@ -10,7 +10,6 @@ References:
 """
 
 from dataclasses import dataclass
-from math import sqrt
 from typing import Optional, Union
 
 import torch
@@ -24,6 +23,8 @@ from stable_pretraining.backbone import patchify
 
 @dataclass
 class SimMIMOutput(ModelOutput):
+    """Structured output of the :class:`SimMIM` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     predictions: Optional[torch.Tensor] = None
@@ -62,7 +63,9 @@ class SimMIM(Module):
             self.encoder = encoder_name
 
         with torch.no_grad():
-            embed_dim = self.encoder(torch.zeros(1, in_channels, image_size, image_size)).shape[-1]
+            embed_dim = self.encoder(
+                torch.zeros(1, in_channels, image_size, image_size)
+            ).shape[-1]
         self.embed_dim = embed_dim
         self.patch_size = patch_size
         self.mask_ratio = mask_ratio
@@ -85,7 +88,9 @@ class SimMIM(Module):
         mask.scatter_(1, order[:, :n_mask], 1.0)
         return mask  # 1 = masked
 
-    def _encode_with_mask(self, images: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    def _encode_with_mask(
+        self, images: torch.Tensor, mask: torch.Tensor
+    ) -> torch.Tensor:
         """Patch-embed, replace masked tokens, then run encoder blocks.
 
         Works with timm ViTs that expose ``patch_embed``, ``cls_token`` (optional),
@@ -137,7 +142,9 @@ class SimMIM(Module):
 
         target = patchify(images, patch_size=(self.in_channels, p, p))  # [B, N, C*p*p]
 
-        loss_per = F.l1_loss(pred_pixels, target, reduction="none").mean(dim=-1)  # [B, N]
+        loss_per = F.l1_loss(pred_pixels, target, reduction="none").mean(
+            dim=-1
+        )  # [B, N]
         loss = (loss_per * mask).sum() / mask.sum().clamp(min=1.0)
 
         # Embedding for probes: mean of *all* patch tokens.

@@ -28,6 +28,8 @@ from stable_pretraining.losses import DINOv2Loss
 
 @dataclass
 class DINOv3Output(ModelOutput):
+    """Structured output of the :class:`DINOv3` SSL method."""
+
     loss: torch.Tensor = None
     loss_cls: torch.Tensor = None
     loss_patch: torch.Tensor = None
@@ -35,7 +37,9 @@ class DINOv3Output(ModelOutput):
     embedding: torch.Tensor = None
 
 
-def _ibot_head(in_dim: int, hidden_dim: int, bottleneck_dim: int, n_prototypes: int) -> nn.Module:
+def _ibot_head(
+    in_dim: int, hidden_dim: int, bottleneck_dim: int, n_prototypes: int
+) -> nn.Module:
     return nn.Sequential(
         nn.Linear(in_dim, hidden_dim),
         nn.GELU(),
@@ -125,7 +129,9 @@ class DINOv3(Module):
         with torch.no_grad():
             seq = base.forward_features(torch.zeros(1, 3, image_size, image_size))
         self._has_cls = (
-            hasattr(base, "cls_token") and base.cls_token is not None and seq.shape[1] > 1
+            hasattr(base, "cls_token")
+            and base.cls_token is not None
+            and seq.shape[1] > 1
         )
         if not self._has_cls:
             raise ValueError("DINOv3 requires a CLS-token ViT")
@@ -141,7 +147,9 @@ class DINOv3(Module):
         # Register tokens (shared between teacher and student via deepcopy).
         register_tokens = nn.Parameter(torch.zeros(1, n_register_tokens, embed_dim))
         nn.init.trunc_normal_(register_tokens, std=0.02)
-        base.register_tokens = register_tokens  # attach to the timm module so EMA copies it
+        base.register_tokens = (
+            register_tokens  # attach to the timm module so EMA copies it
+        )
 
         self.backbone = TeacherStudentWrapper(
             base,
@@ -150,13 +158,23 @@ class DINOv3(Module):
             final_ema_coefficient=ema_decay_end,
         )
         self.cls_head = TeacherStudentWrapper(
-            _ibot_head(embed_dim, projector_hidden_dim, projector_bottleneck_dim, n_cls_prototypes),
+            _ibot_head(
+                embed_dim,
+                projector_hidden_dim,
+                projector_bottleneck_dim,
+                n_cls_prototypes,
+            ),
             warm_init=True,
             base_ema_coefficient=ema_decay_start,
             final_ema_coefficient=ema_decay_end,
         )
         self.patch_head = TeacherStudentWrapper(
-            _ibot_head(embed_dim, projector_hidden_dim, projector_bottleneck_dim, n_patch_prototypes),
+            _ibot_head(
+                embed_dim,
+                projector_hidden_dim,
+                projector_bottleneck_dim,
+                n_patch_prototypes,
+            ),
             warm_init=True,
             base_ema_coefficient=ema_decay_start,
             final_ema_coefficient=ema_decay_end,
@@ -226,21 +244,27 @@ class DINOv3(Module):
         with torch.no_grad():
             pe = self.backbone.student.patch_embed(global_imgs[:1])
             n_patches = pe.shape[1] * pe.shape[2] if pe.ndim == 4 else pe.shape[1]
-        mask = self._random_mask(global_imgs.shape[0], n_patches, device=global_imgs.device)
+        mask = self._random_mask(
+            global_imgs.shape[0], n_patches, device=global_imgs.device
+        )
 
         with torch.no_grad():
             t_feats = self._encode(self.backbone.teacher, global_imgs, mask=None)
             t_cls, t_patches = _split_cls_patches(t_feats, n_special)
             t_cls_logits = self.cls_head.forward_teacher(t_cls).view(n_global, B, -1)
             t_patch_logits = self.patch_head.forward_teacher(t_patches.flatten(0, 1))
-            t_patch_logits = t_patch_logits.view(t_patches.shape[0], t_patches.shape[1], -1)
+            t_patch_logits = t_patch_logits.view(
+                t_patches.shape[0], t_patches.shape[1], -1
+            )
 
         # Student globals (with patch mask) → CLS + patch logits.
         s_feats_g = self._encode(self.backbone.student, global_imgs, mask=mask)
         s_cls_g, s_patches_g = _split_cls_patches(s_feats_g, n_special)
         s_cls_logits_g = self.cls_head.forward_student(s_cls_g).view(n_global, B, -1)
         s_patch_logits = self.patch_head.forward_student(s_patches_g.flatten(0, 1))
-        s_patch_logits = s_patch_logits.view(s_patches_g.shape[0], s_patches_g.shape[1], -1)
+        s_patch_logits = s_patch_logits.view(
+            s_patches_g.shape[0], s_patches_g.shape[1], -1
+        )
 
         # Student locals contribute only to the CLS-level Sinkhorn loss.
         if n_local > 0:
@@ -274,7 +298,11 @@ class DINOv3(Module):
         s_cls_first_global = s_cls_g.view(n_global, B, -1)[0]
         loss_koleo = _koleo_loss(s_cls_first_global)
 
-        loss = loss_cls + self.patch_loss_weight * loss_patch + self.koleo_weight * loss_koleo
+        loss = (
+            loss_cls
+            + self.patch_loss_weight * loss_patch
+            + self.koleo_weight * loss_koleo
+        )
         return DINOv3Output(
             loss=loss,
             loss_cls=loss_cls.detach(),

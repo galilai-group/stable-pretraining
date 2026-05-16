@@ -24,6 +24,8 @@ from stable_pretraining.backbone import TeacherStudentWrapper
 
 @dataclass
 class Data2VecOutput(ModelOutput):
+    """Structured output of the :class:`Data2Vec` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     predictions: Optional[torch.Tensor] = None
@@ -124,11 +126,11 @@ class Data2Vec(Module):
             x = x[:, 1:]
         return x
 
-    def _teacher_target(
-        self, images: torch.Tensor
-    ) -> torch.Tensor:
-        """Run the unmasked image through the EMA teacher and return the
-        average of the last K block outputs at patch positions.
+    def _teacher_target(self, images: torch.Tensor) -> torch.Tensor:
+        """Return the EMA teacher's averaged last-K-block patch features.
+
+        Runs the unmasked image through the EMA teacher and averages the
+        last K block outputs at patch positions.
 
         We install + remove the hook inside this method so we never capture
         the student's forward (which would corrupt the target).
@@ -186,7 +188,9 @@ class Data2Vec(Module):
         target = self._teacher_target(images)
 
         # Smooth-L1 loss on masked positions only
-        diff = F.smooth_l1_loss(predictions, target, beta=2.0, reduction="none").mean(dim=-1)
+        diff = F.smooth_l1_loss(predictions, target, beta=2.0, reduction="none").mean(
+            dim=-1
+        )
         loss = (diff * mask).sum() / mask.sum().clamp(min=1.0)
 
         # Embedding for online probes: mean of all student patch tokens.

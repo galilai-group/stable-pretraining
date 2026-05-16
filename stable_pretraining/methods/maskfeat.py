@@ -24,6 +24,8 @@ from stable_pretraining import Module
 
 @dataclass
 class MaskFeatOutput(ModelOutput):
+    """Structured output of the :class:`MaskFeat` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     predictions: Optional[torch.Tensor] = None
@@ -31,7 +33,9 @@ class MaskFeatOutput(ModelOutput):
     mask: Optional[torch.Tensor] = None
 
 
-def _hog_per_patch(images: torch.Tensor, patch_size: int, n_bins: int = 9) -> torch.Tensor:
+def _hog_per_patch(
+    images: torch.Tensor, patch_size: int, n_bins: int = 9
+) -> torch.Tensor:
     """Compute a per-patch HOG descriptor of shape ``[B, N, C * n_bins]``.
 
     Simple per-channel HOG using 1D Sobel-style gradient kernels.
@@ -40,8 +44,12 @@ def _hog_per_patch(images: torch.Tensor, patch_size: int, n_bins: int = 9) -> to
     p = patch_size
     assert H % p == 0 and W % p == 0
     # Channel-grouped Sobel-like gradients
-    kx = torch.tensor([[-1.0, 0.0, 1.0]], device=images.device, dtype=images.dtype).view(1, 1, 1, 3)
-    ky = torch.tensor([[-1.0], [0.0], [1.0]], device=images.device, dtype=images.dtype).view(1, 1, 3, 1)
+    kx = torch.tensor(
+        [[-1.0, 0.0, 1.0]], device=images.device, dtype=images.dtype
+    ).view(1, 1, 1, 3)
+    ky = torch.tensor(
+        [[-1.0], [0.0], [1.0]], device=images.device, dtype=images.dtype
+    ).view(1, 1, 3, 1)
     kx = kx.expand(C, 1, 1, 3)
     ky = ky.expand(C, 1, 3, 1)
     gx = F.conv2d(images, kx, padding=(0, 1), groups=C)
@@ -59,7 +67,9 @@ def _hog_per_patch(images: torch.Tensor, patch_size: int, n_bins: int = 9) -> to
     bin_p = bin_p.permute(0, 1, 2, 4, 3, 5).contiguous()
     mag_flat = mag_p.view(B, C, gh * gw, p * p)
     bin_flat = bin_p.view(B, C, gh * gw, p * p)
-    hist = torch.zeros(B, C, gh * gw, n_bins, device=images.device, dtype=mag_flat.dtype)
+    hist = torch.zeros(
+        B, C, gh * gw, n_bins, device=images.device, dtype=mag_flat.dtype
+    )
     hist.scatter_add_(-1, bin_flat, mag_flat)
     # Standardise per-patch (zero mean, unit variance over the bin dim) — the
     # MaskFeat paper does this so the prediction target is well-conditioned
@@ -96,12 +106,16 @@ class MaskFeat(Module):
         if isinstance(encoder_name, str):
             import timm
 
-            self.encoder = timm.create_model(encoder_name, num_classes=0, pretrained=pretrained)
+            self.encoder = timm.create_model(
+                encoder_name, num_classes=0, pretrained=pretrained
+            )
         else:
             self.encoder = encoder_name
 
         with torch.no_grad():
-            seq = self.encoder.forward_features(torch.zeros(1, in_channels, image_size, image_size))
+            seq = self.encoder.forward_features(
+                torch.zeros(1, in_channels, image_size, image_size)
+            )
         self._has_cls = (
             hasattr(self.encoder, "cls_token")
             and self.encoder.cls_token is not None
@@ -154,7 +168,9 @@ class MaskFeat(Module):
             )
 
         with torch.no_grad():
-            target = _hog_per_patch(images, patch_size=self.patch_size, n_bins=self.n_hog_bins)
+            target = _hog_per_patch(
+                images, patch_size=self.patch_size, n_bins=self.n_hog_bins
+            )
         N = target.shape[1]
         mask = self._random_mask(B, N, device=images.device)
 

@@ -5,7 +5,6 @@ epochs with checkpointing.
 """
 
 import sys
-import types
 from pathlib import Path
 
 import lightning as pl

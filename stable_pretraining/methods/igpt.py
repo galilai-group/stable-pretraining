@@ -30,6 +30,8 @@ from stable_pretraining.backbone import patchify
 
 @dataclass
 class iGPTOutput(ModelOutput):
+    """Structured output of the :class:`iGPT` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     predictions: Optional[torch.Tensor] = None
@@ -130,7 +132,9 @@ class iGPT(Module):
         return x
 
     @staticmethod
-    def _block_with_mask(block: nn.Module, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    def _block_with_mask(
+        block: nn.Module, x: torch.Tensor, mask: torch.Tensor
+    ) -> torch.Tensor:
         """Apply a transformer block with a causal mask (manual MHA)."""
         attn = block.attn
         B, N, C = x.shape

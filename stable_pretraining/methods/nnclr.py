@@ -26,6 +26,8 @@ from stable_pretraining.losses import NTXEntLoss
 
 @dataclass
 class NNCLROutput(ModelOutput):
+    """Structured output of the :class:`NNCLR` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     projection: Optional[torch.Tensor] = None
@@ -105,7 +107,9 @@ class NNCLR(Module):
         proj_hidden, proj_out = projector_dims
         self.projector = _projector(embed_dim, proj_hidden, proj_out)
         self.predictor = _predictor(proj_out, predictor_hidden_dim)
-        self.queue = UnsortedQueue(max_length=queue_length, shape=(proj_out,), dtype=torch.float32)
+        self.queue = UnsortedQueue(
+            max_length=queue_length, shape=(proj_out,), dtype=torch.float32
+        )
         self.nnclr_loss = NTXEntLoss(temperature=temperature)
 
     def forward(
@@ -138,9 +142,7 @@ class NNCLR(Module):
             target1 = _nearest_neighbour(z1.detach(), support).to(z1.dtype)
             target2 = _nearest_neighbour(z2.detach(), support).to(z2.dtype)
 
-        loss = (
-            self.nnclr_loss(p1, target2) + self.nnclr_loss(p2, target1)
-        ) / 2
+        loss = (self.nnclr_loss(p1, target2) + self.nnclr_loss(p2, target1)) / 2
 
         return NNCLROutput(
             loss=loss,

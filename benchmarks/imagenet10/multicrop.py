@@ -19,7 +19,9 @@ from utils import get_data_dir  # noqa: E402
 def _photometric():
     return [
         transforms.RandomHorizontalFlip(p=0.5),
-        transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1, p=0.8),
+        transforms.ColorJitter(
+            brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1, p=0.8
+        ),
         transforms.RandomGrayscale(p=0.2),
         transforms.GaussianBlur(kernel_size=23, sigma=(0.1, 2.0), p=0.5),
         transforms.RandomSolarize(threshold=128, p=0.2),
@@ -112,13 +114,17 @@ def make_multicrop_forward(method_cls, use_local: bool = True):
         # Training: dict of named views
         global_imgs = [batch[k]["image"] for k in batch if k.startswith("global")]
         local_imgs = (
-            [batch[k]["image"] for k in batch if k.startswith("local")] if use_local else []
+            [batch[k]["image"] for k in batch if k.startswith("local")]
+            if use_local
+            else []
         )
         first_global = next(k for k in batch if k.startswith("global"))
         labels = batch[first_global].get("label")
 
         if use_local and "local_views" in method_cls.forward.__code__.co_varnames:
-            output = method_cls.forward(self, global_views=global_imgs, local_views=local_imgs)
+            output = method_cls.forward(
+                self, global_views=global_imgs, local_views=local_imgs
+            )
         else:
             output = method_cls.forward(self, global_views=global_imgs)
 
@@ -153,7 +159,9 @@ def standard_callbacks(module, embed_dim, num_classes=10):
             loss=nn.CrossEntropyLoss(),
             metrics={
                 "top1": torchmetrics.classification.MulticlassAccuracy(num_classes),
-                "top5": torchmetrics.classification.MulticlassAccuracy(num_classes, top_k=5),
+                "top5": torchmetrics.classification.MulticlassAccuracy(
+                    num_classes, top_k=5
+                ),
             },
             optimizer={"type": "AdamW", "lr": 0.03, "weight_decay": 1e-6},
         ),
@@ -162,7 +170,9 @@ def standard_callbacks(module, embed_dim, num_classes=10):
             input="embedding",
             target="label",
             queue_length=10000,
-            metrics={"top1": torchmetrics.classification.MulticlassAccuracy(num_classes)},
+            metrics={
+                "top1": torchmetrics.classification.MulticlassAccuracy(num_classes)
+            },
             input_dim=embed_dim,
             k=20,
         ),
@@ -187,6 +197,8 @@ def standard_trainer(callbacks, max_epochs, log_name):
 
 
 def attach_forward_and_optim(module, method_cls, optim, use_local: bool = True):
-    module.forward = types.MethodType(make_multicrop_forward(method_cls, use_local=use_local), module)
+    module.forward = types.MethodType(
+        make_multicrop_forward(method_cls, use_local=use_local), module
+    )
     module.optim = optim
     return module

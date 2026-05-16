@@ -49,9 +49,9 @@ def _assert_loss_and_backward(model: torch.nn.Module, output) -> None:
     loss.backward()
     grads = [p.grad for p in model.parameters() if p.grad is not None]
     assert grads, "no parameter received a gradient"
-    assert any(
-        g.abs().sum() > 0 for g in grads
-    ), "all gradients are zero — backward path is broken"
+    assert any(g.abs().sum() > 0 for g in grads), (
+        "all gradients are zero — backward path is broken"
+    )
 
 
 # --- two-view methods (forward(view1, view2)) ----------------------------
@@ -62,7 +62,10 @@ TWO_VIEW_METHODS = [
     ("CMAE", {"projector_dim": 64}),
     ("MoCov2", {"projector_dims": (256, 64), "queue_length": 32}),
     ("MoCov3", {"projector_dims": (512, 512, 64), "predictor_hidden_dim": 512}),
-    ("NNCLR", {"projector_dims": (256, 64), "queue_length": 32, "predictor_hidden_dim": 256}),
+    (
+        "NNCLR",
+        {"projector_dims": (256, 64), "queue_length": 32, "predictor_hidden_dim": 256},
+    ),
     ("PIRL", {"projector_dim": 32, "queue_length": 32, "jigsaw_grid": 4}),
     ("SimCLR", {"projector_dims": (256, 256, 64)}),
     ("SimSiam", {"projector_dim": 256, "predictor_hidden_dim": 64}),
@@ -110,7 +113,15 @@ MULTICROP_METHODS = [
     ("DINO", {"n_prototypes": 256, "encoder_kwargs": {"dynamic_img_size": True}}),
     ("iBOT", {"n_cls_prototypes": 256, "n_patch_prototypes": 64, "mask_ratio": 0.3}),
     ("DINOv2", {"n_cls_prototypes": 256, "n_patch_prototypes": 64, "mask_ratio": 0.3}),
-    ("DINOv3", {"n_cls_prototypes": 256, "n_patch_prototypes": 64, "mask_ratio": 0.3, "n_register_tokens": 2}),
+    (
+        "DINOv3",
+        {
+            "n_cls_prototypes": 256,
+            "n_patch_prototypes": 64,
+            "mask_ratio": 0.3,
+            "n_register_tokens": 2,
+        },
+    ),
 ]
 
 
@@ -240,8 +251,11 @@ def test_mim_refiner_forward_backward():
     ],
 )
 def test_eval_mode_no_loss(method_name: str, kwargs: dict) -> None:
-    """In eval mode the methods must return a finite (zero) loss
-    and a usable embedding tensor."""
+    """Eval-mode smoke: each method returns a finite loss + usable embedding.
+
+    Loss should be zero (or at least finite) and the embedding tensor must
+    have the expected shape so the method is wireable into a probe.
+    """
     cls = getattr(M, method_name)
     model = cls(encoder_name=TINY_VIT, **kwargs)
     model.eval()

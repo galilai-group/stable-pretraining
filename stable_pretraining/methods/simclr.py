@@ -63,7 +63,9 @@ def _build_projector(
         is_last = i == len(hidden_dims) - 1
         layers.append(nn.Linear(prev, dim, bias=False))
         if is_last:
-            layers.append(BatchNorm1dNoBias(dim) if final_bn_no_bias else nn.BatchNorm1d(dim))
+            layers.append(
+                BatchNorm1dNoBias(dim) if final_bn_no_bias else nn.BatchNorm1d(dim)
+            )
         else:
             layers.append(nn.BatchNorm1d(dim))
             layers.append(nn.ReLU(inplace=True))

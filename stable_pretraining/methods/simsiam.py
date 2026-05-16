@@ -12,7 +12,7 @@ References:
 """
 
 from dataclasses import dataclass
-from typing import Optional, Sequence, Union
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
@@ -25,6 +25,8 @@ from stable_pretraining.backbone import from_timm
 
 @dataclass
 class SimSiamOutput(ModelOutput):
+    """Structured output of the :class:`SimSiam` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     prediction: Optional[torch.Tensor] = None

@@ -32,12 +32,12 @@ def pytest_configure(config):
 
 
 def _cuda_usable() -> bool:
-    """Return True iff CUDA is reported available *and* a small device
-    allocation actually succeeds. Plain ``torch.cuda.is_available()`` is
-    True even when the GPU is over-subscribed (returns ``cudaErrorDevices
-    Unavailable`` on the first allocation), which makes
-    ``skipif(not is_available())`` produce flaky failures on contended
-    nodes — this helper avoids that.
+    """Return True iff CUDA is reported available and an allocation succeeds.
+
+    Plain ``torch.cuda.is_available()`` is True even when the GPU is
+    over-subscribed (returns ``cudaErrorDevicesUnavailable`` on the first
+    allocation), which makes ``skipif(not is_available())`` produce flaky
+    failures on contended nodes — this helper avoids that.
     """
     if not torch.cuda.is_available():
         return False

@@ -20,7 +20,9 @@ def main():
     batch_size = 128
     max_epochs = int(__import__("os").environ.get("MAX_EPOCHS", 20))
 
-    data = make_imagenette_data(batch_size=batch_size, num_workers=8, n_global=2, n_local=4)
+    data = make_imagenette_data(
+        batch_size=batch_size, num_workers=8, n_global=2, n_local=4
+    )
 
     module = SwAV(
         encoder_name="vit_small_patch16_224",
@@ -47,7 +49,9 @@ def main():
     )
 
     callbacks = standard_callbacks(module, embed_dim=module.embed_dim)
-    trainer = standard_trainer(callbacks, max_epochs=max_epochs, log_name="swav-vits-inet10")
+    trainer = standard_trainer(
+        callbacks, max_epochs=max_epochs, log_name="swav-vits-inet10"
+    )
     spt.Manager(trainer=trainer, module=module, data=data)()
 
 

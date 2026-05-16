@@ -42,7 +42,9 @@ def main():
     )
 
     callbacks = standard_callbacks(module, embed_dim=module.embed_dim)
-    trainer = standard_trainer(callbacks, max_epochs=max_epochs, log_name="vicreg-vits-inet10")
+    trainer = standard_trainer(
+        callbacks, max_epochs=max_epochs, log_name="vicreg-vits-inet10"
+    )
     spt.Manager(trainer=trainer, module=module, data=data)()
 
 
