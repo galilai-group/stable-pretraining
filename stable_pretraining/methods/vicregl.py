@@ -12,7 +12,7 @@ References:
 """
 
 from dataclasses import dataclass
-from typing import Optional, Sequence, Union
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
@@ -25,6 +25,8 @@ from stable_pretraining.losses import VICRegLoss
 
 @dataclass
 class VICRegLOutput(ModelOutput):
+    """Structured output of the :class:`VICRegL` SSL method."""
+
     loss: torch.Tensor = None
     loss_global: torch.Tensor = None
     loss_local: torch.Tensor = None
@@ -74,12 +76,16 @@ class VICRegL(Module):
         if isinstance(encoder_name, str):
             import timm
 
-            self.encoder = timm.create_model(encoder_name, num_classes=0, pretrained=pretrained)
+            self.encoder = timm.create_model(
+                encoder_name, num_classes=0, pretrained=pretrained
+            )
         else:
             self.encoder = encoder_name
 
         with torch.no_grad():
-            seq = self.encoder.forward_features(torch.zeros(1, 3, image_size, image_size))
+            seq = self.encoder.forward_features(
+                torch.zeros(1, 3, image_size, image_size)
+            )
         self._has_cls = (
             hasattr(self.encoder, "cls_token")
             and self.encoder.cls_token is not None

@@ -27,6 +27,13 @@ class OnlineKNN(Callback):
     3. Using weighted voting to produce class predictions
     4. Computing specified metrics on the predictions
 
+    Note:
+        Auto-creates its own input and target ``OnlineQueue`` callbacks if
+        none with matching keys are registered, so users typically only
+        need to add ``OnlineKNN`` itself. Pass a manually-registered
+        ``OnlineQueue`` only to override the default queue length or share
+        a queue across multiple consumers.
+
     Args:
         name: Unique identifier for this callback instance. Used for logging and
             storing metrics.
@@ -39,6 +46,14 @@ class OnlineKNN(Callback):
         input_dim: Expected dimensionality of input features. Can be int, tuple/list
             (will be flattened to product), or None to accept any dimension.
         target_dim: Expected dimensionality of targets. None accepts any dimension.
+        num_classes: Total number of classes in the dataset. If ``None`` (default),
+            the class count is inferred from the maximum label observed in the
+            queue and current batch. **Always pass this explicitly when possible**:
+            inference can produce a count smaller than the true number of classes
+            when the queue has not yet seen every class (early training, small
+            queue, many classes), which causes the prediction tensor to be
+            narrower than the metric expects (e.g., ``torchmetrics.MulticlassAccuracy(10)``
+            crashes if predictions are shape ``(B, 7)`` instead of ``(B, 10)``).
         k: Number of nearest neighbors to consider for voting. Default is 5.
         temperature: Temperature parameter for distance weighting. Lower values give
             more weight to closer neighbors. Default is 0.07.
@@ -46,6 +61,8 @@ class OnlineKNN(Callback):
             to compute all distances at once. Default is -1.
         distance_metric: Distance metric for finding nearest neighbors. Options are
             'euclidean', 'squared_euclidean', 'cosine', 'manhattan'. Default is 'euclidean'.
+        verbose: If ``True``, log extra per-step detail. ``None`` inherits the
+            global ``spt`` verbosity setting.
 
     Raises:
         ValueError: If k <= 0, temperature <= 0, or chunk_size is invalid.
@@ -66,6 +83,7 @@ class OnlineKNN(Callback):
         metrics: Dict,
         input_dim: Optional[Union[Tuple[int, ...], List[int], int]] = None,
         target_dim: Optional[int] = None,
+        num_classes: Optional[int] = None,
         k: int = 5,
         temperature: float = 0.07,
         chunk_size: int = -1,
@@ -82,6 +100,8 @@ class OnlineKNN(Callback):
             raise ValueError(f"temperature must be positive, got {temperature}")
         if chunk_size == 0 or chunk_size < -1:
             raise ValueError(f"chunk_size must be positive or -1, got {chunk_size}")
+        if num_classes is not None and num_classes <= 0:
+            raise ValueError(f"num_classes must be positive, got {num_classes}")
 
         if input_dim is not None and isinstance(input_dim, (list, tuple)):
             input_dim = int(np.prod(input_dim))
@@ -92,6 +112,7 @@ class OnlineKNN(Callback):
         self.queue_length = queue_length
         self.input_dim = input_dim
         self.target_dim = target_dim
+        self.num_classes = num_classes
         self.k = k
         self.temperature = temperature
         self.chunk_size = chunk_size
@@ -103,6 +124,8 @@ class OnlineKNN(Callback):
 
         self._input_queue = None
         self._target_queue = None
+        # Latch for the inference warning so we only emit it once per callback.
+        self._warned_inferred_num_classes = False
 
     @property
     def state_key(self) -> str:
@@ -179,7 +202,7 @@ class OnlineKNN(Callback):
             return
 
         predictions = self._compute_knn_predictions(
-            input_data, cached_features, cached_labels
+            input_data, cached_features, cached_labels, target_data
         )
 
         if predictions is not None:
@@ -196,10 +219,11 @@ class OnlineKNN(Callback):
         features: Tensor,
         cached_features: Tensor,
         cached_labels: Tensor,
+        current_targets: Optional[Tensor] = None,
     ) -> Optional[Tensor]:
         """Compute KNN predictions."""
         batch_size = features.size(0)
-        num_classes = int(cached_labels.max().item()) + 1
+        num_classes = self._resolve_num_classes(cached_labels, current_targets)
 
         predictions = torch.zeros(
             batch_size, num_classes, device=features.device, dtype=torch.float32
@@ -235,6 +259,46 @@ class OnlineKNN(Callback):
 
         predictions = (dist_weight.unsqueeze(-1) * one_hot_labels).sum(0)
         return predictions
+
+    def _resolve_num_classes(
+        self,
+        cached_labels: Tensor,
+        current_targets: Optional[Tensor] = None,
+    ) -> int:
+        """Return the class count for one-hot prediction allocation (#373).
+
+        When ``self.num_classes`` is set, it is honored — and we validate that
+        all observed labels fit. When it is ``None``, we infer from
+        ``max(cached_labels, current_targets) + 1`` and emit a one-time warning
+        explaining the risk (the queue may not yet contain every class, in
+        which case the prediction width can be smaller than the metric's
+        ``num_classes`` argument and trigger a shape mismatch).
+        """
+        observed_max = int(cached_labels.max().item())
+        if current_targets is not None and current_targets.numel() > 0:
+            observed_max = max(observed_max, int(current_targets.max().item()))
+
+        if self.num_classes is not None:
+            if observed_max >= self.num_classes:
+                raise ValueError(
+                    f"OnlineKNN[{self.name}]: configured num_classes="
+                    f"{self.num_classes} but observed label {observed_max} "
+                    f">= num_classes. Increase num_classes to at least "
+                    f"{observed_max + 1}."
+                )
+            return self.num_classes
+
+        inferred = observed_max + 1
+        if not self._warned_inferred_num_classes:
+            logging.warning(
+                f"OnlineKNN[{self.name}]: inferring num_classes={inferred} "
+                f"from observed labels (max={observed_max}). This may not "
+                f"match the true class count if the queue has not yet seen "
+                f"every class — pass num_classes=<int> explicitly to avoid "
+                f"a shape mismatch with metrics like MulticlassAccuracy."
+            )
+            self._warned_inferred_num_classes = True
+        return inferred
 
     def _log_metrics(
         self, pl_module: LightningModule, predictions: Tensor, targets: Tensor

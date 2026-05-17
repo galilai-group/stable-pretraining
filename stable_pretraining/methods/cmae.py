@@ -24,6 +24,8 @@ from stable_pretraining.backbone import TeacherStudentWrapper, patchify
 
 @dataclass
 class CMAEOutput(ModelOutput):
+    """Structured output of the :class:`CMAE` SSL method."""
+
     loss: torch.Tensor = None
     loss_recon: torch.Tensor = None
     loss_contrast: torch.Tensor = None
@@ -85,9 +87,13 @@ class CMAE(Module):
             base = encoder_name
 
         with torch.no_grad():
-            seq = base.forward_features(torch.zeros(1, in_channels, image_size, image_size))
+            seq = base.forward_features(
+                torch.zeros(1, in_channels, image_size, image_size)
+            )
         self._has_cls = (
-            hasattr(base, "cls_token") and base.cls_token is not None and seq.shape[1] > 1
+            hasattr(base, "cls_token")
+            and base.cls_token is not None
+            and seq.shape[1] > 1
         )
         embed_dim = seq.shape[-1]
         self.embed_dim = embed_dim

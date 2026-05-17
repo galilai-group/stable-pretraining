@@ -684,6 +684,8 @@ def _mae_inputs(N=2, C=3, H=32, W=32, patch_size=16, mask_ratio=0.5, seed=0):
 
 @pytest.mark.unit
 class TestMAELoss:
+    """Tests for the :class:`MAELoss` reconstruction objective."""
+
     def test_mse_perfect_prediction_gives_zero_loss(self):
         loss_fn = MAELoss(patch_size=16, loss_type="mse", patch_normalize=False)
         _, imgs, mask = _mae_inputs()

@@ -24,6 +24,8 @@ from stable_pretraining.utils import all_gather
 
 @dataclass
 class MoCov3Output(ModelOutput):
+    """Structured output of the :class:`MoCov3` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     prediction: Optional[torch.Tensor] = None
@@ -154,8 +156,7 @@ class MoCov3(Module):
             zt2 = self.projector.forward_teacher(t2)
 
         loss = (
-            _info_nce(p1, zt2, self.temperature)
-            + _info_nce(p2, zt1, self.temperature)
+            _info_nce(p1, zt2, self.temperature) + _info_nce(p2, zt1, self.temperature)
         ) / 2
 
         return MoCov3Output(

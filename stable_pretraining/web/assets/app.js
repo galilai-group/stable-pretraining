@@ -226,10 +226,20 @@
 
   function matches(run, q) {
     if (!q) return true;
-    if (run.run_id.toLowerCase().includes(q)) return true;
+    // run_id may be a path like "runs/YYYYMMDD/HHMMSS/<hash>"; substring on
+    // the full id covers searching by the bare hash, by the date/time prefix,
+    // or by any path fragment. Also search run_dir (absolute path), tags,
+    // notes, hparams keys+values, and summary values.
+    if ((run.run_id || '').toLowerCase().includes(q)) return true;
+    if ((run.run_dir || '').toLowerCase().includes(q)) return true;
+    if ((run.status || '').toLowerCase().includes(q)) return true;
     if ((run.tags || []).some(t => String(t).toLowerCase().includes(q))) return true;
     if ((run.notes || '').toLowerCase().includes(q)) return true;
     for (const [k, v] of Object.entries(run.hparams || {})) {
+      if (k.toLowerCase().includes(q)) return true;
+      if (String(v).toLowerCase().includes(q)) return true;
+    }
+    for (const [k, v] of Object.entries(run.summary || {})) {
       if (k.toLowerCase().includes(q)) return true;
       if (String(v).toLowerCase().includes(q)) return true;
     }
@@ -2031,7 +2041,7 @@
   function wireControls() {
     document.getElementById('run-search').addEventListener(
       'input',
-      debounce(e => { state.search = e.target.value; renderRunList(); }, 80)
+      debounce(e => { state.search = e.target.value.trim(); renderRunList(); }, 80)
     );
 
     const sm = document.getElementById('smoothing');

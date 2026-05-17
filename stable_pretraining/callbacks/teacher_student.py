@@ -18,11 +18,23 @@ class TeacherStudentCallback(Callback):
     The callback automatically detects all TeacherStudentWrapper instances in the
     model hierarchy and updates them at the appropriate times during training.
 
+    Note:
+        Order-sensitive. The EMA update fires inside ``on_train_batch_end``.
+        Place this callback **after** any callback that reads the teacher's
+        parameters in the same training step (e.g., ``OnlineProbe`` or
+        ``OnlineKNN`` consuming teacher embeddings), or those callbacks
+        will see the pre-update teacher state. Reading state from the
+        *next* step is fine — the order rule only matters within a single
+        step.
+
     Args:
-        update_frequency (int): How often to update the teacher (in batches).
-            Default is 1 (every batch).
-        update_after_backward (bool): If True, updates happen after backward pass.
-            If False, updates happen after optimizer step. Default is True.
+        update_frequency: How often to update the teacher network, measured in
+            optimizer steps. Default is ``1`` (every step).
+        update_after_backward: If ``True``, the EMA update fires after the backward
+            pass (before the optimizer step). If ``False``, it fires after the
+            optimizer step. Default is ``False``.
+        verbose: If ``True``, log the EMA coefficient and update count each step.
+            ``None`` inherits the global ``spt`` verbosity setting.
 
     Example:
         >>> backbone = ResNet18()

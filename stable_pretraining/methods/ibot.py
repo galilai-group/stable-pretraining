@@ -11,7 +11,7 @@ References:
 """
 
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Union
+from typing import Optional, Sequence, Union
 
 import torch
 import torch.nn as nn
@@ -24,13 +24,17 @@ from stable_pretraining.losses import DINOv1Loss, iBOTPatchLoss
 
 @dataclass
 class iBOTOutput(ModelOutput):
+    """Structured output of the :class:`iBOT` SSL method."""
+
     loss: torch.Tensor = None
     loss_cls: torch.Tensor = None
     loss_patch: torch.Tensor = None
     embedding: torch.Tensor = None
 
 
-def _ibot_head(in_dim: int, hidden_dim: int, bottleneck_dim: int, n_prototypes: int) -> nn.Module:
+def _ibot_head(
+    in_dim: int, hidden_dim: int, bottleneck_dim: int, n_prototypes: int
+) -> nn.Module:
     """Shared head for both CLS and patch prototypes."""
     return nn.Sequential(
         nn.Linear(in_dim, hidden_dim),
@@ -111,7 +115,9 @@ class iBOT(Module):
             dummy = torch.zeros(1, 3, image_size, image_size)
             seq = base.forward_features(dummy)
         self._has_cls = (
-            hasattr(base, "cls_token") and base.cls_token is not None and seq.shape[1] > 1
+            hasattr(base, "cls_token")
+            and base.cls_token is not None
+            and seq.shape[1] > 1
         )
         embed_dim = seq.shape[-1]
         self.embed_dim = embed_dim
@@ -126,13 +132,23 @@ class iBOT(Module):
             final_ema_coefficient=ema_decay_end,
         )
         self.cls_head = TeacherStudentWrapper(
-            _ibot_head(embed_dim, projector_hidden_dim, projector_bottleneck_dim, n_cls_prototypes),
+            _ibot_head(
+                embed_dim,
+                projector_hidden_dim,
+                projector_bottleneck_dim,
+                n_cls_prototypes,
+            ),
             warm_init=True,
             base_ema_coefficient=ema_decay_start,
             final_ema_coefficient=ema_decay_end,
         )
         self.patch_head = TeacherStudentWrapper(
-            _ibot_head(embed_dim, projector_hidden_dim, projector_bottleneck_dim, n_patch_prototypes),
+            _ibot_head(
+                embed_dim,
+                projector_hidden_dim,
+                projector_bottleneck_dim,
+                n_patch_prototypes,
+            ),
             warm_init=True,
             base_ema_coefficient=ema_decay_start,
             final_ema_coefficient=ema_decay_end,
@@ -211,7 +227,9 @@ class iBOT(Module):
         # Random patch mask for the student forward only
         with torch.no_grad():
             n_patches = self.backbone.student.patch_embed(global_imgs[:1]).shape[1]
-        mask = self._random_mask(global_imgs.shape[0], n_patches, device=global_imgs.device)
+        mask = self._random_mask(
+            global_imgs.shape[0], n_patches, device=global_imgs.device
+        )
 
         # Teacher: unmasked
         with torch.no_grad():
@@ -219,7 +237,9 @@ class iBOT(Module):
             t_cls, t_patches = _split_cls_patches(t_feats, self._has_cls)
             t_cls_logits = self.cls_head.forward_teacher(t_cls).view(n_global, B, -1)
             t_patch_logits = self.patch_head.forward_teacher(t_patches.flatten(0, 1))
-            t_patch_logits = t_patch_logits.view(t_patches.shape[0], t_patches.shape[1], -1)
+            t_patch_logits = t_patch_logits.view(
+                t_patches.shape[0], t_patches.shape[1], -1
+            )
 
         # Student: masked
         s_feats = self._encode(self.backbone.student, global_imgs, mask=mask)
@@ -229,7 +249,9 @@ class iBOT(Module):
         s_patch_logits = s_patch_logits.view(s_patches.shape[0], s_patches.shape[1], -1)
 
         teacher_temp = self._teacher_temperature()
-        teacher_probs = self.dino_loss.softmax_center_teacher(t_cls_logits, teacher_temp=teacher_temp)
+        teacher_probs = self.dino_loss.softmax_center_teacher(
+            t_cls_logits, teacher_temp=teacher_temp
+        )
         loss_cls = self.dino_loss(s_cls_logits, teacher_probs)
         self.dino_loss.update_center(t_cls_logits)
 

@@ -1652,7 +1652,10 @@ class FlexibleTransformer(nn.Module):
             # attn_mask not typically used here, but could be passed for cross-attn masking
             for block in self.blocks:
                 queries = block(
-                    queries, context=context, cond=cond, attn_mask=attn_mask,
+                    queries,
+                    context=context,
+                    cond=cond,
+                    attn_mask=attn_mask,
                     grid_size=self._rope_grid,
                 )
             out = self.output_proj(self.final_norm(queries))
@@ -1674,8 +1677,9 @@ class FlexibleTransformer(nn.Module):
             )
 
         for block in self.blocks:
-            x = block(x, cond=cond, attn_mask=expanded_attn_mask,
-                      grid_size=self._rope_grid)
+            x = block(
+                x, cond=cond, attn_mask=expanded_attn_mask, grid_size=self._rope_grid
+            )
         x = self.final_norm(x)
 
         # Extract register outputs if needed
@@ -2247,8 +2251,14 @@ class ViT(nn.Module):
     Example::
 
         # Feature extractor (no head): forward returns the pooled CLS feature
-        model = ViT(img_size=224, patch_size=16, embed_dim=768, depth=12,
-                    num_heads=12, num_classes=0)
+        model = ViT(
+            img_size=224,
+            patch_size=16,
+            embed_dim=768,
+            depth=12,
+            num_heads=12,
+            num_classes=0,
+        )
         feats = model(torch.randn(2, 3, 224, 224))  # [2, 768]
 
         # Classifier
@@ -2256,7 +2266,7 @@ class ViT(nn.Module):
         logits = model(torch.randn(2, 3, 224, 224))  # [2, 1000]
 
         # Token-level features (no pooling, no head)
-        model = ViT(num_classes=0, global_pool='')
+        model = ViT(num_classes=0, global_pool="")
         tokens = model(torch.randn(2, 3, 224, 224))  # [2, 1 + 196, 768]
     """
 
@@ -2394,9 +2404,7 @@ class ViT(nn.Module):
             if isinstance(mod, nn.LayerNorm):
                 mod.eps = layer_norm_eps
 
-    def _resolved_pos_embed(
-        self, grid_h: int, grid_w: int
-    ) -> Optional[torch.Tensor]:
+    def _resolved_pos_embed(self, grid_h: int, grid_w: int) -> Optional[torch.Tensor]:
         if self.pos_embed is None:
             return None
         if (grid_h, grid_w) == self.grid_size:

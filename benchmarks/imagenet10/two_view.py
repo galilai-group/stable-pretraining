@@ -147,7 +147,9 @@ def standard_callbacks(module, embed_dim, num_classes=10):
             loss=nn.CrossEntropyLoss(),
             metrics={
                 "top1": torchmetrics.classification.MulticlassAccuracy(num_classes),
-                "top5": torchmetrics.classification.MulticlassAccuracy(num_classes, top_k=5),
+                "top5": torchmetrics.classification.MulticlassAccuracy(
+                    num_classes, top_k=5
+                ),
             },
             optimizer={"type": "AdamW", "lr": 0.03, "weight_decay": 0.0},
         ),
@@ -156,7 +158,9 @@ def standard_callbacks(module, embed_dim, num_classes=10):
             input="embedding",
             target="label",
             queue_length=10000,
-            metrics={"top1": torchmetrics.classification.MulticlassAccuracy(num_classes)},
+            metrics={
+                "top1": torchmetrics.classification.MulticlassAccuracy(num_classes)
+            },
             input_dim=embed_dim,
             k=20,
         ),

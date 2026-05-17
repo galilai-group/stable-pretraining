@@ -83,6 +83,37 @@ class UnsortedQueue(torch.nn.Module):
         """
         return self.out if self.filled else self.out[: self.pointer]
 
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
+        """Resize ``out`` to the saved shape before loading (#400).
+
+        Lightning's checkpoint resume calls the recursive
+        ``_load_from_state_dict`` hook, not the public ``load_state_dict``,
+        so a fresh queue (deferred shape, ``out=(max_length, 1)``) cannot
+        accept a saved buffer of e.g. shape ``(max_length,)`` from a queue
+        that was first appended with scalar-label data.
+        """
+        saved = state_dict.get(prefix + "out")
+        if saved is not None and tuple(saved.shape) != tuple(self.out.shape):
+            self.out.resize_(saved.shape)
+        super()._load_from_state_dict(
+            state_dict,
+            prefix,
+            local_metadata,
+            strict,
+            missing_keys,
+            unexpected_keys,
+            error_msgs,
+        )
+
     @staticmethod
     def _test():
         q = UnsortedQueue(0)
@@ -307,6 +338,35 @@ class OrderedQueue(torch.nn.Module):
 
         return True
 
-    def load_state_dict(self, state_dict, strict=True, assign=False):
-        self.out.resize_(state_dict["out"].shape)
-        super().load_state_dict(state_dict, strict, assign)
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
+        """Resize ``out`` / ``order_indices`` to saved shapes before loading (#400).
+
+        See ``UnsortedQueue._load_from_state_dict`` for the underlying reason
+        the public ``load_state_dict`` override is bypassed by Lightning.
+        """
+        saved_out = state_dict.get(prefix + "out")
+        if saved_out is not None and tuple(saved_out.shape) != tuple(self.out.shape):
+            self.out.resize_(saved_out.shape)
+        saved_order = state_dict.get(prefix + "order_indices")
+        if saved_order is not None and tuple(saved_order.shape) != tuple(
+            self.order_indices.shape
+        ):
+            self.order_indices.resize_(saved_order.shape)
+        super()._load_from_state_dict(
+            state_dict,
+            prefix,
+            local_metadata,
+            strict,
+            missing_keys,
+            unexpected_keys,
+            error_msgs,
+        )

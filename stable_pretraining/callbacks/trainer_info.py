@@ -6,7 +6,7 @@ from prettytable import PrettyTable
 from lightning.pytorch.utilities import rank_zero_only
 import os
 from ..data.module import DataModule
-from .utils import log_header
+from .utils import log_callbacks_order, log_header
 
 
 class ModuleSummary(pl.Callback):
@@ -118,8 +118,19 @@ class TrainerInfo(Callback):
         A warning is logged if using a custom DataModule without this method.
     """
 
+    # Latch so the callback-order log fires once per process, even if
+    # ``setup`` is called more than once (Lightning calls it per stage).
+    _logged_callback_order = False
+
     def setup(self, trainer, pl_module, stage):
         logging.info("  linking trainer to DataModule")
+
+        # Surface the callback execution order once per run so ordering bugs
+        # are easy to spot. See ``callbacks.utils.log_callbacks_order``.
+        if not TrainerInfo._logged_callback_order:
+            log_callbacks_order(trainer.callbacks)
+            TrainerInfo._logged_callback_order = True
+
         if not isinstance(trainer.datamodule, DataModule):
             logging.warning("! Using a custom DataModule, won't have extra info")
             return

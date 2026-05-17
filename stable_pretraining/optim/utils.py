@@ -15,31 +15,47 @@ from .. import optim as ssl_optim
 def is_bias_or_norm_param(name: str, param: torch.nn.Parameter) -> bool:
     """Check if a parameter is a bias or belongs to a normalization layer.
 
-    Parameters are considered bias/norm if:
-    - The parameter name ends with ".bias"
-    - The parameter name contains "norm" (e.g., LayerNorm, BatchNorm, GroupNorm)
-    - The parameter is 1D (biases are typically 1D tensors)
+    A parameter is treated as bias/norm if **any** of:
+
+    1. Its name ends with ``.bias`` (or is exactly ``"bias"``).
+    2. Its name contains the substring ``"norm"`` (case-insensitive) —
+       catches ``LayerNorm``, ``BatchNorm``, ``GroupNorm``, ``InstanceNorm``,
+       ``RMSNorm`` when modules are accessed by name.
+    3. **It is 1-D.** Biases and norm-layer scale/shift parameters are
+       always 1-D, while actual model weights are 2-D (``Linear``), 4-D
+       (``Conv2d``), 5-D (``Conv3d``), etc. This rule is essential because
+       norm-layer parameters inside ``nn.Sequential`` (or any container
+       that index-names children) have names like ``1.weight`` — they
+       contain no ``"norm"`` substring and would otherwise be missed.
+
+    The 1-D rule is the standard heuristic used by ``timm``
+    (``optim_factory.add_weight_decay``), DINOv2, CLIP and most SSL
+    codebases. In standard PyTorch / timm / HuggingFace architectures
+    no legitimate decay-eligible weight is 1-D (``Embedding.weight`` is
+    2-D, ``Conv*.weight`` is ≥3-D, attention projections are 2-D). If
+    you have a custom 1-D ``nn.Parameter`` that *should* be decayed,
+    opt out for that optimizer via ``exclude_bias_norm=False``.
 
     Args:
-        name: Full parameter name (e.g., "encoder.layer1.bn.weight")
-        param: The parameter tensor
+        name: Full parameter name (e.g., ``"encoder.layer1.bn.weight"``).
+        param: The parameter tensor.
 
     Returns:
-        True if the parameter should be excluded from weight decay
+        True if the parameter should be excluded from weight decay.
     """
-    # Check for bias parameters
+    # Rule 1: explicit bias by name.
     if name.endswith(".bias") or name == "bias":
         return True
 
-    # Check for normalization layer parameters
-    # Matches: LayerNorm, BatchNorm, GroupNorm, InstanceNorm, RMSNorm, etc.
-    name_lower = name.lower()
-    if "norm" in name_lower:
+    # Rule 2: norm-layer by name.
+    if "norm" in name.lower():
         return True
 
-    # 1D parameters are typically biases (though this is a heuristic)
-    # Skip this check if the name doesn't suggest it's a bias
-    # This catches cases like "bn1.weight" which are norm layer scales
+    # Rule 3: 1-D parameters (norm scales/shifts, biases not caught by rule 1).
+    # Genuine model weights are ≥2-D, so this is a safe heuristic in practice.
+    if param.dim() <= 1:
+        return True
+
     return False
 
 
@@ -165,6 +181,10 @@ def create_optimizer(
     if callable(optimizer_config) and not isinstance(optimizer_config, type):
         return optimizer_config(params)
 
+    # Sentinel for "not specified by user" so explicit ``False`` overrides
+    # the global default (#368).
+    _NOT_SET = object()
+
     # dict -> extract type and kwargs
     if isinstance(optimizer_config, (dict, DictConfig)):
         # Convert DictConfig to dict if needed
@@ -173,12 +193,18 @@ def create_optimizer(
         else:
             config_copy = optimizer_config.copy()
         opt_type = config_copy.pop("type", "AdamW")
-        exclude_bias_norm = config_copy.pop("exclude_bias_norm", False)
+        exclude_bias_norm = config_copy.pop("exclude_bias_norm", _NOT_SET)
         kwargs = config_copy
     else:
         opt_type = optimizer_config
-        exclude_bias_norm = False
+        exclude_bias_norm = _NOT_SET
         kwargs = {}
+
+    # Fall back to the global default if the call-site didn't set it (#368).
+    if exclude_bias_norm is _NOT_SET:
+        from .._config import get_config
+
+        exclude_bias_norm = get_config().exclude_bias_norm
 
     # resolve class
     if isinstance(opt_type, str):

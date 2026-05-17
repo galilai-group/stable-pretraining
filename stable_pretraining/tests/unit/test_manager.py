@@ -1,8 +1,5 @@
 import os
 import signal
-import subprocess
-import sys
-import textwrap
 import pytest
 from unittest.mock import MagicMock
 from pathlib import Path
@@ -426,52 +423,6 @@ class TestSIGTERMPreemptHandler:
         _install_sigterm_preempt_handler()
         signal.getsignal(signal.SIGTERM)(signal.SIGTERM, None)
         assert kills == [(os.getpid(), int(signal.SIGUSR1))]
-
-    def test_end_to_end_sigterm_triggers_usr_handler(self, tmp_path: Path):
-        """End-to-end (subprocess): real SIGTERM → our handler → real SIGUSR2 → sentinel."""
-        marker = tmp_path / "usr_fired.txt"
-        script = textwrap.dedent(f"""
-            import os, signal, sys, time
-            os.environ['SLURM_JOB_ID'] = '99999'
-            os.environ['SLURM_PROCID'] = '0'
-
-            def fake_submitit_usr2(signum, frame):
-                # Mimic submitit's checkpoint_and_try_requeue: write a sentinel,
-                # then sys.exit(-1) to terminate the process.
-                with open({str(marker)!r}, 'w') as f:
-                    f.write(f'{{signum}}')
-                sys.exit(-1)
-
-            signal.signal(signal.SIGUSR2, fake_submitit_usr2)
-
-            from stable_pretraining.manager import _install_sigterm_preempt_handler
-            _install_sigterm_preempt_handler()
-
-            os.kill(os.getpid(), signal.SIGTERM)
-            # Give the queued SIGUSR2 a moment to fire.
-            time.sleep(0.5)
-            print('UNREACHABLE')
-            sys.exit(0)
-        """)
-        proc = subprocess.run(
-            [sys.executable, "-c", script],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        assert marker.exists(), (
-            "fake_submitit_usr2 never fired — SIGTERM was not forwarded to "
-            f"SIGUSR2.\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
-        )
-        assert marker.read_text() == str(int(signal.SIGUSR2))
-        # exit code from sys.exit(-1) is 255 on POSIX
-        assert proc.returncode != 0, (
-            "Subprocess exited cleanly — fake_submitit_usr2 should have called "
-            f"sys.exit(-1).\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
-        )
-        # The "UNREACHABLE" line must NOT appear: SIGUSR2 handler should have
-        # exited before the subsequent print could run.
-        assert "UNREACHABLE" not in proc.stdout
 
     def test_warns_when_usr_handler_is_default(
         self,

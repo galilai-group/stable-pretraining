@@ -53,8 +53,14 @@ class OnlineProbe(TrainableCallback):
             (constant LR, default).
         accumulate_grad_batches: Number of batches to accumulate gradients before
             optimizer step. Default is 1 (no accumulation).
+        gradient_clip_val: Maximum gradient norm for clipping probe gradients.
+            ``None`` disables clipping. Default is ``None``.
+        gradient_clip_algorithm: Norm type used for gradient clipping — ``"norm"``
+            (L2) or ``"value"`` (element-wise). Default is ``"norm"``.
         metrics: Metrics to track during training/validation. Can be dict, list, tuple,
             or single metric instance.
+        verbose: If ``True``, log extra per-step detail. ``None`` inherits the
+            global ``spt`` verbosity setting.
 
     Note:
         * The probe module is stored in ``pl_module.callbacks_modules[name]``.

@@ -16,10 +16,36 @@ AI is moving beyond labels. Today's models learn through **self-supervision** an
 
 Join our Discord: [https://discord.gg/8M6hT39X](https://discord.gg/adzpqWKM25)
 
+## Table of Contents
+
+- [How?](#how)
+- [Quick Setup](#quick-setup)
+- [Tutorial Notebook](#quick-setup)
+- [Core Structure](#core-structure)
+  - [Data](#data)
+  - [Module](#module)
+  - [Callbacks](#callbacks)
+  - [Trainer](#trainer)
+- [Global Configuration](#global-configuration)
+- [Output Directory (`cache_dir`)](#output-directory)
+- [Run Registry](#run-registry)
+- [Built-in Methods](#built-in-methods)
+- [Backbones](#backbones)
+- [Optimizers & Schedulers](#optimizers-schedulers)
+- [Complete Example](#complete-example)
+- [Quick Start with `spt` CLI](#spt-cli)
+- [Installation](#installation)
+- [Contributing](#contributing)
+- [Citation](#citation)
+- [Contributors](#contributors)
+- [Benchmarks](#benchmarks)
+
+<a id="how"></a>
 ## How?
 
 To reach flexibility, scalability and stability, we rely on battle-tested third party libraries: `PyTorch`, `Lightning`, `HuggingFace`, `TorchMetrics` amongst a few others. Those dependencies allow us to focus on assembling everything into a powerful ML framework. ``stable-pretraining`` adopts a flexible and modular design for seamless integration of components from external libraries, including architectures, loss functions, evaluation metrics, and augmentations.
 
+<a id="quick-setup"></a>
 ## Quick setup
 
 ```bash
@@ -31,10 +57,18 @@ cd stable-pretraining
 pip install -e .
 ```
 
+For an interactive walkthrough — data loading, Module, callbacks, training, and evaluation all in one place — open the tutorial notebook:
+
+```bash
+jupyter notebook examples/simclr_cifar10_tutorial.ipynb
+```
+
+<a id="core-structure"></a>
 ## Core Structure
 
 `stable-pretraining` simplifies complex ML workflows into 4 intuitive components:
 
+<a id="data"></a>
 ### 1 - Data
 Your dataset must follow a dictionary-structured format where each sample is a dictionary with named fields (e.g., `{"image": ..., "label": ...}`). This ensures consistent behavior across all components. You have multiple options for creating datasets:
 
@@ -64,6 +98,7 @@ train_dataset = spt.data.FromTorchDataset(
 datamodule = spt.data.DataModule(train=train_dataloader, val=val_dataloader)
 ```
 
+<a id="module"></a>
 ### 2 - Module
 The key differentiator from PyTorch Lightning - **you only define the `forward` function**, not `training_step`! This unified approach computes losses and generates useful quantities that can be retrieved for monitoring and analysis:
 
@@ -111,6 +146,7 @@ def forward(self, batch, stage):
 - Return a dictionary with a `"loss"` key for training
 - All model components are passed as kwargs to `spt.Module`
 
+<a id="callbacks"></a>
 ### 3 - Callbacks
 
 Monitor and evaluate your models in real-time during training. Callbacks are key ingredients of `stable-pretraining`, providing rich insights without interrupting your training flow.
@@ -190,6 +226,7 @@ knn_probe = spt.callbacks.OnlineKNN(
 )
 ```
 
+<a id="trainer"></a>
 ### 4 - Trainer
 Orchestrate everything together with PyTorch Lightning's `Trainer`:
 
@@ -208,6 +245,7 @@ manager()
 
 Once configured, the `Manager` connects all components and handles the training loop with precise logging and monitoring (optional).
 
+<a id="global-configuration"></a>
 ## Global Configuration
 
 Instead of scattering options across environment variables, callback constructors, and factory functions, `stable-pretraining` provides a single entry-point to configure library-wide behavior:
@@ -240,6 +278,7 @@ print(spt.get_config())
 
 Settings apply immediately and persist for the process lifetime. `spt.set()` can be called multiple times; only the settings you pass are updated.
 
+<a id="output-directory"></a>
 (output-directory-cache-dir)=
 ## Output Directory (`cache_dir`)
 
@@ -316,6 +355,7 @@ If you don't pass `ckpt_path`, the system checks `run_dir/checkpoints/last.ckpt`
 
 When `cache_dir` is active, Hydra's `run.dir`, `sweep.dir`, and `job.chdir` settings are ignored for trainer outputs (a warning is logged). Hydra still manages its own `.hydra/` config dumps as usual. Note that SLURM `.out`/`.err` files are created by the scheduler before Python starts and cannot be redirected into the run directory.
 
+<a id="run-registry"></a>
 ## Run Registry
 
 When `cache_dir` is set, `stable-pretraining` automatically maintains a **filesystem-backed run registry** that indexes every run. Think of it as a local, offline, instant-query alternative to the wandb dashboard — designed for large sweeps on HPC clusters.
@@ -459,22 +499,26 @@ By default the CLI uses `$SPT_CACHE_DIR/registry.db` (or the `spt.set(cache_dir=
 spt.set(default_loggers={"registry": False})
 ```
 
+<a id="built-in-methods"></a>
 ## Built-in Methods
 
 `stable-pretraining` ships with ready-to-use forward functions and matching loss functions for popular self-supervised learning methods:
 
-| Method | Forward | Loss | Description |
-|--------|---------|------|-------------|
+| Method | Forward fn | Loss | Description |
+|--------|-----------|------|-------------|
 | Supervised | `forward.supervised_forward` | any | Standard supervised training with labels |
 | SimCLR | `forward.simclr_forward` | `NTXEntLoss` | Contrastive learning with 2 augmented views |
 | BYOL | `forward.byol_forward` | `BYOLLoss` | Momentum-based self-distillation without negatives |
 | VICReg | `forward.vicreg_forward` | `VICRegLoss` | Variance-invariance-covariance regularization |
 | Barlow Twins | `forward.barlow_twins_forward` | `BarlowTwinsLoss` | Cross-correlation matrix alignment to identity |
-| SwAV | `forward.swav_forward` | `sinkhorn_knopp` | Online clustering with Sinkhorn-Knopp normalization |
+| SwAV | `forward.swav_forward` | `SwAVLoss` | Online clustering with Sinkhorn-Knopp normalization |
 | NNCLR | `forward.nnclr_forward` | `NTXEntLoss` | Nearest-neighbor contrastive learning |
 | DINO | `forward.dino_forward` | `DINOv1Loss` | Self-distillation with multi-crop and centering |
-| DINOv2 | `forward.dinov2_forward` | `DINOv2Loss` | DINO + iBOT masked patch prediction |
+| DINOv2 | `forward.dinov2_forward` | `DINOv2Loss`, `iBOTPatchLoss` | DINO + iBOT masked patch prediction |
 
+The table above covers forward functions for use with `spt.Module`. For 30 full `LightningModule` implementations (BEiT, CMAE, Data2Vec, iBOT, iGPT, IJEPA, LeJEPA, MAE, MaskFeat, MIMRefiner, MoCov2, MoCov3, MSN, PIRL, SimMIM, SimSiam, TiCO, VICRegL, WMSE, and more), see [`METHODS.md`](METHODS.md) and `stable_pretraining/methods/`.
+
+<a id="backbones"></a>
 ## Backbones
 
 Load architectures from popular libraries or use built-in components:
@@ -492,6 +536,7 @@ backbone = spt.backbone.vit_hf("google/vit-base-patch16-224")
 
 Additional building blocks: `MLP`, `ConvMixer`, `Resnet9`, `TeacherStudentWrapper` (EMA), `MAEDecoder`, `MaskedEncoder`, `FlexibleTransformer`, `PatchMasking`, `IJEPAMasking`, `MultiBlockMasking`, `LinearProbe`, `AutoLinearClassifier`, `AutoTuneMLP`, and more.
 
+<a id="optimizers-schedulers"></a>
 ## Optimizers & Schedulers
 
 | Component | Description |
@@ -513,6 +558,7 @@ module = spt.Module(
 )
 ```
 
+<a id="complete-example"></a>
 ## Complete Example
 
 <details>
@@ -659,6 +705,7 @@ manager()
 </details>
 
 
+<a id="spt-cli"></a>
 ## Quick Start with `spt` CLI
 
 The `spt` command launches training from YAML configuration files using Hydra.
@@ -698,6 +745,7 @@ spt examples/simclr_cifar10_slurm.yaml -m \
 
 The SLURM template (`examples/simclr_cifar10_slurm.yaml`) includes placeholders for cluster-specific settings. Either modify the file directly or override values via command line.
 
+<a id="installation"></a>
 ## Installation
 
 The library is not yet available on PyPI. You can install it from the source code, as follows.
@@ -797,12 +845,14 @@ The library is not yet available on PyPI. You can install it from the source cod
 
     </details>
 
+<a id="contributing"></a>
 ## Ways You Can Contribute:
 
 - If you'd like to contribute new features, bug fixes, or improvements to the documentation, please refer to our [contributing guide](https://galilai-group.github.io/stable-pretraining/contributing/) for detailed instructions on how to get started.
 
 - You can also contribute by adding new methods, datasets, or configurations that improve the current performance of a method in the [benchmark section](https://github.com/galilai-group/stable-pretraining/tree/main/benchmarks).
 
+<a id="citation"></a>
 ## Citation
 
 If you use `stable-pretraining` in your research, please cite:
@@ -816,6 +866,7 @@ If you use `stable-pretraining` in your research, please cite:
 }
 ```
 
+<a id="contributors"></a>
 ## Contributors
 
 Core contributors (in order of joining the project):
@@ -825,6 +876,7 @@ Core contributors (in order of joining the project):
 - [Lucas Maes](https://github.com/lucas-maes)
 
 
+<a id="benchmarks"></a>
 ## Benchmarks — Imagenette ViT-S/16, 200 epochs
 
 > **Caveat.** These are **out-of-the-box** results on Imagenette

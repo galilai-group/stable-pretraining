@@ -12,7 +12,7 @@ References:
 """
 
 from dataclasses import dataclass
-from typing import Optional, Sequence, Union
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
@@ -26,13 +26,17 @@ from stable_pretraining.losses.utils import sinkhorn_knopp
 
 @dataclass
 class MSNOutput(ModelOutput):
+    """Structured output of the :class:`MSN` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     student_logits: Optional[torch.Tensor] = None
     teacher_logits: Optional[torch.Tensor] = None
 
 
-def _msn_head(in_dim: int, hidden_dim: int, bottleneck_dim: int, n_prototypes: int) -> nn.Module:
+def _msn_head(
+    in_dim: int, hidden_dim: int, bottleneck_dim: int, n_prototypes: int
+) -> nn.Module:
     return nn.Sequential(
         nn.Linear(in_dim, hidden_dim),
         nn.GELU(),
@@ -96,7 +100,9 @@ class MSN(Module):
         with torch.no_grad():
             seq = base.forward_features(torch.zeros(1, 3, image_size, image_size))
         self._has_cls = (
-            hasattr(base, "cls_token") and base.cls_token is not None and seq.shape[1] > 1
+            hasattr(base, "cls_token")
+            and base.cls_token is not None
+            and seq.shape[1] > 1
         )
         embed_dim = seq.shape[-1]
         self.embed_dim = embed_dim
@@ -113,7 +119,9 @@ class MSN(Module):
             final_ema_coefficient=ema_decay_end,
         )
         self.projector = TeacherStudentWrapper(
-            _msn_head(embed_dim, projector_hidden_dim, projector_bottleneck_dim, n_prototypes),
+            _msn_head(
+                embed_dim, projector_hidden_dim, projector_bottleneck_dim, n_prototypes
+            ),
             warm_init=True,
             base_ema_coefficient=ema_decay_start,
             final_ema_coefficient=ema_decay_end,

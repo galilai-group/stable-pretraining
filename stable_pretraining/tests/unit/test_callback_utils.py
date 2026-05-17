@@ -8,6 +8,8 @@ from stable_pretraining.callbacks.utils import get_data_from_batch_or_outputs
 
 @pytest.mark.unit
 class TestGetDataFromBatchOrOutputs:
+    """Tests for :func:`get_data_from_batch_or_outputs` dispatch logic."""
+
     def test_string_key_returns_scalar(self):
         batch = {"x": torch.tensor([1.0])}
         out = get_data_from_batch_or_outputs("x", batch, outputs=None)

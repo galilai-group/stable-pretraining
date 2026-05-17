@@ -1535,6 +1535,16 @@ class Manager(submitit.helpers.Checkpointable):
 
     @property
     def instantiated_module(self):
+        """Lazily instantiate and return the ``LightningModule``.
+
+        If ``module`` was supplied as a ``dict`` or ``DictConfig``, it is
+        instantiated via ``hydra.utils.instantiate`` on first access and the
+        result is cached. If it was supplied as a pre-built ``pl.LightningModule``
+        instance it is returned as-is.
+
+        Returns:
+            pl.LightningModule: The instantiated module ready for training.
+        """
         if not isinstance(self.module, pl.LightningModule):
             logging.info("  instantiating pl_module...")
             # with self._trainer.init_module():
@@ -1548,6 +1558,16 @@ class Manager(submitit.helpers.Checkpointable):
 
     @property
     def instantiated_data(self):
+        """Lazily instantiate and return the ``LightningDataModule``.
+
+        If ``data`` was supplied as a ``dict`` or ``DictConfig``, it is
+        instantiated via ``hydra.utils.instantiate`` on first access and the
+        result is cached. If it was supplied as a pre-built
+        ``pl.LightningDataModule`` instance it is returned as-is.
+
+        Returns:
+            pl.LightningDataModule: The instantiated data module ready for use.
+        """
         if not isinstance(self.data, pl.LightningDataModule):
             self._instantiated_data = hydra.utils.instantiate(
                 self.data, _convert_="object", _recursive_=False
@@ -1558,6 +1578,34 @@ class Manager(submitit.helpers.Checkpointable):
         return self._instantiated_data
 
     def __call__(self):
+        """Run a full training loop — seed, build, checkpoint, fit, teardown.
+
+        This is the primary programmatic entry point. Calling ``manager()``
+        performs the following steps in order:
+
+        1. Seeds the global RNG via ``pl.seed_everything``.
+        2. Resolves (or creates) a ``run_dir`` under ``cache_dir`` for
+           checkpointing and logger output.  No-op when ``cache_dir`` is not
+           configured.
+        3. Instantiates the ``Trainer`` and its callbacks from config (if not
+           pre-built), injecting the ``run_dir`` into ``default_root_dir``
+           and wiring any ``Module``-aware callbacks.
+        4. Auto-detects ``TeacherStudentWrapper`` in the module and appends
+           ``TeacherStudentCallback`` when found.
+        5. Restores any wandb / Trackio / SwanLab run IDs from checkpoint
+           sidecars so that the resumed logger run continues rather than
+           starting fresh.
+        6. Configures checkpointing: either ``cache_dir`` mode (save to
+           ``run_dir/checkpoints/``, auto-detect ``last.ckpt`` for SLURM
+           requeue) or legacy mode (user-supplied ``ckpt_path``).
+        7. Calls ``Trainer.fit(module, datamodule=data, ckpt_path=...)``.
+        8. Dumps any buffered wandb offline data after fit completes.
+
+        Note:
+            Prefer ``manager()`` over calling ``Trainer.fit`` directly.
+            ``Manager`` handles SLURM preemption, deterministic run IDs, and
+            multi-logger resume logic that ``Trainer`` alone does not provide.
+        """
         log_header("WorkingDirectory")
         logging.info(f"  cwd: {Path().resolve()}")
         log_header("Seed")
@@ -1751,6 +1799,13 @@ class Manager(submitit.helpers.Checkpointable):
         self._dump_wandb_data()
 
     def validate(self):
+        """Run one validation pass using the configured module and data.
+
+        Calls ``Trainer.validate`` with the lazily-instantiated module and
+        data module, then flushes any buffered wandb offline data.  Use this
+        after ``__call__`` has already set up the trainer, or standalone when
+        only evaluation is needed.
+        """
         log_header("TrainerValidate")
 
         self._trainer.validate(
@@ -1759,6 +1814,11 @@ class Manager(submitit.helpers.Checkpointable):
         self._dump_wandb_data()
 
     def predict(self):
+        """Run inference using the configured module and data.
+
+        Calls ``Trainer.predict`` with the lazily-instantiated module and
+        data module, then flushes any buffered wandb offline data.
+        """
         log_header("TrainerPredict")
 
         self._trainer.predict(
@@ -1767,6 +1827,11 @@ class Manager(submitit.helpers.Checkpointable):
         self._dump_wandb_data()
 
     def test(self):
+        """Run the test split using the configured module and data.
+
+        Calls ``Trainer.test`` with the lazily-instantiated module and
+        data module, then flushes any buffered wandb offline data.
+        """
         log_header("TrainerTest")
 
         self._trainer.test(self.instantiated_module, datamodule=self.instantiated_data)

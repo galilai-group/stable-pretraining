@@ -8,6 +8,7 @@ from .checkpoint_sklearn import SklearnCheckpoint, WandbCheckpoint
 from .checkpoint_trackio import TrackioCheckpoint
 from .checkpoint_swanlab import SwanLabCheckpoint
 from .env_info import EnvironmentDumpCallback
+from .hardware_monitor import HardwareMonitor
 from .hf_models import HuggingFaceCheckpointCallback
 from .registry import ModuleRegistryCallback
 from .trainer_info import LoggingCallback, ModuleSummary, SLURMInfo, TrainerInfo
@@ -122,6 +123,7 @@ _DEFAULT_CALLBACK_REGISTRY = {
     "slurm_info": (SLURMInfo, {}),
     "unused_params": (LogUnusedParametersOnce, {}),
     "hf_checkpoint": (HuggingFaceCheckpointCallback, {}),
+    "hardware_monitor": (HardwareMonitor, {}),
 }
 
 

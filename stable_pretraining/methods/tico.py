@@ -28,6 +28,8 @@ from stable_pretraining.backbone import from_timm
 
 @dataclass
 class TiCOOutput(ModelOutput):
+    """Structured output of the :class:`TiCO` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     projection: Optional[torch.Tensor] = None

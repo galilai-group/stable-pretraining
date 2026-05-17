@@ -83,6 +83,7 @@ class _GlobalConfig:
         )
         self._cache_dir: Optional[str] = os.environ.get("SPT_CACHE_DIR", _default_cache)
         self._requeue_checkpoint: bool = True
+        self._exclude_bias_norm: bool = False
 
     # -- verbose ---------------------------------------------------------------
 
@@ -261,6 +262,20 @@ class _GlobalConfig:
             )
         self._requeue_checkpoint = value
 
+    # -- exclude_bias_norm -----------------------------------------------------
+
+    @property
+    def exclude_bias_norm(self) -> bool:
+        return self._exclude_bias_norm
+
+    @exclude_bias_norm.setter
+    def exclude_bias_norm(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"exclude_bias_norm must be a bool, got {type(value).__name__}"
+            )
+        self._exclude_bias_norm = value
+
     # -- reset (for testing) ---------------------------------------------------
 
     def reset(self) -> None:
@@ -278,6 +293,7 @@ class _GlobalConfig:
             f"  default_loggers={self._default_loggers!r},\n"
             f"  cache_dir={self._cache_dir!r},\n"
             f"  requeue_checkpoint={self._requeue_checkpoint!r},\n"
+            f"  exclude_bias_norm={self._exclude_bias_norm!r},\n"
             f")"
         )
 
@@ -297,6 +313,7 @@ def set(
     default_loggers: Optional[Dict[str, bool]] = None,
     cache_dir: Optional[str] = None,
     requeue_checkpoint: Optional[bool] = None,
+    exclude_bias_norm: Optional[bool] = None,
 ) -> None:
     """Configure library-wide settings for stable_pretraining.
 
@@ -356,6 +373,16 @@ def set(
             preemption is not a concern.  Only applies when ``cache_dir``
             is set.
 
+        exclude_bias_norm: Global default for excluding bias and
+            normalization-layer parameters from weight decay (#368).
+            When ``True``, every optimizer built via
+            :func:`stable_pretraining.optim.utils.create_optimizer` splits
+            parameters into two groups — weights (with the requested
+            ``weight_decay``) and bias/norm parameters (``weight_decay=0``)
+            — unless the per-optimizer config explicitly sets its own
+            ``exclude_bias_norm``.  Default ``False`` for backward
+            compatibility.
+
     Example::
 
         import stable_pretraining as spt
@@ -392,6 +419,9 @@ def set(
 
     if requeue_checkpoint is not None:
         cfg.requeue_checkpoint = requeue_checkpoint
+
+    if exclude_bias_norm is not None:
+        cfg.exclude_bias_norm = exclude_bias_norm
 
 
 def _apply_verbose(level: str) -> None:

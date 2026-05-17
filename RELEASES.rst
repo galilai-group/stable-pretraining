@@ -2,6 +2,34 @@
 Unreleased
 ----------
 
+**Discoverability improvements**
+
+- ``METHODS.md``: new root-level catalog table covering every method class and
+  forward function with columns for forward fn, loss class, key callbacks, and
+  paper reference. ``stable_pretraining/forward.py`` module docstring now
+  cross-references ``stable_pretraining/methods/`` and ``METHODS.md`` for the full
+  ``LightningModule`` catalog.
+- Type annotations on the forward functions in ``stable_pretraining/forward.py``:
+  ``batch: dict[str, Any]``, ``stage: str``, and ``-> dict[str, torch.Tensor]``
+  return types. Added ``stable_pretraining/py.typed`` PEP 561 marker so mypy and
+  pyright treat the package as typed.
+- Top-level namespace: ``stable_pretraining.methods`` is now exposed as a lazy
+  submodule. A curated set of common method classes (``SimCLR``, ``BYOL``,
+  ``DINO``, ``DINOv2``, ``VICReg``, ``MAE``, ``NNCLR``, ``SwAV``,
+  ``BarlowTwins``) are hoisted into the top-level ``__all__`` and
+  ``_LAZY_ATTRS``, making ``import stable_pretraining as spt; spt.SimCLR``
+  work without a deep import. The full catalog remains under
+  ``stable_pretraining.methods``.
+- Agent compatibility files: ``AGENTS.md`` (canonical instructions for all coding
+  agents — repository layout, import patterns, core concepts, naming conventions,
+  step-by-step guide for adding a new SSL method, and key design decisions);
+  ``CLAUDE.md`` updated to point to ``AGENTS.md`` and add Claude-specific workflow
+  notes; ``.github/copilot-instructions.md`` and ``.cursor/rules`` added as thin
+  wrappers for GitHub Copilot and Cursor respectively.
+- ``Module`` docstrings: added or expanded docstrings for ``training_step``,
+  ``validation_step``, ``test_step``, ``predict_step``, ``on_train_start``,
+  ``rescale_loss_for_grad_acc``, and ``after_manual_backward``.
+
 - ``spt`` CLI: new ``spt web`` subcommand launches a local, dependency-free
   web viewer (stdlib ``http.server`` + Server-Sent Events, NFS-safe). Reads
   ``sidecar.json`` + ``metrics.csv`` (and optional ``media.jsonl``) under a

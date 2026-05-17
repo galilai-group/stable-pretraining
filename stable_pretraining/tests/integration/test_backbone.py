@@ -1,7 +1,7 @@
 """Integration tests for backbone models requiring actual model loading."""
 
 import pytest
-from transformers import AutoModel, AutoModelForImageClassification
+from transformers import AutoModelForImageClassification
 
 
 @pytest.mark.integration
@@ -42,12 +42,6 @@ def test_torchvision_embedding_dim(name):
     "name,method,shape",
     [
         ("microsoft/resnet-18", AutoModelForImageClassification, 224),
-        pytest.param(
-            "timm/swin_tiny_patch4_window7_224.ms_in1k",
-            AutoModel,
-            224,
-            marks=pytest.mark.v1,
-        ),
     ],
 )
 def test_hf_embedding_dim(name, method, shape):

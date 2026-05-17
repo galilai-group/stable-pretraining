@@ -28,7 +28,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 pytestmark = pytest.mark.unit
 
-from stable_pretraining.callbacks import EnvironmentDumpCallback  # Update import path
+from stable_pretraining.callbacks import EnvironmentDumpCallback  # noqa: E402
 
 
 # ==================== GPU Detection ====================

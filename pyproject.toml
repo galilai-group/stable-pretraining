@@ -31,7 +31,11 @@ dependencies = [
     "hydra-submitit-launcher",
     "matplotlib",
     "datasets",
-    "pyarrow==20.0.0",
+    # Range rather than exact pin (#411): the exact ``==20.0.0`` pin conflicted
+    # with downstream packages that also depend on pyarrow. Floor matches the
+    # version that's been release-tested; upper bound excludes major versions
+    # we haven't validated yet (currently 21..24 exist on PyPI).
+    "pyarrow>=20.0.0,<25",
     "minari[hdf5]>=0.5.3",
     "scikit-learn>=1.7.0",
     "richuru",

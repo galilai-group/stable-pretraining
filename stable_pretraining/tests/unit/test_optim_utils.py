@@ -64,25 +64,37 @@ class TestIsBiasOrNormParam:
 
     def test_norm_layer_parameters_detected(self):
         """Test that normalization layer parameters are detected."""
-        param = torch.zeros(10)
-        # LayerNorm
-        assert is_bias_or_norm_param("layer_norm.weight", param) is True
-        assert is_bias_or_norm_param("layer_norm.bias", param) is True
-        # BatchNorm
-        assert is_bias_or_norm_param("bn.weight", param) is False  # bn without 'norm'
-        assert is_bias_or_norm_param("batchnorm.weight", param) is True
-        assert is_bias_or_norm_param("batch_norm.weight", param) is True
+        param_1d = torch.zeros(10)
+        param_2d = torch.zeros(10, 10)
+        # LayerNorm — caught by name (and by dim too, but name is enough)
+        assert is_bias_or_norm_param("layer_norm.weight", param_1d) is True
+        assert is_bias_or_norm_param("layer_norm.bias", param_1d) is True
+        # BatchNorm: ``bn.weight`` has no "norm" substring; pre-#368 the
+        # name-only rule missed it. The 1-D rule now catches it (norm-layer
+        # scales/biases are always 1-D in PyTorch).
+        assert is_bias_or_norm_param("bn.weight", param_1d) is True
+        # ...but a synthetic 2-D ``bn.weight`` is NOT auto-flagged — name
+        # alone wouldn't trigger, and 2-D rules it out. (Real BatchNorm
+        # weights are never 2-D.)
+        assert is_bias_or_norm_param("bn.weight", param_2d) is False
+        assert is_bias_or_norm_param("batchnorm.weight", param_1d) is True
+        assert is_bias_or_norm_param("batch_norm.weight", param_1d) is True
         # GroupNorm
-        assert is_bias_or_norm_param("group_norm.weight", param) is True
+        assert is_bias_or_norm_param("group_norm.weight", param_1d) is True
 
     def test_mixed_cases(self):
         """Test various edge cases."""
-        param = torch.zeros(10)
-        # Not bias or norm
-        assert is_bias_or_norm_param("conv.weight", param) is False
-        assert is_bias_or_norm_param("linear.weight", param) is False
+        param_1d = torch.zeros(10)
+        param_2d = torch.zeros(10, 10)
+        # Regular ≥2-D weights are not flagged.
+        assert is_bias_or_norm_param("conv.weight", param_2d) is False
+        assert is_bias_or_norm_param("linear.weight", param_2d) is False
+        # A 1-D parameter named "weight" *is* flagged (#368): this catches
+        # norm-layer params inside ``nn.Sequential`` (named like ``1.weight``)
+        # that have no "norm" substring. Real ≥2-D weights are unaffected.
+        assert is_bias_or_norm_param("conv.weight", param_1d) is True
         # RMSNorm (used in some modern architectures)
-        assert is_bias_or_norm_param("rmsnorm.weight", param) is True
+        assert is_bias_or_norm_param("rmsnorm.weight", param_1d) is True
 
 
 @pytest.mark.unit

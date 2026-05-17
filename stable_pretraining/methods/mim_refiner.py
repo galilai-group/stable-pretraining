@@ -12,8 +12,6 @@ References:
     https://arxiv.org/abs/2402.10093
 """
 
-from typing import Optional, Union
-
 import torch.nn as nn
 
 from .ibot import iBOT, iBOTOutput

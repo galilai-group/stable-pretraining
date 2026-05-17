@@ -25,28 +25,35 @@ from stable_pretraining.callbacks.queues import UnsortedQueue
 
 @dataclass
 class PIRLOutput(ModelOutput):
+    """Structured output of the :class:`PIRL` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
 
 
 def _shuffle_patches(images: torch.Tensor, grid: int = 4) -> torch.Tensor:
-    """Crop each image into a ``grid x grid`` jigsaw and randomly permute the
-    patches. The image is resized so its side length is divisible by ``grid``
-    and then resized back, so the encoder always sees its expected size.
+    """Crop each image into a ``grid x grid`` jigsaw and randomly permute it.
+
+    The image is resized so its side length is divisible by ``grid`` and
+    then resized back, so the encoder always sees its expected size.
     """
     B, C, H, W = images.shape
     if H != W:
         raise ValueError("PIRL jigsaw assumes square images")
     target_h = (H // grid) * grid
     if target_h != H:
-        images_resized = F.interpolate(images, size=target_h, mode="bilinear", align_corners=False)
+        images_resized = F.interpolate(
+            images, size=target_h, mode="bilinear", align_corners=False
+        )
     else:
         images_resized = images
     p = target_h // grid
     x = images_resized.unfold(2, p, p).unfold(3, p, p)  # [B, C, grid, grid, p, p]
     x = x.permute(0, 2, 3, 1, 4, 5).contiguous()
     x = x.view(B, grid * grid, C, p, p)
-    perm = torch.stack([torch.randperm(grid * grid, device=images.device) for _ in range(B)])
+    perm = torch.stack(
+        [torch.randperm(grid * grid, device=images.device) for _ in range(B)]
+    )
     x = torch.gather(x, 1, perm[..., None, None, None].expand_as(x))
     x = x.view(B, grid, grid, C, p, p).permute(0, 3, 1, 4, 2, 5).contiguous()
     out = x.view(B, C, target_h, target_h)
@@ -130,7 +137,9 @@ class PIRL(Module):
         z_jig = F.normalize(self.proj_jigsaw(h_jig), dim=-1)
 
         with torch.no_grad():
-            queue_keys = self.queue.append(z_img.detach().to(torch.float32)).to(z_img.dtype)
+            queue_keys = self.queue.append(z_img.detach().to(torch.float32)).to(
+                z_img.dtype
+            )
 
         # NCE 1: jigsaw vs (positive=image, negatives=queue)
         pos1 = (z_jig * z_img.detach()).sum(dim=-1, keepdim=True)

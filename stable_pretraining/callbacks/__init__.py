@@ -11,6 +11,8 @@ from .latent_viz import LatentViz
 from .lidar import LiDAR
 from .probe import OnlineProbe
 from .queues import OrderedQueue, UnsortedQueue
+from .image_decoder import OnlineImageDecoder
+from .hardware_monitor import HardwareMonitor
 from .rankme import RankMe
 from .teacher_student import TeacherStudentCallback
 from .trainer_info import LoggingCallback, ModuleSummary, TrainerInfo, SLURMInfo
@@ -28,6 +30,8 @@ from .hf_models import HuggingFaceCheckpointCallback
 
 __all__ = [
     OnlineProbe,
+    OnlineImageDecoder,
+    HardwareMonitor,
     SklearnCheckpoint,
     WandbCheckpoint,
     OnlineKNN,

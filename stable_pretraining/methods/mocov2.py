@@ -24,6 +24,8 @@ from stable_pretraining.callbacks.queues import UnsortedQueue
 
 @dataclass
 class MoCov2Output(ModelOutput):
+    """Structured output of the :class:`MoCov2` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     queries: Optional[torch.Tensor] = None
@@ -92,7 +94,9 @@ class MoCov2(Module):
             base_ema_coefficient=ema_decay_start,
             final_ema_coefficient=ema_decay_end,
         )
-        self.queue = UnsortedQueue(max_length=queue_length, shape=(proj_out,), dtype=torch.float32)
+        self.queue = UnsortedQueue(
+            max_length=queue_length, shape=(proj_out,), dtype=torch.float32
+        )
 
     def forward(
         self,

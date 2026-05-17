@@ -23,6 +23,8 @@ from stable_pretraining.backbone import from_timm
 
 @dataclass
 class WMSEOutput(ModelOutput):
+    """Structured output of the :class:`WMSE` SSL method."""
+
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
     projection: Optional[torch.Tensor] = None
@@ -38,8 +40,10 @@ def _projector(in_dim: int, hidden_dim: int, out_dim: int) -> nn.Module:
 
 
 def _eigen_whiten(z: torch.Tensor, eps: float = 1e-3) -> torch.Tensor:
-    """ZCA-style whiten ``[B, D]`` via the symmetric eigendecomposition of
-    the (B-centred) covariance. Forced into fp32 (eigh has no fp16 kernel).
+    """ZCA-style whiten ``[B, D]``.
+
+    Uses the symmetric eigendecomposition of the (B-centred) covariance.
+    Forced into fp32 (``eigh`` has no fp16 kernel).
     """
     orig_dtype = z.dtype
     # Disable autocast so the float() cast actually sticks.

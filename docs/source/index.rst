@@ -21,6 +21,12 @@
     cache_dir
     cli
 
+.. note::
+
+   **Tutorial notebook** — ``examples/simclr_cifar10_tutorial.ipynb`` walks through data
+   loading, ``Module`` construction, callback setup, and training end-to-end in under
+   5 minutes. Open it with ``jupyter notebook examples/simclr_cifar10_tutorial.ipynb``.
+
 .. toctree::
     :maxdepth: 1
     :caption: API
@@ -30,6 +36,7 @@
     api/forward
     api/losses
     api/manager
+    api/methods
     api/module
     api/monitors
     api/optim
