@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.image_retrieval &#8212; stable-pretraining 0.1.dev1+g99fba6a8f documentation</title>
+    <title>stable_pretraining.callbacks.image_retrieval &#8212; stable-pretraining 0.1.dev1+g09c1fc86d documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=634c0f03"></script>
+    <script src="../../../../_static/documentation_options.js?v=ce84cf5f"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g99fba6a8f documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g09c1fc86d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -379,7 +379,7 @@
                   
   <h1>Source code for stable_pretraining.callbacks.image_retrieval</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">types</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -391,7 +391,14 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_metrics_as_dict</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">wrap_validation_step</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">wrap_validation_step</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrap ``validation_step`` to populate the callback&#39;s embedding buffer.</span>
+
+<span class="sd">    The wrapped function captures the ``ImageRetrieval`` instance via the</span>
+<span class="sd">    closure so embeddings live on ``callback.embeds`` instead of mutating</span>
+<span class="sd">    ``pl_module.embeds`` — keeping multiple ImageRetrieval instances isolated.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">ffn</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">batch</span><span class="p">,</span>
@@ -399,6 +406,7 @@
         <span class="n">fn</span><span class="o">=</span><span class="n">fn</span><span class="p">,</span>
         <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
         <span class="nb">input</span><span class="o">=</span><span class="nb">input</span><span class="p">,</span>
+        <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="n">batch</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">)</span>
 
@@ -410,7 +418,26 @@
         <span class="n">norm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_gather</span><span class="p">(</span><span class="n">norm</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">embeds</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">norm</span>
+            <span class="c1"># Lazy allocation: infer ``features_dim`` from the first batch&#39;s</span>
+            <span class="c1"># normalized embeddings if the user didn&#39;t specify it upfront.</span>
+            <span class="k">if</span> <span class="n">callback</span><span class="o">.</span><span class="n">embeds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">inferred_dim</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">norm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">callback</span><span class="o">.</span><span class="n">features_dim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                    <span class="ow">and</span> <span class="n">callback</span><span class="o">.</span><span class="n">features_dim</span> <span class="o">!=</span> <span class="n">inferred_dim</span>
+                <span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;ImageRetrieval[</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">]: features_dim=&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">features_dim</span><span class="si">}</span><span class="s2"> but first batch produced &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;embeddings of dim </span><span class="si">{</span><span class="n">inferred_dim</span><span class="si">}</span><span class="s2">. Either pass the &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;correct features_dim or omit it for inference.&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">dataset_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">datamodule</span><span class="o">.</span><span class="n">val</span><span class="o">.</span><span class="n">dataset</span><span class="p">)</span>
+                <span class="n">callback</span><span class="o">.</span><span class="n">embeds</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">dataset_size</span><span class="p">,</span> <span class="n">inferred_dim</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">norm</span><span class="o">.</span><span class="n">device</span>
+                <span class="p">)</span>
+                <span class="n">callback</span><span class="o">.</span><span class="n">features_dim</span> <span class="o">=</span> <span class="n">inferred_dim</span>
+            <span class="n">callback</span><span class="o">.</span><span class="n">embeds</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">norm</span>
 
         <span class="k">return</span> <span class="n">batch</span>
 
@@ -424,6 +451,25 @@
 
 <span class="sd">    The implementation follows:</span>
 <span class="sd">      1. https://github.com/facebookresearch/dino/blob/main/eval_image_retrieval.py</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        pl_module: The ``spt.LightningModule`` to evaluate against.</span>
+<span class="sd">        name: Unique identifier (used as key in ``callbacks_modules`` and</span>
+<span class="sd">            ``callbacks_metrics``). Two instances with the same ``name`` raise.</span>
+<span class="sd">        input: Key in ``batch`` containing per-sample embeddings.</span>
+<span class="sd">        query_col: Boolean column on the val dataset marking query rows.</span>
+<span class="sd">        retrieval_col: Single column name or list — each value is a list of</span>
+<span class="sd">            gallery indices that count as relevant for that query.</span>
+<span class="sd">        metrics: ``torchmetrics.retrieval.RetrievalMetric`` instances keyed by</span>
+<span class="sd">            display name.</span>
+<span class="sd">        features_dim: Output dimension of the embedding. If ``None`` (default)</span>
+<span class="sd">            the dimension is inferred from the first validation batch. If</span>
+<span class="sd">            provided, it must match what the model emits — a mismatch raises.</span>
+<span class="sd">        normalizer: ``&quot;batch_norm&quot;``, ``&quot;layer_norm&quot;``, or ``None`` (identity)</span>
+<span class="sd">            applied to embeddings before L2-normalization. When using</span>
+<span class="sd">            ``&quot;batch_norm&quot;`` or ``&quot;layer_norm&quot;``, ``features_dim`` must be set</span>
+<span class="sd">            explicitly because the normalizer module needs to be built at</span>
+<span class="sd">            ``__init__`` time.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">NAME</span> <span class="o">=</span> <span class="s2">&quot;ImageRetrieval&quot;</span>
@@ -436,7 +482,7 @@
         <span class="n">query_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">retrieval_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
         <span class="n">metrics</span><span class="p">,</span>
-        <span class="n">features_dim</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">],</span>
+        <span class="n">features_dim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">normalizer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Setting up callback (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">NAME</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
@@ -445,12 +491,21 @@
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">- caching modules into `callbacks_modules`&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">callbacks_modules</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">=}</span><span class="s2"> already used in callbacks&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">features_dim</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">]:</span>
-            <span class="n">features_dim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">features_dim</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">features_dim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">features_dim</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">]:</span>
+            <span class="n">features_dim</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">features_dim</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="n">normalizer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">normalizer</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;batch_norm&quot;</span><span class="p">,</span> <span class="s2">&quot;layer_norm&quot;</span><span class="p">]:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s2">&quot;`normalizer` has to be one of `batch_norm` or `layer_norm`&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># batch_norm / layer_norm need a known input dim at construction time;</span>
+        <span class="c1"># identity is dim-agnostic and lets us defer.</span>
+        <span class="k">if</span> <span class="n">normalizer</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;batch_norm&quot;</span><span class="p">,</span> <span class="s2">&quot;layer_norm&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">features_dim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;normalizer=</span><span class="si">{</span><span class="n">normalizer</span><span class="si">!r}</span><span class="s2"> requires features_dim to be &quot;</span>
+                <span class="s2">&quot;specified explicitly; only normalizer=None supports &quot;</span>
+                <span class="s2">&quot;inference at first batch.&quot;</span>
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">normalizer</span> <span class="o">==</span> <span class="s2">&quot;batch_norm&quot;</span><span class="p">:</span>
@@ -484,18 +539,17 @@
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">- caching metrics into `callbacks_metrics`&quot;</span><span class="p">)</span>
         <span class="n">pl_module</span><span class="o">.</span><span class="n">callbacks_metrics</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">format_metrics_as_dict</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
 
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">- wrapping the `validation_step`&quot;</span><span class="p">)</span>
-        <span class="n">fn</span> <span class="o">=</span> <span class="n">wrap_validation_step</span><span class="p">(</span><span class="n">pl_module</span><span class="o">.</span><span class="n">validation_step</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
-        <span class="n">pl_module</span><span class="o">.</span><span class="n">validation_step</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">MethodType</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span> <span class="o">=</span> <span class="n">features_dim</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">query_col</span> <span class="o">=</span> <span class="n">query_col</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">retrieval_col</span> <span class="o">=</span> <span class="n">retrieval_col</span>
+        <span class="c1"># Embedding buffer lives on the callback instance (not on pl_module)</span>
+        <span class="c1"># so multiple ImageRetrieval callbacks don&#39;t clobber each other&#39;s state.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embeds</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="c1">#</span>
-        <span class="n">pl_module</span><span class="o">.</span><span class="n">embeds</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">- wrapping the `validation_step`&quot;</span><span class="p">)</span>
+        <span class="n">fn</span> <span class="o">=</span> <span class="n">wrap_validation_step</span><span class="p">(</span><span class="n">pl_module</span><span class="o">.</span><span class="n">validation_step</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">pl_module</span><span class="o">.</span><span class="n">validation_step</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">MethodType</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">state_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -507,15 +561,17 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">on_validation_epoch_start</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">:</span> <span class="n">LightningModule</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># register buffer on rank 0</span>
-        <span class="n">val_dataset</span> <span class="o">=</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">datamodule</span><span class="o">.</span><span class="n">val</span><span class="o">.</span><span class="n">dataset</span>
-        <span class="n">dataset_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">val_dataset</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">local_rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">device</span> <span class="o">=</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">device</span>
-            <span class="n">pl_module</span><span class="o">.</span><span class="n">embeds</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
-                <span class="p">(</span><span class="n">dataset_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span>
-            <span class="p">)</span>
-        <span class="k">return</span></div>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Eagerly allocate the embeds buffer if ``features_dim`` was given.</span>
+
+<span class="sd">        Skipped otherwise — allocation happens lazily on the first batch</span>
+<span class="sd">        inside the wrapped ``validation_step``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">local_rank</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">val_dataset</span> <span class="o">=</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">datamodule</span><span class="o">.</span><span class="n">val</span><span class="o">.</span><span class="n">dataset</span>
+            <span class="n">dataset_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">val_dataset</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">embeds</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">dataset_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">pl_module</span><span class="o">.</span><span class="n">device</span>
+            <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="ImageRetrieval.on_validation_epoch_end">
@@ -528,9 +584,17 @@
 
             <span class="n">val_dataset</span> <span class="o">=</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">datamodule</span><span class="o">.</span><span class="n">val</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">dataset</span>
 
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pl_module</span><span class="o">.</span><span class="n">embeds</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">val_dataset</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">embeds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Expected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">val_dataset</span><span class="p">)</span><span class="si">}</span><span class="s2"> embeddings, but got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">pl_module</span><span class="o">.</span><span class="n">embeds</span><span class="p">)</span><span class="si">}</span><span class="s2">. Skipping evaluation.&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: no embeddings collected (zero validation &quot;</span>
+                    <span class="s2">&quot;batches?). Skipping evaluation.&quot;</span>
+                <span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">embeds</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">val_dataset</span><span class="p">):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Expected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">val_dataset</span><span class="p">)</span><span class="si">}</span><span class="s2"> embeddings, but got &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">embeds</span><span class="p">)</span><span class="si">}</span><span class="s2">. Skipping evaluation.&quot;</span>
                 <span class="p">)</span>
                 <span class="k">return</span>
 
@@ -539,10 +603,18 @@
             <span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
 
             <span class="n">query_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">is_query</span><span class="p">)</span>
-            <span class="n">query</span> <span class="o">=</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">embeds</span><span class="p">[</span><span class="n">is_query</span><span class="p">]</span>
-            <span class="n">gallery</span> <span class="o">=</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">embeds</span><span class="p">[</span><span class="o">~</span><span class="n">is_query</span><span class="p">]</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">embeds</span><span class="p">[</span><span class="n">is_query</span><span class="p">]</span>
+            <span class="n">gallery</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">embeds</span><span class="p">[</span><span class="o">~</span><span class="n">is_query</span><span class="p">]</span>
             <span class="n">score</span> <span class="o">=</span> <span class="n">query</span> <span class="o">@</span> <span class="n">gallery</span><span class="o">.</span><span class="n">t</span><span class="p">()</span>
-            <span class="c1"># ranks = torch.argsort(-score, dim=1)</span>
+
+            <span class="c1"># Pre-extract the retrieval-target columns once. Per-row</span>
+            <span class="c1"># ``val_dataset[q_idx][col]`` triggers the dataset&#39;s transform</span>
+            <span class="c1"># pipeline — re-decoding the image for every query just to read</span>
+            <span class="c1"># an index list. Column-wise access on the underlying HF dataset</span>
+            <span class="c1"># bypasses the transform pipeline entirely and returns native</span>
+            <span class="c1"># Python lists, turning O(queries × image-decodes) into one</span>
+            <span class="c1"># column fetch.</span>
+            <span class="n">ret_cache</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="n">val_dataset</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">retrieval_col</span><span class="p">}</span>
 
             <span class="n">preds</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="n">targets</span> <span class="o">=</span> <span class="p">[]</span>
@@ -557,8 +629,9 @@
                     <span class="nb">len</span><span class="p">(</span><span class="n">gallery</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">pl_module</span><span class="o">.</span><span class="n">device</span>
                 <span class="p">)</span>
 
+                <span class="n">row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">q_idx</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
                 <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">retrieval_col</span><span class="p">:</span>
-                    <span class="n">ret_idx</span> <span class="o">=</span> <span class="n">val_dataset</span><span class="p">[</span><span class="n">q_idx</span><span class="p">][</span><span class="n">col</span><span class="p">]</span>
+                    <span class="n">ret_idx</span> <span class="o">=</span> <span class="n">ret_cache</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="n">row</span><span class="p">]</span>
                     <span class="k">if</span> <span class="n">ret_idx</span><span class="p">:</span>
                         <span class="n">target</span><span class="p">[</span><span class="n">ret_idx</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
 
@@ -581,7 +654,7 @@
         <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">():</span>
             <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">barrier</span><span class="p">()</span>
 
-        <span class="n">pl_module</span><span class="o">.</span><span class="n">embeds</span> <span class="o">=</span> <span class="kc">None</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embeds</span> <span class="o">=</span> <span class="kc">None</span></div>
 </div>
 
 </pre></div>

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.knn &#8212; stable-pretraining 0.1.dev1+g99fba6a8f documentation</title>
+    <title>stable_pretraining.callbacks.knn &#8212; stable-pretraining 0.1.dev1+g09c1fc86d documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=634c0f03"></script>
+    <script src="../../../../_static/documentation_options.js?v=ce84cf5f"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g99fba6a8f documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g09c1fc86d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -408,6 +408,13 @@
 <span class="sd">    2. Weighting neighbors by inverse distance with temperature scaling</span>
 <span class="sd">    3. Using weighted voting to produce class predictions</span>
 <span class="sd">    4. Computing specified metrics on the predictions</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Auto-creates its own input and target ``OnlineQueue`` callbacks if</span>
+<span class="sd">        none with matching keys are registered, so users typically only</span>
+<span class="sd">        need to add ``OnlineKNN`` itself. Pass a manually-registered</span>
+<span class="sd">        ``OnlineQueue`` only to override the default queue length or share</span>
+<span class="sd">        a queue across multiple consumers.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        name: Unique identifier for this callback instance. Used for logging and</span>

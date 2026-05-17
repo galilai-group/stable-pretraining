@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>OnlineKNN &#8212; stable-pretraining 0.1.dev1+g99fba6a8f documentation</title>
+    <title>OnlineKNN &#8212; stable-pretraining 0.1.dev1+g09c1fc86d documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=634c0f03"></script>
+    <script src="../../../_static/documentation_options.js?v=ce84cf5f"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g99fba6a8f documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g09c1fc86d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -457,6 +457,14 @@ uses this cached data to compute KNN predictions during validation.</p>
 2. Weighting neighbors by inverse distance with temperature scaling
 3. Using weighted voting to produce class predictions
 4. Computing specified metrics on the predictions</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Auto-creates its own input and target <code class="docutils literal notranslate"><span class="pre">OnlineQueue</span></code> callbacks if
+none with matching keys are registered, so users typically only
+need to add <code class="docutils literal notranslate"><span class="pre">OnlineKNN</span></code> itself. Pass a manually-registered
+<code class="docutils literal notranslate"><span class="pre">OnlineQueue</span></code> only to override the default queue length or share
+a queue across multiple consumers.</p>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

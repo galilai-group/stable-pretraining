@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.trainer_info &#8212; stable-pretraining 0.1.dev1+g99fba6a8f documentation</title>
+    <title>stable_pretraining.callbacks.trainer_info &#8212; stable-pretraining 0.1.dev1+g09c1fc86d documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=634c0f03"></script>
+    <script src="../../../../_static/documentation_options.js?v=ce84cf5f"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g99fba6a8f documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g09c1fc86d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -386,7 +386,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.utilities</span><span class="w"> </span><span class="kn">import</span> <span class="n">rank_zero_only</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..data.module</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataModule</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_header</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_callbacks_order</span><span class="p">,</span> <span class="n">log_header</span>
 
 
 <div class="viewcode-block" id="ModuleSummary">
@@ -512,10 +512,21 @@
 <span class="sd">        A warning is logged if using a custom DataModule without this method.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="c1"># Latch so the callback-order log fires once per process, even if</span>
+    <span class="c1"># ``setup`` is called more than once (Lightning calls it per stage).</span>
+    <span class="n">_logged_callback_order</span> <span class="o">=</span> <span class="kc">False</span>
+
 <div class="viewcode-block" id="TrainerInfo.setup">
 <a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.callbacks.TrainerInfo/#stable_pretraining.callbacks.TrainerInfo.setup">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">stage</span><span class="p">):</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  linking trainer to DataModule&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Surface the callback execution order once per run so ordering bugs</span>
+        <span class="c1"># are easy to spot. See ``callbacks.utils.log_callbacks_order``.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">TrainerInfo</span><span class="o">.</span><span class="n">_logged_callback_order</span><span class="p">:</span>
+            <span class="n">log_callbacks_order</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="p">)</span>
+            <span class="n">TrainerInfo</span><span class="o">.</span><span class="n">_logged_callback_order</span> <span class="o">=</span> <span class="kc">True</span>
+
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">datamodule</span><span class="p">,</span> <span class="n">DataModule</span><span class="p">):</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;! Using a custom DataModule, won&#39;t have extra info&quot;</span><span class="p">)</span>
             <span class="k">return</span>

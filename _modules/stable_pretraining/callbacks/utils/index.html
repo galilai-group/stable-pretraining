@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.utils &#8212; stable-pretraining 0.1.dev1+g99fba6a8f documentation</title>
+    <title>stable_pretraining.callbacks.utils &#8212; stable-pretraining 0.1.dev1+g09c1fc86d documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=634c0f03"></script>
+    <script src="../../../../_static/documentation_options.js?v=ce84cf5f"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g99fba6a8f documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g09c1fc86d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -644,6 +644,71 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Log a unified section header: ``── Name ────────────``.&quot;&quot;&quot;</span>
     <span class="n">pad</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">-</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;── </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> &quot;</span> <span class="o">+</span> <span class="s2">&quot;─&quot;</span> <span class="o">*</span> <span class="n">pad</span><span class="p">)</span>
+
+
+<span class="c1"># Registry of callbacks whose position in ``trainer.callbacks`` matters.</span>
+<span class="c1"># Each entry: class name → human-readable ordering rule.</span>
+<span class="c1">#</span>
+<span class="c1"># Scope: ONLY include callbacks where two callbacks act in the **same**</span>
+<span class="c1"># Lightning hook and the order of writes/reads inside that hook matters.</span>
+<span class="c1"># Lightning runs each hook to completion across all callbacks before moving</span>
+<span class="c1"># to the next, so producer/consumer pairs split across different hooks</span>
+<span class="c1"># (e.g., OnlineQueue creates the snapshot in on_validation_epoch_start;</span>
+<span class="c1"># consumers read it in on_validation_batch_end) are NOT order-sensitive —</span>
+<span class="c1"># the producer hook finishes for every callback before any consumer hook</span>
+<span class="c1"># runs. Don&#39;t list those here.</span>
+<span class="n">ORDER_SENSITIVE_CALLBACKS</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;TeacherStudentCallback&quot;</span><span class="p">:</span> <span class="p">(</span>
+        <span class="s2">&quot;EMA update fires in on_train_batch_end; place AFTER any callback &quot;</span>
+        <span class="s2">&quot;that reads the teacher&#39;s parameters in that same hook&quot;</span>
+    <span class="p">),</span>
+    <span class="s2">&quot;OnlineProbe&quot;</span><span class="p">:</span> <span class="p">(</span>
+        <span class="s2">&quot;trains its own probe on the current batch&#39;s embeddings inside &quot;</span>
+        <span class="s2">&quot;on_train_batch_end — place AFTER callbacks that mutate the &quot;</span>
+        <span class="s2">&quot;embedding in the same hook (e.g., normalization probes)&quot;</span>
+    <span class="p">),</span>
+    <span class="s2">&quot;OnlineWriter&quot;</span><span class="p">:</span> <span class="p">(</span>
+        <span class="s2">&quot;writes batch outputs to disk in on_train_batch_end — place LAST &quot;</span>
+        <span class="s2">&quot;among per-batch callbacks so it captures all mutations&quot;</span>
+    <span class="p">),</span>
+    <span class="s2">&quot;CleanUpCallback&quot;</span><span class="p">:</span> <span class="p">(</span>
+        <span class="s2">&quot;deletes files in on_train_end / teardown — must come AFTER any &quot;</span>
+        <span class="s2">&quot;callback that saves artefacts in the same hook (checkpoint &quot;</span>
+        <span class="s2">&quot;callbacks, hf_models, etc.)&quot;</span>
+    <span class="p">),</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">log_callbacks_order</span><span class="p">(</span><span class="n">callbacks</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Callback</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Log the callback execution order with annotations on order-sensitive ones.</span>
+
+<span class="sd">    Lightning runs ``trainer.callbacks`` in registration order. Within a</span>
+<span class="sd">    single hook, callbacks fire in that order; across hooks, Lightning</span>
+<span class="sd">    finishes each hook across all callbacks before moving to the next. So</span>
+<span class="sd">    only same-hook read/write dependencies are order-sensitive (post-backward</span>
+<span class="sd">    EMA updates, end-of-training cleanup, batch-output writers). This helper</span>
+<span class="sd">    surfaces the actual order at runtime so misplacements are easy to spot.</span>
+
+<span class="sd">    The list of order-sensitive callback class names + their constraints is</span>
+<span class="sd">    kept in :data:`ORDER_SENSITIVE_CALLBACKS`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;Callbacks (in order)&quot;</span><span class="p">)</span>
+    <span class="n">callbacks</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">callbacks</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  (none registered)&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="n">width</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cb</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">callbacks</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="n">rule</span> <span class="o">=</span> <span class="n">ORDER_SENSITIVE_CALLBACKS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
+        <span class="n">marker</span> <span class="o">=</span> <span class="s2">&quot;⚑&quot;</span> <span class="k">if</span> <span class="n">rule</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot; &quot;</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">marker</span><span class="si">}</span><span class="s2"> [</span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">&gt;</span><span class="si">{</span><span class="n">width</span><span class="si">}}</span><span class="s2">] </span><span class="si">{</span><span class="bp">cls</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rule</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;       └─ order rule: </span><span class="si">{</span><span class="n">rule</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="s2">&quot;  ⚑ marks order-sensitive callbacks; see AGENTS.md → Callback &quot;</span>
+        <span class="s2">&quot;ordering for the full rules.&quot;</span>
+    <span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_verbose</span><span class="p">(</span><span class="n">verbose</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
