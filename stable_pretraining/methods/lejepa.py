@@ -160,7 +160,7 @@ class LeJEPA(Module):
     The SIGReg term is a sliced goodness-of-fit test that pushes
     projected embeddings toward an isotropic Gaussian, averaged over views.
 
-    :param model_or_model_name: timm model name string or pre-instantiated nn.Module
+    :param encoder_name: timm model name string or pre-instantiated nn.Module
     :param projector: Optional projection head.  When ``None``, a 3-layer
         BN+ReLU MLP (``embed_dim → 2048 → 2048 → 512``) is created.
     :param n_slices: Random projection directions for the goodness-of-fit test (default: 1024)
@@ -211,7 +211,7 @@ class LeJEPA(Module):
 
     def __init__(
         self,
-        model_or_model_name: str = "vit_base_patch16_224",
+        encoder_name: str = "vit_base_patch16_224",
         projector: Optional[nn.Module] = None,
         n_slices: int = 1024,
         t_max: float = 3.0,
@@ -222,17 +222,17 @@ class LeJEPA(Module):
         embed_dim: int = None
     ):
         super().__init__()
-        if isinstance(model_or_model_name, str):
+        if isinstance(encoder_name, str):
             self.backbone = timm.create_model(
-                model_or_model_name,
+                encoder_name,
                 pretrained=pretrained,
                 num_classes=0,
-                **({"dynamic_img_size": True} if "vit" in model_or_model_name else {}),
+                **({"dynamic_img_size": True} if "vit" in encoder_name else {}),
                 drop_path_rate=drop_path_rate,
             )
             embed_dim = self.backbone.embed_dim
         else:
-            self.backbone = model_or_model_name
+            self.backbone = encoder_name
             embed_dim = embed_dim
 
         if projector is None:
