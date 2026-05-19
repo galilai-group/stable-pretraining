@@ -45,6 +45,13 @@ from .predrnn import (
     predrnn_v2_small,
     predrnn_v2_tiny,
 )
+from .recurrent_vit import (
+    recurrent_vit_base,
+    recurrent_vit_huge,
+    recurrent_vit_large,
+    recurrent_vit_small,
+    recurrent_vit_tiny,
+)
 from .videomamba import (
     videomamba_base,
     videomamba_giant,
@@ -180,6 +187,14 @@ def print_video_zoo(
         predrnn_v2_huge,
     ):
         zoo.append(("PredRNN-v2", f, {"num_frames": input_t}))
+    for f in (
+        recurrent_vit_tiny,
+        recurrent_vit_small,
+        recurrent_vit_base,
+        recurrent_vit_large,
+        recurrent_vit_huge,
+    ):
+        zoo.append(("RecurrentViT", f, {"img_size": input_hw}))
     for f in (
         cosmos_tiny,
         cosmos_small,

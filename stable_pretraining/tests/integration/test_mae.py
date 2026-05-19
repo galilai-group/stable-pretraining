@@ -1,127 +1,15 @@
 """Integration tests for Masked Autoencoder (MAE) functionality."""
 
-import lightning as pl
 import pytest
 import torch
-import torchmetrics
 
 import stable_pretraining as spt
-from stable_pretraining.data import transforms
 from stable_pretraining.methods.mae import MAE
 
 
 @pytest.mark.integration
 class TestMAEIntegration:
     """Integration tests for MAE with actual training and data."""
-
-    @pytest.mark.v1
-    @pytest.mark.gpu
-    @pytest.mark.download
-    @pytest.mark.slow
-    def test_mae_with_probing(self):
-        """Test MAE training with online linear probing."""
-        # Define transforms
-        mean = [0.485, 0.456, 0.406]
-        std = [0.229, 0.224, 0.225]
-
-        train_transform = transforms.Compose(
-            transforms.RGB(),
-            transforms.RandomResizedCrop((224, 224)),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ColorJitter(
-                brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1, p=0.8
-            ),
-            transforms.RandomGrayscale(p=0.2),
-            transforms.ToImage(mean=mean, std=std),
-        )
-
-        # Create train dataset with multi-view sampling
-        train_dataset = spt.data.HFDataset(
-            path="frgfm/imagenette",
-            name="160px",
-            split="train",
-            transform=train_transform,
-        )
-
-        train = torch.utils.data.DataLoader(
-            dataset=train_dataset,
-            sampler=spt.data.sampler.RepeatedRandomSampler(train_dataset, n_views=2),
-            batch_size=64,
-            num_workers=20,
-            drop_last=True,
-        )
-
-        # Create validation dataset
-        val_transform = transforms.Compose(
-            transforms.RGB(),
-            transforms.Resize((256, 256)),
-            transforms.CenterCrop((224, 224)),
-            transforms.ToImage(mean=mean, std=std),
-        )
-
-        val = torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                path="frgfm/imagenette",
-                name="160px",
-                split="validation",
-                transform=val_transform,
-            ),
-            batch_size=128,
-            num_workers=10,
-        )
-
-        data = spt.data.DataModule(train=train, val=val)
-
-        # Define MAE forward function using the new MaskedEncoder + MAEDecoder API
-        def forward(self, batch, stage):
-            enc_out = self.backbone.encoder(batch["image"])
-            batch["embedding"] = enc_out.encoded[:, 0]  # CLS token
-            if self.training:
-                encoded_patches = enc_out.encoded[
-                    :, self.backbone.encoder.num_prefix_tokens :
-                ]
-                predictions = self.backbone.decoder(
-                    encoded_patches,
-                    enc_out.mask,
-                    ids_keep=enc_out.ids_keep,
-                    output_masked_only=False,
-                )
-                batch["loss"] = self.backbone.loss_fn(
-                    predictions, batch["image"].to(predictions.dtype), enc_out.mask
-                )
-            return batch
-
-        # Create MAE model and module
-        backbone = MAE("vit_base_patch16_224")
-        module = spt.Module(backbone=backbone, forward=forward)
-
-        # Create online probe callback
-        linear_probe = spt.callbacks.OnlineProbe(
-            module,
-            "linear_probe",
-            "embedding",
-            "label",
-            probe=torch.nn.Linear(768, 10),
-            loss=torch.nn.CrossEntropyLoss(),
-            metrics={
-                "top1": torchmetrics.classification.MulticlassAccuracy(10),
-                "top5": torchmetrics.classification.MulticlassAccuracy(10, top_k=5),
-            },
-        )
-
-        # Create trainer
-        trainer = pl.Trainer(
-            max_epochs=6,
-            num_sanity_val_steps=1,
-            callbacks=[linear_probe],
-            precision="16-mixed",
-            logger=False,
-            enable_checkpointing=False,
-        )
-
-        # Run training
-        manager = spt.Manager(trainer=trainer, module=module, data=data)
-        manager()
 
     @pytest.mark.gpu
     def test_mae_reconstruction_loss(self):
@@ -180,28 +68,6 @@ class TestMAEIntegration:
         num_patches = (224 // 16) ** 2  # 196
         assert patches.shape == (2, num_patches, 768)
 
-    @pytest.mark.v1
-    @pytest.mark.download
-    def test_mae_with_different_masking_ratios(self):
-        """Test MaskedEncoder with different masking ratios."""
-        masking = spt.backbone.PatchMasking(mask_ratio=0.75)
-        encoder = spt.backbone.MaskedEncoder("vit_base_patch16_224", masking=masking)
-        encoder.train()  # masking is only applied in training mode
-
-        images = torch.randn(2, 3, 224, 224)
-        output = encoder(images)
-        mask = output.mask
-
-        # Check that masking is applied
-        assert mask.shape == (
-            2,
-            196,
-        )  # mask for each patch (float: 0=visible, 1=masked)
-
-        # Verify some patches are masked and not all
-        assert mask.sum() > 0
-        assert mask.sum() < mask.numel()
-
     def test_mae_multi_view_sampling(self):
         """Test MAE with multi-view data augmentation."""
         from stable_pretraining.data.sampler import RepeatedRandomSampler
@@ -229,30 +95,3 @@ class TestMAEIntegration:
         assert images.shape[0] == 4
         # Due to the random nature of sampling, we can't guarantee exact duplicates
         # but the sampler should be working
-
-    @pytest.mark.v1
-    @pytest.mark.gpu
-    def test_mae_training_step(self):
-        """Test a single MAE training step."""
-        # Create simple MAE setup using the high-level MAE method
-        model = MAE("vit_base_patch16_224")
-
-        def forward(self, batch, stage):
-            output = self.backbone(batch["image"])
-            if self.training:
-                batch["loss"] = output.loss
-            return batch
-
-        module = spt.Module(backbone=model, forward=forward)
-        module.train()
-
-        # Create dummy batch
-        batch = {"image": torch.randn(2, 3, 224, 224), "label": torch.tensor([0, 1])}
-
-        # Run forward pass
-        output = module.training_step(batch, 0)
-
-        # Verify output
-        assert "loss" in output
-        assert isinstance(output["loss"], torch.Tensor)
-        assert output["loss"].requires_grad

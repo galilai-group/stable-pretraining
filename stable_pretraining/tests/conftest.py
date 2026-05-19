@@ -19,9 +19,6 @@ def pytest_configure(config):
         "markers", "download: Tests that download data from the internet"
     )
     config.addinivalue_line(
-        "markers", "v1: Legacy tests that need updating (auto-skipped)"
-    )
-    config.addinivalue_line(
         "markers",
         "regression: Regression tests (all methods, fake data, CPU-only, checks registry)",
     )
@@ -51,14 +48,11 @@ def _cuda_usable() -> bool:
 
 def pytest_collection_modifyitems(config, items):
     """Auto-skip tests based on markers."""
-    skip_v1 = pytest.mark.skip(reason="v1: legacy test needs updating")
     skip_gpu = pytest.mark.skip(reason="GPU not usable (unavailable or busy)")
     skip_ddp = pytest.mark.skip(reason="DDP requires >=2 GPUs (use srun --gpus=N)")
     cuda_ok = _cuda_usable()
     for item in items:
-        if "v1" in item.keywords:
-            item.add_marker(skip_v1)
-        elif "ddp" in item.keywords and torch.cuda.device_count() < 2:
+        if "ddp" in item.keywords and torch.cuda.device_count() < 2:
             item.add_marker(skip_ddp)
         elif "gpu" in item.keywords and not cuda_ok:
             item.add_marker(skip_gpu)

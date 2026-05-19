@@ -48,6 +48,15 @@ from .predrnn import (
     predrnn_v2_large,
     predrnn_v2_huge,
 )
+from .recurrent_vit import (
+    RecurrentViT,
+    RecurrentViTOutput,
+    recurrent_vit_tiny,
+    recurrent_vit_small,
+    recurrent_vit_base,
+    recurrent_vit_large,
+    recurrent_vit_huge,
+)
 from .videomamba import (
     BiMambaBlock,
     CausalMambaBlock,
@@ -98,6 +107,13 @@ __all__ = [
     "predrnn_v2_base",
     "predrnn_v2_large",
     "predrnn_v2_huge",
+    "RecurrentViT",
+    "RecurrentViTOutput",
+    "recurrent_vit_tiny",
+    "recurrent_vit_small",
+    "recurrent_vit_base",
+    "recurrent_vit_large",
+    "recurrent_vit_huge",
     "BiMambaBlock",
     "CausalMambaBlock",
     "MambaSSMBlock",

@@ -224,6 +224,25 @@ spt registry export sweep.csv    # export to CSV
 spt registry scan --full         # rebuild SQLite cache
 ```
 
+## Callback ordering
+
+Lightning runs `trainer.callbacks` in registration order. Within a single hook, callbacks fire in that order; across hooks, Lightning completes each hook for **every** callback before moving to the next.
+
+Practically: producer/consumer pairs split across **different hooks** (e.g., `OnlineQueue` builds its snapshot in `on_validation_epoch_start`, `OnlineKNN` reads it in `on_validation_batch_end`) are **not** order-sensitive — the producer hook is already done for every callback before any consumer hook runs. Don't worry about ordering those.
+
+Order **does** matter when two callbacks act in the **same** hook and one reads what the other writes:
+
+| Callback | Rule |
+|----------|------|
+| `TeacherStudentCallback` | After any callback that reads teacher params in `on_train_batch_end` — its EMA update fires there |
+| `OnlineProbe` | After callbacks that mutate the batch embedding in `on_train_batch_end` (e.g., normalization probes) |
+| `OnlineWriter` | Last among per-batch callbacks — captures all mutations in `on_train_batch_end` |
+| `CleanUpCallback` | After callbacks that save artefacts in `on_train_end` / teardown (checkpoint callbacks, `hf_models`, …) |
+
+At runtime, the default `TrainerInfo` callback logs the full callback list with `⚑` markers on order-sensitive ones — check that log first when debugging an ordering issue.
+
+The authoritative registry lives in `stable_pretraining.callbacks.utils.ORDER_SENSITIVE_CALLBACKS`. When adding a new order-sensitive callback, append it there so the runtime log surfaces the constraint.
+
 ## What agents must not do
 
 - **Do not** modify `stable_pretraining/__init__.py` lazy-loading machinery without reading it fully first — PEP 562 `__getattr__` is in use and changes break all lazy imports

@@ -1,125 +1,15 @@
 """Integration tests for probing functionality (linear probe and KNN)."""
 
-import lightning as pl
 import pytest
 import torch
-import torchmetrics
 from transformers import AutoModelForImageClassification
 
 import stable_pretraining as spt
-from stable_pretraining.data import transforms
 
 
 @pytest.mark.integration
 class TestProbingIntegration:
     """Integration tests for probing with actual models and data."""
-
-    @pytest.mark.v1
-    @pytest.mark.gpu
-    @pytest.mark.download
-    @pytest.mark.slow
-    def test_probing_with_pretrained_backbone(self):
-        """Test probing with pretrained ResNet-18 backbone."""
-        # Define transforms
-        mean = [0.485, 0.456, 0.406]
-        std = [0.229, 0.224, 0.225]
-
-        train_transform = transforms.Compose(
-            transforms.RGB(),
-            transforms.RandomResizedCrop((224, 224)),
-            transforms.ToImage(mean=mean, std=std),
-        )
-
-        # Create train dataloader
-        train = torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                path="frgfm/imagenette",
-                name="160px",
-                split="train[:128]",
-                transform=train_transform,
-            ),
-            batch_size=128,
-            shuffle=True,
-            num_workers=10,
-            drop_last=True,
-        )
-
-        # Create validation dataloader
-        val_transform = transforms.Compose(
-            transforms.RGB(),
-            transforms.Resize((256, 256)),
-            transforms.CenterCrop((224, 224)),
-            transforms.ToImage(mean=mean, std=std),
-        )
-
-        val = torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                path="frgfm/imagenette",
-                name="160px",
-                split="validation[:128]",
-                transform=val_transform,
-            ),
-            batch_size=128,
-            num_workers=10,
-        )
-
-        # Create data module
-        data = spt.data.DataModule(train=train, val=val)
-
-        # Define forward function for feature extraction
-        def forward(self, batch, stage):
-            with torch.inference_mode():
-                x = batch["image"]
-                batch["embedding"] = self.backbone(x)["logits"]
-            return batch
-
-        # Load and modify pretrained backbone
-        backbone = AutoModelForImageClassification.from_pretrained(
-            "microsoft/resnet-18"
-        )
-        backbone.classifier[1] = torch.nn.Identity()
-
-        # Create module with frozen backbone
-        module = spt.Module(
-            backbone=spt.backbone.EvalOnly(backbone), forward=forward, optim=None
-        )
-
-        # Create linear probe callback
-        linear_probe = spt.callbacks.OnlineProbe(
-            module,
-            name="linear_probe",
-            input="embedding",
-            target="label",
-            probe=torch.nn.Linear(512, 10),
-            loss=torch.nn.CrossEntropyLoss(),
-            metrics=torchmetrics.classification.MulticlassAccuracy(10),
-        )
-
-        # Create KNN probe callback
-        knn_probe = spt.callbacks.OnlineKNN(
-            name="knn_probe",
-            input="embedding",
-            target="label",
-            queue_length=50000,
-            metrics=torchmetrics.classification.MulticlassAccuracy(10),
-            k=10,
-            input_dim=512,
-        )
-
-        # Create trainer
-        trainer = pl.Trainer(
-            max_steps=10,
-            num_sanity_val_steps=1,
-            callbacks=[linear_probe, knn_probe],
-            precision="16",
-            logger=False,
-            enable_checkpointing=False,
-        )
-
-        # Run training
-        manager = spt.Manager(trainer=trainer, module=module, data=data)
-        manager()
-        manager.validate()
 
     @pytest.mark.gpu
     def test_feature_extraction_with_resnet(self):
@@ -196,32 +86,6 @@ class TestProbingIntegration:
         assert predictions.shape == (10,)
         assert all(0 <= p <= 9 for p in predictions)
 
-    @pytest.mark.v1
-    @pytest.mark.download
-    def test_imagenette_dataset_loading(self):
-        """Test ImageNette dataset loading."""
-        transform = transforms.Compose(
-            transforms.RGB(),
-            transforms.Resize((224, 224)),
-            transforms.ToImage(),
-        )
-
-        # Load small subset
-        dataset = spt.data.HFDataset(
-            path="frgfm/imagenette",
-            name="160px",
-            split="train[:10]",
-            transform=transform,
-        )
-
-        # Test sample
-        sample = dataset[0]
-        assert "image" in sample
-        assert "label" in sample
-        assert sample["image"].shape == (3, 224, 224)
-        assert isinstance(sample["label"], int)
-        assert 0 <= sample["label"] <= 9  # ImageNette has 10 classes
-
     def test_eval_only_behavior(self):
         """Test EvalOnly wrapper behavior."""
         # Create a simple model
@@ -241,27 +105,3 @@ class TestProbingIntegration:
             output = eval_model(x)
 
         assert output.shape == (2, 5)
-
-    @pytest.mark.v1
-    @pytest.mark.gpu
-    def test_mixed_precision_probing(self):
-        """Test probing with mixed precision training."""
-        # Create simple setup
-        features_dim = 128
-        num_classes = 5
-
-        # Create probe
-        probe = torch.nn.Linear(features_dim, num_classes)
-
-        # Create dummy data
-        features = torch.randn(16, features_dim)
-        labels = torch.randint(0, num_classes, (16,))
-
-        # Test with autocast
-        with torch.cuda.amp.autocast():
-            preds = probe(features)
-            loss = torch.nn.functional.cross_entropy(preds, labels)
-
-        # Verify types
-        assert preds.dtype == torch.float16 or preds.dtype == torch.bfloat16
-        assert loss.dtype == torch.float32  # Loss is typically kept in float32

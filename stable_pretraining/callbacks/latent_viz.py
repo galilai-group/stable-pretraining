@@ -156,8 +156,11 @@ class LatentViz(TrainableCallback):
             # Use explicitly provided optimizer config
             from stable_pretraining.optim.utils import create_optimizer
 
+            # ``named_params`` enables the global ``exclude_bias_norm`` (#368).
             self.optimizer = create_optimizer(
-                self.module.parameters(), self._optimizer_config
+                self.module.parameters(),
+                self._optimizer_config,
+                named_params=self.module.named_parameters(),
             )
 
     def setup(self, trainer: Trainer, pl_module: LightningModule, stage: str) -> None:

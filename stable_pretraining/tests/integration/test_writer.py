@@ -4,14 +4,8 @@ import os
 import shutil
 import tempfile
 
-import lightning as pl
 import pytest
 import torch
-import torchmetrics
-from transformers import AutoConfig, AutoModelForImageClassification
-
-import stable_pretraining as spt
-from stable_pretraining.data import transforms
 
 
 @pytest.mark.integration
@@ -26,126 +20,6 @@ class TestWriterIntegration:
         # Cleanup after test
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
-
-    @pytest.mark.v1
-    @pytest.mark.gpu
-    @pytest.mark.download
-    @pytest.mark.slow
-    def test_simple_writer_full_pipeline(self, temp_dir):
-        """Test OnlineWriter in full training pipeline."""
-        # Define transforms
-        mean = [0.485, 0.456, 0.406]
-        std = [0.229, 0.224, 0.225]
-
-        train_transform = transforms.Compose(
-            transforms.RGB(),
-            transforms.RandomResizedCrop((224, 224)),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ColorJitter(
-                brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1, p=0.8
-            ),
-            transforms.RandomGrayscale(p=0.2),
-            transforms.GaussianBlur(kernel_size=(5, 5), p=1.0),
-            transforms.ToImage(mean=mean, std=std),
-        )
-
-        # Create small train dataset
-        train_dataset = spt.data.HFDataset(
-            path="frgfm/imagenette",
-            name="160px",
-            split="train[:256]",  # Use small subset
-            transform=train_transform,
-        )
-
-        train = torch.utils.data.DataLoader(
-            dataset=train_dataset,
-            batch_size=64,
-            num_workers=4,  # Reduced for testing
-            drop_last=True,
-        )
-
-        # Create validation dataset
-        val_transform = transforms.Compose(
-            transforms.RGB(),
-            transforms.Resize((256, 256)),
-            transforms.CenterCrop((224, 224)),
-            transforms.ToImage(mean=mean, std=std),
-        )
-
-        val = torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                path="frgfm/imagenette",
-                name="160px",
-                split="validation[:128]",  # Small subset
-                transform=val_transform,
-            ),
-            batch_size=128,
-            num_workers=4,
-        )
-
-        data = spt.data.DataModule(train=train, val=val)
-
-        # Define forward function
-        def forward(self, batch, stage):
-            batch["embedding"] = self.backbone(batch["image"])["logits"]
-            if self.training:
-                preds = self.classifier(batch["embedding"])
-                batch["loss"] = torch.nn.functional.cross_entropy(preds, batch["label"])
-            return batch
-
-        # Create model
-        config = AutoConfig.from_pretrained("microsoft/resnet-18")
-        backbone = AutoModelForImageClassification.from_config(config)
-        backbone.classifier[1] = torch.nn.Identity()
-        classifier = torch.nn.Linear(512, 10)
-
-        module = spt.Module(backbone=backbone, classifier=classifier, forward=forward)
-
-        # Create callbacks
-        linear_probe = spt.callbacks.OnlineProbe(
-            module,
-            "linear_probe",
-            "embedding",
-            "label",
-            probe=torch.nn.Linear(512, 10),
-            loss=torch.nn.CrossEntropyLoss(),
-            metrics={
-                "top1": torchmetrics.classification.MulticlassAccuracy(10),
-                "top5": torchmetrics.classification.MulticlassAccuracy(10, top_k=5),
-            },
-        )
-
-        # Create writer
-        writer = spt.callbacks.OnlineWriter(
-            names=["embedding", "linear_probe_preds"],
-            path=temp_dir,
-            during=["train"],
-            every_k_epochs=2,
-        )
-
-        # Create trainer
-        trainer = pl.Trainer(
-            max_epochs=3,
-            num_sanity_val_steps=1,
-            callbacks=[linear_probe, writer],
-            precision="16-mixed",
-            logger=False,
-            enable_checkpointing=False,
-        )
-
-        # Run training
-        manager = spt.Manager(trainer=trainer, module=module, data=data)
-        manager()
-
-        # Verify files were written
-        written_files = os.listdir(temp_dir)
-        num_written_files = len(written_files)
-
-        # Expected: 2 epochs (0, 2) * 2 names * number of batches
-        expected_files = 2 * 2 * len(train)
-        assert num_written_files == expected_files, (
-            f"Expected {expected_files} files, but found {num_written_files} files."
-        )
 
     def test_writer_file_format(self, temp_dir):
         """Test the format of written files."""

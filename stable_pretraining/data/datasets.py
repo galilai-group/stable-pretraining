@@ -29,7 +29,12 @@ import lightning as pl
 import torch
 from loguru import logger as logging
 from datasets import config as hf_config
-from ..utils import with_hf_retry_ratelimit
+
+# Direct leaf-module import to avoid a circular dependency through
+# ``utils/__init__.py`` (data_generation → backbone → patch_masking → data →
+# synthetic_data → datasets → utils.with_hf_retry_ratelimit, which isn't
+# bound yet when the chain re-enters ``utils/__init__.py``).
+from ..utils.error_handling import with_hf_retry_ratelimit
 
 
 # ---------------------------------------------------------------------------

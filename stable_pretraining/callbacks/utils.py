@@ -266,6 +266,71 @@ def log_header(name: str, width: int = _HEADER_WIDTH) -> None:
     logging.info(f"── {name} " + "─" * pad)
 
 
+# Registry of callbacks whose position in ``trainer.callbacks`` matters.
+# Each entry: class name → human-readable ordering rule.
+#
+# Scope: ONLY include callbacks where two callbacks act in the **same**
+# Lightning hook and the order of writes/reads inside that hook matters.
+# Lightning runs each hook to completion across all callbacks before moving
+# to the next, so producer/consumer pairs split across different hooks
+# (e.g., OnlineQueue creates the snapshot in on_validation_epoch_start;
+# consumers read it in on_validation_batch_end) are NOT order-sensitive —
+# the producer hook finishes for every callback before any consumer hook
+# runs. Don't list those here.
+ORDER_SENSITIVE_CALLBACKS: Dict[str, str] = {
+    "TeacherStudentCallback": (
+        "EMA update fires in on_train_batch_end; place AFTER any callback "
+        "that reads the teacher's parameters in that same hook"
+    ),
+    "OnlineProbe": (
+        "trains its own probe on the current batch's embeddings inside "
+        "on_train_batch_end — place AFTER callbacks that mutate the "
+        "embedding in the same hook (e.g., normalization probes)"
+    ),
+    "OnlineWriter": (
+        "writes batch outputs to disk in on_train_batch_end — place LAST "
+        "among per-batch callbacks so it captures all mutations"
+    ),
+    "CleanUpCallback": (
+        "deletes files in on_train_end / teardown — must come AFTER any "
+        "callback that saves artefacts in the same hook (checkpoint "
+        "callbacks, hf_models, etc.)"
+    ),
+}
+
+
+def log_callbacks_order(callbacks: Iterable[Callback]) -> None:
+    """Log the callback execution order with annotations on order-sensitive ones.
+
+    Lightning runs ``trainer.callbacks`` in registration order. Within a
+    single hook, callbacks fire in that order; across hooks, Lightning
+    finishes each hook across all callbacks before moving to the next. So
+    only same-hook read/write dependencies are order-sensitive (post-backward
+    EMA updates, end-of-training cleanup, batch-output writers). This helper
+    surfaces the actual order at runtime so misplacements are easy to spot.
+
+    The list of order-sensitive callback class names + their constraints is
+    kept in :data:`ORDER_SENSITIVE_CALLBACKS`.
+    """
+    log_header("Callbacks (in order)")
+    callbacks = list(callbacks)
+    if not callbacks:
+        logging.info("  (none registered)")
+        return
+    width = len(str(len(callbacks)))
+    for i, cb in enumerate(callbacks):
+        cls = type(cb).__name__
+        rule = ORDER_SENSITIVE_CALLBACKS.get(cls)
+        marker = "⚑" if rule is not None else " "
+        logging.info(f"  {marker} [{i:>{width}}] {cls}")
+        if rule is not None:
+            logging.info(f"       └─ order rule: {rule}")
+    logging.info(
+        "  ⚑ marks order-sensitive callbacks; see AGENTS.md → Callback "
+        "ordering for the full rules."
+    )
+
+
 def resolve_verbose(verbose: Optional[bool]) -> bool:
     """Resolve a callback's ``verbose`` flag.
 
@@ -419,9 +484,15 @@ class TrainableCallback(Callback):
                 exclude_bias_n_norm=True,
                 weight_decay=0,
             )
-        # Use explicitly provided optimizer config
+        # Use explicitly provided optimizer config. Passing ``named_params``
+        # lets ``exclude_bias_norm`` (#368) work whether set per-config or via
+        # the global default.
         logging.info("  using explicitly provided optimizer")
-        return create_optimizer(self.module.parameters(), self._optimizer_config)
+        return create_optimizer(
+            self.module.parameters(),
+            self._optimizer_config,
+            named_params=self.module.named_parameters(),
+        )
 
     def setup_scheduler(self, optimizer, pl_module: LightningModule) -> None:
         """Initialize scheduler with default ConstantLR if not specified."""

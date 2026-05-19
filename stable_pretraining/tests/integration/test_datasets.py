@@ -151,7 +151,6 @@ class TestDatasetIntegration:
             assert batch["image"].shape[0] == batch_size
             assert len(batch["label"]) == batch_size
 
-    @pytest.mark.v1
     def test_fromtensor_dataset(self):
         """Test FromTensorDataset transform logic."""
         mock_data = torch.randn(128, 3, 32, 32)
@@ -159,13 +158,14 @@ class TestDatasetIntegration:
 
         # fake torch dataset
         dataset = torch.utils.data.TensorDataset(mock_data)
-        data = spt.data.utils.FromTorchDataset(dataset, names=["image"])
-        data_trans = spt.data.utils.FromTorchDataset(
+        data = spt.data.FromTorchDataset(dataset, names=["image"])
+        data_trans = spt.data.FromTorchDataset(
             dataset, names=["image"], transform=trans
         )
 
-        assert list(data[0].keys()) == ["image"]
-        assert list(data_trans[0].keys()) == ["image"]
+        # FromTorchDataset returns the requested name plus a sample_idx.
+        assert "image" in data[0]
+        assert "image" in data_trans[0]
 
     @pytest.mark.download
     def test_minaristep_dataset_bounds(self):
