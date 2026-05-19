@@ -90,6 +90,16 @@ def test_two_view_method_forward_backward(method_name: str, kwargs: dict) -> Non
 
 MASKED_METHODS = [
     ("BEiT", {"vocab_size": 256}),
+    (
+        "CrossMAE",
+        {
+            "decoder_embed_dim": 64,
+            "decoder_depth": 2,
+            "decoder_num_heads": 2,
+            "mask_ratio": 0.5,
+            "kept_mask_ratio": 0.5,
+        },
+    ),
     ("Data2Vec", {"top_k_blocks": 2, "mask_ratio": 0.5}),
     ("MaskFeat", {"mask_ratio": 0.5}),
     ("SimMIM", {"mask_ratio": 0.5}),
