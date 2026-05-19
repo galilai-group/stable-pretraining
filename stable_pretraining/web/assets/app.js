@@ -79,6 +79,116 @@
     applyTheme(saved);
   }
 
+  // ---- state persistence -----------------------------------------------
+
+  function saveState() {
+    const snap = {
+      visible: [...state.visible],
+      filters: state.filters,
+      groupBy: state.groupBy,
+      sortBy: state.sortBy,
+      sortDesc: state.sortDesc,
+      xAxis: state.xAxis,
+      logY: state.logY,
+      smoothing: state.smoothing,
+      metricSearch: state.metricSearch,
+      activeTab: state.activeTab,
+      theme: state.theme,
+    };
+    try { localStorage.setItem('spt-web-state', JSON.stringify(snap)); } catch {}
+    const ids = [...state.visible].map(id => encodeURIComponent(id)).join(',');
+    try {
+      history.replaceState(null, '', '#runs=' + ids + '&tab=' + encodeURIComponent(state.activeTab));
+    } catch {}
+  }
+
+  function loadState() {
+    // Parse URL fragment first (wins over localStorage on conflict).
+    let fragVisible = null;
+    let fragTab = null;
+    if (location.hash.length > 1) {
+      const params = new URLSearchParams(location.hash.slice(1));
+      const runsParam = params.get('runs');
+      if (runsParam !== null) {
+        fragVisible = runsParam
+          ? runsParam.split(',').filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch { return s; } })
+          : [];
+      }
+      const tabParam = params.get('tab');
+      if (tabParam && ['figures', 'out', 'err'].includes(tabParam)) fragTab = tabParam;
+    }
+
+    // Load localStorage snapshot.
+    let saved = null;
+    try {
+      const raw = localStorage.getItem('spt-web-state');
+      if (raw) saved = JSON.parse(raw);
+    } catch {}
+
+    if (saved && typeof saved === 'object') {
+      if (Array.isArray(saved.filters)) state.filters = saved.filters;
+      if (typeof saved.groupBy === 'string') state.groupBy = saved.groupBy;
+      if (typeof saved.sortBy === 'string') state.sortBy = saved.sortBy;
+      if (typeof saved.sortDesc === 'boolean') state.sortDesc = saved.sortDesc;
+      if (typeof saved.xAxis === 'string') state.xAxis = saved.xAxis;
+      if (typeof saved.logY === 'boolean') state.logY = saved.logY;
+      if (typeof saved.smoothing === 'number') state.smoothing = saved.smoothing;
+      if (typeof saved.metricSearch === 'string') state.metricSearch = saved.metricSearch;
+      if (typeof saved.activeTab === 'string') state.activeTab = saved.activeTab;
+      if (typeof saved.theme === 'string') state.theme = saved.theme;
+      if (Array.isArray(saved.visible)) state._pendingVisible = new Set(saved.visible);
+    }
+
+    // Fragment overrides localStorage for visible runs and active tab.
+    if (fragVisible !== null) state._pendingVisible = new Set(fragVisible);
+    if (fragTab !== null) state.activeTab = fragTab;
+
+    // Keep the legacy spt-web-theme key in sync so initTheme() still works.
+    try { localStorage.setItem('spt-web-theme', state.theme); } catch {}
+  }
+
+  function syncControlsToState() {
+    const smEl = document.getElementById('smoothing');
+    const smvEl = document.getElementById('smoothing-val');
+    if (smEl) smEl.value = String(state.smoothing);
+    if (smvEl) smvEl.textContent = state.smoothing.toFixed(2);
+    const xEl = document.getElementById('x-axis');
+    if (xEl) xEl.value = state.xAxis;
+    const lyEl = document.getElementById('log-y');
+    if (lyEl) lyEl.checked = state.logY;
+    const msEl = document.getElementById('metric-search');
+    if (msEl) msEl.value = state.metricSearch;
+    // Apply active tab to DOM directly — calling setActiveTab() would fire
+    // saveState() while state.visible is still empty (runs not yet loaded).
+    for (const btn of document.querySelectorAll('#tabs .tab')) {
+      btn.classList.toggle('active', btn.dataset.tab === state.activeTab);
+    }
+    for (const pane of document.querySelectorAll('.tab-pane')) {
+      pane.classList.toggle('active', pane.id === `tab-${state.activeTab}`);
+    }
+  }
+
+  async function applyPendingVisible() {
+    if (!state._pendingVisible) return;
+    const ids = [...state._pendingVisible].filter(id => state.runs.has(id));
+    state._pendingVisible = null;
+    if (!ids.length) return;
+    for (const id of ids) state.visible.add(id);
+    const needMetrics = ids.filter(id => !state.metrics.has(id));
+    const needMedia = ids.filter(id => {
+      if (state.media.has(id)) return false;
+      const r = state.runs.get(id);
+      return r && r.has_media;
+    });
+    await Promise.all([...needMetrics.map(fetchMetrics), ...needMedia.map(fetchMedia)]);
+    renderRunList();
+    scheduleRerender();
+    if (state.activeTab === 'out' || state.activeTab === 'err') {
+      await refreshLogStreamsForVisibleRuns();
+      renderLogTab(state.activeTab);
+    }
+  }
+
   // ---- color: stable hash → HSL ----------------------------------------
 
   const colorCache = new Map();
@@ -125,6 +235,7 @@
     }
     renderRunList();
     updateHeaderStats();
+    await applyPendingVisible();
   }
 
   // Stream-fetch metrics via NDJSON. The server emits one JSON object per
@@ -438,6 +549,7 @@
         renderFilters();
         renderRunList();
         scheduleRerender();
+        saveState();
       });
       chip.appendChild(rm);
 
@@ -524,6 +636,7 @@
       renderFilters();
       renderRunList();
       scheduleRerender();
+      saveState();
     });
   }
 
@@ -641,6 +754,7 @@
       state.visible.delete(id);
       renderRunList();
       scheduleRerender();
+      saveState();
       return;
     }
     state.visible.add(id);
@@ -664,6 +778,7 @@
     }
     renderRunList();
     scheduleRerender();
+    saveState();
     if (state.activeTab === 'out' || state.activeTab === 'err') {
       // Selection changed → log-stream options change.
       fetchLogStreams(id).then(() => renderLogTab(state.activeTab));
@@ -692,6 +807,7 @@
     }
     renderRunList();
     scheduleRerender();
+    saveState();
     if (state.activeTab === 'out' || state.activeTab === 'err') {
       refreshLogStreamsForVisibleRuns().then(() => renderLogTab(state.activeTab));
     }
@@ -1929,6 +2045,7 @@
     for (const pane of document.querySelectorAll('.tab-pane')) {
       pane.classList.toggle('active', pane.id === `tab-${name}`);
     }
+    saveState();
     if (name === 'out' || name === 'err') {
       // Lazily fetch logs the first time the user opens a log tab.
       refreshLogStreamsForVisibleRuns().then(() => renderLogTab(name));
@@ -2050,16 +2167,19 @@
       state.smoothing = parseFloat(e.target.value);
       smv.textContent = state.smoothing.toFixed(2);
       scheduleRerender();
+      saveState();
     });
 
     document.getElementById('x-axis').addEventListener('change', e => {
       state.xAxis = e.target.value;
       scheduleRerender();
+      saveState();
     });
 
     document.getElementById('log-y').addEventListener('change', e => {
       state.logY = e.target.checked;
       scheduleRerender();
+      saveState();
     });
 
     document.getElementById('select-all').addEventListener('click', () => setAllVisible(true));
@@ -2072,6 +2192,7 @@
       renderRunList();
       // Group key shows up in chart legends → rebuild charts.
       scheduleRerender();
+      saveState();
     });
 
     // Tabs
@@ -2104,6 +2225,7 @@
         state.metricSearch = e.target.value;
         state._lastTreeKey = null; // force rebuild
         scheduleRerender();
+        saveState();
       }, 80));
     }
 
@@ -2127,11 +2249,13 @@
 
     document.getElementById('theme-toggle').addEventListener('click', () => {
       applyTheme(state.theme === 'dark' ? 'light' : 'dark');
+      saveState();
     });
 
     document.getElementById('sort-by').addEventListener('change', e => {
       state.sortBy = e.target.value;
       renderRunList();
+      saveState();
     });
 
     const sortDirBtn = document.getElementById('sort-dir');
@@ -2140,6 +2264,7 @@
       state.sortDesc = !state.sortDesc;
       sortDirBtn.textContent = state.sortDesc ? '↓' : '↑';
       renderRunList();
+      saveState();
     });
 
     // Detail modal wiring.
@@ -2203,7 +2328,9 @@
   // ---- init -------------------------------------------------------------
 
   async function main() {
+    loadState();
     wireControls();
+    syncControlsToState();
     initTheme();
     // Start SSE first so we don't miss progress events emitted between the
     // status fetch and the first scan-tick.
