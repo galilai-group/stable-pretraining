@@ -183,7 +183,7 @@ def test_swav_forward_backward_multicrop():
 
 def test_ijepa_forward_backward():
     model = M.IJEPA(
-        model_or_model_name=TINY_VIT,
+        encoder_name=TINY_VIT,
         predictor_embed_dim=64,
         predictor_depth=2,
         num_targets=2,
@@ -196,7 +196,7 @@ def test_ijepa_forward_backward():
 
 def test_mae_forward_backward():
     model = M.MAE(
-        model_or_model_name=TINY_VIT,
+        encoder_name=TINY_VIT,
         decoder_embed_dim=64,
         decoder_depth=2,
         decoder_num_heads=2,

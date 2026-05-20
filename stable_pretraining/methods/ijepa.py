@@ -16,7 +16,7 @@ Example::
 
     # Create model
     model = IJEPA(
-        model_or_model_name="vit_base_patch16_224",
+        encoder_name="vit_base_patch16_224",
         predictor_embed_dim=384,
         predictor_depth=6,
         num_targets=4,
@@ -82,7 +82,7 @@ class IJEPA(Module):
     The context encoder is wrapped with :class:`TeacherStudentWrapper`, enabling
     automatic EMA updates via :class:`TeacherStudentCallback`.
 
-    :param model_or_model_name: timm model name string or pre-instantiated nn.Module
+    :param encoder_name: timm model name string or pre-instantiated nn.Module
     :param predictor_embed_dim: Predictor hidden dimension (default: 384)
     :param predictor_depth: Number of predictor blocks (default: 6)
     :param num_targets: Number of target blocks to sample (default: 4)
@@ -141,7 +141,7 @@ class IJEPA(Module):
 
     def __init__(
         self,
-        model_or_model_name: Union[str, nn.Module] = "vit_base_patch16_224",
+        encoder_name: Union[str, nn.Module] = "vit_base_patch16_224",
         predictor_embed_dim: int = 384,
         predictor_depth: int = 6,
         num_targets: int = 4,
@@ -156,7 +156,7 @@ class IJEPA(Module):
 
         # Encoder with EMA wrapper (enables TeacherStudentCallback)
         base_encoder = MaskedEncoder(
-            model_or_model_name,
+            encoder_name,
             masking=None,
             pretrained=pretrained,
         )

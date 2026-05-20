@@ -119,6 +119,7 @@ class SimCLR(Module):
         temperature: float = 0.5,
         low_resolution: bool = False,
         pretrained: bool = False,
+        embed_dim: Optional[int] = None,
     ):
         super().__init__()
 
@@ -129,13 +130,18 @@ class SimCLR(Module):
                 low_resolution=low_resolution,
                 pretrained=pretrained,
             )
+            embed_dim = self.backbone.embed_dim
         else:
             self.backbone = encoder_name
-
-        # Detect embedding dimension by running a tiny dummy input
-        with torch.no_grad():
-            dummy = torch.zeros(1, 3, 224, 224)
-            embed_dim = self.backbone(dummy).shape[-1]
+            if embed_dim is None:
+                if hasattr(encoder_name, "embed_dim"):
+                    embed_dim = encoder_name.embed_dim
+                else:
+                    raise ValueError(
+                        "embed_dim must be provided when the encoder does not expose "
+                        "an .embed_dim attribute. timm models expose this automatically; "
+                        "for custom encoders, pass embed_dim explicitly."
+                    )
         self.embed_dim = embed_dim
 
         self.projector = _build_projector(embed_dim, list(projector_dims))

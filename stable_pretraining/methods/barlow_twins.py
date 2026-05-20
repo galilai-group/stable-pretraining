@@ -66,6 +66,7 @@ class BarlowTwins(Module):
         lambd: float = 5.1e-3,
         low_resolution: bool = False,
         pretrained: bool = False,
+        embed_dim: Optional[int] = None,
     ):
         super().__init__()
 
@@ -76,11 +77,18 @@ class BarlowTwins(Module):
                 low_resolution=low_resolution,
                 pretrained=pretrained,
             )
+            embed_dim = self.backbone.embed_dim
         else:
             self.backbone = encoder_name
-
-        with torch.no_grad():
-            embed_dim = self.backbone(torch.zeros(1, 3, 224, 224)).shape[-1]
+            if embed_dim is None:
+                if hasattr(encoder_name, "embed_dim"):
+                    embed_dim = encoder_name.embed_dim
+                else:
+                    raise ValueError(
+                        "embed_dim must be provided when the encoder does not expose "
+                        "an .embed_dim attribute. timm models expose this automatically; "
+                        "for custom encoders, pass embed_dim explicitly."
+                    )
         self.embed_dim = embed_dim
 
         self.projector = _build_barlow_projector(embed_dim, list(projector_dims))

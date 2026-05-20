@@ -31,7 +31,7 @@ class TestIJEPAModuleInput:
     """Run IJEPA with a pre-loaded backbone on imagenette for 3 steps.
 
     Mirrors test_ijepa_inet10.py but passes an nn.Module instead of a string
-    to IJEPA(), verifying the model_or_model_name interface.
+    to IJEPA(), verifying the encoder_name interface.
     """
 
     def test_ijepa_3_steps_with_loaded_backbone(self):
@@ -99,7 +99,7 @@ class TestIJEPAModuleInput:
         backbone = load_backbone("vit_tiny_patch16_224", pretrained=False)
 
         module = IJEPA(
-            model_or_model_name=backbone,
+            encoder_name=backbone,
             predictor_embed_dim=192,
             predictor_depth=6,
             num_targets=4,

@@ -130,6 +130,7 @@ class DINO(Module):
         ema_decay_end: float = 1.0,
         encoder_kwargs: Optional[dict] = None,
         pretrained: bool = False,
+        embed_dim: Optional[int] = None,
     ):
         super().__init__()
 
@@ -139,11 +140,18 @@ class DINO(Module):
             kw = dict(num_classes=0, pretrained=pretrained)
             kw.update(encoder_kwargs or {})
             base_backbone = timm.create_model(encoder_name, **kw)
+            embed_dim = base_backbone.embed_dim
         else:
             base_backbone = encoder_name
-
-        with torch.no_grad():
-            embed_dim = _to_cls(base_backbone(torch.zeros(1, 3, 224, 224))).shape[-1]
+            if embed_dim is None:
+                if hasattr(encoder_name, "embed_dim"):
+                    embed_dim = encoder_name.embed_dim
+                else:
+                    raise ValueError(
+                        "embed_dim must be provided when the encoder does not expose "
+                        "an .embed_dim attribute. timm models expose this automatically; "
+                        "for custom encoders, pass embed_dim explicitly."
+                    )
         self.embed_dim = embed_dim
         self.n_prototypes = n_prototypes
 

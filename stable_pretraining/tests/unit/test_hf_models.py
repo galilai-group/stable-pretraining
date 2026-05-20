@@ -52,7 +52,7 @@ class MockSPTSystem(spt.Module):
     def __init__(self, cfg):
         super().__init__()
         self.encoder = spt.backbone.MaskedEncoder(
-            model_or_model_name=cfg.get("model_name", "vit_tiny_patch16_224"),
+            encoder_name=cfg.get("model_name", "vit_tiny_patch16_224"),
             masking=spt.backbone.PatchMasking(mask_ratio=0.5, block_size=1),
             img_size=(224, 224),
             pretrained=False,

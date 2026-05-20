@@ -63,7 +63,7 @@ class MAE(Module):
         - **Decoder**: Lightweight transformer reconstructing masked patches
         - **Target**: Normalized pixel values of masked patches
 
-    :param model_or_model_name: timm model name string or pre-instantiated nn.Module
+    :param encoder_name: timm model name string or pre-instantiated nn.Module
     :param decoder_embed_dim: Decoder hidden dimension (default: 512)
     :param decoder_depth: Number of decoder blocks (default: 8)
     :param decoder_num_heads: Decoder attention heads (default: 16)
@@ -105,7 +105,7 @@ class MAE(Module):
 
     def __init__(
         self,
-        model_or_model_name: Union[str, nn.Module] = "vit_base_patch16_224",
+        encoder_name: Union[str, nn.Module] = "vit_base_patch16_224",
         decoder_embed_dim: int = 512,
         decoder_depth: int = 8,
         decoder_num_heads: int = 16,
@@ -124,7 +124,7 @@ class MAE(Module):
         else:
             self.masking = PatchMasking(mask_ratio=mask_ratio, block_size=block_size)
         self.encoder = MaskedEncoder(
-            model_or_model_name, masking=self.masking, pretrained=pretrained
+            encoder_name, masking=self.masking, pretrained=pretrained
         )
 
         embed_dim = self.encoder.embed_dim

@@ -232,9 +232,9 @@ class MaskedEncoder(nn.Module):
     Wraps a timm ViT model and adds flexible masking via :class:`PatchMasking`.
     Handles all ViT internals: patch embedding, positional embeddings, prefix
     tokens (CLS, registers), and transformer blocks.
-    :param model_or_model_name: timm model name string or pre-instantiated nn.Module
+    :param encoder_name: timm model name string or pre-instantiated nn.Module
     :param masking: PatchMasking instance. If None, no masking is applied.
-    :param pretrained: Load pretrained weights (only when model_or_model_name is str)
+    :param pretrained: Load pretrained weights (only when encoder_name is str)
     :param img_size: Override default image size
     :param patch_size: Override default patch size (will reinitialize patch_embed)
     :param dynamic_img_size: Enable dynamic image size support with pos_embed interpolation
@@ -243,7 +243,7 @@ class MaskedEncoder(nn.Module):
 
         masking = PatchMasking(mask_ratio=0.75, block_size=4)
         encoder = MaskedEncoder(
-            model_or_model_name="vit_base_patch16_224",
+            encoder_name="vit_base_patch16_224",
             masking=masking,
             pretrained=True,
         )
@@ -256,7 +256,7 @@ class MaskedEncoder(nn.Module):
 
     def __init__(
         self,
-        model_or_model_name: Union[str, nn.Module] = "vit_base_patch16_224",
+        encoder_name: Union[str, nn.Module] = "vit_base_patch16_224",
         masking: Optional[PatchMasking] = None,
         pretrained: bool = False,
         img_size: Optional[Union[int, Tuple[int, int]]] = None,
@@ -268,7 +268,7 @@ class MaskedEncoder(nn.Module):
         self.dynamic_img_size = dynamic_img_size
         self.masking = masking
         # === Load or use provided encoder ===
-        if isinstance(model_or_model_name, str):
+        if isinstance(encoder_name, str):
             create_kwargs = {
                 "pretrained": pretrained,
                 "num_classes": 0,
@@ -286,7 +286,7 @@ class MaskedEncoder(nn.Module):
             if norm_layer is not None:
                 create_kwargs["norm_layer"] = norm_layer
 
-            self.vit = timm.create_model(model_or_model_name, **create_kwargs)
+            self.vit = timm.create_model(encoder_name, **create_kwargs)
         else:
             logger.warning(
                 "MaskedEncoder received a pre-instantiated nn.Module. "
@@ -294,7 +294,7 @@ class MaskedEncoder(nn.Module):
                 "patch_embed, pos_embed, cls_token, blocks, norm, etc. "
                 "If you pass a non-timm module, unexpected errors may occur."
             )
-            self.vit = model_or_model_name
+            self.vit = encoder_name
             if patch_size is not None:
                 self._rebuild_patch_embed(patch_size, img_size)
             # Remove classification head if present
