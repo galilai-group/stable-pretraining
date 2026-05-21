@@ -219,7 +219,7 @@ class LeJEPA(Module):
         lamb: float = 0.02,
         pretrained: bool = False,
         drop_path_rate: float = 0.1,
-        embed_dim: int = None
+        embed_dim: Optional[int] = None,
     ):
         super().__init__()
         if isinstance(encoder_name, str):
