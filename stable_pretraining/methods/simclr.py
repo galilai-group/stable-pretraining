@@ -92,6 +92,9 @@ class SimCLR(Module):
         is common for harder/larger batches).
     :param low_resolution: Adapt first conv for 32x32 inputs (CIFAR-style).
     :param pretrained: Load pretrained timm weights for the encoder.
+    :param embed_dim: Backbone output dimension. Inferred automatically for timm
+        models; must be provided explicitly for custom encoders that do not expose
+        an ``.embed_dim`` attribute.
 
     Example::
 

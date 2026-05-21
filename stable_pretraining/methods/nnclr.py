@@ -77,6 +77,9 @@ class NNCLR(Module):
     :param temperature: NT-Xent temperature (default 0.1).
     :param low_resolution: Adapt first conv for low-res input.
     :param pretrained: Load pretrained timm weights.
+    :param embed_dim: Backbone output dimension. Inferred automatically for timm
+        models; must be provided explicitly for custom encoders that do not expose
+        an ``.embed_dim`` attribute.
     """
 
     def __init__(

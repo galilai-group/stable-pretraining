@@ -55,6 +55,9 @@ class SwAV(Module):
     :param epsilon: Sinkhorn entropy coefficient (default 0.05).
     :param low_resolution: Adapt first conv for low-res input.
     :param pretrained: Load pretrained timm weights.
+    :param embed_dim: Backbone output dimension. Inferred automatically for timm
+        models; must be provided explicitly for custom encoders that do not expose
+        an ``.embed_dim`` attribute.
     """
 
     def __init__(

@@ -103,6 +103,9 @@ class DINO(Module):
     :param ema_decay_end: Final EMA (default 1.0).
     :param encoder_kwargs: Extra kwargs forwarded to ``timm.create_model``.
     :param pretrained: Load pretrained timm weights for the encoder.
+    :param embed_dim: Backbone output dimension. Inferred automatically for timm
+        models; must be provided explicitly for custom encoders that do not expose
+        an ``.embed_dim`` attribute.
 
     Example::
 

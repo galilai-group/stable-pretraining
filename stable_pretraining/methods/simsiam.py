@@ -73,6 +73,9 @@ class SimSiam(Module):
     :param predictor_hidden_dim: Predictor bottleneck dim (default 512).
     :param low_resolution: Adapt first conv for 32x32.
     :param pretrained: Load pretrained timm weights.
+    :param embed_dim: Backbone output dimension. Inferred automatically for timm
+        models; must be provided explicitly for custom encoders that do not expose
+        an ``.embed_dim`` attribute.
     """
 
     def __init__(
