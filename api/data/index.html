@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable_pretraining.data &#8212; stable-pretraining 0.1.dev1+gbce7c8b35 documentation</title>
+    <title>stable_pretraining.data &#8212; stable-pretraining 0.1.dev1+g90ebe005f documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=639854c6"></script>
+    <script src="../../_static/documentation_options.js?v=85df07cb"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gbce7c8b35 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g90ebe005f documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -457,7 +457,7 @@
 <tr class="row-even"><td><p><a class="reference internal" href="../gen_modules/stable_pretraining.data.Collator/#stable_pretraining.data.Collator" title="stable_pretraining.data.Collator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Collator</span></code></a>([G_from])</p></td>
 <td><p>Custom collate function that optionally builds an affinity (or “graph”) matrix based on a specified field.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../gen_modules/stable_pretraining.data.Dataset/#stable_pretraining.data.Dataset" title="stable_pretraining.data.Dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Dataset</span></code></a>([transform])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../gen_modules/stable_pretraining.data.Dataset/#stable_pretraining.data.Dataset" title="stable_pretraining.data.Dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Dataset</span></code></a>([transform, gpu_transform])</p></td>
 <td><p>Base map-style dataset with transform and trainer support.</p></td>
 </tr>
 </tbody>
@@ -471,7 +471,7 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="../gen_modules/stable_pretraining.data.FromTorchDataset/#stable_pretraining.data.FromTorchDataset" title="stable_pretraining.data.FromTorchDataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FromTorchDataset</span></code></a>(dataset, names[, ...])</p></td>
 <td><p>Wrapper that converts a positional-return PyTorch dataset into dict samples.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../gen_modules/stable_pretraining.data.HFDataset/#stable_pretraining.data.HFDataset" title="stable_pretraining.data.HFDataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HFDataset</span></code></a>(*args[, transform, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../gen_modules/stable_pretraining.data.HFDataset/#stable_pretraining.data.HFDataset" title="stable_pretraining.data.HFDataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HFDataset</span></code></a>(*args[, transform, gpu_transform, ...])</p></td>
 <td><p>Create a HuggingFace dataset wrapper.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../gen_modules/stable_pretraining.data.Subset/#stable_pretraining.data.Subset" title="stable_pretraining.data.Subset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Subset</span></code></a>(dataset, indices)</p></td>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Module &#8212; stable-pretraining 0.1.dev1+gbce7c8b35 documentation</title>
+    <title>Module &#8212; stable-pretraining 0.1.dev1+g90ebe005f documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=639854c6"></script>
+    <script src="../../../_static/documentation_options.js?v=85df07cb"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gbce7c8b35 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g90ebe005f documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -429,6 +429,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.configure_optimizers"><code class="docutils literal notranslate"><span class="pre">Module.configure_optimizers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.forward"><code class="docutils literal notranslate"><span class="pre">Module.forward()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.named_parameters"><code class="docutils literal notranslate"><span class="pre">Module.named_parameters()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.on_after_batch_transfer"><code class="docutils literal notranslate"><span class="pre">Module.on_after_batch_transfer()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.on_train_start"><code class="docutils literal notranslate"><span class="pre">Module.on_train_start()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.parameters"><code class="docutils literal notranslate"><span class="pre">Module.parameters()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.predict_step"><code class="docutils literal notranslate"><span class="pre">Module.predict_step()</span></code></a></li>
@@ -644,6 +645,40 @@ If False, yields only direct parameters. Defaults to True.</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.module.Module.on_after_batch_transfer">
+<span class="sig-name descname"><span class="pre">on_after_batch_transfer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataloader_idx</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module.on_after_batch_transfer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module.on_after_batch_transfer" title="Link to this definition">#</a></dt>
+<dd><p>Apply the active GPU-side batch transform after Lightning moves the batch.</p>
+<p>Resolution order (first match wins):</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dataset.gpu_transform</span></code> — set on the dataset behind the active
+DataLoader. <strong>Recommended:</strong> pair augmentation with the dataset
+so train/val/test/predict each carry their own spec naturally.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">self.trainer.datamodule.gpu_transform</span></code> — set on the DataModule.
+May be a callable or a <code class="docutils literal notranslate"><span class="pre">{&quot;train&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;val&quot;:</span> <span class="pre">...}</span></code> dict.</p></li>
+</ol>
+<p>Setting <code class="docutils literal notranslate"><span class="pre">self.gpu_transform</span></code> on the Module is <strong>not</strong> supported
+and is rejected at <code class="docutils literal notranslate"><span class="pre">on_train_start</span></code>; attach it to the dataset
+(or the DataModule for third-party datasets) instead.</p>
+<p>Lazy device placement: when the resolved transform is an
+<code class="docutils literal notranslate"><span class="pre">nn.Module</span></code> (e.g. a <code class="xref py py-class docutils literal notranslate"><span class="pre">GPUCompose</span></code>), it is moved to
+<code class="docutils literal notranslate"><span class="pre">self.device</span></code> on first use. Buffers (e.g. <code class="docutils literal notranslate"><span class="pre">GPUNormalize</span></code>’s
+mean/std) therefore live on the correct GPU under DDP without
+manual wiring.</p>
+<p>When nothing resolves, this is a zero-cost passthrough.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>batch</strong> – Batch dict already moved to <code class="docutils literal notranslate"><span class="pre">self.device</span></code> by Lightning.</p></li>
+<li><p><strong>dataloader_idx</strong> – Index of the dataloader that produced this batch.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The (possibly augmented) batch dict.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.module.Module.on_train_start">
 <span class="sig-name descname"><span class="pre">on_train_start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module.on_train_start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module.on_train_start" title="Link to this definition">#</a></dt>
 <dd><p>Validate and log the optimizer configuration at the start of training.</p>
@@ -853,6 +888,7 @@ callback via <code class="docutils literal notranslate"><span class="pre">on_val
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.configure_optimizers"><code class="docutils literal notranslate"><span class="pre">Module.configure_optimizers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.forward"><code class="docutils literal notranslate"><span class="pre">Module.forward()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.named_parameters"><code class="docutils literal notranslate"><span class="pre">Module.named_parameters()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.on_after_batch_transfer"><code class="docutils literal notranslate"><span class="pre">Module.on_after_batch_transfer()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.on_train_start"><code class="docutils literal notranslate"><span class="pre">Module.on_train_start()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.parameters"><code class="docutils literal notranslate"><span class="pre">Module.parameters()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.predict_step"><code class="docutils literal notranslate"><span class="pre">Module.predict_step()</span></code></a></li>

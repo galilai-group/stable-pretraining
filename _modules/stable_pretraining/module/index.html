@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+gbce7c8b35 documentation</title>
+    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g90ebe005f documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=639854c6"></script>
+    <script src="../../../_static/documentation_options.js?v=85df07cb"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gbce7c8b35 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g90ebe005f documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -413,6 +413,55 @@
     <span class="k">return</span> <span class="n">fn</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">_NamedForward</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_gpu_transform_from_current_dataset</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">stage</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``dataset.gpu_transform`` for the active stage&#39;s DataLoader, or None.</span>
+
+<span class="sd">    Lightning exposes the live dataloaders as ``trainer.train_dataloader``</span>
+<span class="sd">    (singular) for training and ``trainer.val_dataloaders`` / similar</span>
+<span class="sd">    (potentially a list) for the other stages. We peek into them, unwrap</span>
+<span class="sd">    common dataset wrappers (``Subset``, ``ConcatDataset``), and read the</span>
+<span class="sd">    ``gpu_transform`` attribute if present.</span>
+
+<span class="sd">    Best-effort: any exception during lookup yields None, so the resolver</span>
+<span class="sd">    falls through to the DataModule-level transform.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">loader</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">stage</span> <span class="o">==</span> <span class="s2">&quot;train&quot;</span><span class="p">:</span>
+            <span class="n">loader</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">train_dataloader</span>
+        <span class="k">elif</span> <span class="n">stage</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;val&quot;</span><span class="p">,</span> <span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="s2">&quot;predict&quot;</span><span class="p">):</span>
+            <span class="n">attr</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="s2">&quot;val_dataloaders&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;test&quot;</span><span class="p">:</span> <span class="s2">&quot;test_dataloaders&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;predict&quot;</span><span class="p">:</span> <span class="s2">&quot;predict_dataloaders&quot;</span><span class="p">,</span>
+            <span class="p">}[</span><span class="n">stage</span><span class="p">]</span>
+            <span class="n">loaders</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">loaders</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">dataloader_idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">loaders</span><span class="p">):</span>
+                    <span class="n">loader</span> <span class="o">=</span> <span class="n">loaders</span><span class="p">[</span><span class="n">dataloader_idx</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">loader</span> <span class="o">=</span> <span class="n">loaders</span>
+        <span class="k">if</span> <span class="n">loader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">loader</span><span class="p">,</span> <span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">while</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s2">&quot;gpu_transform&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">dataset</span><span class="o">.</span><span class="n">gpu_transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">gpu_transform</span>
+            <span class="c1"># Walk through standard wrappers (torch ``Subset``,</span>
+            <span class="c1"># ``ConcatDataset``) and our own attribute-proxying ``Subset``.</span>
+            <span class="n">inner</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span>
+                <span class="n">dataset</span><span class="p">,</span> <span class="s2">&quot;datasets&quot;</span><span class="p">,</span> <span class="kc">None</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">inner</span> <span class="ow">is</span> <span class="n">dataset</span> <span class="ow">or</span> <span class="n">inner</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inner</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+                <span class="n">inner</span> <span class="o">=</span> <span class="n">inner</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">dataset</span> <span class="o">=</span> <span class="n">inner</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
 <div class="viewcode-block" id="Module">
 <a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module">[docs]</a>
 <span class="nd">@catch_errors_class</span><span class="p">()</span>
@@ -661,6 +710,85 @@
         <span class="k">pass</span></div>
 
 
+<div class="viewcode-block" id="Module.on_after_batch_transfer">
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.on_after_batch_transfer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_after_batch_transfer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the active GPU-side batch transform after Lightning moves the batch.</span>
+
+<span class="sd">        Resolution order (first match wins):</span>
+
+<span class="sd">        1. ``dataset.gpu_transform`` — set on the dataset behind the active</span>
+<span class="sd">           DataLoader. **Recommended:** pair augmentation with the dataset</span>
+<span class="sd">           so train/val/test/predict each carry their own spec naturally.</span>
+<span class="sd">        2. ``self.trainer.datamodule.gpu_transform`` — set on the DataModule.</span>
+<span class="sd">           May be a callable or a ``{&quot;train&quot;: ..., &quot;val&quot;: ...}`` dict.</span>
+
+<span class="sd">        Setting ``self.gpu_transform`` on the Module is **not** supported</span>
+<span class="sd">        and is rejected at ``on_train_start``; attach it to the dataset</span>
+<span class="sd">        (or the DataModule for third-party datasets) instead.</span>
+
+<span class="sd">        Lazy device placement: when the resolved transform is an</span>
+<span class="sd">        ``nn.Module`` (e.g. a :class:`GPUCompose`), it is moved to</span>
+<span class="sd">        ``self.device`` on first use. Buffers (e.g. ``GPUNormalize``&#39;s</span>
+<span class="sd">        mean/std) therefore live on the correct GPU under DDP without</span>
+<span class="sd">        manual wiring.</span>
+
+<span class="sd">        When nothing resolves, this is a zero-cost passthrough.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            batch: Batch dict already moved to ``self.device`` by Lightning.</span>
+<span class="sd">            dataloader_idx: Index of the dataloader that produced this batch.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The (possibly augmented) batch dict.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">gpu_transform</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_gpu_transform</span><span class="p">(</span><span class="n">dataloader_idx</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">gpu_transform</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">batch</span>
+        <span class="k">return</span> <span class="n">gpu_transform</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_gpu_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up the active GPU transform from the dataset, then the DataModule.&quot;&quot;&quot;</span>
+        <span class="c1"># Access ``_trainer`` directly: the ``trainer`` property raises</span>
+        <span class="c1"># when the Module is not attached, which is fine for direct</span>
+        <span class="c1"># calls outside ``Trainer.fit`` (e.g. unit tests).</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_trainer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trainer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">stage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_stage</span><span class="p">(</span><span class="n">trainer</span><span class="p">)</span>
+        <span class="c1"># 1. Dataset-level — preferred placement.</span>
+        <span class="n">gt</span> <span class="o">=</span> <span class="n">_gpu_transform_from_current_dataset</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">stage</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="p">)</span>
+        <span class="c1"># 2. DataModule-level fallback (callable or stage-keyed dict).</span>
+        <span class="k">if</span> <span class="n">gt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dm</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="s2">&quot;datamodule&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">dm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">gt</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">dm</span><span class="p">,</span> <span class="s2">&quot;gpu_transform&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gt</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="n">gt</span> <span class="o">=</span> <span class="n">gt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">stage</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">gt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="c1"># Lazily move to the model&#39;s device so users don&#39;t have to .cuda() it.</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gt</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+            <span class="n">ref</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">gt</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">next</span><span class="p">(</span><span class="n">gt</span><span class="o">.</span><span class="n">buffers</span><span class="p">(),</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ref</span><span class="o">.</span><span class="n">device</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">:</span>
+                <span class="n">gt</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">gt</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_current_stage</span><span class="p">(</span><span class="n">trainer</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">trainer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;train&quot;</span>
+        <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">validating</span> <span class="ow">or</span> <span class="n">trainer</span><span class="o">.</span><span class="n">sanity_checking</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;val&quot;</span>
+        <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">testing</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;test&quot;</span>
+        <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">predicting</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;predict&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
 <div class="viewcode-block" id="Module.training_step">
 <a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.training_step">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">):</span>
@@ -775,6 +903,17 @@
 <span class="sd">        class, clip value, and clip algorithm so misconfigured setups are caught early</span>
 <span class="sd">        rather than silently misbehaving mid-run.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Refuse Module-level ``gpu_transform``. Two-ways-to-do-one-thing</span>
+        <span class="c1"># is a footgun: if a user sets it here AND on the dataset, the</span>
+        <span class="c1"># dataset&#39;s silently loses. Make it loud.</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;gpu_transform&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;Setting `gpu_transform` on the Module is not supported. &quot;</span>
+                <span class="s2">&quot;Attach it to the dataset (recommended: pass &quot;</span>
+                <span class="s2">&quot;`gpu_transform=...` to the dataset constructor) or to the &quot;</span>
+                <span class="s2">&quot;DataModule via `gpu_transform=...` / `gpu_transform={&#39;train&#39;: ..., &#39;val&#39;: ...}`.&quot;</span>
+            <span class="p">)</span>
+
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;Optimizers&quot;</span><span class="p">)</span>
         <span class="n">optimizers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizers</span><span class="p">()</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">optimizers</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>

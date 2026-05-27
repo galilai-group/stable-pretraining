@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.data.datasets &#8212; stable-pretraining 0.1.dev1+gbce7c8b35 documentation</title>
+    <title>stable_pretraining.data.datasets &#8212; stable-pretraining 0.1.dev1+g90ebe005f documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=639854c6"></script>
+    <script src="../../../../_static/documentation_options.js?v=85df07cb"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gbce7c8b35 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g90ebe005f documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -428,10 +428,22 @@
 <span class="sd">    Provides transform application, PyTorch Lightning trainer integration</span>
 <span class="sd">    (injecting ``global_step`` and ``current_epoch`` into every sample), and</span>
 <span class="sd">    a unified ``process_sample`` pipeline.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        transform: Per-sample CPU transform applied inside DataLoader</span>
+<span class="sd">            workers (called once per ``__getitem__`` / ``__iter__`` step).</span>
+<span class="sd">        gpu_transform: Optional batch-level GPU transform stored on the</span>
+<span class="sd">            dataset and **not** applied here. It is discovered by</span>
+<span class="sd">            :meth:`Module.on_after_batch_transfer` via the active</span>
+<span class="sd">            DataLoader and run on the post-collated batch (after Lightning</span>
+<span class="sd">            has moved it to the model&#39;s device). Use this for kornia /</span>
+<span class="sd">            :mod:`gpu_transforms` pipelines so the augmentation spec</span>
+<span class="sd">            lives next to the dataset spec.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gpu_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">transform</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gpu_transform</span> <span class="o">=</span> <span class="n">gpu_transform</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">set_pl_trainer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">):</span>
@@ -439,15 +451,16 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span> <span class="o">=</span> <span class="n">trainer</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># Drop the trainer back-reference. Pickle-walking it reaches</span>
-        <span class="c1"># `trainer.train_dataloader._iterator`, a</span>
-        <span class="c1"># `_MultiProcessingDataLoaderIter`, which raises on __getstate__.</span>
-        <span class="c1"># Spawn-mode DataLoader workers therefore can&#39;t serialise any</span>
-        <span class="c1"># dataset that has had `set_pl_trainer` called on it.</span>
-        <span class="c1"># Workers see only a snapshot of trainer state at spawn time</span>
-        <span class="c1"># anyway; `process_sample` already handles `_trainer is None`.</span>
+        <span class="c1"># Drop the trainer back-reference AND the gpu_transform reference.</span>
+        <span class="c1"># Trainer pickling reaches the active DataLoader&#39;s iterator</span>
+        <span class="c1"># (``_MultiProcessingDataLoaderIter``) which raises on</span>
+        <span class="c1"># ``__getstate__``; gpu_transform lives on the main process where</span>
+        <span class="c1"># the Module reads it during ``on_after_batch_transfer`` — workers</span>
+        <span class="c1"># never need it, and dropping it avoids serialising an nn.Module</span>
+        <span class="c1"># (and its buffers) into every worker spawn.</span>
         <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_trainer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">state</span><span class="p">[</span><span class="s2">&quot;gpu_transform&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">state</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">process_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -480,8 +493,8 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">(</span><span class="n">DatasetMixin</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base map-style dataset with transform and trainer support.&quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="n">DatasetMixin</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gpu_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">DatasetMixin</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="p">,</span> <span class="n">gpu_transform</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
@@ -494,8 +507,8 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">IterableDataset</span><span class="p">(</span><span class="n">DatasetMixin</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">IterableDataset</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base iterable (streaming) dataset with transform and trainer support.&quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="n">DatasetMixin</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gpu_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">DatasetMixin</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform</span><span class="p">,</span> <span class="n">gpu_transform</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
@@ -574,8 +587,10 @@
 <span class="sd">        add_sample_idx: If ``True``, adds a ``sample_idx`` field to each sample.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add_sample_idx</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gpu_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add_sample_idx</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transform</span><span class="p">,</span> <span class="n">gpu_transform</span><span class="o">=</span><span class="n">gpu_transform</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="n">names</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">add_sample_idx</span> <span class="o">=</span> <span class="n">add_sample_idx</span>
@@ -615,9 +630,14 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">,</span>
+        <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">gpu_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transform</span><span class="p">,</span> <span class="n">gpu_transform</span><span class="o">=</span><span class="n">gpu_transform</span><span class="p">)</span>
         <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="s2">&quot;sample_idx&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">num_rows</span><span class="p">)))</span>
         <span class="k">if</span> <span class="n">rename_columns</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rename_columns</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -670,9 +690,14 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">,</span>
+        <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">gpu_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">transform</span><span class="p">,</span> <span class="n">gpu_transform</span><span class="o">=</span><span class="n">gpu_transform</span><span class="p">)</span>
         <span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
             <span class="k">lambda</span> <span class="n">sample</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="p">{</span><span class="o">**</span><span class="n">sample</span><span class="p">,</span> <span class="s2">&quot;sample_idx&quot;</span><span class="p">:</span> <span class="n">idx</span><span class="p">},</span> <span class="n">with_indices</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
@@ -714,7 +739,12 @@
 <div class="viewcode-block" id="HFDataset">
 <a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.data.HFDataset/#stable_pretraining.data.HFDataset">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">HFDataset</span><span class="p">(</span>
-    <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+    <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">gpu_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">rename_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">remove_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a HuggingFace dataset wrapper.</span>
 
@@ -731,6 +761,10 @@
 <span class="sd">        *args: Positional arguments forwarded to ``datasets.load_dataset``</span>
 <span class="sd">            (typically the dataset name/path).</span>
 <span class="sd">        transform: Optional transform applied to every sample dict.</span>
+<span class="sd">        gpu_transform: Optional batch-level GPU transform stored on the</span>
+<span class="sd">            returned dataset (see :class:`DatasetMixin`). Discovered by</span>
+<span class="sd">            :meth:`Module.on_after_batch_transfer` and run on the</span>
+<span class="sd">            post-collated batch after device transfer.</span>
 <span class="sd">        rename_columns: Optional ``{old: new}`` mapping of columns to rename.</span>
 <span class="sd">        remove_columns: Optional list of column names to drop.</span>
 <span class="sd">        **kwargs: Keyword arguments forwarded to ``datasets.load_dataset``</span>
@@ -783,8 +817,20 @@
     <span class="n">dataset</span> <span class="o">=</span> <span class="n">with_hf_retry_ratelimit</span><span class="p">(</span><span class="n">load_dataset_fn</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">datasets</span><span class="o">.</span><span class="n">IterableDataset</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">HFIterableDataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="p">,</span> <span class="n">rename_columns</span><span class="p">,</span> <span class="n">remove_columns</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">HFMapDataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">transform</span><span class="p">,</span> <span class="n">rename_columns</span><span class="p">,</span> <span class="n">remove_columns</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">HFIterableDataset</span><span class="p">(</span>
+            <span class="n">dataset</span><span class="p">,</span>
+            <span class="n">transform</span><span class="p">,</span>
+            <span class="n">rename_columns</span><span class="p">,</span>
+            <span class="n">remove_columns</span><span class="p">,</span>
+            <span class="n">gpu_transform</span><span class="o">=</span><span class="n">gpu_transform</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">HFMapDataset</span><span class="p">(</span>
+        <span class="n">dataset</span><span class="p">,</span>
+        <span class="n">transform</span><span class="p">,</span>
+        <span class="n">rename_columns</span><span class="p">,</span>
+        <span class="n">remove_columns</span><span class="p">,</span>
+        <span class="n">gpu_transform</span><span class="o">=</span><span class="n">gpu_transform</span><span class="p">,</span>
+    <span class="p">)</span></div>
 
 </pre></div>
 
