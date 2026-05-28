@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g90ebe005f documentation</title>
+    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g4ba07974d documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=85df07cb"></script>
+    <script src="../../../_static/documentation_options.js?v=82d18d58"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g90ebe005f documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g4ba07974d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -413,6 +413,17 @@
     <span class="k">return</span> <span class="n">fn</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">_NamedForward</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_noop_hook</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Drop-in for ``LightningOptimizer._on_before_step`` / ``_on_after_step``.</span>
+
+<span class="sd">    Used by :meth:`Module.training_step` to suppress the manual-opt</span>
+<span class="sd">    progress counter for callback-owned optimizers without disturbing</span>
+<span class="sd">    any of the strategy / precision-plugin logic inside</span>
+<span class="sd">    ``LightningOptimizer.step()``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_gpu_transform_from_current_dataset</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">stage</span><span class="p">,</span> <span class="n">dataloader_idx</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``dataset.gpu_transform`` for the active stage&#39;s DataLoader, or None.</span>
 
@@ -555,6 +566,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_frequencies</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_gradient_clip_val</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_gradient_clip_algorithm</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># Optimizer names registered by ``TrainableCallback`` (e.g. ``OnlineProbe``).</span>
+        <span class="c1"># Their ``.step()`` is dispatched on the underlying ``torch.optim.Optimizer``</span>
+        <span class="c1"># rather than the Lightning wrapper so they don&#39;t advance</span>
+        <span class="c1"># ``trainer.global_step`` — see :meth:`training_step` and the</span>
+        <span class="c1"># rationale below in ``training_step``&#39;s docstring.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_callback_optimizer_names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -872,7 +889,37 @@
                 <span class="p">)</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-            <span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+            <span class="c1"># For callback optimizers (OnlineProbe / EMA / decoders),</span>
+            <span class="c1"># call ``LightningOptimizer.step()`` AS NORMAL so we keep</span>
+            <span class="c1"># all of the strategy + precision-plugin machinery intact</span>
+            <span class="c1"># (AMP GradScaler.step, FP8 TransformerEngine calibration,</span>
+            <span class="c1"># DDP grad-sync coordination, profiler timing).</span>
+            <span class="c1"># The ONLY thing we suppress</span>
+            <span class="c1"># is Lightning&#39;s manual-opt progress counter — otherwise</span>
+            <span class="c1"># ``trainer.global_step`` would tick once per callback</span>
+            <span class="c1"># optimizer per batch and ``Trainer(max_steps=...)`` /</span>
+            <span class="c1"># step-based schedulers would silently break when many</span>
+            <span class="c1"># ``TrainableCallback``s are attached.</span>
+            <span class="c1">#</span>
+            <span class="c1"># The progress counter is incremented inside ``_on_before_step``</span>
+            <span class="c1"># / ``_on_after_step`` hooks that Lightning&#39;s manual-opt loop</span>
+            <span class="c1"># attaches to every ``LightningOptimizer`` at batch start</span>
+            <span class="c1"># (and resets at batch end, see</span>
+            <span class="c1"># ``lightning.pytorch.loops.optimization.manual.ManualOptimization``).</span>
+            <span class="c1"># Temporarily swapping them to no-ops disables only the</span>
+            <span class="c1"># counter; the load-bearing ``strategy.optimizer_step()``</span>
+            <span class="c1"># call still runs.</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_callback_optimizer_names</span><span class="p">:</span>
+                <span class="n">saved_before</span><span class="p">,</span> <span class="n">saved_after</span> <span class="o">=</span> <span class="n">opt</span><span class="o">.</span><span class="n">_on_before_step</span><span class="p">,</span> <span class="n">opt</span><span class="o">.</span><span class="n">_on_after_step</span>
+                <span class="n">opt</span><span class="o">.</span><span class="n">_on_before_step</span> <span class="o">=</span> <span class="n">_noop_hook</span>
+                <span class="n">opt</span><span class="o">.</span><span class="n">_on_after_step</span> <span class="o">=</span> <span class="n">_noop_hook</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+                <span class="k">finally</span><span class="p">:</span>
+                    <span class="n">opt</span><span class="o">.</span><span class="n">_on_before_step</span> <span class="o">=</span> <span class="n">saved_before</span>
+                    <span class="n">opt</span><span class="o">.</span><span class="n">_on_after_step</span> <span class="o">=</span> <span class="n">saved_after</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
             <span class="n">zero_grad_opts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">opt</span><span class="p">)</span>
             <span class="c1"># Step its scheduler if it exists</span>
             <span class="k">if</span> <span class="n">schedulers</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>

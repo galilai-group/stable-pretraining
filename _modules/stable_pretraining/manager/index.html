@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g90ebe005f documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g4ba07974d documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=85df07cb"></script>
+    <script src="../../../_static/documentation_options.js?v=82d18d58"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g90ebe005f documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g4ba07974d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -1868,6 +1868,35 @@
                 <span class="k">break</span>
         <span class="k">return</span> <span class="n">config</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_maybe_skip_sanity_on_requeue</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Disable Lightning&#39;s validation sanity-check on SLURM requeue.</span>
+
+<span class="sd">        Lightning runs ``num_sanity_val_steps`` validation batches at the</span>
+<span class="sd">        start of every ``trainer.fit()`` call to surface val-pipeline</span>
+<span class="sd">        errors early. On a SLURM preempt-resume that&#39;s redundant: the</span>
+<span class="sd">        original launch already validated the pipeline, and re-running</span>
+<span class="sd">        the sanity check wastes time + pollutes the resume logs.</span>
+
+<span class="sd">        We detect requeue via :func:`_is_slurm_requeue` (which reads</span>
+<span class="sd">        ``SLURM_RESTART_COUNT &gt;= 1`` — set only on actual SLURM-driven</span>
+<span class="sd">        restarts, never on interactive ``srun --pty`` reruns). When</span>
+<span class="sd">        detected, we force ``trainer.num_sanity_val_steps = 0`` for</span>
+<span class="sd">        this fit call. Users who specifically want sanity on resume</span>
+<span class="sd">        can set the attribute back on the trainer between</span>
+<span class="sd">        ``Manager(...)`` construction and ``Manager()`` invocation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_slurm_requeue</span><span class="p">():</span>
+            <span class="k">return</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="p">,</span> <span class="s2">&quot;num_sanity_val_steps&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">current</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>  <span class="c1"># already disabled, nothing to do</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  SLURM requeue detected (SLURM_RESTART_COUNT&gt;=1); &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;forcing num_sanity_val_steps </span><span class="si">{</span><span class="n">current</span><span class="si">}</span><span class="s2"> -&gt; 0 for this fit. &quot;</span>
+            <span class="s2">&quot;Sanity check already ran in the original launch.&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">num_sanity_val_steps</span> <span class="o">=</span> <span class="mi">0</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_inject_hydra_hparams</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Inject the full flattened Hydra config into the module&#39;s hparams.</span>
 
@@ -2121,6 +2150,15 @@
         <span class="c1"># so Lightning&#39;s _log_hyperparams sends it to ALL loggers automatically</span>
         <span class="c1"># (wandb, CSV, TensorBoard, registry, etc.)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_inject_hydra_hparams</span><span class="p">()</span>
+
+        <span class="c1"># On SLURM requeue (preempt-resume), Lightning would otherwise</span>
+        <span class="c1"># re-run its validation sanity check at the start of fit. That&#39;s</span>
+        <span class="c1"># wasteful and pollutes the logs — sanity already ran in the</span>
+        <span class="c1"># original launch, and on resume we know the val pipeline works.</span>
+        <span class="c1"># Force ``num_sanity_val_steps=0`` for the duration of this fit</span>
+        <span class="c1"># call; users who explicitly want it can set the attribute back</span>
+        <span class="c1"># on the trainer after Manager construction.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_skip_sanity_on_requeue</span><span class="p">()</span>
 
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrainerFit&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ckpt_path:     </span><span class="si">{</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>

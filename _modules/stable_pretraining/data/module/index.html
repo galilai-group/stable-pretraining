@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.data.module &#8212; stable-pretraining 0.1.dev1+g90ebe005f documentation</title>
+    <title>stable_pretraining.data.module &#8212; stable-pretraining 0.1.dev1+g4ba07974d documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=85df07cb"></script>
+    <script src="../../../../_static/documentation_options.js?v=82d18d58"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g90ebe005f documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g4ba07974d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -523,6 +523,14 @@
                     <span class="n">kwargs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">k</span><span class="p">](</span><span class="n">dataset</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">kwargs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+        <span class="c1"># spt defaults — only applied when the user didn&#39;t specify these</span>
+        <span class="c1"># in the dict spec. ``pin_memory`` is free if CUDA is around;</span>
+        <span class="c1"># ``persistent_workers`` is the obviously-right default whenever</span>
+        <span class="c1"># ``num_workers &gt; 0`` (otherwise PyTorch errors). ``prefetch_factor``</span>
+        <span class="c1"># is left at PyTorch&#39;s default (2).</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;pin_memory&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;num_workers&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;persistent_workers&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">kwargs</span>
 
 <div class="viewcode-block" id="DataModule.train_dataloader">

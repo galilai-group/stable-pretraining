@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.utils &#8212; stable-pretraining 0.1.dev1+g90ebe005f documentation</title>
+    <title>stable_pretraining.callbacks.utils &#8212; stable-pretraining 0.1.dev1+g4ba07974d documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=85df07cb"></script>
+    <script src="../../../../_static/documentation_options.js?v=82d18d58"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g90ebe005f documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g4ba07974d documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -830,6 +830,13 @@
             <span class="k">assert</span> <span class="n">callback</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_gradient_clip_algorithm</span>
             <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">optimizers</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_index_to_name</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_index_to_name</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">optimizers</span><span class="p">)]</span> <span class="o">=</span> <span class="n">callback</span><span class="o">.</span><span class="n">name</span>
+            <span class="c1"># Mark this optimizer as callback-owned. ``Module.training_step``</span>
+            <span class="c1"># uses this to step the underlying ``torch.optim.Optimizer``</span>
+            <span class="c1"># rather than the ``LightningOptimizer`` wrapper, so</span>
+            <span class="c1"># ``trainer.global_step`` is not advanced by every callback</span>
+            <span class="c1"># optimizer (which would otherwise break ``Trainer(max_steps=...)``</span>
+            <span class="c1"># and step-based schedulers when many callbacks are attached).</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_callback_optimizer_names</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
             <span class="c1"># self._optimizer_name_to_index[callback.name] = len(self._optimizer_names)</span>
             <span class="c1"># self._optimizer_names.append(callback.name)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_frequencies</span><span class="p">[</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
