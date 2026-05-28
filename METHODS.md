@@ -15,15 +15,15 @@ Methods come in two forms:
 
 | Method | Forward fn | Method class | Loss class(es) | Key callbacks | Paper |
 |--------|-----------|--------------|----------------|---------------|-------|
-| Supervised | `supervised_forward` | — | any | — | — |
-| SimCLR | `simclr_forward` | `SimCLR` | `NTXEntLoss` | — | [Chen et al., 2020](https://arxiv.org/abs/2002.05709) |
-| BYOL | `byol_forward` | `BYOL` | `BYOLLoss` | `TeacherStudent†` | [Grill et al., 2020](https://arxiv.org/abs/2006.07733) |
-| VICReg | `vicreg_forward` | `VICReg` | `VICRegLoss` | — | [Bardes et al., 2022](https://arxiv.org/abs/2105.04906) |
-| Barlow Twins | `barlow_twins_forward` | `BarlowTwins` | `BarlowTwinsLoss` | — | [Zbontar et al., 2021](https://arxiv.org/abs/2103.03230) |
-| SwAV | `swav_forward` | `SwAV` | `SwAVLoss` | `OnlineQueue` | [Caron et al., 2020](https://arxiv.org/abs/2006.09882) |
-| NNCLR | `nnclr_forward` | `NNCLR` | `NTXEntLoss` | `OnlineQueue` | [Dwibedi et al., 2021](https://arxiv.org/abs/2104.14548) |
-| DINO | `dino_forward` | `DINO` | `DINOv1Loss` | `TeacherStudent†` | [Caron et al., 2021](https://arxiv.org/abs/2104.14294) |
-| DINOv2 | `dinov2_forward` | `DINOv2` | `DINOv2Loss`, `iBOTPatchLoss` | `TeacherStudent†` | [Oquab et al., 2024](https://arxiv.org/abs/2304.07193) |
+| Supervised | `supervised` | — | any | — | — |
+| SimCLR | `simclr` | `SimCLR` | `NTXEntLoss` | — | [Chen et al., 2020](https://arxiv.org/abs/2002.05709) |
+| BYOL | `byol` | `BYOL` | `BYOLLoss` | `TeacherStudent†` | [Grill et al., 2020](https://arxiv.org/abs/2006.07733) |
+| VICReg | `vicreg` | `VICReg` | `VICRegLoss` | — | [Bardes et al., 2022](https://arxiv.org/abs/2105.04906) |
+| Barlow Twins | `barlow_twins` | `BarlowTwins` | `BarlowTwinsLoss` | — | [Zbontar et al., 2021](https://arxiv.org/abs/2103.03230) |
+| SwAV | `swav` | `SwAV` | `SwAVLoss` | `OnlineQueue` | [Caron et al., 2020](https://arxiv.org/abs/2006.09882) |
+| NNCLR | `nnclr` | `NNCLR` | `NTXEntLoss` | `OnlineQueue` | [Dwibedi et al., 2021](https://arxiv.org/abs/2104.14548) |
+| DINO | `dino` | `DINO` | `DINOv1Loss` | `TeacherStudent†` | [Caron et al., 2021](https://arxiv.org/abs/2104.14294) |
+| DINOv2 | `dinov2` | `DINOv2` | `DINOv2Loss`, `iBOTPatchLoss` | `TeacherStudent†` | [Oquab et al., 2024](https://arxiv.org/abs/2304.07193) |
 | BEiT | — | `BEiT` | — | — | [Bao et al., 2022](https://arxiv.org/abs/2106.08254) |
 | CMAE | — | `CMAE` | — | — | [Huang et al., 2023](https://arxiv.org/abs/2207.13532) |
 | Data2Vec | — | `Data2Vec` | — | `TeacherStudent†` | [Baevski et al., 2022](https://arxiv.org/abs/2202.03555) |
@@ -55,12 +55,12 @@ Forward functions are stateless and work with `spt.Module`. You own the backbone
 
 ```python
 from stable_pretraining import Module
-from stable_pretraining.forward import simclr_forward
+from stable_pretraining.forward import simclr
 from stable_pretraining.losses import NTXEntLoss
 from stable_pretraining.backbone import from_torchvision
 
 module = Module(
-    forward=simclr_forward,
+    forward=simclr,
     backbone=from_torchvision("resnet50"),
     projector=...,
     simclr_loss=NTXEntLoss(temperature=0.1),
@@ -73,7 +73,7 @@ referenced by dotted path in YAML configs:
 ```yaml
 module:
   _target_: stable_pretraining.Module
-  forward: stable_pretraining.forward.simclr_forward
+  forward: stable_pretraining.forward.simclr
 ```
 
 ---

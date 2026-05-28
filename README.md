@@ -10,17 +10,23 @@
 
 
 
-AI is moving beyond labels. Today's models learn through **self-supervision** and **multimodal alignment**, extracting knowledge from raw data to build general-purpose representations that work across tasks. These foundation models are then deployed at scale, often after finetuning, to solve tasks in zero or few shot.
+**PyTorch Lightning for foundation-model research.** Dict-shaped state
+so any intermediate tensor is loggable, live evaluation probes that
+attach without touching the training loop (`OnlineProbe`, `OnlineKNN`,
+`RankMe`, `LiDAR`, …), SLURM-grade requeue + atomic checkpoints +
+queryable run registry, GPU-side batched augmentation, and 30+ ready
+recipes spanning SSL, supervised, and multi-modal pretraining
+(SimCLR, DINO/DINOv2, MAE, BYOL, VICReg, Barlow Twins, LeJEPA, CLIP, …).
 
-`stable-pretraining` is a PyTorch framework built on top of Lightning for this new paradigm. What sets us apart is **real-time visibility into training quality** through extensive logging and monitoring. Our callback ecosystem (`OnlineProbe`, `OnlineKNN`, `RankMe`, and many more) provides insights into feature collapse, training dynamics, and downstream performance. Data flows as dictionaries through model components, metrics, and callbacks, making any intermediate value accessible and debuggable. With `stable-pretraining`: track everything, debug faster, iterate sooner.
-
-Join our Discord: [https://discord.gg/8M6hT39X](https://discord.gg/adzpqWKM25)
+[30-second tour ↓](#30s-tour) · [Built-in methods ↓](#built-in-methods) ·
+[Discord](https://discord.gg/adzpqWKM25)
 
 ## Table of Contents
 
 - [How?](#how)
 - [Quick Setup](#quick-setup)
 - [Tutorial Notebook](#quick-setup)
+- [30-second tour](#30s-tour)
 - [Core Structure](#core-structure)
   - [Data](#data)
   - [Module](#module)
@@ -62,6 +68,140 @@ For an interactive walkthrough — data loading, Module, callbacks, training, an
 ```bash
 jupyter notebook examples/simclr_cifar10_tutorial.ipynb
 ```
+
+<a id="30s-tour"></a>
+## 30-second tour
+
+The whole framework is four components that pass **dicts** to each other.
+Once you see the shape, the rest of the README is reference.
+
+```mermaid
+%%{init: {'theme':'base', 'themeVariables': {
+    'fontFamily':'-apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+    'fontSize':'14px',
+    'primaryColor':'#fafafa',
+    'primaryTextColor':'#1f2937',
+    'primaryBorderColor':'#9ca3af',
+    'lineColor':'#9ca3af',
+    'edgeLabelBackground':'#ffffff'
+}}}%%
+flowchart LR
+    classDef stack fill:#f9fafb,stroke:#9ca3af,color:#111827,stroke-width:1px
+    classDef yours fill:#eef2ff,stroke:#6366f1,color:#3730a3,stroke-width:1px
+    classDef hook  fill:#f0fdf4,stroke:#22c55e,color:#14532d,stroke-width:1px
+    classDef orch  fill:#1f2937,stroke:#1f2937,color:#f9fafb,stroke-width:0px
+
+    DM([DataModule])
+    TR([Lightning Trainer])
+    MOD([Module])
+    CB([Callbacks])
+    LOG([Loggers · Registry])
+    MGR((Manager))
+
+    DM -->|batch| TR --> MOD
+    MOD -->|state| CB
+    MOD --> LOG
+    CB --> LOG
+    MGR -.- TR
+
+    class DM yours
+    class MOD yours
+    class CB hook
+    class TR stack
+    class LOG stack
+    class MGR orch
+```
+
+*Indigo* nodes are what you write (data + forward). *Green* is the
+hook surface (callbacks). *Slate* is the orchestration that runs
+underneath.
+
+A minimal end-to-end run looks like this (substitute your own loader / loss):
+
+```python
+import lightning as pl
+import stable_pretraining as spt
+
+# 1. Data flows as dicts. CPU transforms decode + resize; random
+#    augmentation can live on the GPU via `gpu_transform=` (optional).
+train_ds = spt.data.HFDataset("cifar10", split="train", transform=...)
+val_ds   = spt.data.HFDataset("cifar10", split="test",  transform=...)
+dm = spt.data.DataModule(
+    train=torch.utils.data.DataLoader(train_ds, batch_size=256, num_workers=8),
+    val=torch.utils.data.DataLoader(val_ds, batch_size=256, num_workers=8),
+)
+
+# 2. Module = backbone + a forward function that returns a state dict.
+#    `forward.simclr` (and friends) are pre-built; you can also
+#    write your own — anything returning {"loss": ..., "embedding": ...}.
+module = spt.Module(
+    backbone=spt.backbone.from_timm("resnet18", num_classes=0),
+    projector=spt.backbone.MLP(512, 512, 128),
+    forward=spt.forward.simclr,
+    simclr_loss=spt.losses.NTXEntLoss(temperature=0.5),
+)
+
+# 3. Callbacks watch the state dict and train online probes / log metrics
+#    without touching the main loop.
+trainer = pl.Trainer(max_epochs=100, precision="bf16-mixed", callbacks=[
+    spt.callbacks.OnlineProbe(module, name="probe", input="embedding", target="label",
+                              probe=nn.Linear(512, 10), loss=nn.CrossEntropyLoss()),
+    spt.callbacks.OnlineKNN(name="knn", input="embedding", target="label",
+                            queue_length=10_000, input_dim=512, k=20),
+])
+
+# 4. Manager wraps fit() with SLURM-requeue, atomic checkpoints, and
+#    the run registry. On a workstation it's just a thin call; on a
+#    cluster it adds preempt/resume + run tracking for free.
+spt.Manager(trainer=trainer, module=module, data=dm)()
+```
+
+A single sample's journey through the stack:
+
+```mermaid
+%%{init: {'theme':'base', 'themeVariables': {
+    'fontFamily':'-apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+    'fontSize':'13px',
+    'primaryColor':'#fafafa',
+    'primaryTextColor':'#1f2937',
+    'primaryBorderColor':'#9ca3af',
+    'lineColor':'#9ca3af',
+    'edgeLabelBackground':'#ffffff'
+}}}%%
+flowchart LR
+    classDef cpu fill:#f9fafb,stroke:#9ca3af,color:#111827,stroke-width:1px
+    classDef gpu fill:#eef2ff,stroke:#6366f1,color:#3730a3,stroke-width:1px
+    classDef out fill:#f0fdf4,stroke:#22c55e,color:#14532d,stroke-width:1px
+
+    SAMP([sample])
+    CPU([CPU prep])
+    H2D([H2D])
+    AUG([GPU aug])
+    FWD([forward])
+    BWD([backward])
+    LOG([loggers])
+
+    SAMP --> CPU --> H2D --> AUG --> FWD --> BWD --> LOG
+    FWD -. callbacks .-> LOG
+
+    class SAMP cpu
+    class CPU cpu
+    class H2D cpu
+    class AUG gpu
+    class FWD gpu
+    class BWD gpu
+    class LOG out
+```
+
+Read left-to-right. *Slate* runs on CPU (decode, resize, pinned H2D).
+*Indigo* runs on GPU — including the augmentation that traditionally
+lived on CPU. The dotted arrow shows callbacks tapping the same state
+dict the loss is computed from, without touching the loop.
+
+The dict-everywhere design means callbacks attach without modifying the
+training loop, GPU augmentation slots in via `dataset.gpu_transform=`
+(see [§GPU-side batched augmentation](#data)), and any intermediate
+quantity in the state dict is automatically available to loggers.
 
 <a id="core-structure"></a>
 ## Core Structure
@@ -221,7 +361,7 @@ from stable_pretraining import forward
 module = spt.Module(
     backbone=backbone,
     projector=projector,
-    forward=forward.simclr_forward,  # Or byol_forward, vicreg_forward, etc.
+    forward=forward.simclr,  # Or byol, vicreg, etc.
     simclr_loss=spt.losses.NTXEntLoss(temperature=0.5),
     optim={
         "optimizer": {"type": "Adam", "lr": 0.001},
@@ -617,15 +757,15 @@ spt.set(default_loggers={"registry": False})
 
 | Method | Forward fn | Loss | Description |
 |--------|-----------|------|-------------|
-| Supervised | `forward.supervised_forward` | any | Standard supervised training with labels |
-| SimCLR | `forward.simclr_forward` | `NTXEntLoss` | Contrastive learning with 2 augmented views |
-| BYOL | `forward.byol_forward` | `BYOLLoss` | Momentum-based self-distillation without negatives |
-| VICReg | `forward.vicreg_forward` | `VICRegLoss` | Variance-invariance-covariance regularization |
-| Barlow Twins | `forward.barlow_twins_forward` | `BarlowTwinsLoss` | Cross-correlation matrix alignment to identity |
-| SwAV | `forward.swav_forward` | `SwAVLoss` | Online clustering with Sinkhorn-Knopp normalization |
-| NNCLR | `forward.nnclr_forward` | `NTXEntLoss` | Nearest-neighbor contrastive learning |
-| DINO | `forward.dino_forward` | `DINOv1Loss` | Self-distillation with multi-crop and centering |
-| DINOv2 | `forward.dinov2_forward` | `DINOv2Loss`, `iBOTPatchLoss` | DINO + iBOT masked patch prediction |
+| Supervised | `forward.supervised` | any | Standard supervised training with labels |
+| SimCLR | `forward.simclr` | `NTXEntLoss` | Contrastive learning with 2 augmented views |
+| BYOL | `forward.byol` | `BYOLLoss` | Momentum-based self-distillation without negatives |
+| VICReg | `forward.vicreg` | `VICRegLoss` | Variance-invariance-covariance regularization |
+| Barlow Twins | `forward.barlow_twins` | `BarlowTwinsLoss` | Cross-correlation matrix alignment to identity |
+| SwAV | `forward.swav` | `SwAVLoss` | Online clustering with Sinkhorn-Knopp normalization |
+| NNCLR | `forward.nnclr` | `NTXEntLoss` | Nearest-neighbor contrastive learning |
+| DINO | `forward.dino` | `DINOv1Loss` | Self-distillation with multi-crop and centering |
+| DINOv2 | `forward.dinov2` | `DINOv2Loss`, `iBOTPatchLoss` | DINO + iBOT masked patch prediction |
 
 The table above covers forward functions for use with `spt.Module`. For 30 full `LightningModule` implementations (BEiT, CMAE, Data2Vec, iBOT, iGPT, IJEPA, LeJEPA, MAE, MaskFeat, MIMRefiner, MoCov2, MoCov3, MSN, PIRL, SimMIM, SimSiam, TiCO, VICRegL, WMSE, and more), see [`METHODS.md`](METHODS.md) and `stable_pretraining/methods/`.
 
@@ -768,7 +908,7 @@ projector = nn.Sequential(
 module = spt.Module(
     backbone=backbone,
     projector=projector,
-    forward=forward.simclr_forward,  # Use the built-in forward function
+    forward=forward.simclr,  # Use the built-in forward function
     simclr_loss=spt.losses.NTXEntLoss(temperature=0.5),
     optim={
         "optimizer": {"type": "LARS", "lr": 5, "weight_decay": 1e-6},

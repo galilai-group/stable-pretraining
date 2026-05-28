@@ -463,6 +463,17 @@ class Module(pl.LightningModule):
         self.after_manual_backward()
 
         zero_grad_opts = []
+        # Designate exactly ONE optimizer per batch as the
+        # ``global_step`` ticker, so ``trainer.global_step`` always equals
+        # the number of training batches — regardless of how many
+        # optimizers are attached (main + callbacks). Preference:
+        # first main optimizer; fallback: first callback optimizer
+        # (covers ``Module(optim=None)`` setups where the only
+        # optimizers come from ``TrainableCallback``s like
+        # ``OnlineImageDecoder`` — without this fallback,
+        # ``trainer.max_steps`` becomes unreachable and ``fit`` loops
+        # forever).
+        ticker_idx = self._pick_global_step_ticker(optimizers)
         # Stepping and gradient clipping at accumulation boundary
         for idx, opt in enumerate(optimizers):
             name = self._optimizer_index_to_name[idx]
@@ -487,27 +498,19 @@ class Module(pl.LightningModule):
                 )
                 logging.error(msg)
                 raise ValueError(msg)
-            # For callback optimizers (OnlineProbe / EMA / decoders),
-            # call ``LightningOptimizer.step()`` AS NORMAL so we keep
-            # all of the strategy + precision-plugin machinery intact
-            # (AMP GradScaler.step, FP8 TransformerEngine calibration,
-            # DDP grad-sync coordination, profiler timing).
-            # The ONLY thing we suppress
-            # is Lightning's manual-opt progress counter — otherwise
-            # ``trainer.global_step`` would tick once per callback
-            # optimizer per batch and ``Trainer(max_steps=...)`` /
-            # step-based schedulers would silently break when many
-            # ``TrainableCallback``s are attached.
-            #
-            # The progress counter is incremented inside ``_on_before_step``
-            # / ``_on_after_step`` hooks that Lightning's manual-opt loop
-            # attaches to every ``LightningOptimizer`` at batch start
-            # (and resets at batch end, see
-            # ``lightning.pytorch.loops.optimization.manual.ManualOptimization``).
-            # Temporarily swapping them to no-ops disables only the
-            # counter; the load-bearing ``strategy.optimizer_step()``
-            # call still runs.
-            if name in self._callback_optimizer_names:
+            # The ticker optimizer goes through ``LightningOptimizer.step()``
+            # as normal so its single tick advances ``global_step``. Every
+            # other optimizer (main or callback) keeps all of the strategy
+            # + precision-plugin machinery intact (AMP GradScaler.step,
+            # FP8 TransformerEngine calibration, DDP grad-sync, profiler
+            # timing) but suppresses the manual-opt progress counter via
+            # no-op hooks. The progress hooks are attached by
+            # ``lightning.pytorch.loops.optimization.manual.ManualOptimization``
+            # at batch start and reset at batch end; swapping them to
+            # no-ops for one call is reversible and side-effect-free.
+            if idx == ticker_idx:
+                opt.step()
+            else:
                 saved_before, saved_after = opt._on_before_step, opt._on_after_step
                 opt._on_before_step = _noop_hook
                 opt._on_after_step = _noop_hook
@@ -516,8 +519,6 @@ class Module(pl.LightningModule):
                 finally:
                     opt._on_before_step = saved_before
                     opt._on_after_step = saved_after
-            else:
-                opt.step()
             zero_grad_opts.append(opt)
             # Step its scheduler if it exists
             if schedulers[idx] is not None:
@@ -535,6 +536,31 @@ class Module(pl.LightningModule):
         for opt in zero_grad_opts:
             opt.zero_grad(set_to_none=True)
         return state
+
+    def _pick_global_step_ticker(self, optimizers) -> int:
+        """Return the index of the optimizer that should advance ``global_step``.
+
+        Exactly one optimizer per batch ticks the manual-opt progress
+        counter. Preference order:
+
+        1. First main optimizer (i.e. not registered as a callback opt).
+        2. First optimizer overall — used when ``Module(optim=None)`` and
+           the only optimizers came from ``TrainableCallback`` callbacks.
+           Without this fallback the counter never advances, so
+           ``Trainer(max_steps=N)`` is unreachable and ``fit`` loops
+           forever (the regression that motivated this method).
+
+        Returns 0 when ``optimizers`` is empty — Lightning's mock-opt
+        path handles the no-optimizer case earlier so this method
+        isn't reached in that branch.
+        """
+        if not optimizers:
+            return 0
+        for idx in range(len(optimizers)):
+            name = self._optimizer_index_to_name.get(idx)
+            if name is not None and name not in self._callback_optimizer_names:
+                return idx
+        return 0  # only callback optimizers — promote the first
 
     def on_train_start(self):
         """Validate and log the optimizer configuration at the start of training.
@@ -587,11 +613,13 @@ class Module(pl.LightningModule):
                 freq = getattr(self.trainer, "accumulate_grad_batches", 1)
                 freq = getattr(self.trainer, "accumulate_grad_batches_", freq)
                 freq = max(int(freq), 1)
-                # config priority
-                if hasattr(self, "optim"):
-                    freq = self.optim.get("frequency", freq)
-                else:
-                    freq = 1
+                # config priority — guard against ``self.optim is None``
+                # (eval-only ``Module(optim=None)`` setup) and against
+                # ``self.optim`` being a single per-optimizer config dict
+                # (no ``.get("frequency", ...)`` semantics there).
+                optim_cfg = getattr(self, "optim", None) or {}
+                if isinstance(optim_cfg, dict):
+                    freq = optim_cfg.get("frequency", freq)
                 self._optimizer_frequencies[name] = int(freq)
 
         table = PrettyTable()

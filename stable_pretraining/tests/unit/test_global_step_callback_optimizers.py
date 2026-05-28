@@ -137,6 +137,136 @@ class TestCallbackOptimizersDoNotAdvanceGlobalStep:
         )
         assert trainer.global_step == max_steps
 
+    def test_zero_optimizers_eval_only_does_not_crash(self):
+        """Zero optimizers: ``Module(optim=None)`` + no callbacks fits cleanly.
+
+        Pure forward-pass fit (e.g. dry-run for shape debugging or eval
+        coverage in fit) must complete without errors.
+        Lightning returns a ``_MockOptimizer`` from
+        ``self.optimizers()`` when ``configure_optimizers`` yields
+        nothing, and our ``training_step`` returns early in that case.
+        ``global_step`` stays at 0 (which is correct — nothing
+        optimized), but ``trainer.current_epoch`` still advances, so
+        ``max_epochs`` is the meaningful budget here.
+        """
+        from stable_pretraining.module import Module
+        from stable_pretraining.data import DataModule
+
+        def fwd(self, batch, stage):
+            return {"embedding": self.backbone(batch["image"])}
+
+        backbone = nn.Linear(4, 8)
+        module = Module(forward=fwd, hparams={}, backbone=backbone, optim=None)
+
+        class _DictWrap(torch.utils.data.Dataset):
+            def __init__(self, n=8):
+                self.x = torch.randn(n, 4)
+
+            def __len__(self):
+                return len(self.x)
+
+            def __getitem__(self, i):
+                return {"image": self.x[i]}
+
+        loader = DataLoader(_DictWrap(), batch_size=4, shuffle=False)
+        dm = DataModule(train=loader, val=loader)
+        counter = _BatchCounter()
+        trainer = pl.Trainer(
+            max_epochs=2,
+            num_sanity_val_steps=0,
+            limit_val_batches=0,
+            enable_checkpointing=False,
+            enable_progress_bar=False,
+            logger=False,
+            accelerator="cpu",
+            devices=1,
+            callbacks=[counter],
+        )
+        # The key assertion: this finishes (no infinite loop, no error).
+        # 2 epochs × 2 batches = 4 forward passes.
+        trainer.fit(module, dm)
+        assert counter.batches == 4, (
+            f"zero-optimizer fit ran {counter.batches} batches, expected 4."
+        )
+        # global_step stays at 0 because no optimizer ever stepped.
+        assert trainer.global_step == 0
+        # But the epoch counter does advance.
+        assert trainer.current_epoch == 2
+
+    def test_no_main_optimizer_still_ticks_global_step(self):
+        """``optim=None`` + callback optimizers still ticks ``global_step``.
+
+        Otherwise ``Trainer(max_steps=...)`` is unreachable and ``fit``
+        loops forever.
+        Regression for the ``test_image_decoder.py`` infinite-loop bug
+        the user spotted ("Epoch 18533/-1 done in 0.0s") after the
+        callback-optimizer-counter fix: with no main optimizer there
+        was no remaining optimizer to tick ``global_step``. The
+        ``_pick_global_step_ticker`` fallback promotes the first
+        callback optimizer to ticker in that case.
+        """
+        from stable_pretraining.module import Module
+        from stable_pretraining.data import DataModule
+
+        def fwd(self, batch, stage):
+            emb = self.backbone(batch["image"])
+            out = {"embedding": emb, "label": batch["label"]}
+            if stage == "fit":
+                out["loss"] = emb.pow(2).mean()
+            return out
+
+        # Module with NO main optimizer — only the callback's will be present.
+        backbone = nn.Linear(4, 8)
+        module = Module(forward=fwd, hparams={}, backbone=backbone, optim=None)
+        cb = callbacks.OnlineProbe(
+            module,
+            name="probe",
+            input="embedding",
+            target="label",
+            probe=nn.Linear(8, 2),
+            loss=nn.CrossEntropyLoss(),
+            metrics={
+                "top1": torchmetrics.classification.MulticlassAccuracy(num_classes=2)
+            },
+            optimizer={"type": "AdamW", "lr": 1e-3},
+        )
+
+        class _DictWrap(torch.utils.data.Dataset):
+            def __init__(self, n=16):
+                self.x = torch.randn(n, 4)
+                self.y = torch.randint(0, 2, (n,))
+
+            def __len__(self):
+                return len(self.x)
+
+            def __getitem__(self, i):
+                return {"image": self.x[i], "label": self.y[i]}
+
+        loader = DataLoader(_DictWrap(), batch_size=4, shuffle=False)
+        dm = DataModule(train=loader, val=loader)
+
+        max_steps = 3
+        counter = _BatchCounter()
+        trainer = pl.Trainer(
+            max_steps=max_steps,
+            num_sanity_val_steps=0,
+            limit_val_batches=0,
+            enable_checkpointing=False,
+            enable_progress_bar=False,
+            logger=False,
+            accelerator="cpu",
+            devices=1,
+            callbacks=[cb, counter],
+        )
+        trainer.fit(module, dm)
+        assert counter.batches == max_steps, (
+            f"no-main-opt path: trainer ran {counter.batches} batches "
+            f"(expected {max_steps}); global_step={trainer.global_step}. "
+            "The callback optimizer must be promoted to global_step ticker "
+            "when no main optimizer is present."
+        )
+        assert trainer.global_step == max_steps
+
     @pytest.mark.gpu
     def test_amp_scaler_preserved_for_callback_opts(self):
         """fp16-mixed: GradScaler must still see every callback optimizer step.
