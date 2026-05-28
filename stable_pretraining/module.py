@@ -33,6 +33,17 @@ def _ensure_named_callable(fn):
     return fn if hasattr(fn, "__name__") else _NamedForward(fn)
 
 
+def _noop_hook() -> None:
+    """Drop-in for ``LightningOptimizer._on_before_step`` / ``_on_after_step``.
+
+    Used by :meth:`Module.training_step` to suppress the manual-opt
+    progress counter for callback-owned optimizers without disturbing
+    any of the strategy / precision-plugin logic inside
+    ``LightningOptimizer.step()``.
+    """
+    return None
+
+
 def _gpu_transform_from_current_dataset(trainer, stage, dataloader_idx):
     """Return ``dataset.gpu_transform`` for the active stage's DataLoader, or None.
 
@@ -173,6 +184,12 @@ class Module(pl.LightningModule):
         self._optimizer_frequencies = {}
         self._optimizer_gradient_clip_val = {}
         self._optimizer_gradient_clip_algorithm = {}
+        # Optimizer names registered by ``TrainableCallback`` (e.g. ``OnlineProbe``).
+        # Their ``.step()`` is dispatched on the underlying ``torch.optim.Optimizer``
+        # rather than the Lightning wrapper so they don't advance
+        # ``trainer.global_step`` — see :meth:`training_step` and the
+        # rationale below in ``training_step``'s docstring.
+        self._callback_optimizer_names = set()
 
         if len(args) > 0:
             raise ValueError(
@@ -470,7 +487,37 @@ class Module(pl.LightningModule):
                 )
                 logging.error(msg)
                 raise ValueError(msg)
-            opt.step()
+            # For callback optimizers (OnlineProbe / EMA / decoders),
+            # call ``LightningOptimizer.step()`` AS NORMAL so we keep
+            # all of the strategy + precision-plugin machinery intact
+            # (AMP GradScaler.step, FP8 TransformerEngine calibration,
+            # DDP grad-sync coordination, profiler timing).
+            # The ONLY thing we suppress
+            # is Lightning's manual-opt progress counter — otherwise
+            # ``trainer.global_step`` would tick once per callback
+            # optimizer per batch and ``Trainer(max_steps=...)`` /
+            # step-based schedulers would silently break when many
+            # ``TrainableCallback``s are attached.
+            #
+            # The progress counter is incremented inside ``_on_before_step``
+            # / ``_on_after_step`` hooks that Lightning's manual-opt loop
+            # attaches to every ``LightningOptimizer`` at batch start
+            # (and resets at batch end, see
+            # ``lightning.pytorch.loops.optimization.manual.ManualOptimization``).
+            # Temporarily swapping them to no-ops disables only the
+            # counter; the load-bearing ``strategy.optimizer_step()``
+            # call still runs.
+            if name in self._callback_optimizer_names:
+                saved_before, saved_after = opt._on_before_step, opt._on_after_step
+                opt._on_before_step = _noop_hook
+                opt._on_after_step = _noop_hook
+                try:
+                    opt.step()
+                finally:
+                    opt._on_before_step = saved_before
+                    opt._on_after_step = saved_after
+            else:
+                opt.step()
             zero_grad_opts.append(opt)
             # Step its scheduler if it exists
             if schedulers[idx] is not None:
