@@ -100,28 +100,75 @@ datamodule = spt.data.DataModule(train=train_dataloader, val=val_dataloader)
 
 #### GPU-side batched augmentation (`gpu_transform`)
 
-Moving SSL augmentation off the DataLoader workers and onto the GPU
-(via [kornia](https://kornia.readthedocs.io/) inside Lightning's
-`on_after_batch_transfer` hook) frees CPU workers to do more I/O in
-parallel and vectorises augmentation across the batch. **Measured ~1.77×
-end-to-end throughput on BarlowTwins ViT-S/16 / Imagenette / H200**
-(514 → 910 samples/sec, see [`benchmarks/imagenet10/RESULTS.md`](benchmarks/imagenet10/RESULTS.md)).
+SSL augmentation traditionally runs per-sample in DataLoader workers
+(PIL + torchvision). On modern accelerators that becomes the
+bottleneck: CPU workers can't keep up with the GPU on heavy multi-view
+recipes. Moving augmentation to the GPU via
+[kornia](https://kornia.readthedocs.io/) inside Lightning's
+`on_after_batch_transfer` hook vectorises it across the batch and
+frees CPU workers to do more I/O in parallel.
 
-Pass `gpu_transform=` to the dataset constructor — the module finds it
-through the active DataLoader automatically:
+We measure substantial end-to-end throughput improvements across
+model sizes and precisions — see
+[`benchmarks/imagenet10/RESULTS.md`](benchmarks/imagenet10/RESULTS.md)
+for the full sweep (ViT-S/16, ViT-L/16; fp16 / bf16 / FP8;
+torch.compile on/off; various batch sizes).
+
+##### Before — torchvision augmentation in CPU workers
+
+The historical SSL recipe: every random transform runs per-sample
+inside the DataLoader workers. `MultiViewTransform` produces both
+views on the CPU side.
+
+```python
+from stable_pretraining.data import transforms
+import stable_pretraining as spt
+
+train_transform = transforms.MultiViewTransform([
+    transforms.Compose(                        # view 1
+        transforms.RGB(),
+        transforms.RandomResizedCrop((224, 224), scale=(0.08, 1.0)),
+        transforms.ColorJitter(0.4, 0.4, 0.2, 0.1, p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.PILGaussianBlur(p=1.0),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ToImage(**spt.data.static.ImageNet),
+    ),
+    transforms.Compose(                        # view 2 — same recipe
+        transforms.RGB(),
+        transforms.RandomResizedCrop((224, 224), scale=(0.08, 1.0)),
+        transforms.ColorJitter(0.4, 0.4, 0.2, 0.1, p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.PILGaussianBlur(p=1.0),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ToImage(**spt.data.static.ImageNet),
+    ),
+])
+
+train_ds = spt.data.HFDataset(
+    "frgfm/imagenette", split="train",
+    transform=train_transform,
+)
+```
+
+##### After — same augs, batched on the GPU
+
+The CPU transform shrinks to "decode + resize". The augmentation chain
+runs on the GPU, and `StackedMultiView` produces N views from one
+source tensor in a single chain call (symmetric SSL — Barlow Twins,
+SimCLR, VICReg, NNCLR, LeJEPA).
 
 ```python
 from stable_pretraining.data import transforms, gpu_transforms as gt
+import stable_pretraining as spt
 
-# Minimal CPU prep — random aug moves to GPU. rgb=True folds in RGB().
+# CPU side: just decode + resize. rgb=True folds in the old RGB() call.
 cpu_transform = transforms.Compose(
     transforms.Resize((256, 256)),
     transforms.ToImage(rgb=True, scale=True),
 )
 
-# GPU side: same six aug ops, batched. StackedMultiView fans out N views
-# from one source tensor (symmetric SSL: Barlow / SimCLR / VICReg / NNCLR).
-# For asymmetric SSL (BYOL, DINO student/teacher) use gt.MultiView([...]).
+# GPU side: same six augs, batched on device.
 train_aug = gt.StackedMultiView(
     gt.GPUCompose([
         gt.GPURandomResizedCrop(size=224, scale=(0.08, 1.0)),
@@ -131,27 +178,36 @@ train_aug = gt.StackedMultiView(
         gt.GPUGaussianBlur(kernel_size=23, p=0.5),
         gt.GPUNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ]),
-    n_views=2,
+    n_views=2,        # use 8 for LeJEPA multi-view; or use gt.MultiView([c1, c2, ...]) for asymmetric methods like BYOL / DINO
 )
 
 train_ds = spt.data.HFDataset(
     "frgfm/imagenette", split="train",
     transform=cpu_transform,
-    gpu_transform=train_aug,   # ← attached to the dataset
+    gpu_transform=train_aug,   # ← new arg; everything else stays the same
 )
 # val_ds: no gpu_transform — validation is already normalized on CPU.
 ```
 
-Resolution order in `Module.on_after_batch_transfer`:
+##### What changed
 
-1. `dataset.gpu_transform` (preferred — per-split spec lives with the dataset).
-2. `datamodule.gpu_transform` — callable, or `{"train": ..., "val": ...}` dict
-   (use for third-party datasets you can't modify).
+| Concern | Before | After |
+|---|---|---|
+| Where random aug runs | per-sample, CPU workers | per-batch, GPU |
+| Decode / RGB / resize | CPU | CPU (unchanged) |
+| View fan-out | `MultiViewTransform([t1, t2, ...])` on CPU | `gt.StackedMultiView(chain, n_views=N)` on GPU |
+| Dataset arg | `transform=...` | `transform=...` + `gpu_transform=...` |
+| Module / Trainer code | unchanged | unchanged |
+| Loss / metrics | unchanged | unchanged |
 
-Setting `gpu_transform` on the Module is rejected at `on_train_start`
-(two routes to the same thing is a footgun). The resolved transform is
-auto-moved to `self.device` on first use (DDP-safe), and dropped during
-dataset pickling so DataLoader workers never serialise the nn.Module.
+`Module.on_after_batch_transfer` discovers `gpu_transform` through
+the active DataLoader. Resolution order: `dataset.gpu_transform` (1)
+→ `datamodule.gpu_transform` (2, callable or `{"train": ..., "val": ...}`
+dict for third-party datasets you can't modify). Setting it on the
+Module is rejected at `on_train_start` — two routes to the same thing
+is a footgun. The resolved transform is auto-moved to `self.device`
+on first use (DDP-safe) and dropped during dataset pickling so
+DataLoader workers never serialise the nn.Module.
 
 <a id="module"></a>
 ### 2 - Module
