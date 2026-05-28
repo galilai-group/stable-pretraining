@@ -102,7 +102,7 @@ projector = nn.Sequential(
 module = spt.Module(
     backbone=backbone,
     projector=projector,
-    forward=forward.barlow_twins_forward,
+    forward=forward.barlow_twins,
     barlow_loss=spt.losses.BarlowTwinsLoss(lambd=0.0051),
     optim={
         "optimizer": {

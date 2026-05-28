@@ -5,7 +5,7 @@ from lightning.pytorch.loggers import WandbLogger
 from torch import nn
 
 import stable_pretraining as spt
-from stable_pretraining.forward import dinov2_forward
+from stable_pretraining.forward import dinov2
 from stable_pretraining.data import transforms
 import sys
 from pathlib import Path
@@ -206,7 +206,7 @@ module = spt.Module(
     backbone=wrapped_backbone,
     projector=wrapped_projector,
     patch_projector=wrapped_patch_projector,
-    forward=dinov2_forward,
+    forward=dinov2,
     dinov2_loss=spt.losses.DINOv2Loss(
         temperature_student=0.1,
         center_momentum=0.9,

@@ -69,7 +69,7 @@ module:
   _target_: stable_pretraining.Module
 
   # Forward function - string reference handled by config.py
-  forward: stable_pretraining.forward.simclr_forward
+  forward: stable_pretraining.forward.simclr
 
   # Backbone network
   backbone:

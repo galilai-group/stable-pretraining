@@ -115,7 +115,7 @@ module = spt.Module(
     backbone=wrapped_backbone,
     projector=wrapped_projector,
     predictor=predictor,
-    forward=forward.byol_forward,
+    forward=forward.byol,
     byol_loss=spt.losses.BYOLLoss(),
     optim={
         "optimizer": {

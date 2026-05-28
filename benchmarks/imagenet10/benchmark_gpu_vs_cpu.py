@@ -35,12 +35,12 @@ import stable_pretraining as spt  # noqa: E402
 from stable_pretraining.methods.barlow_twins import BarlowTwins  # noqa: E402
 
 
-def build_cpu(batch_size, num_workers):
+def build_cpu(batch_size, num_workers, encoder="vit_small_patch16_224"):
     from two_view import attach_forward_and_optim, make_imagenette_data
 
     data = make_imagenette_data(batch_size=batch_size, num_workers=num_workers)
     module = BarlowTwins(
-        encoder_name="vit_small_patch16_224",
+        encoder_name=encoder,
         projector_dims=(2048, 2048, 2048),
         lambd=5.1e-3,
     )
@@ -56,7 +56,9 @@ def build_cpu(batch_size, num_workers):
     return module, data
 
 
-def build_gpu(batch_size, num_workers, compile, stacked=True):
+def build_gpu(
+    batch_size, num_workers, compile, stacked=True, encoder="vit_small_patch16_224"
+):
     from two_view_gpu import (
         attach_forward_and_optim,
         build_gpu_transform,
@@ -70,7 +72,7 @@ def build_gpu(batch_size, num_workers, compile, stacked=True):
         gpu_transform=gpu_transform,
     )
     module = BarlowTwins(
-        encoder_name="vit_small_patch16_224",
+        encoder_name=encoder,
         projector_dims=(2048, 2048, 2048),
         lambd=5.1e-3,
     )
@@ -86,13 +88,35 @@ def build_gpu(batch_size, num_workers, compile, stacked=True):
     return module, data
 
 
-def run_benchmark(mode, batch_size, num_workers, steps, warmup, compile, stacked=True):
+def run_benchmark(
+    mode,
+    batch_size,
+    num_workers,
+    steps,
+    warmup,
+    compile,
+    stacked=True,
+    precision="16-mixed",
+    compile_model=False,
+    encoder="vit_small_patch16_224",
+):
     if mode == "cpu":
-        module, data = build_cpu(batch_size, num_workers)
+        module, data = build_cpu(batch_size, num_workers, encoder=encoder)
     else:
         module, data = build_gpu(
-            batch_size, num_workers, compile=compile, stacked=stacked
+            batch_size,
+            num_workers,
+            compile=compile,
+            stacked=stacked,
+            encoder=encoder,
         )
+
+    if compile_model:
+        # ``torch.compile`` the user-attached forward. Works in eager mode
+        # too; under ``precision="transformer-engine"`` it can graph-break
+        # on TE's custom autograd Functions — that's fine, it falls back
+        # to eager for those subgraphs.
+        module.forward = torch.compile(module.forward, dynamic=False)
 
     trainer = pl.Trainer(
         max_steps=steps + warmup,
@@ -101,7 +125,7 @@ def run_benchmark(mode, batch_size, num_workers, steps, warmup, compile, stacked
         logger=False,
         limit_val_batches=0,
         callbacks=[_StepTimer(warmup=warmup)],
-        precision="16-mixed",
+        precision=precision,
         devices=1,
         accelerator="gpu",
     )
@@ -166,10 +190,30 @@ def main():
         action="store_true",
         help="Use the two-chain (asymmetric-safe) GPU path instead of stacked single-chain.",
     )
+    p.add_argument(
+        "--precision",
+        default="16-mixed",
+        help=(
+            "Lightning precision flag. Examples: '32-true', '16-mixed', "
+            "'bf16-mixed', 'transformer-engine' (FP8 on H100/H200, requires "
+            "the ``transformer_engine`` package)."
+        ),
+    )
+    p.add_argument(
+        "--compile-model",
+        action="store_true",
+        help="Wrap module.forward in torch.compile (composes with --precision).",
+    )
+    p.add_argument(
+        "--encoder",
+        default="vit_small_patch16_224",
+        help="timm encoder name (e.g. vit_small_patch16_224, vit_large_patch16_224).",
+    )
     args = p.parse_args()
 
     print(
-        f"=== Benchmark: mode={args.mode}, bs={args.batch_size}, steps={args.steps} ==="
+        f"=== Benchmark: mode={args.mode}, encoder={args.encoder}, bs={args.batch_size}, "
+        f"steps={args.steps}, precision={args.precision}, compile_model={args.compile_model} ==="
     )
     out = run_benchmark(
         mode=args.mode,
@@ -179,13 +223,19 @@ def main():
         warmup=args.warmup,
         compile=not args.no_compile,
         stacked=not args.no_stack,
+        precision=args.precision,
+        compile_model=args.compile_model,
+        encoder=args.encoder,
     )
+    imagenette_train = 9469  # Imagenette ``train`` split size
+    epoch_s = imagenette_train / out["samples_per_sec"]
     print(
         f"  steps timed     : {out['n']}\n"
         f"  mean step (s)   : {out['mean_step_s']:.4f}\n"
         f"  median step (s) : {out['median_step_s']:.4f}\n"
         f"  p10 step (s)    : {out['p10_step_s']:.4f}\n"
-        f"  samples / sec   : {out['samples_per_sec']:.1f}"
+        f"  samples / sec   : {out['samples_per_sec']:.1f}\n"
+        f"  est. epoch (s)  : {epoch_s:.2f}  (Imagenette train, ~{imagenette_train} samples)"
     )
 
 

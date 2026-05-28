@@ -218,21 +218,109 @@ augmentation backends:
   halves get different augmentations), then split back into two views.
   Valid for symmetric SSL only (Barlow Twins, SimCLR, VICReg, NNCLR).
 
-End-to-end step time over 30 timed steps (5 warmup), 8 workers, single
-H200, fp16 mixed, imagenette parquet, `pin_memory=True`,
-`persistent_workers=True`.
+End-to-end step time, 8 workers, single H200, imagenette parquet,
+`pin_memory=True`, `persistent_workers=True`. Each row is 30–50 timed
+steps after 5 warmup. 1-epoch time extrapolated from samples/sec on the
+Imagenette train split (~9469 samples).
 
-| Backend | Mean step (s) | Median (s) | Samples/sec | Speedup |
-|---|---:|---:|---:|---:|
-| CPU torchvision (workers) | 0.498 | 0.292 | 514.3 | 1.00× |
-| GPU two-chain (compile=True) | 0.334 | 0.336 | 766.6 | 1.49× |
-| GPU stacked (compile=True) | 0.284 | 0.284 | 900.1 | 1.75× |
-| **GPU stacked (compile=False)** | **0.281** | **0.283** | **910.1** | **1.77×** |
+### Headline table
 
-`compile=True` is the API default for safety, but on this workload it
-adds first-batch warmup and gives essentially no steady-state gain
-(kornia's per-sample random param sampling graph-breaks, leaving little
-for the compiler to fuse).
+CPU baseline measured at bf16-mixed so the speedup ratio isolates aug
+location rather than mixing in a precision change.
+
+| # | Config | Step (ms) | Samples/sec | Epoch (s) | Speedup |
+|--:|---|---:|---:|---:|---:|
+| 1 | CPU torchvision (bf16-mixed) — baseline   | 749.4 | 341.6 | 27.72 | 1.00× |
+| 2 | + GPU kornia stacked (fp16-mixed)         | 298.1 | 858.8 | 11.03 | 2.51× |
+| 3 | **+ GPU kornia stacked (bf16-mixed)** ⭐  | **293.9** | **870.9** | **10.87** | **2.55×** |
+| 4 | + GPU kornia stacked + FP8 (`transformer-engine`) | 342.5 | 747.5 | 12.67 | 2.19× ↓ |
+| 5 | + FP8 + `torch.compile(model)`            | 363.3 | 704.7 | 13.44 | 2.06× ↓↓ |
+| 6 | + FP8 + bs=512                            | 333.9 | 766.6 | 12.35 | 2.24× ↓ |
+
+**Recommendation for ViT-S/16-class workloads:** `precision="bf16-mixed"`
++ `GPUCompose` + `StackedMultiView` (row 3). Avoid FP8 below ViT-B.
+
+### Why FP8 doesn't help on ViT-S/16
+
+Row 4 (FP8) is **slower in absolute terms** than row 2 (fp16): step
+goes 298 → 342 ms (+15%). Two reasons:
+
+1. **Model is too small.** TransformerEngine accelerates `nn.Linear` GEMMs, but at
+   384-dim with batch 256, the MLP/QKV/out projections don't have enough
+   FLOPs to overcome TransformerEngine's per-`Linear` Python overhead (autocast, scale
+   tracking, kernel dispatch).
+2. **The bottleneck wasn't matmuls.** Augmentation is ~70% of unoverlapped
+   step time (see per-phase breakdown below). Even if FP8 halved fwd+bwd,
+   that's at most ~15% on the total step — and TransformerEngine's overhead eats it.
+
+`torch.compile(model)` + FP8 (row 5) is the worst combo: TransformerEngine's custom
+autograd Functions graph-break heavily, adding tracing overhead with
+no fusion payoff.
+
+FP8 should pay off around **ViT-B/L** and bigger (LLMs, DiT,
+multimodal). Re-evaluate then.
+
+### Caveats on these specific numbers
+
+This sweep ran with `srun --jobid=... --overlap` on a node already
+holding an idle interactive allocation, so the 8 DataLoader workers
+shared CPU cores with another job. CPU baseline (row 1) is extra-sensitive
+to this contention — a solo-node run on the prior (fp16-mixed) baseline
+measured 0.498 s/step / 514 samples/sec, putting GPU stacked at
+**~1.77× over a dedicated CPU baseline**. The **absolute step times** in
+rows 2–6 are still directly comparable to each other since the GPU
+pipeline barely uses CPU.
+
+Note: `bf16-mixed` vs `fp16-mixed` on the CPU pipeline measured within
+~3% of each other (749 ms vs 729 ms here). On H100/H200 both use the
+FP16 tensor cores; only the numerical range differs. The precision
+choice is mostly about training stability, not speed.
+
+### ViT-Large variant (bs=384)
+
+Sanity check on a bigger model where the matmul/everything ratio
+should let FP8 start paying off. Same H200 / shared allocation.
+**bs=384** is the practical ceiling on a single H200 for the
+two-view recipe (effective batch 768) — bs=512 OOMs.
+
+Rows sorted by speedup (fastest first).
+
+| # | Config (ViT-L, bs=384) | Step (ms) | Samples/sec | Epoch (s) | Speedup |
+|--:|---|---:|---:|---:|---:|
+| 1 | **+ GPU kornia stacked + FP8 + compile(model)** ⭐ | **751.0** | **511.3** | **18.52** | **1.53×** |
+| 2 | + GPU kornia stacked + FP8                         |  797.6 | 481.5 | 19.67 | 1.44× |
+| 3 | + GPU kornia stacked (bf16) + compile(model)       |  798.5 | 480.9 | 19.69 | 1.44× |
+| 4 | + GPU kornia stacked (bf16-mixed)                  |  931.7 | 412.2 | 22.97 | 1.23× |
+| 5 | + CPU torchvision (bf16) + compile(model)          |  951.5 | 403.6 | 23.46 | 1.21× |
+| 6 | CPU torchvision (bf16-mixed) — baseline            | 1149.8 | 334.0 | 28.35 | 1.00× |
+
+Three findings vs ViT-S:
+
+1. **GPU augmentation helps but less dramatically** (row 4 vs row 6:
+   1.23×). At ViT-L the CPU side still has plenty of work — 2 views
+   × 384 samples × random augs is a lot for 8 workers — so moving
+   aug to the GPU frees CPU time and vectorises the augs, but the
+   model fwd+bwd is now the dominant cost so the headline ratio is
+   smaller than on ViT-S.
+2. **FP8 wins on top of GPU aug** (row 2 vs row 4: +17%). At ViT-L
+   scale the matmul FLOPs are large enough that TransformerEngine's
+   per-`Linear` Python overhead is dwarfed by the FP8 GEMM speedup.
+   The threshold between "FP8 hurts" (ViT-S, row 4 of the ViT-S
+   table) and "FP8 helps" (ViT-L) sits around ViT-B; worth confirming
+   on a per-model basis.
+3. **`torch.compile(model)` flips from regression on ViT-S to a real
+   win at ViT-L+bs=384** (row 1 vs row 2: +6% on top of FP8;
+   row 3 vs row 4: +17% on top of bf16; row 5 vs row 6: +21% even
+   on the CPU pipeline). At ViT-L+bs=384 the kernels are big enough
+   to amortize the tracing overhead. Pairs well with FP8 here, unlike
+   the ViT-S result where the same combo was the worst row.
+
+### `compile=True` on `GPUCompose`
+
+The default is `compile=True` (for safety/discoverability), but it adds
+first-batch warmup and gives essentially no steady-state gain because
+kornia's per-sample random param sampling graph-breaks. `compile=False`
+is fine and a hair faster — we used it for rows 2–6.
 
 ### Per-phase breakdown (single-stream, no overlap)
 

@@ -138,6 +138,14 @@ class DataModule(pl.LightningDataModule):
                     kwargs[k] = kwargs[k](dataset)
             else:
                 kwargs[k] = v
+        # spt defaults — only applied when the user didn't specify these
+        # in the dict spec. ``pin_memory`` is free if CUDA is around;
+        # ``persistent_workers`` is the obviously-right default whenever
+        # ``num_workers > 0`` (otherwise PyTorch errors). ``prefetch_factor``
+        # is left at PyTorch's default (2).
+        kwargs.setdefault("pin_memory", True)
+        if kwargs.get("num_workers", 0) > 0:
+            kwargs.setdefault("persistent_workers", True)
         return kwargs
 
     def train_dataloader(self):

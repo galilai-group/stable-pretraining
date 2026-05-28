@@ -79,6 +79,7 @@ swanlab = ["swanlab"]
 # Development and documentation tools
 dev = [
     "pytest",
+    "pytest-split",
     "coverage",
     "pytest-cov",
     "codecov",

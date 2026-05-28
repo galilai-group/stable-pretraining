@@ -113,7 +113,7 @@ class TestForwardFunctionsWithBenchmarkTransforms:
     """Test forward functions with actual benchmark transforms."""
 
     def test_simclr_forward_with_benchmark_transforms(self):
-        """Test simclr_forward with transforms from simclr-resnet50.py benchmark."""
+        """Test simclr with transforms from simclr-resnet50.py benchmark."""
         # Create sample
         sample = {"image": _create_dummy_pil_image(), "label": torch.tensor([0])}
 
@@ -130,7 +130,7 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         module.log = Mock()
 
         # Forward pass
-        result = forward_module.simclr_forward(module, batch, "train")
+        result = forward_module.simclr(module, batch, "train")
 
         # Verify
         assert "embedding" in result
@@ -138,7 +138,7 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         assert "label" in result
 
     def test_simclr_forward_validation(self):
-        """Test simclr_forward with validation transform."""
+        """Test simclr with validation transform."""
         sample = {"image": _create_dummy_pil_image(), "label": torch.tensor(0)}
 
         # Apply val transform
@@ -151,14 +151,14 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         module.training = False
 
         # Forward pass
-        result = forward_module.simclr_forward(module, batch, "val")
+        result = forward_module.simclr(module, batch, "val")
 
         assert "embedding" in result
         assert "label" in result
         assert "loss" not in result
 
     def test_byol_forward_with_benchmark_transforms(self):
-        """Test byol_forward with SimCLR-style transforms (2 views)."""
+        """Test byol with SimCLR-style transforms (2 views)."""
         sample = {"image": _create_dummy_pil_image(), "label": torch.tensor([0])}
 
         transform = _simclr_transforms()
@@ -177,13 +177,13 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         module.training = True
         module.log = Mock()
 
-        result = forward_module.byol_forward(module, batch, "train")
+        result = forward_module.byol(module, batch, "train")
 
         assert "embedding" in result
         assert "loss" in result
 
     def test_vicreg_forward_with_benchmark_transforms(self):
-        """Test vicreg_forward with benchmark transforms."""
+        """Test vicreg with benchmark transforms."""
         sample = {"image": _create_dummy_pil_image()}
 
         transform = _simclr_transforms()
@@ -196,13 +196,13 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         module.training = True
         module.log = Mock()
 
-        result = forward_module.vicreg_forward(module, batch, "train")
+        result = forward_module.vicreg(module, batch, "train")
 
         assert "embedding" in result
         assert "loss" in result
 
     def test_barlow_twins_forward_with_benchmark_transforms(self):
-        """Test barlow_twins_forward with benchmark transforms."""
+        """Test barlow_twins with benchmark transforms."""
         sample = {"image": _create_dummy_pil_image()}
 
         transform = _simclr_transforms()
@@ -215,13 +215,13 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         module.training = True
         module.log = Mock()
 
-        result = forward_module.barlow_twins_forward(module, batch, "train")
+        result = forward_module.barlow_twins(module, batch, "train")
 
         assert "embedding" in result
         assert "loss" in result
 
     def test_swav_forward_with_benchmark_transforms(self):
-        """Test swav_forward with benchmark transforms."""
+        """Test swav with benchmark transforms."""
         sample = {"image": _create_dummy_pil_image()}
 
         transform = _simclr_transforms()
@@ -236,13 +236,13 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         module.log = Mock()
         module.use_queue = False
 
-        result = forward_module.swav_forward(module, batch, "train")
+        result = forward_module.swav(module, batch, "train")
 
         assert "embedding" in result
         assert "loss" in result
 
     def test_nnclr_forward_with_benchmark_transforms(self):
-        """Test nnclr_forward with benchmark transforms."""
+        """Test nnclr with benchmark transforms."""
         sample = {"image": _create_dummy_pil_image()}
 
         transform = _simclr_transforms()
@@ -267,13 +267,13 @@ class TestForwardFunctionsWithBenchmarkTransforms:
             "nnclr_support_set": Mock(get=Mock(return_value=torch.empty(0, 256)))
         }
 
-        result = forward_module.nnclr_forward(module, batch, "train")
+        result = forward_module.nnclr(module, batch, "train")
 
         assert "embedding" in result
         assert "loss" in result
 
     def test_dino_forward_with_benchmark_transforms(self):
-        """Test dino_forward with transforms from dino-resnet18.py benchmark."""
+        """Test dino with transforms from dino-resnet18.py benchmark."""
         sample = {"image": _create_dummy_pil_image()}
 
         # Apply DINO multi-crop transform
@@ -331,14 +331,14 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         module.warmup_temperature_teacher = 0.04
 
         # Forward pass
-        result = forward_module.dino_forward(module, batch, "train")
+        result = forward_module.dino(module, batch, "train")
 
         # Verify
         assert "embedding" in result
         assert "loss" in result
 
     def test_dino_forward_validation(self):
-        """Test dino_forward with validation transform."""
+        """Test dino with validation transform."""
         sample = {"image": _create_dummy_pil_image()}
 
         transform = _val_transform()
@@ -363,7 +363,7 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         module.backbone.forward_teacher = mock_vit_forward
         module.training = False
 
-        result = forward_module.dino_forward(module, batch, "val")
+        result = forward_module.dino(module, batch, "val")
 
         assert "embedding" in result
         assert "loss" not in result
@@ -382,7 +382,7 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         }
 
         with pytest.raises(ValueError):
-            forward_module.dino_forward(module, batch_with_dict_views, "train")
+            forward_module.dino(module, batch_with_dict_views, "train")
 
     def test_dino_forward_raises_on_list_views(self):
         """Test that DINO raises error when given list of views (implicit assumption removed)."""
@@ -400,7 +400,7 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         }
 
         with pytest.raises(ValueError):
-            forward_module.dino_forward(module, batch_with_list_views, "train")
+            forward_module.dino(module, batch_with_list_views, "train")
 
     def test_dinov2_forward_raises_on_list_views(self):
         """Test that DINOv2 raises error when given list of views."""
@@ -415,10 +415,10 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         }
 
         with pytest.raises(ValueError):
-            forward_module.dinov2_forward(module, batch_with_list_views, "train")
+            forward_module.dinov2(module, batch_with_list_views, "train")
 
     def test_supervised_forward(self):
-        """Test supervised_forward with validation transform."""
+        """Test supervised with validation transform."""
         sample = {"image": _create_dummy_pil_image(), "label": torch.tensor(0)}
 
         transform = _val_transform()
@@ -434,7 +434,7 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         module.supervised_loss = nn.CrossEntropyLoss()
         module.log = Mock()
 
-        result = forward_module.supervised_forward(module, batch, "train")
+        result = forward_module.supervised(module, batch, "train")
 
         assert "embedding" in result
         assert "logits" in result
