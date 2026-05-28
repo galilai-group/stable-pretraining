@@ -33,6 +33,55 @@ def _ensure_named_callable(fn):
     return fn if hasattr(fn, "__name__") else _NamedForward(fn)
 
 
+def _gpu_transform_from_current_dataset(trainer, stage, dataloader_idx):
+    """Return ``dataset.gpu_transform`` for the active stage's DataLoader, or None.
+
+    Lightning exposes the live dataloaders as ``trainer.train_dataloader``
+    (singular) for training and ``trainer.val_dataloaders`` / similar
+    (potentially a list) for the other stages. We peek into them, unwrap
+    common dataset wrappers (``Subset``, ``ConcatDataset``), and read the
+    ``gpu_transform`` attribute if present.
+
+    Best-effort: any exception during lookup yields None, so the resolver
+    falls through to the DataModule-level transform.
+    """
+    try:
+        loader = None
+        if stage == "train":
+            loader = trainer.train_dataloader
+        elif stage in ("val", "test", "predict"):
+            attr = {
+                "val": "val_dataloaders",
+                "test": "test_dataloaders",
+                "predict": "predict_dataloaders",
+            }[stage]
+            loaders = getattr(trainer, attr, None)
+            if isinstance(loaders, (list, tuple)):
+                if 0 <= dataloader_idx < len(loaders):
+                    loader = loaders[dataloader_idx]
+            else:
+                loader = loaders
+        if loader is None:
+            return None
+        dataset = getattr(loader, "dataset", None)
+        while dataset is not None:
+            if hasattr(dataset, "gpu_transform") and dataset.gpu_transform is not None:
+                return dataset.gpu_transform
+            # Walk through standard wrappers (torch ``Subset``,
+            # ``ConcatDataset``) and our own attribute-proxying ``Subset``.
+            inner = getattr(dataset, "dataset", None) or getattr(
+                dataset, "datasets", None
+            )
+            if inner is dataset or inner is None:
+                break
+            if isinstance(inner, (list, tuple)):
+                inner = inner[0]
+            dataset = inner
+    except Exception:
+        return None
+    return None
+
+
 @catch_errors_class()
 class Module(pl.LightningModule):
     """PyTorch Lightning module using manual optimization with multi-optimizer support.
@@ -264,6 +313,82 @@ class Module(pl.LightningModule):
         """
         pass
 
+    def on_after_batch_transfer(self, batch, dataloader_idx):
+        """Apply the active GPU-side batch transform after Lightning moves the batch.
+
+        Resolution order (first match wins):
+
+        1. ``dataset.gpu_transform`` — set on the dataset behind the active
+           DataLoader. **Recommended:** pair augmentation with the dataset
+           so train/val/test/predict each carry their own spec naturally.
+        2. ``self.trainer.datamodule.gpu_transform`` — set on the DataModule.
+           May be a callable or a ``{"train": ..., "val": ...}`` dict.
+
+        Setting ``self.gpu_transform`` on the Module is **not** supported
+        and is rejected at ``on_train_start``; attach it to the dataset
+        (or the DataModule for third-party datasets) instead.
+
+        Lazy device placement: when the resolved transform is an
+        ``nn.Module`` (e.g. a :class:`GPUCompose`), it is moved to
+        ``self.device`` on first use. Buffers (e.g. ``GPUNormalize``'s
+        mean/std) therefore live on the correct GPU under DDP without
+        manual wiring.
+
+        When nothing resolves, this is a zero-cost passthrough.
+
+        Args:
+            batch: Batch dict already moved to ``self.device`` by Lightning.
+            dataloader_idx: Index of the dataloader that produced this batch.
+
+        Returns:
+            The (possibly augmented) batch dict.
+        """
+        gpu_transform = self._resolve_gpu_transform(dataloader_idx)
+        if gpu_transform is None:
+            return batch
+        return gpu_transform(batch)
+
+    def _resolve_gpu_transform(self, dataloader_idx: int = 0):
+        """Look up the active GPU transform from the dataset, then the DataModule."""
+        # Access ``_trainer`` directly: the ``trainer`` property raises
+        # when the Module is not attached, which is fine for direct
+        # calls outside ``Trainer.fit`` (e.g. unit tests).
+        trainer = getattr(self, "_trainer", None)
+        if trainer is None:
+            return None
+        stage = self._current_stage(trainer)
+        # 1. Dataset-level — preferred placement.
+        gt = _gpu_transform_from_current_dataset(trainer, stage, dataloader_idx)
+        # 2. DataModule-level fallback (callable or stage-keyed dict).
+        if gt is None:
+            dm = getattr(trainer, "datamodule", None)
+            if dm is not None:
+                gt = getattr(dm, "gpu_transform", None)
+                if isinstance(gt, dict):
+                    gt = gt.get(stage)
+        if gt is None:
+            return None
+        # Lazily move to the model's device so users don't have to .cuda() it.
+        if isinstance(gt, torch.nn.Module):
+            ref = next(gt.parameters(), None) or next(gt.buffers(), None)
+            if ref is None or ref.device != self.device:
+                gt.to(self.device)
+        return gt
+
+    @staticmethod
+    def _current_stage(trainer):
+        if trainer is None:
+            return None
+        if trainer.training:
+            return "train"
+        if trainer.validating or trainer.sanity_checking:
+            return "val"
+        if trainer.testing:
+            return "test"
+        if trainer.predicting:
+            return "predict"
+        return None
+
     def training_step(self, batch, batch_idx):
         """Run one training step with manual optimization across all configured optimizers.
 
@@ -373,6 +498,17 @@ class Module(pl.LightningModule):
         class, clip value, and clip algorithm so misconfigured setups are caught early
         rather than silently misbehaving mid-run.
         """
+        # Refuse Module-level ``gpu_transform``. Two-ways-to-do-one-thing
+        # is a footgun: if a user sets it here AND on the dataset, the
+        # dataset's silently loses. Make it loud.
+        if getattr(self, "gpu_transform", None) is not None:
+            raise RuntimeError(
+                "Setting `gpu_transform` on the Module is not supported. "
+                "Attach it to the dataset (recommended: pass "
+                "`gpu_transform=...` to the dataset constructor) or to the "
+                "DataModule via `gpu_transform=...` / `gpu_transform={'train': ..., 'val': ...}`."
+            )
+
         log_header("Optimizers")
         optimizers = self.optimizers()
         if not isinstance(optimizers, (list, tuple)):

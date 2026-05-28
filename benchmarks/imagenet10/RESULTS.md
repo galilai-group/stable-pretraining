@@ -122,10 +122,182 @@ scans all CSV logs in the spt cache and prints the same table.
 
 ```
 benchmarks/imagenet10/
-├── two_view.py          # shared 2-view dataloader + forward dispatcher
-├── masked.py            # shared single-view masked helper
-├── multicrop.py         # shared multi-crop (DINO/iBOT/...) helper
-├── collect_results.py   # aggregate CSV logs into the table
-├── RESULTS.md           # this file
-└── <method>-vit-small.py  # per-method config (≈40 LOC each)
+├── two_view.py              # shared 2-view dataloader + forward dispatcher (CPU torchvision aug)
+├── two_view_gpu.py          # GPU-augmented variant (kornia + torch.compile in on_after_batch_transfer)
+├── benchmark_gpu_vs_cpu.py  # head-to-head throughput benchmark (CPU vs GPU pipeline)
+├── masked.py                # shared single-view masked helper
+├── multicrop.py             # shared multi-crop (DINO/iBOT/...) helper
+├── collect_results.py       # aggregate CSV logs into the table
+├── RESULTS.md               # this file
+└── <method>-vit-small.py    # per-method config (≈40 LOC each)
+```
+
+## Migrating CPU torchvision → GPU stacked
+
+Augmentation pairs with the dataset: pass ``gpu_transform=`` to the
+dataset constructor and ``Module.on_after_batch_transfer`` discovers it
+through the active DataLoader. Each split (train / val / test) carries
+its own spec naturally — no per-stage routing dict needed.
+
+```python
+import stable_pretraining as spt
+from stable_pretraining.data import transforms, gpu_transforms as gt
+from torch.utils.data import DataLoader
+
+# Minimal CPU side: decode + resize. rgb=True folds in RGB().
+cpu_train_t = transforms.Compose(
+    transforms.Resize((256, 256)),
+    transforms.ToImage(rgb=True, scale=True),
+)
+cpu_val_t = transforms.Compose(
+    transforms.Resize((256, 256)),
+    transforms.CenterCrop((224, 224)),
+    transforms.ToImage(rgb=True, **spt.data.static.ImageNet),
+)
+
+# GPU side: same six aug ops, batched. StackedMultiView fans out 2 views.
+train_aug = gt.StackedMultiView(
+    gt.GPUCompose([
+        gt.GPURandomResizedCrop(size=224, scale=(0.08, 1.0)),
+        gt.GPURandomHorizontalFlip(p=0.5),
+        gt.GPUColorJitter(0.4, 0.4, 0.2, 0.1, p=0.8),
+        gt.GPURandomGrayscale(p=0.2),
+        gt.GPUGaussianBlur(kernel_size=23, p=0.5),
+        gt.GPUNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]),
+    n_views=2,
+)
+
+# Each dataset owns its own GPU aug — train and val differ for free.
+train_ds = spt.data.HFDataset(
+    "frgfm/imagenette", split="train",
+    transform=cpu_train_t, gpu_transform=train_aug,
+)
+val_ds = spt.data.HFDataset(
+    "frgfm/imagenette", split="validation",
+    transform=cpu_val_t,  # no gpu_transform — val is already normalized on CPU
+)
+
+dm = spt.data.DataModule(
+    train=DataLoader(train_ds, batch_size=256, num_workers=8, pin_memory=True),
+    val=DataLoader(val_ds,   batch_size=256, num_workers=8, pin_memory=True),
+)
+module = BarlowTwins(...)              # unchanged
+trainer.fit(module, dm)                # unchanged
+```
+
+Resolution order in ``Module.on_after_batch_transfer`` (first match wins):
+
+1. ``self.gpu_transform`` set on the Module (override).
+2. ``dataset.gpu_transform`` — the recommended placement.
+3. ``self.trainer.datamodule.gpu_transform`` — callable, or
+   ``{"train": ..., "val": ...}`` for stage routing if you can't change
+   the dataset constructor (e.g. wrapping a third-party dataset).
+
+The resolved transform is auto-moved to ``self.device`` on first use, so
+DDP just works. ``gpu_transform`` is dropped during dataset pickling, so
+DataLoader workers don't pay any serialisation cost — only the main
+process holds the (potentially large) kornia chain.
+
+Asymmetric SSL (BYOL, DINO student/teacher, …): use
+``gt.MultiView([chain1, chain2, ...])`` instead of ``StackedMultiView``
+— same output schema, one chain call per view.
+
+## GPU augmentation throughput (BarlowTwins ViT-S/16, batch 256, H200)
+
+Throughput (samples/sec) for the two-view BarlowTwins recipe with three
+augmentation backends:
+
+- **CPU torchvision** (`two_view.py`): full augmentation in DataLoader workers.
+- **GPU two-chain** (`two_view_gpu.py`, `--no-stack`): minimal CPU prep
+  (resize + ToImage); each step runs the kornia augmentation chain
+  *twice* (once per view) in `Module.on_after_batch_transfer`.
+- **GPU stacked** (`two_view_gpu.py`, default): source batch is
+  concatenated with itself into a `(2B, ...)` tensor, run through *one*
+  chain (kornia samples independent random params per sample, so the two
+  halves get different augmentations), then split back into two views.
+  Valid for symmetric SSL only (Barlow Twins, SimCLR, VICReg, NNCLR).
+
+End-to-end step time over 30 timed steps (5 warmup), 8 workers, single
+H200, fp16 mixed, imagenette parquet, `pin_memory=True`,
+`persistent_workers=True`.
+
+| Backend | Mean step (s) | Median (s) | Samples/sec | Speedup |
+|---|---:|---:|---:|---:|
+| CPU torchvision (workers) | 0.498 | 0.292 | 514.3 | 1.00× |
+| GPU two-chain (compile=True) | 0.334 | 0.336 | 766.6 | 1.49× |
+| GPU stacked (compile=True) | 0.284 | 0.284 | 900.1 | 1.75× |
+| **GPU stacked (compile=False)** | **0.281** | **0.283** | **910.1** | **1.77×** |
+
+`compile=True` is the API default for safety, but on this workload it
+adds first-batch warmup and gives essentially no steady-state gain
+(kornia's per-sample random param sampling graph-breaks, leaving little
+for the compiler to fuse).
+
+### Per-phase breakdown (single-stream, no overlap)
+
+Synchronous timing of each phase via `torch.cuda.Event` pairs
+(`profile_phases.py`). The `TOTAL` row is what a fully serialised
+timeline would cost; real overlapped step time (above) is meaningfully
+lower thanks to producer/consumer overlap.
+
+| Phase | CPU mode (ms) | GPU two-chain (ms) | GPU stacked (ms) |
+|---|---:|---:|---:|
+| data_load | 252.7 (50.3%) | 0.17 | 0.20 |
+| h2d       | 145.0 (28.9%) | 3.73 | 3.74 |
+| aug       | 0.0 | 226.9 (69.1%) | 233.6 (70.2%) |
+| fwd       | 28.9 (5.7%)   | 27.5 | 26.7 |
+| bwd       | 75.3 (15.0%)  | 70.0 | 68.7 |
+| **TOTAL** | **501.9** | **328.3** | **332.9** |
+
+(`profile_phases.py` syncs between phases for accurate per-phase
+costs; this is *not* steady-state step time. The real step time
+benefits from H2D overlap and inter-step prefetch.)
+
+### Per-op cost in the GPU chain (B=256, 224×224 outputs, H200)
+
+| Op | Mean (ms) |
+|---|---:|
+| GPURandomResizedCrop(224) | **18.32** |
+| GPUGaussianBlur(k=23) | **17.05** |
+| GPUGaussianBlur(k=5) | 15.98 |
+| GPUColorJitter | 4.84 |
+| GPURandomSolarize | 1.05 |
+| GPURandomHorizontalFlip | 0.64 |
+| GPURandomGrayscale | 0.59 |
+| GPUNormalize | 0.25 |
+
+Two ops dominate: `RandomResizedCrop` (grid_sample) and `GaussianBlur`
+(kornia uses an FFT-like path so the cost is roughly flat in kernel size
+— a `k=5` blur is only ~7% cheaper than `k=23`).
+
+### Where to push next
+
+Augmentation is still ~70% of unoverlapped time. Remaining levers:
+
+1. **Drop or downgrade GaussianBlur** — costs 17 ms regardless of kernel
+   size. Lowering `p` from 0.5 to 0.1 saves on expectation, dropping it
+   entirely saves the full 17 ms.
+2. **Lower aug cost per sample, not per op** — for symmetric SSL, the
+   stacked path already shares the crop computation between views;
+   further wins need cheaper crops (e.g. uniform random crop without
+   the per-sample scale resampling that grid_sample needs).
+3. **Multi-crop / asymmetric / smaller-model regimes** are where this
+   stack pays out the most — the ratio of aug cost to model cost grows.
+4. **NVIDIA DALI** if you want FFCV-class numbers without rewriting the
+   file format: GPU JPEG decode + GPU augmentation graph, but heavy dep
+   and less flexible for unusual data shapes.
+
+### Reproducing
+
+```bash
+# Full end-to-end throughput
+srun --gpus=1 --cpus-per-task=8 python benchmarks/imagenet10/benchmark_gpu_vs_cpu.py --mode cpu --num-workers 8 --steps 30
+srun --gpus=1 --cpus-per-task=8 python benchmarks/imagenet10/benchmark_gpu_vs_cpu.py --mode gpu --num-workers 8 --steps 30 --no-compile
+
+# Per-phase profile
+srun --gpus=1 python benchmarks/imagenet10/profile_phases.py --mode gpu --steps 30
+
+# Per-op cost
+srun --gpus=1 python benchmarks/imagenet10/profile_ops.py --batch-size 256
 ```

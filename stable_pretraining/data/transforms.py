@@ -84,7 +84,18 @@ def to_image(
 
 
 class ToImage(Transform):
-    """Convert input to image tensor with optional normalization."""
+    """Convert input to image tensor with optional RGB conversion and normalization.
+
+    Args:
+        dtype: Target tensor dtype (default ``torch.float32``).
+        scale: If ``True``, scale uint8 inputs to ``[0, 1]`` after dtype cast.
+        mean: Per-channel mean for optional normalization. Pass with ``std``.
+        std:  Per-channel std for optional normalization. Pass with ``mean``.
+        rgb:  If ``True``, ensure 3-channel RGB output (grayscale/RGBA inputs
+            get converted). Default ``False`` — input is left as-is.
+        source: Source key in the sample dict (default ``"image"``).
+        target: Target key in the sample dict (default ``"image"``).
+    """
 
     def __init__(
         self,
@@ -92,11 +103,15 @@ class ToImage(Transform):
         scale=True,
         mean=None,
         std=None,
+        rgb: bool = False,
         source: str = "image",
         target: str = "image",
     ):
         super().__init__()
-        t = [to_image, v2.ToDtype(dtype, scale=scale)]
+        t = [to_image]
+        if rgb:
+            t.append(v2.RGB())
+        t.append(v2.ToDtype(dtype, scale=scale))
         if mean is not None and std is not None:
             t.append(v2.Normalize(mean=mean, std=std))
         self.t = v2.Compose(t)

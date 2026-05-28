@@ -98,6 +98,61 @@ train_dataset = spt.data.FromTorchDataset(
 datamodule = spt.data.DataModule(train=train_dataloader, val=val_dataloader)
 ```
 
+#### GPU-side batched augmentation (`gpu_transform`)
+
+Moving SSL augmentation off the DataLoader workers and onto the GPU
+(via [kornia](https://kornia.readthedocs.io/) inside Lightning's
+`on_after_batch_transfer` hook) frees CPU workers to do more I/O in
+parallel and vectorises augmentation across the batch. **Measured ~1.77×
+end-to-end throughput on BarlowTwins ViT-S/16 / Imagenette / H200**
+(514 → 910 samples/sec, see [`benchmarks/imagenet10/RESULTS.md`](benchmarks/imagenet10/RESULTS.md)).
+
+Pass `gpu_transform=` to the dataset constructor — the module finds it
+through the active DataLoader automatically:
+
+```python
+from stable_pretraining.data import transforms, gpu_transforms as gt
+
+# Minimal CPU prep — random aug moves to GPU. rgb=True folds in RGB().
+cpu_transform = transforms.Compose(
+    transforms.Resize((256, 256)),
+    transforms.ToImage(rgb=True, scale=True),
+)
+
+# GPU side: same six aug ops, batched. StackedMultiView fans out N views
+# from one source tensor (symmetric SSL: Barlow / SimCLR / VICReg / NNCLR).
+# For asymmetric SSL (BYOL, DINO student/teacher) use gt.MultiView([...]).
+train_aug = gt.StackedMultiView(
+    gt.GPUCompose([
+        gt.GPURandomResizedCrop(size=224, scale=(0.08, 1.0)),
+        gt.GPURandomHorizontalFlip(p=0.5),
+        gt.GPUColorJitter(0.4, 0.4, 0.2, 0.1, p=0.8),
+        gt.GPURandomGrayscale(p=0.2),
+        gt.GPUGaussianBlur(kernel_size=23, p=0.5),
+        gt.GPUNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]),
+    n_views=2,
+)
+
+train_ds = spt.data.HFDataset(
+    "frgfm/imagenette", split="train",
+    transform=cpu_transform,
+    gpu_transform=train_aug,   # ← attached to the dataset
+)
+# val_ds: no gpu_transform — validation is already normalized on CPU.
+```
+
+Resolution order in `Module.on_after_batch_transfer`:
+
+1. `dataset.gpu_transform` (preferred — per-split spec lives with the dataset).
+2. `datamodule.gpu_transform` — callable, or `{"train": ..., "val": ...}` dict
+   (use for third-party datasets you can't modify).
+
+Setting `gpu_transform` on the Module is rejected at `on_train_start`
+(two routes to the same thing is a footgun). The resolved transform is
+auto-moved to `self.device` on first use (DDP-safe), and dropped during
+dataset pickling so DataLoader workers never serialise the nn.Module.
+
 <a id="module"></a>
 ### 2 - Module
 The key differentiator from PyTorch Lightning - **you only define the `forward` function**, not `training_step`! This unified approach computes losses and generates useful quantities that can be retrieved for monitoring and analysis:
