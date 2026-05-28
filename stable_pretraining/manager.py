@@ -1486,6 +1486,35 @@ class Manager(submitit.helpers.Checkpointable):
                 break
         return config
 
+    def _maybe_skip_sanity_on_requeue(self) -> None:
+        """Disable Lightning's validation sanity-check on SLURM requeue.
+
+        Lightning runs ``num_sanity_val_steps`` validation batches at the
+        start of every ``trainer.fit()`` call to surface val-pipeline
+        errors early. On a SLURM preempt-resume that's redundant: the
+        original launch already validated the pipeline, and re-running
+        the sanity check wastes time + pollutes the resume logs.
+
+        We detect requeue via :func:`_is_slurm_requeue` (which reads
+        ``SLURM_RESTART_COUNT >= 1`` — set only on actual SLURM-driven
+        restarts, never on interactive ``srun --pty`` reruns). When
+        detected, we force ``trainer.num_sanity_val_steps = 0`` for
+        this fit call. Users who specifically want sanity on resume
+        can set the attribute back on the trainer between
+        ``Manager(...)`` construction and ``Manager()`` invocation.
+        """
+        if not _is_slurm_requeue():
+            return
+        current = getattr(self._trainer, "num_sanity_val_steps", 0)
+        if current == 0:
+            return  # already disabled, nothing to do
+        logging.info(
+            f"  SLURM requeue detected (SLURM_RESTART_COUNT>=1); "
+            f"forcing num_sanity_val_steps {current} -> 0 for this fit. "
+            "Sanity check already ran in the original launch."
+        )
+        self._trainer.num_sanity_val_steps = 0
+
     def _inject_hydra_hparams(self) -> None:
         """Inject the full flattened Hydra config into the module's hparams.
 
@@ -1736,6 +1765,15 @@ class Manager(submitit.helpers.Checkpointable):
         # so Lightning's _log_hyperparams sends it to ALL loggers automatically
         # (wandb, CSV, TensorBoard, registry, etc.)
         self._inject_hydra_hparams()
+
+        # On SLURM requeue (preempt-resume), Lightning would otherwise
+        # re-run its validation sanity check at the start of fit. That's
+        # wasteful and pollutes the logs — sanity already ran in the
+        # original launch, and on resume we know the val pipeline works.
+        # Force ``num_sanity_val_steps=0`` for the duration of this fit
+        # call; users who explicitly want it can set the attribute back
+        # on the trainer after Manager construction.
+        self._maybe_skip_sanity_on_requeue()
 
         log_header("TrainerFit")
         logging.info(f"  ckpt_path:     {ckpt_path}")
