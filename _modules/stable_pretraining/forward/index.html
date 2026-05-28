@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.forward &#8212; stable-pretraining 0.1.dev1+g4ba07974d documentation</title>
+    <title>stable_pretraining.forward &#8212; stable-pretraining 0.1.dev1+g17bfd4fcf documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=82d18d58"></script>
+    <script src="../../../_static/documentation_options.js?v=48088403"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g4ba07974d documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g17bfd4fcf documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -385,15 +385,15 @@
 <span class="sd">logic for each method and can be specified in YAML configs or Python code.</span>
 
 <span class="sd">Available forward functions:</span>
-<span class="sd">    - ``supervised_forward`` — standard supervised training</span>
-<span class="sd">    - ``simclr_forward`` — SimCLR contrastive learning</span>
-<span class="sd">    - ``byol_forward`` — BYOL momentum self-distillation</span>
-<span class="sd">    - ``vicreg_forward`` — VICReg variance-invariance-covariance regularization</span>
-<span class="sd">    - ``barlow_twins_forward`` — Barlow Twins cross-correlation alignment</span>
-<span class="sd">    - ``swav_forward`` — SwAV online clustering</span>
-<span class="sd">    - ``nnclr_forward`` — NNCLR nearest-neighbor contrastive learning</span>
-<span class="sd">    - ``dino_forward`` — DINO self-distillation with multi-crop</span>
-<span class="sd">    - ``dinov2_forward`` — DINOv2 with iBOT masked patch prediction</span>
+<span class="sd">    - ``supervised`` — standard supervised training</span>
+<span class="sd">    - ``simclr`` — SimCLR contrastive learning</span>
+<span class="sd">    - ``byol`` — BYOL momentum self-distillation</span>
+<span class="sd">    - ``vicreg`` — VICReg variance-invariance-covariance regularization</span>
+<span class="sd">    - ``barlow_twins`` — Barlow Twins cross-correlation alignment</span>
+<span class="sd">    - ``swav`` — SwAV online clustering</span>
+<span class="sd">    - ``nnclr`` — NNCLR nearest-neighbor contrastive learning</span>
+<span class="sd">    - ``dino`` — DINO self-distillation with multi-crop</span>
+<span class="sd">    - ``dinov2`` — DINOv2 with iBOT masked patch prediction</span>
 
 <span class="sd">These are the lightweight composable form of each method. For full</span>
 <span class="sd">``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,</span>
@@ -405,16 +405,16 @@
 
 <span class="sd">        module:</span>
 <span class="sd">          _target_: stable_pretraining.Module</span>
-<span class="sd">          forward: stable_pretraining.forward.simclr_forward</span>
+<span class="sd">          forward: stable_pretraining.forward.simclr</span>
 <span class="sd">          backbone: ...</span>
 <span class="sd">          projector: ...</span>
 
 <span class="sd">    Using in Python code::</span>
 
 <span class="sd">        from stable_pretraining import Module</span>
-<span class="sd">        from stable_pretraining.forward import simclr_forward</span>
+<span class="sd">        from stable_pretraining.forward import simclr</span>
 
-<span class="sd">        module = Module(forward=simclr_forward, backbone=backbone, projector=projector)</span>
+<span class="sd">        module = Module(forward=simclr, backbone=backbone, projector=projector)</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
@@ -494,11 +494,9 @@
     <span class="k">return</span> <span class="n">global_views</span><span class="p">,</span> <span class="n">local_views</span><span class="p">,</span> <span class="n">all_views</span>
 
 
-<div class="viewcode-block" id="supervised_forward">
-<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.supervised_forward">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">supervised_forward</span><span class="p">(</span>
-    <span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<div class="viewcode-block" id="supervised">
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.supervised">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">supervised</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for standard supervised training.</span>
 
 <span class="sd">    This function implements traditional supervised learning with labels,</span>
@@ -529,11 +527,11 @@
 
 <span class="sd">            import torch</span>
 <span class="sd">            import stable_pretraining as spt</span>
-<span class="sd">            from stable_pretraining.forward import supervised_forward</span>
+<span class="sd">            from stable_pretraining.forward import supervised</span>
 
 <span class="sd">            backbone = spt.backbone.from_torchvision(&quot;resnet50&quot;)</span>
 <span class="sd">            module = spt.Module(</span>
-<span class="sd">                forward=supervised_forward,</span>
+<span class="sd">                forward=supervised,</span>
 <span class="sd">                backbone=backbone,</span>
 <span class="sd">                classifier=torch.nn.Linear(2048, 10),</span>
 <span class="sd">                supervised_loss=torch.nn.CrossEntropyLoss(),</span>
@@ -547,7 +545,7 @@
     <span class="k">if</span> <span class="s2">&quot;label&quot;</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;supervised_loss&quot;</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;supervised_forward requires &#39;supervised_loss&#39; to be provided (e.g., nn.CrossEntropyLoss()). &quot;</span>
+                <span class="s2">&quot;supervised requires &#39;supervised_loss&#39; to be provided (e.g., nn.CrossEntropyLoss()). &quot;</span>
                 <span class="s2">&quot;Pass it when constructing the Module: Module(..., supervised_loss=nn.CrossEntropyLoss(), ...)&quot;</span>
             <span class="p">)</span>
         <span class="n">out</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">supervised_loss</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s2">&quot;logits&quot;</span><span class="p">],</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">])</span>
@@ -564,9 +562,9 @@
 
 
 
-<div class="viewcode-block" id="simclr_forward">
-<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.simclr_forward">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">simclr_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<div class="viewcode-block" id="simclr">
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.simclr">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">simclr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for SimCLR (Simple Contrastive Learning of Representations).</span>
 
 <span class="sd">    SimCLR learns representations by maximizing agreement between differently</span>
@@ -595,11 +593,11 @@
 
 <span class="sd">            import torch</span>
 <span class="sd">            import stable_pretraining as spt</span>
-<span class="sd">            from stable_pretraining.forward import simclr_forward</span>
+<span class="sd">            from stable_pretraining.forward import simclr</span>
 
 <span class="sd">            backbone = spt.backbone.from_torchvision(&quot;resnet50&quot;)</span>
 <span class="sd">            module = spt.Module(</span>
-<span class="sd">                forward=simclr_forward,</span>
+<span class="sd">                forward=simclr,</span>
 <span class="sd">                backbone=backbone,</span>
 <span class="sd">                projector=torch.nn.Linear(2048, 128),</span>
 <span class="sd">                simclr_loss=spt.losses.NTXEntLoss(temperature=0.5),</span>
@@ -644,9 +642,9 @@
 
 
 
-<div class="viewcode-block" id="byol_forward">
-<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.byol_forward">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">byol_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<div class="viewcode-block" id="byol">
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.byol">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">byol</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for BYOL (Bootstrap Your Own Latent).</span>
 
 <span class="sd">    BYOL learns representations without negative pairs by using a momentum-based</span>
@@ -676,14 +674,14 @@
 
 <span class="sd">            import torch</span>
 <span class="sd">            import stable_pretraining as spt</span>
-<span class="sd">            from stable_pretraining.forward import byol_forward</span>
+<span class="sd">            from stable_pretraining.forward import byol</span>
 
 <span class="sd">            backbone = spt.TeacherStudentWrapper(</span>
 <span class="sd">                spt.backbone.from_torchvision(&quot;resnet50&quot;)</span>
 <span class="sd">            )</span>
 <span class="sd">            projector = spt.TeacherStudentWrapper(torch.nn.Linear(2048, 256))</span>
 <span class="sd">            module = spt.Module(</span>
-<span class="sd">                forward=byol_forward,</span>
+<span class="sd">                forward=byol,</span>
 <span class="sd">                backbone=backbone,</span>
 <span class="sd">                projector=projector,</span>
 <span class="sd">                predictor=torch.nn.Linear(256, 256),</span>
@@ -731,7 +729,7 @@
 
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;byol_loss&quot;</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;byol_forward requires &#39;byol_loss&#39; to be provided (e.g., spt.losses.BYOLLoss()). &quot;</span>
+                <span class="s2">&quot;byol requires &#39;byol_loss&#39; to be provided (e.g., spt.losses.BYOLLoss()). &quot;</span>
                 <span class="s2">&quot;Pass it when constructing the Module: Module(..., byol_loss=spt.losses.BYOLLoss(), ...)&quot;</span>
             <span class="p">)</span>
 
@@ -768,9 +766,9 @@
 
 
 
-<div class="viewcode-block" id="vicreg_forward">
-<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.vicreg_forward">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">vicreg_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<div class="viewcode-block" id="vicreg">
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.vicreg">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">vicreg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for VICReg (Variance-Invariance-Covariance Regularization).</span>
 
 <span class="sd">    VICReg learns representations using three criteria: variance (maintaining</span>
@@ -800,11 +798,11 @@
 
 <span class="sd">            import torch</span>
 <span class="sd">            import stable_pretraining as spt</span>
-<span class="sd">            from stable_pretraining.forward import vicreg_forward</span>
+<span class="sd">            from stable_pretraining.forward import vicreg</span>
 
 <span class="sd">            backbone = spt.backbone.from_torchvision(&quot;resnet50&quot;)</span>
 <span class="sd">            module = spt.Module(</span>
-<span class="sd">                forward=vicreg_forward,</span>
+<span class="sd">                forward=vicreg,</span>
 <span class="sd">                backbone=backbone,</span>
 <span class="sd">                projector=torch.nn.Linear(2048, 2048),</span>
 <span class="sd">                vicreg_loss=spt.losses.VICRegLoss(),</span>
@@ -849,11 +847,9 @@
 
 
 
-<div class="viewcode-block" id="barlow_twins_forward">
-<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.barlow_twins_forward">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">barlow_twins_forward</span><span class="p">(</span>
-    <span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<div class="viewcode-block" id="barlow_twins">
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.barlow_twins">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">barlow_twins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for Barlow Twins.</span>
 
 <span class="sd">    Barlow Twins learns representations by making the cross-correlation matrix</span>
@@ -883,11 +879,11 @@
 
 <span class="sd">            import torch</span>
 <span class="sd">            import stable_pretraining as spt</span>
-<span class="sd">            from stable_pretraining.forward import barlow_twins_forward</span>
+<span class="sd">            from stable_pretraining.forward import barlow_twins</span>
 
 <span class="sd">            backbone = spt.backbone.from_torchvision(&quot;resnet50&quot;)</span>
 <span class="sd">            module = spt.Module(</span>
-<span class="sd">                forward=barlow_twins_forward,</span>
+<span class="sd">                forward=barlow_twins,</span>
 <span class="sd">                backbone=backbone,</span>
 <span class="sd">                projector=torch.nn.Linear(2048, 8192),</span>
 <span class="sd">                barlow_loss=spt.losses.BarlowTwinsLoss(lambda_coeff=5e-3),</span>
@@ -932,7 +928,7 @@
 
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">swav_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">swav</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for SwAV (Swapping Assignments between Views).</span>
 
 <span class="sd">    SwAV learns representations by predicting the cluster assignment (code) of one</span>
@@ -944,12 +940,12 @@
 
 <span class="sd">            import torch</span>
 <span class="sd">            import stable_pretraining as spt</span>
-<span class="sd">            from stable_pretraining.forward import swav_forward</span>
+<span class="sd">            from stable_pretraining.forward import swav</span>
 
 <span class="sd">            backbone = spt.backbone.from_torchvision(&quot;resnet50&quot;)</span>
 <span class="sd">            prototypes = torch.nn.Linear(128, 3000, bias=False)</span>
 <span class="sd">            module = spt.Module(</span>
-<span class="sd">                forward=swav_forward,</span>
+<span class="sd">                forward=swav,</span>
 <span class="sd">                backbone=backbone,</span>
 <span class="sd">                projector=torch.nn.Linear(2048, 128),</span>
 <span class="sd">                prototypes=prototypes,</span>
@@ -1019,9 +1015,9 @@
     <span class="k">return</span> <span class="n">support_set</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span>
 
 
-<div class="viewcode-block" id="nnclr_forward">
-<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.nnclr_forward">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">nnclr_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<div class="viewcode-block" id="nnclr">
+<a class="viewcode-back" href="../../../api/forward/#stable_pretraining.forward.nnclr">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">nnclr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for NNCLR (Nearest-Neighbor Contrastive Learning).</span>
 
 <span class="sd">    NNCLR learns representations by using the nearest neighbor of an augmented</span>
@@ -1054,11 +1050,11 @@
 
 <span class="sd">            import torch</span>
 <span class="sd">            import stable_pretraining as spt</span>
-<span class="sd">            from stable_pretraining.forward import nnclr_forward</span>
+<span class="sd">            from stable_pretraining.forward import nnclr</span>
 
 <span class="sd">            backbone = spt.backbone.from_torchvision(&quot;resnet50&quot;)</span>
 <span class="sd">            module = spt.Module(</span>
-<span class="sd">                forward=nnclr_forward,</span>
+<span class="sd">                forward=nnclr,</span>
 <span class="sd">                backbone=backbone,</span>
 <span class="sd">                projector=torch.nn.Linear(2048, 256),</span>
 <span class="sd">                predictor=torch.nn.Linear(256, 256),</span>
@@ -1136,7 +1132,7 @@
 
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">dino_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">dino</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for DINO (self-DIstillation with NO labels).</span>
 
 <span class="sd">    DINO learns representations through self-distillation where a student network</span>
@@ -1172,14 +1168,14 @@
 <span class="sd">        ::</span>
 
 <span class="sd">            import stable_pretraining as spt</span>
-<span class="sd">            from stable_pretraining.forward import dino_forward</span>
+<span class="sd">            from stable_pretraining.forward import dino</span>
 
 <span class="sd">            backbone = spt.TeacherStudentWrapper(</span>
 <span class="sd">                spt.backbone.vit_hf(&quot;google/vit-base-patch16-224&quot;)</span>
 <span class="sd">            )</span>
 <span class="sd">            projector = spt.TeacherStudentWrapper(spt.backbone.MLP(768, [2048], 65536))</span>
 <span class="sd">            module = spt.Module(</span>
-<span class="sd">                forward=dino_forward,</span>
+<span class="sd">                forward=dino,</span>
 <span class="sd">                backbone=backbone,</span>
 <span class="sd">                projector=projector,</span>
 <span class="sd">                dino_loss=spt.losses.DINOv1Loss(out_dim=65536),</span>
@@ -1293,13 +1289,13 @@
 
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;dino_loss&quot;</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;dino_forward requires &#39;dino_loss&#39; to be provided (e.g., spt.losses.DINOv1Loss()). &quot;</span>
+            <span class="s2">&quot;dino requires &#39;dino_loss&#39; to be provided (e.g., spt.losses.DINOv1Loss()). &quot;</span>
             <span class="s2">&quot;Pass it when constructing the Module: Module(..., dino_loss=spt.losses.DINOv1Loss(), ...)&quot;</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;projector&quot;</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;dino_forward requires &#39;projector&#39; to be provided. &quot;</span>
+            <span class="s2">&quot;dino requires &#39;projector&#39; to be provided. &quot;</span>
             <span class="s2">&quot;This should be a TeacherStudentWrapper containing the projector (MLP + normalize + prototypes). &quot;</span>
             <span class="s2">&quot;Pass it when constructing the Module: Module(..., projector=wrapped_projector, ...)&quot;</span>
         <span class="p">)</span>
@@ -1347,7 +1343,7 @@
     <span class="k">return</span> <span class="n">out</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">dinov2_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">dinov2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward function for DINOv2 with iBOT.</span>
 
 <span class="sd">    DINOv2 combines two self-supervised losses:</span>
@@ -1386,7 +1382,7 @@
 <span class="sd">        ::</span>
 
 <span class="sd">            import stable_pretraining as spt</span>
-<span class="sd">            from stable_pretraining.forward import dinov2_forward</span>
+<span class="sd">            from stable_pretraining.forward import dinov2</span>
 
 <span class="sd">            vit = spt.backbone.vit_hf(</span>
 <span class="sd">                &quot;google/vit-base-patch16-224&quot;, use_mask_token=True</span>
@@ -1397,7 +1393,7 @@
 <span class="sd">                spt.backbone.MLP(768, [2048], 65536)</span>
 <span class="sd">            )</span>
 <span class="sd">            module = spt.Module(</span>
-<span class="sd">                forward=dinov2_forward,</span>
+<span class="sd">                forward=dinov2,</span>
 <span class="sd">                backbone=backbone,</span>
 <span class="sd">                projector=projector,</span>
 <span class="sd">                patch_projector=patch_projector,</span>
@@ -1623,7 +1619,7 @@
 
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;dinov2_loss&quot;</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s2">&quot;dinov2_forward requires &#39;dinov2_loss&#39; to be provided (e.g., spt.losses.DINOv2Loss()). &quot;</span>
+                    <span class="s2">&quot;dinov2 requires &#39;dinov2_loss&#39; to be provided (e.g., spt.losses.DINOv2Loss()). &quot;</span>
                     <span class="s2">&quot;Pass it when constructing the Module: Module(..., dinov2_loss=spt.losses.DINOv2Loss(), ...)&quot;</span>
                 <span class="p">)</span>
 
@@ -1645,9 +1641,9 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># No patch_projector provided - raise error instead of falling back to DINO-only</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;dinov2_forward requires &#39;patch_projector&#39; for iBOT loss. &quot;</span>
+            <span class="s2">&quot;dinov2 requires &#39;patch_projector&#39; for iBOT loss. &quot;</span>
             <span class="s2">&quot;Either provide a patch_projector: Module(..., patch_projector=...) &quot;</span>
-            <span class="s2">&quot;or use dino_forward instead if you only want the DINO (CLS token) loss without iBOT.&quot;</span>
+            <span class="s2">&quot;or use dino instead if you only want the DINO (CLS token) loss without iBOT.&quot;</span>
         <span class="p">)</span>
 
     <span class="c1"># Return flattened CLS features for callbacks (probes expect [n_global * batch_size, dim])</span>

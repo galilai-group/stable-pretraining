@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+g4ba07974d documentation</title>
+    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+g17bfd4fcf documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=82d18d58"></script>
+    <script src="_static/documentation_options.js?v=48088403"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/sg-tags.js?v=d80f6fa4"></script>
@@ -131,7 +131,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g4ba07974d documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g17bfd4fcf documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -428,6 +428,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#table-of-contents">Table of Contents</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how">How?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-setup">Quick setup</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#second-tour">30-second tour</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#core-structure">Core Structure</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data">1 - Data</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#gpu-side-batched-augmentation-gpu-transform">GPU-side batched augmentation (<code class="docutils literal notranslate"><span class="pre">gpu_transform</span></code>)</a><ul class="nav section-nav flex-column">
@@ -505,15 +506,22 @@
 <a class="reference external" href="https://github.com/astral-sh/ruff"><img alt="Ruff" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" /></a>
 <a class="reference external" href="https://opensource.org/licenses/MIT"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
 <a class="reference external" href="https://wandb.ai/site"><img alt="WandB" src="https://raw.githubusercontent.com/wandb/assets/main/wandb-github-badge-gradient.svg" /></a></p>
-<p>AI is moving beyond labels. Today’s models learn through <strong>self-supervision</strong> and <strong>multimodal alignment</strong>, extracting knowledge from raw data to build general-purpose representations that work across tasks. These foundation models are then deployed at scale, often after finetuning, to solve tasks in zero or few shot.</p>
-<p><code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code> is a PyTorch framework built on top of Lightning for this new paradigm. What sets us apart is <strong>real-time visibility into training quality</strong> through extensive logging and monitoring. Our callback ecosystem (<code class="docutils literal notranslate"><span class="pre">OnlineProbe</span></code>, <code class="docutils literal notranslate"><span class="pre">OnlineKNN</span></code>, <code class="docutils literal notranslate"><span class="pre">RankMe</span></code>, and many more) provides insights into feature collapse, training dynamics, and downstream performance. Data flows as dictionaries through model components, metrics, and callbacks, making any intermediate value accessible and debuggable. With <code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code>: track everything, debug faster, iterate sooner.</p>
-<p>Join our Discord: <a class="reference external" href="https://discord.gg/adzpqWKM25">https://discord.gg/8M6hT39X</a></p>
+<p><strong>PyTorch Lightning for foundation-model research.</strong> Dict-shaped state
+so any intermediate tensor is loggable, live evaluation probes that
+attach without touching the training loop (<code class="docutils literal notranslate"><span class="pre">OnlineProbe</span></code>, <code class="docutils literal notranslate"><span class="pre">OnlineKNN</span></code>,
+<code class="docutils literal notranslate"><span class="pre">RankMe</span></code>, <code class="docutils literal notranslate"><span class="pre">LiDAR</span></code>, …), SLURM-grade requeue + atomic checkpoints +
+queryable run registry, GPU-side batched augmentation, and 30+ ready
+recipes spanning SSL, supervised, and multi-modal pretraining
+(SimCLR, DINO/DINOv2, MAE, BYOL, VICReg, Barlow Twins, LeJEPA, CLIP, …).</p>
+<p><a class="reference internal" href="#30s-tour"><span class="xref myst">30-second tour ↓</span></a> · <a class="reference internal" href="#built-in-methods">Built-in methods ↓</a> ·
+<a class="reference external" href="https://discord.gg/adzpqWKM25">Discord</a></p>
 <section id="table-of-contents">
 <h2>Table of Contents<a class="headerlink" href="#table-of-contents" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><a class="reference internal" href="#how">How?</a></p></li>
 <li><p><a class="reference internal" href="#quick-setup">Quick Setup</a></p></li>
 <li><p><a class="reference internal" href="#quick-setup">Tutorial Notebook</a></p></li>
+<li><p><a class="reference internal" href="#30s-tour"><span class="xref myst">30-second tour</span></a></p></li>
 <li><p><a class="reference internal" href="#core-structure">Core Structure</a></p>
 <ul>
 <li><p><a class="reference internal" href="api/data/#module-stable_pretraining.data" title="stable_pretraining.data"><span class="xref myst py py-mod">Data</span></a></p></li>
@@ -557,6 +565,132 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>jupyter<span class="w"> </span>notebook<span class="w"> </span>examples/simclr_cifar10_tutorial.ipynb
 </pre></div>
 </div>
+<p><a id="30s-tour"></a></p>
+</section>
+<section id="second-tour">
+<h2>30-second tour<a class="headerlink" href="#second-tour" title="Link to this heading">#</a></h2>
+<p>The whole framework is four components that pass <strong>dicts</strong> to each other.
+Once you see the shape, the rest of the README is reference.</p>
+<div class="highlight-mermaid notranslate"><div class="highlight"><pre><span></span>%%{init: {&#39;theme&#39;:&#39;base&#39;, &#39;themeVariables&#39;: {
+    &#39;fontFamily&#39;:&#39;-apple-system, BlinkMacSystemFont, system-ui, sans-serif&#39;,
+    &#39;fontSize&#39;:&#39;14px&#39;,
+    &#39;primaryColor&#39;:&#39;#fafafa&#39;,
+    &#39;primaryTextColor&#39;:&#39;#1f2937&#39;,
+    &#39;primaryBorderColor&#39;:&#39;#9ca3af&#39;,
+    &#39;lineColor&#39;:&#39;#9ca3af&#39;,
+    &#39;edgeLabelBackground&#39;:&#39;#ffffff&#39;
+}}}%%
+flowchart LR
+    classDef stack fill:#f9fafb,stroke:#9ca3af,color:#111827,stroke-width:1px
+    classDef yours fill:#eef2ff,stroke:#6366f1,color:#3730a3,stroke-width:1px
+    classDef hook  fill:#f0fdf4,stroke:#22c55e,color:#14532d,stroke-width:1px
+    classDef orch  fill:#1f2937,stroke:#1f2937,color:#f9fafb,stroke-width:0px
+
+    DM([DataModule])
+    TR([Lightning Trainer])
+    MOD([Module])
+    CB([Callbacks])
+    LOG([Loggers · Registry])
+    MGR((Manager))
+
+    DM --&gt;|batch| TR --&gt; MOD
+    MOD --&gt;|state| CB
+    MOD --&gt; LOG
+    CB --&gt; LOG
+    MGR -.- TR
+
+    class DM yours
+    class MOD yours
+    class CB hook
+    class TR stack
+    class LOG stack
+    class MGR orch
+</pre></div>
+</div>
+<p><em>Indigo</em> nodes are what you write (data + forward). <em>Green</em> is the
+hook surface (callbacks). <em>Slate</em> is the orchestration that runs
+underneath.</p>
+<p>A minimal end-to-end run looks like this (substitute your own loader / loss):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span>
+
+<span class="c1"># 1. Data flows as dicts. CPU transforms decode + resize; random</span>
+<span class="c1">#    augmentation can live on the GPU via `gpu_transform=` (optional).</span>
+<span class="n">train_ds</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">HFDataset</span><span class="p">(</span><span class="s2">&quot;cifar10&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=...</span><span class="p">)</span>
+<span class="n">val_ds</span>   <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">HFDataset</span><span class="p">(</span><span class="s2">&quot;cifar10&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">,</span>  <span class="n">transform</span><span class="o">=...</span><span class="p">)</span>
+<span class="n">dm</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataModule</span><span class="p">(</span>
+    <span class="n">train</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">train_ds</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span>
+    <span class="n">val</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">val_ds</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1"># 2. Module = backbone + a forward function that returns a state dict.</span>
+<span class="c1">#    `forward.simclr` (and friends) are pre-built; you can also</span>
+<span class="c1">#    write your own — anything returning {&quot;loss&quot;: ..., &quot;embedding&quot;: ...}.</span>
+<span class="n">module</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">(</span>
+    <span class="n">backbone</span><span class="o">=</span><span class="n">spt</span><span class="o">.</span><span class="n">backbone</span><span class="o">.</span><span class="n">from_timm</span><span class="p">(</span><span class="s2">&quot;resnet18&quot;</span><span class="p">,</span> <span class="n">num_classes</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+    <span class="n">projector</span><span class="o">=</span><span class="n">spt</span><span class="o">.</span><span class="n">backbone</span><span class="o">.</span><span class="n">MLP</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span>
+    <span class="n">forward</span><span class="o">=</span><span class="n">spt</span><span class="o">.</span><span class="n">forward</span><span class="o">.</span><span class="n">simclr</span><span class="p">,</span>
+    <span class="n">simclr_loss</span><span class="o">=</span><span class="n">spt</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">NTXEntLoss</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">0.5</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1"># 3. Callbacks watch the state dict and train online probes / log metrics</span>
+<span class="c1">#    without touching the main loop.</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span><span class="n">max_epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="s2">&quot;bf16-mixed&quot;</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span>
+    <span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">OnlineProbe</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;probe&quot;</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;embedding&quot;</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span>
+                              <span class="n">probe</span><span class="o">=</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">loss</span><span class="o">=</span><span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span><span class="p">()),</span>
+    <span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">OnlineKNN</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;knn&quot;</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;embedding&quot;</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span>
+                            <span class="n">queue_length</span><span class="o">=</span><span class="mi">10_000</span><span class="p">,</span> <span class="n">input_dim</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span>
+<span class="p">])</span>
+
+<span class="c1"># 4. Manager wraps fit() with SLURM-requeue, atomic checkpoints, and</span>
+<span class="c1">#    the run registry. On a workstation it&#39;s just a thin call; on a</span>
+<span class="c1">#    cluster it adds preempt/resume + run tracking for free.</span>
+<span class="n">spt</span><span class="o">.</span><span class="n">Manager</span><span class="p">(</span><span class="n">trainer</span><span class="o">=</span><span class="n">trainer</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="n">module</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">dm</span><span class="p">)()</span>
+</pre></div>
+</div>
+<p>A single sample’s journey through the stack:</p>
+<div class="highlight-mermaid notranslate"><div class="highlight"><pre><span></span>%%{init: {&#39;theme&#39;:&#39;base&#39;, &#39;themeVariables&#39;: {
+    &#39;fontFamily&#39;:&#39;-apple-system, BlinkMacSystemFont, system-ui, sans-serif&#39;,
+    &#39;fontSize&#39;:&#39;13px&#39;,
+    &#39;primaryColor&#39;:&#39;#fafafa&#39;,
+    &#39;primaryTextColor&#39;:&#39;#1f2937&#39;,
+    &#39;primaryBorderColor&#39;:&#39;#9ca3af&#39;,
+    &#39;lineColor&#39;:&#39;#9ca3af&#39;,
+    &#39;edgeLabelBackground&#39;:&#39;#ffffff&#39;
+}}}%%
+flowchart LR
+    classDef cpu fill:#f9fafb,stroke:#9ca3af,color:#111827,stroke-width:1px
+    classDef gpu fill:#eef2ff,stroke:#6366f1,color:#3730a3,stroke-width:1px
+    classDef out fill:#f0fdf4,stroke:#22c55e,color:#14532d,stroke-width:1px
+
+    SAMP([sample])
+    CPU([CPU prep])
+    H2D([H2D])
+    AUG([GPU aug])
+    FWD([forward])
+    BWD([backward])
+    LOG([loggers])
+
+    SAMP --&gt; CPU --&gt; H2D --&gt; AUG --&gt; FWD --&gt; BWD --&gt; LOG
+    FWD -. callbacks .-&gt; LOG
+
+    class SAMP cpu
+    class CPU cpu
+    class H2D cpu
+    class AUG gpu
+    class FWD gpu
+    class BWD gpu
+    class LOG out
+</pre></div>
+</div>
+<p>Read left-to-right. <em>Slate</em> runs on CPU (decode, resize, pinned H2D).
+<em>Indigo</em> runs on GPU — including the augmentation that traditionally
+lived on CPU. The dotted arrow shows callbacks tapping the same state
+dict the loss is computed from, without touching the loop.</p>
+<p>The dict-everywhere design means callbacks attach without modifying the
+training loop, GPU augmentation slots in via <code class="docutils literal notranslate"><span class="pre">dataset.gpu_transform=</span></code>
+(see <a class="reference internal" href="api/data/#module-stable_pretraining.data" title="stable_pretraining.data"><span class="xref myst py py-mod">§GPU-side batched augmentation</span></a>), and any intermediate
+quantity in the state dict is automatically available to loggers.</p>
 <p><a id="core-structure"></a></p>
 </section>
 <section id="core-structure">
@@ -740,7 +874,7 @@ DataLoader workers never serialise the nn.Module.</p>
 <span class="n">module</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">(</span>
     <span class="n">backbone</span><span class="o">=</span><span class="n">backbone</span><span class="p">,</span>
     <span class="n">projector</span><span class="o">=</span><span class="n">projector</span><span class="p">,</span>
-    <span class="n">forward</span><span class="o">=</span><span class="n">forward</span><span class="o">.</span><span class="n">simclr_forward</span><span class="p">,</span>  <span class="c1"># Or byol_forward, vicreg_forward, etc.</span>
+    <span class="n">forward</span><span class="o">=</span><span class="n">forward</span><span class="o">.</span><span class="n">simclr</span><span class="p">,</span>  <span class="c1"># Or byol, vicreg, etc.</span>
     <span class="n">simclr_loss</span><span class="o">=</span><span class="n">spt</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">NTXEntLoss</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">0.5</span><span class="p">),</span>
     <span class="n">optim</span><span class="o">=</span><span class="p">{</span>
         <span class="s2">&quot;optimizer&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Adam&quot;</span><span class="p">,</span> <span class="s2">&quot;lr&quot;</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">},</span>
@@ -1264,47 +1398,47 @@ spt<span class="w"> </span>registry<span class="w"> </span>migrate<span class="w
 </thead>
 <tbody>
 <tr class="row-even"><td><p>Supervised</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">forward.supervised_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.supervised</span></code></p></td>
 <td><p>any</p></td>
 <td><p>Standard supervised training with labels</p></td>
 </tr>
 <tr class="row-odd"><td><p>SimCLR</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">forward.simclr_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.simclr</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">NTXEntLoss</span></code></p></td>
 <td><p>Contrastive learning with 2 augmented views</p></td>
 </tr>
 <tr class="row-even"><td><p>BYOL</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">forward.byol_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.byol</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">BYOLLoss</span></code></p></td>
 <td><p>Momentum-based self-distillation without negatives</p></td>
 </tr>
 <tr class="row-odd"><td><p>VICReg</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">forward.vicreg_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.vicreg</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">VICRegLoss</span></code></p></td>
 <td><p>Variance-invariance-covariance regularization</p></td>
 </tr>
 <tr class="row-even"><td><p>Barlow Twins</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">forward.barlow_twins_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.barlow_twins</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">BarlowTwinsLoss</span></code></p></td>
 <td><p>Cross-correlation matrix alignment to identity</p></td>
 </tr>
 <tr class="row-odd"><td><p>SwAV</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">forward.swav_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.swav</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">SwAVLoss</span></code></p></td>
 <td><p>Online clustering with Sinkhorn-Knopp normalization</p></td>
 </tr>
 <tr class="row-even"><td><p>NNCLR</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">forward.nnclr_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.nnclr</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">NTXEntLoss</span></code></p></td>
 <td><p>Nearest-neighbor contrastive learning</p></td>
 </tr>
 <tr class="row-odd"><td><p>DINO</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">forward.dino_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.dino</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">DINOv1Loss</span></code></p></td>
 <td><p>Self-distillation with multi-crop and centering</p></td>
 </tr>
 <tr class="row-even"><td><p>DINOv2</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">forward.dinov2_forward</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">forward.dinov2</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">DINOv2Loss</span></code>, <code class="docutils literal notranslate"><span class="pre">iBOTPatchLoss</span></code></p></td>
 <td><p>DINO + iBOT masked patch prediction</p></td>
 </tr>
@@ -1464,7 +1598,7 @@ spt<span class="w"> </span>registry<span class="w"> </span>migrate<span class="w
 <span class="n">module</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">(</span>
     <span class="n">backbone</span><span class="o">=</span><span class="n">backbone</span><span class="p">,</span>
     <span class="n">projector</span><span class="o">=</span><span class="n">projector</span><span class="p">,</span>
-    <span class="n">forward</span><span class="o">=</span><span class="n">forward</span><span class="o">.</span><span class="n">simclr_forward</span><span class="p">,</span>  <span class="c1"># Use the built-in forward function</span>
+    <span class="n">forward</span><span class="o">=</span><span class="n">forward</span><span class="o">.</span><span class="n">simclr</span><span class="p">,</span>  <span class="c1"># Use the built-in forward function</span>
     <span class="n">simclr_loss</span><span class="o">=</span><span class="n">spt</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">NTXEntLoss</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">0.5</span><span class="p">),</span>
     <span class="n">optim</span><span class="o">=</span><span class="p">{</span>
         <span class="s2">&quot;optimizer&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;LARS&quot;</span><span class="p">,</span> <span class="s2">&quot;lr&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;weight_decay&quot;</span><span class="p">:</span> <span class="mf">1e-6</span><span class="p">},</span>
@@ -1917,6 +2051,7 @@ loading, <code class="docutils literal notranslate"><span class="pre">Module</sp
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#table-of-contents">Table of Contents</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how">How?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-setup">Quick setup</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#second-tour">30-second tour</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#core-structure">Core Structure</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data">1 - Data</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#gpu-side-batched-augmentation-gpu-transform">GPU-side batched augmentation (<code class="docutils literal notranslate"><span class="pre">gpu_transform</span></code>)</a><ul class="nav section-nav flex-column">

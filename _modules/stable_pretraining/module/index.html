@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g4ba07974d documentation</title>
+    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g17bfd4fcf documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=82d18d58"></script>
+    <script src="../../../_static/documentation_options.js?v=48088403"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g4ba07974d documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g17bfd4fcf documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -865,6 +865,17 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">after_manual_backward</span><span class="p">()</span>
 
         <span class="n">zero_grad_opts</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># Designate exactly ONE optimizer per batch as the</span>
+        <span class="c1"># ``global_step`` ticker, so ``trainer.global_step`` always equals</span>
+        <span class="c1"># the number of training batches — regardless of how many</span>
+        <span class="c1"># optimizers are attached (main + callbacks). Preference:</span>
+        <span class="c1"># first main optimizer; fallback: first callback optimizer</span>
+        <span class="c1"># (covers ``Module(optim=None)`` setups where the only</span>
+        <span class="c1"># optimizers come from ``TrainableCallback``s like</span>
+        <span class="c1"># ``OnlineImageDecoder`` — without this fallback,</span>
+        <span class="c1"># ``trainer.max_steps`` becomes unreachable and ``fit`` loops</span>
+        <span class="c1"># forever).</span>
+        <span class="n">ticker_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pick_global_step_ticker</span><span class="p">(</span><span class="n">optimizers</span><span class="p">)</span>
         <span class="c1"># Stepping and gradient clipping at accumulation boundary</span>
         <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">opt</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">optimizers</span><span class="p">):</span>
             <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_index_to_name</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
@@ -889,27 +900,19 @@
                 <span class="p">)</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-            <span class="c1"># For callback optimizers (OnlineProbe / EMA / decoders),</span>
-            <span class="c1"># call ``LightningOptimizer.step()`` AS NORMAL so we keep</span>
-            <span class="c1"># all of the strategy + precision-plugin machinery intact</span>
-            <span class="c1"># (AMP GradScaler.step, FP8 TransformerEngine calibration,</span>
-            <span class="c1"># DDP grad-sync coordination, profiler timing).</span>
-            <span class="c1"># The ONLY thing we suppress</span>
-            <span class="c1"># is Lightning&#39;s manual-opt progress counter — otherwise</span>
-            <span class="c1"># ``trainer.global_step`` would tick once per callback</span>
-            <span class="c1"># optimizer per batch and ``Trainer(max_steps=...)`` /</span>
-            <span class="c1"># step-based schedulers would silently break when many</span>
-            <span class="c1"># ``TrainableCallback``s are attached.</span>
-            <span class="c1">#</span>
-            <span class="c1"># The progress counter is incremented inside ``_on_before_step``</span>
-            <span class="c1"># / ``_on_after_step`` hooks that Lightning&#39;s manual-opt loop</span>
-            <span class="c1"># attaches to every ``LightningOptimizer`` at batch start</span>
-            <span class="c1"># (and resets at batch end, see</span>
-            <span class="c1"># ``lightning.pytorch.loops.optimization.manual.ManualOptimization``).</span>
-            <span class="c1"># Temporarily swapping them to no-ops disables only the</span>
-            <span class="c1"># counter; the load-bearing ``strategy.optimizer_step()``</span>
-            <span class="c1"># call still runs.</span>
-            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_callback_optimizer_names</span><span class="p">:</span>
+            <span class="c1"># The ticker optimizer goes through ``LightningOptimizer.step()``</span>
+            <span class="c1"># as normal so its single tick advances ``global_step``. Every</span>
+            <span class="c1"># other optimizer (main or callback) keeps all of the strategy</span>
+            <span class="c1"># + precision-plugin machinery intact (AMP GradScaler.step,</span>
+            <span class="c1"># FP8 TransformerEngine calibration, DDP grad-sync, profiler</span>
+            <span class="c1"># timing) but suppresses the manual-opt progress counter via</span>
+            <span class="c1"># no-op hooks. The progress hooks are attached by</span>
+            <span class="c1"># ``lightning.pytorch.loops.optimization.manual.ManualOptimization``</span>
+            <span class="c1"># at batch start and reset at batch end; swapping them to</span>
+            <span class="c1"># no-ops for one call is reversible and side-effect-free.</span>
+            <span class="k">if</span> <span class="n">idx</span> <span class="o">==</span> <span class="n">ticker_idx</span><span class="p">:</span>
+                <span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
                 <span class="n">saved_before</span><span class="p">,</span> <span class="n">saved_after</span> <span class="o">=</span> <span class="n">opt</span><span class="o">.</span><span class="n">_on_before_step</span><span class="p">,</span> <span class="n">opt</span><span class="o">.</span><span class="n">_on_after_step</span>
                 <span class="n">opt</span><span class="o">.</span><span class="n">_on_before_step</span> <span class="o">=</span> <span class="n">_noop_hook</span>
                 <span class="n">opt</span><span class="o">.</span><span class="n">_on_after_step</span> <span class="o">=</span> <span class="n">_noop_hook</span>
@@ -918,8 +921,6 @@
                 <span class="k">finally</span><span class="p">:</span>
                     <span class="n">opt</span><span class="o">.</span><span class="n">_on_before_step</span> <span class="o">=</span> <span class="n">saved_before</span>
                     <span class="n">opt</span><span class="o">.</span><span class="n">_on_after_step</span> <span class="o">=</span> <span class="n">saved_after</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
             <span class="n">zero_grad_opts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">opt</span><span class="p">)</span>
             <span class="c1"># Step its scheduler if it exists</span>
             <span class="k">if</span> <span class="n">schedulers</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -938,6 +939,31 @@
             <span class="n">opt</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">(</span><span class="n">set_to_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">state</span></div>
 
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_pick_global_step_ticker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">optimizers</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the index of the optimizer that should advance ``global_step``.</span>
+
+<span class="sd">        Exactly one optimizer per batch ticks the manual-opt progress</span>
+<span class="sd">        counter. Preference order:</span>
+
+<span class="sd">        1. First main optimizer (i.e. not registered as a callback opt).</span>
+<span class="sd">        2. First optimizer overall — used when ``Module(optim=None)`` and</span>
+<span class="sd">           the only optimizers came from ``TrainableCallback`` callbacks.</span>
+<span class="sd">           Without this fallback the counter never advances, so</span>
+<span class="sd">           ``Trainer(max_steps=N)`` is unreachable and ``fit`` loops</span>
+<span class="sd">           forever (the regression that motivated this method).</span>
+
+<span class="sd">        Returns 0 when ``optimizers`` is empty — Lightning&#39;s mock-opt</span>
+<span class="sd">        path handles the no-optimizer case earlier so this method</span>
+<span class="sd">        isn&#39;t reached in that branch.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">optimizers</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">optimizers</span><span class="p">)):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_index_to_name</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_callback_optimizer_names</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">idx</span>
+        <span class="k">return</span> <span class="mi">0</span>  <span class="c1"># only callback optimizers — promote the first</span>
 
 <div class="viewcode-block" id="Module.on_train_start">
 <a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.on_train_start">[docs]</a>
@@ -992,11 +1018,13 @@
                 <span class="n">freq</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="s2">&quot;accumulate_grad_batches&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
                 <span class="n">freq</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="s2">&quot;accumulate_grad_batches_&quot;</span><span class="p">,</span> <span class="n">freq</span><span class="p">)</span>
                 <span class="n">freq</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">freq</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
-                <span class="c1"># config priority</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;optim&quot;</span><span class="p">):</span>
-                    <span class="n">freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;frequency&quot;</span><span class="p">,</span> <span class="n">freq</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">freq</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="c1"># config priority — guard against ``self.optim is None``</span>
+                <span class="c1"># (eval-only ``Module(optim=None)`` setup) and against</span>
+                <span class="c1"># ``self.optim`` being a single per-optimizer config dict</span>
+                <span class="c1"># (no ``.get(&quot;frequency&quot;, ...)`` semantics there).</span>
+                <span class="n">optim_cfg</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;optim&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">optim_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="n">freq</span> <span class="o">=</span> <span class="n">optim_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;frequency&quot;</span><span class="p">,</span> <span class="n">freq</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_frequencies</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">freq</span><span class="p">)</span>
 
         <span class="n">table</span> <span class="o">=</span> <span class="n">PrettyTable</span><span class="p">()</span>
