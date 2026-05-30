@@ -100,7 +100,7 @@ def main():
         temperature=0.2,
     )
 
-    def simclr_forward(self, batch, stage):
+    def simclr(self, batch, stage):
         # Eval / single-view: batch has top-level "image"
         if "image" in batch:
             output = SimCLR.forward(self, batch["image"])
@@ -133,7 +133,7 @@ def main():
         )
         return out
 
-    module.forward = types.MethodType(simclr_forward, module)
+    module.forward = types.MethodType(simclr, module)
     module.optim = {
         "optimizer": {
             "type": "LARS",

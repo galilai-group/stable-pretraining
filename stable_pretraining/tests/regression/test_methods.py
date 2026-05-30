@@ -147,7 +147,7 @@ def build_simclr():
         module=spt.Module(
             backbone=make_backbone(),
             projector=make_projector(),
-            forward=forward.simclr_forward,
+            forward=forward.simclr,
             simclr_loss=losses.NTXEntLoss(temperature=0.5),
             optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
         ),
@@ -163,7 +163,7 @@ def build_byol():
             backbone=spt.backbone.TeacherStudentWrapper(backbone),
             projector=spt.backbone.TeacherStudentWrapper(projector),
             predictor=make_predictor(),
-            forward=forward.byol_forward,
+            forward=forward.byol,
             byol_loss=losses.BYOLLoss(),
             optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
         ),
@@ -176,7 +176,7 @@ def build_vicreg():
         module=spt.Module(
             backbone=make_backbone(),
             projector=make_projector(),
-            forward=forward.vicreg_forward,
+            forward=forward.vicreg,
             vicreg_loss=losses.VICRegLoss(),
             optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
         ),
@@ -189,7 +189,7 @@ def build_barlow_twins():
         module=spt.Module(
             backbone=make_backbone(),
             projector=make_projector(),
-            forward=forward.barlow_twins_forward,
+            forward=forward.barlow_twins,
             barlow_loss=losses.BarlowTwinsLoss(),
             optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
         ),
@@ -202,7 +202,7 @@ def build_supervised():
         module=spt.Module(
             backbone=make_backbone(),
             classifier=nn.Linear(EMBED_DIM, NUM_CLASSES),
-            forward=forward.supervised_forward,
+            forward=forward.supervised,
             supervised_loss=nn.CrossEntropyLoss(),
             optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
         ),

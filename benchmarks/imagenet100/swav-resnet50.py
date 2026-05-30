@@ -8,7 +8,7 @@ from lightning.pytorch.callbacks import LearningRateMonitor
 from torch import nn
 
 import stable_pretraining as spt
-from stable_pretraining.forward import swav_forward
+from stable_pretraining.forward import swav
 from stable_pretraining.data import transforms
 import sys
 from pathlib import Path
@@ -192,7 +192,7 @@ module = spt.Module(
     backbone=backbone,
     projector=projector,
     prototypes=prototypes,
-    forward=swav_forward,
+    forward=swav,
     use_queue=USE_QUEUE,
     queue_length=QUEUE_LENGTH,
     start_queue_at_epoch=START_QUEUE_AT_EPOCH,

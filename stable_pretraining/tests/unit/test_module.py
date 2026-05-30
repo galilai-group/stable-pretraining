@@ -33,7 +33,7 @@ def test_module_initialization():
     module = Module(
         backbone=backbone,
         projector=projector,
-        forward=forward.simclr_forward,  # Or byol_forward, vicreg_forward, etc.
+        forward=forward.simclr,  # Or byol, vicreg, etc.
         simclr_loss=NTXEntLoss(temperature=0.5),
         optim={
             "optimizer": {"type": "Adam", "lr": 0.001},
@@ -59,7 +59,7 @@ def test_module_integration():
     module = Module(
         backbone=backbone,
         projector=projector,
-        forward=forward.simclr_forward,  # Or byol_forward, vicreg_forward, etc.
+        forward=forward.simclr,  # Or byol, vicreg, etc.
         simclr_loss=NTXEntLoss(temperature=0.5),
         optim={
             "backbone_opt": {

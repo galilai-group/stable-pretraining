@@ -99,7 +99,7 @@ projector = nn.Sequential(
 module = spt.Module(
     backbone=backbone,
     projector=projector,
-    forward=forward.simclr_forward,
+    forward=forward.simclr,
     simclr_loss=spt.losses.NTXEntLoss(temperature=0.5),
     optim={
         "optimizer": {

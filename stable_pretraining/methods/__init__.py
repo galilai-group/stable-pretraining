@@ -2,6 +2,7 @@ from .barlow_twins import BarlowTwins
 from .beit import BEiT
 from .byol import BYOL
 from .cmae import CMAE
+from .cross_mae import CrossMAE
 from .data2vec import Data2Vec
 from .dino import DINO
 from .dinov2 import DINOv2
@@ -34,6 +35,7 @@ __all__ = [
     "BEiT",
     "BYOL",
     "CMAE",
+    "CrossMAE",
     "Data2Vec",
     "DINO",
     "DINOv2",

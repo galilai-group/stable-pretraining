@@ -14,18 +14,25 @@ on:
       - "**"
 
 jobs:
+  # Unit tests are sharded across 4 parallel jobs via pytest-split.
+  # pytest-split partitions collected tests deterministically (by file/test
+  # path hash) so every test runs in exactly one shard. With ~80 unit
+  # test files, each shard runs ~20. If we ever add `.test_durations`
+  # (recorded with `pytest --store-durations`) pytest-split will rebalance
+  # by historical wall time.
   Test:
+    name: Unit (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     defaults:
       run:
         shell: bash -l {0}
     steps:
-      # Install stable-pretraining
       - name: Checking Out Repository
         uses: actions/checkout@v2
-      # Install Python & Packages
       - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
@@ -36,16 +43,18 @@ jobs:
       - name: Install 'stable_pretraining' package
         run: |
           python -m pip install --user -e .[dev,trackio,swanlab]
-      # Run Tests
-      - name: Run Unit Tests
-        run: pytest stable_pretraining/ -m unit --verbose --cov=stable_pretraining --cov-report term --cov-report xml
-      # Codecov
+      - name: Run Unit Tests (shard ${{ matrix.shard }}/4)
+        run: |
+          pytest stable_pretraining/ -m unit --verbose \
+            --splits 4 --group ${{ matrix.shard }} \
+            --cov=stable_pretraining --cov-report=term --cov-report=xml
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: ${{ github.repository }}
           files: ./coverage.xml
+          flags: unit-shard-${{ matrix.shard }}
           fail_ci_if_error: false
 
   Test-integration:
@@ -94,29 +103,3 @@ jobs:
           python -m pip install --user -e .[dev,trackio,swanlab]
       - name: Run Regression Tests
         run: pytest stable_pretraining/tests/ -m regression --verbose
-
-  Test-minimal:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-    defaults:
-      run:
-        shell: bash -l {0}
-    steps:
-      # Install stable_pretraining
-      - name: Checking Out Repository
-        uses: actions/checkout@v2
-      # Install Python & Packages
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-      - run: which python
-      - name: Install dependencies
-        run: |
-          python -m pip install --user --upgrade --progress-bar off pip
-      - name: Install 'stable_pretraining' package
-        run: |
-          python -m pip install --user -e .[dev,trackio,swanlab]
-      # Run Tests
-      - name: Run Unit Tests
-        run: pytest stable_pretraining/ -m unit --verbose --cov=stable_pretraining --cov-report term
