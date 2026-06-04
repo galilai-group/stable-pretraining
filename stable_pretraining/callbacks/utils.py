@@ -450,6 +450,13 @@ class TrainableCallback(Callback):
             assert callback.name not in self._optimizer_gradient_clip_algorithm
             assert len(optimizers) not in self._optimizer_index_to_name
             self._optimizer_index_to_name[len(optimizers)] = callback.name
+            # Mark this optimizer as callback-owned. ``Module.training_step``
+            # uses this to step the underlying ``torch.optim.Optimizer``
+            # rather than the ``LightningOptimizer`` wrapper, so
+            # ``trainer.global_step`` is not advanced by every callback
+            # optimizer (which would otherwise break ``Trainer(max_steps=...)``
+            # and step-based schedulers when many callbacks are attached).
+            self._callback_optimizer_names.add(callback.name)
             # self._optimizer_name_to_index[callback.name] = len(self._optimizer_names)
             # self._optimizer_names.append(callback.name)
             self._optimizer_frequencies[callback.name] = (

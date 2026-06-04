@@ -11,7 +11,7 @@ stable_pretraining/
   __init__.py       # lazy-loaded public API (PEP 562); add new exports here
   module.py         # Module — LightningModule all methods share; wraps user forward fn
   manager.py        # Manager — programmatic entry point; prefer over Trainer directly
-  forward.py        # forward functions (simclr_forward, byol_forward, …)
+  forward.py        # forward functions (simclr, byol, …)
   methods/          # LightningModule subclasses, one per SSL method
   callbacks/        # evaluation and training callbacks (OnlineProbe, OnlineKNN, RankMe, …)
   losses/           # loss classes ({Method}Loss naming convention)
@@ -55,7 +55,7 @@ rankme = spt.RankMe(...)
 
 **Direct module imports:**
 ```python
-from stable_pretraining.forward import simclr_forward, byol_forward
+from stable_pretraining.forward import simclr, byol
 from stable_pretraining.methods import SimCLR, BYOL, DINO, VICReg, MAE  # full list in METHODS.md
 from stable_pretraining.callbacks import OnlineProbe, OnlineKNN, RankMe, LiDAR
 from stable_pretraining.losses import NTXEntLoss, BYOLLoss, VICRegLoss
@@ -65,7 +65,7 @@ from stable_pretraining.losses import NTXEntLoss, BYOLLoss, VICRegLoss
 ```yaml
 module:
   _target_: stable_pretraining.Module
-  forward: stable_pretraining.forward.simclr_forward
+  forward: stable_pretraining.forward.simclr
   backbone: ...
   projector: ...
 ```
@@ -111,11 +111,11 @@ backbone = spt.backbone.resnet18()
 projector = torch.nn.Linear(512, 128)
 
 # 2. Wire a forward function into Module
-from stable_pretraining.forward import simclr_forward
+from stable_pretraining.forward import simclr
 from stable_pretraining.losses import NTXEntLoss
 
 module = spt.Module(
-    forward=simclr_forward,
+    forward=simclr,
     backbone=backbone,
     projector=projector,
     simclr_loss=NTXEntLoss(temperature=0.5),
@@ -151,7 +151,7 @@ model = spt.SimCLR(backbone=backbone, projector=projector, temperature=0.5, lr=1
 
 | Component | Convention | Example |
 |-----------|-----------|---------|
-| Forward functions | `{method}_forward` (snake_case) | `simclr_forward` |
+| Forward functions | `{method}_forward` (snake_case) | `simclr` |
 | Loss classes | `{Method}Loss` (CamelCase) | `NTXEntLoss`, `BYOLLoss` |
 | Method classes | `{Method}` (CamelCase) | `SimCLR`, `BYOL`, `DINOv2` |
 | Callbacks | Descriptive CamelCase, no suffix | `OnlineProbe`, `RankMe` |
@@ -255,7 +255,7 @@ The authoritative registry lives in `stable_pretraining.callbacks.utils.ORDER_SE
 
 ## Key design decisions (context for agents)
 
-**Why forward functions are stateless.** Forward functions take `self` as their first argument but are defined as plain functions, not methods. This lets them be specified as dotted import paths in YAML configs (`forward: stable_pretraining.forward.simclr_forward`) and instantiated by Hydra. At runtime `Module` binds the function to `self` using `types.MethodType`, so `self.backbone`, `self.projector`, etc. are all accessible. Keeping them stateless (no internal state, no class inheritance) makes them composable and testable in isolation.
+**Why forward functions are stateless.** Forward functions take `self` as their first argument but are defined as plain functions, not methods. This lets them be specified as dotted import paths in YAML configs (`forward: stable_pretraining.forward.simclr`) and instantiated by Hydra. At runtime `Module` binds the function to `self` using `types.MethodType`, so `self.backbone`, `self.projector`, etc. are all accessible. Keeping them stateless (no internal state, no class inheritance) makes them composable and testable in isolation.
 
 **Why Manager exists alongside Trainer.** `pl.Trainer` handles the training loop; `Manager` handles everything around it. Specifically: detecting SLURM preemption via `SIGTERM`, writing checkpoint-then-requeue, assigning deterministic run IDs (so resumed runs pick up the same WandB/registry run), and resolving which checkpoint to resume from across multiple logger backends. Using `Manager(...)()` instead of `Trainer.fit(...)` is the correct programmatic API.
 

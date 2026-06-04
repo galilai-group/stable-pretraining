@@ -33,6 +33,66 @@ def _ensure_named_callable(fn):
     return fn if hasattr(fn, "__name__") else _NamedForward(fn)
 
 
+def _noop_hook() -> None:
+    """Drop-in for ``LightningOptimizer._on_before_step`` / ``_on_after_step``.
+
+    Used by :meth:`Module.training_step` to suppress the manual-opt
+    progress counter for callback-owned optimizers without disturbing
+    any of the strategy / precision-plugin logic inside
+    ``LightningOptimizer.step()``.
+    """
+    return None
+
+
+def _gpu_transform_from_current_dataset(trainer, stage, dataloader_idx):
+    """Return ``dataset.gpu_transform`` for the active stage's DataLoader, or None.
+
+    Lightning exposes the live dataloaders as ``trainer.train_dataloader``
+    (singular) for training and ``trainer.val_dataloaders`` / similar
+    (potentially a list) for the other stages. We peek into them, unwrap
+    common dataset wrappers (``Subset``, ``ConcatDataset``), and read the
+    ``gpu_transform`` attribute if present.
+
+    Best-effort: any exception during lookup yields None, so the resolver
+    falls through to the DataModule-level transform.
+    """
+    try:
+        loader = None
+        if stage == "train":
+            loader = trainer.train_dataloader
+        elif stage in ("val", "test", "predict"):
+            attr = {
+                "val": "val_dataloaders",
+                "test": "test_dataloaders",
+                "predict": "predict_dataloaders",
+            }[stage]
+            loaders = getattr(trainer, attr, None)
+            if isinstance(loaders, (list, tuple)):
+                if 0 <= dataloader_idx < len(loaders):
+                    loader = loaders[dataloader_idx]
+            else:
+                loader = loaders
+        if loader is None:
+            return None
+        dataset = getattr(loader, "dataset", None)
+        while dataset is not None:
+            if hasattr(dataset, "gpu_transform") and dataset.gpu_transform is not None:
+                return dataset.gpu_transform
+            # Walk through standard wrappers (torch ``Subset``,
+            # ``ConcatDataset``) and our own attribute-proxying ``Subset``.
+            inner = getattr(dataset, "dataset", None) or getattr(
+                dataset, "datasets", None
+            )
+            if inner is dataset or inner is None:
+                break
+            if isinstance(inner, (list, tuple)):
+                inner = inner[0]
+            dataset = inner
+    except Exception:
+        return None
+    return None
+
+
 @catch_errors_class()
 class Module(pl.LightningModule):
     """PyTorch Lightning module using manual optimization with multi-optimizer support.
@@ -124,6 +184,12 @@ class Module(pl.LightningModule):
         self._optimizer_frequencies = {}
         self._optimizer_gradient_clip_val = {}
         self._optimizer_gradient_clip_algorithm = {}
+        # Optimizer names registered by ``TrainableCallback`` (e.g. ``OnlineProbe``).
+        # Their ``.step()`` is dispatched on the underlying ``torch.optim.Optimizer``
+        # rather than the Lightning wrapper so they don't advance
+        # ``trainer.global_step`` — see :meth:`training_step` and the
+        # rationale below in ``training_step``'s docstring.
+        self._callback_optimizer_names = set()
 
         if len(args) > 0:
             raise ValueError(
@@ -264,6 +330,82 @@ class Module(pl.LightningModule):
         """
         pass
 
+    def on_after_batch_transfer(self, batch, dataloader_idx):
+        """Apply the active GPU-side batch transform after Lightning moves the batch.
+
+        Resolution order (first match wins):
+
+        1. ``dataset.gpu_transform`` — set on the dataset behind the active
+           DataLoader. **Recommended:** pair augmentation with the dataset
+           so train/val/test/predict each carry their own spec naturally.
+        2. ``self.trainer.datamodule.gpu_transform`` — set on the DataModule.
+           May be a callable or a ``{"train": ..., "val": ...}`` dict.
+
+        Setting ``self.gpu_transform`` on the Module is **not** supported
+        and is rejected at ``on_train_start``; attach it to the dataset
+        (or the DataModule for third-party datasets) instead.
+
+        Lazy device placement: when the resolved transform is an
+        ``nn.Module`` (e.g. a :class:`GPUCompose`), it is moved to
+        ``self.device`` on first use. Buffers (e.g. ``GPUNormalize``'s
+        mean/std) therefore live on the correct GPU under DDP without
+        manual wiring.
+
+        When nothing resolves, this is a zero-cost passthrough.
+
+        Args:
+            batch: Batch dict already moved to ``self.device`` by Lightning.
+            dataloader_idx: Index of the dataloader that produced this batch.
+
+        Returns:
+            The (possibly augmented) batch dict.
+        """
+        gpu_transform = self._resolve_gpu_transform(dataloader_idx)
+        if gpu_transform is None:
+            return batch
+        return gpu_transform(batch)
+
+    def _resolve_gpu_transform(self, dataloader_idx: int = 0):
+        """Look up the active GPU transform from the dataset, then the DataModule."""
+        # Access ``_trainer`` directly: the ``trainer`` property raises
+        # when the Module is not attached, which is fine for direct
+        # calls outside ``Trainer.fit`` (e.g. unit tests).
+        trainer = getattr(self, "_trainer", None)
+        if trainer is None:
+            return None
+        stage = self._current_stage(trainer)
+        # 1. Dataset-level — preferred placement.
+        gt = _gpu_transform_from_current_dataset(trainer, stage, dataloader_idx)
+        # 2. DataModule-level fallback (callable or stage-keyed dict).
+        if gt is None:
+            dm = getattr(trainer, "datamodule", None)
+            if dm is not None:
+                gt = getattr(dm, "gpu_transform", None)
+                if isinstance(gt, dict):
+                    gt = gt.get(stage)
+        if gt is None:
+            return None
+        # Lazily move to the model's device so users don't have to .cuda() it.
+        if isinstance(gt, torch.nn.Module):
+            ref = next(gt.parameters(), None) or next(gt.buffers(), None)
+            if ref is None or ref.device != self.device:
+                gt.to(self.device)
+        return gt
+
+    @staticmethod
+    def _current_stage(trainer):
+        if trainer is None:
+            return None
+        if trainer.training:
+            return "train"
+        if trainer.validating or trainer.sanity_checking:
+            return "val"
+        if trainer.testing:
+            return "test"
+        if trainer.predicting:
+            return "predict"
+        return None
+
     def training_step(self, batch, batch_idx):
         """Run one training step with manual optimization across all configured optimizers.
 
@@ -321,6 +463,17 @@ class Module(pl.LightningModule):
         self.after_manual_backward()
 
         zero_grad_opts = []
+        # Designate exactly ONE optimizer per batch as the
+        # ``global_step`` ticker, so ``trainer.global_step`` always equals
+        # the number of training batches — regardless of how many
+        # optimizers are attached (main + callbacks). Preference:
+        # first main optimizer; fallback: first callback optimizer
+        # (covers ``Module(optim=None)`` setups where the only
+        # optimizers come from ``TrainableCallback``s like
+        # ``OnlineImageDecoder`` — without this fallback,
+        # ``trainer.max_steps`` becomes unreachable and ``fit`` loops
+        # forever).
+        ticker_idx = self._pick_global_step_ticker(optimizers)
         # Stepping and gradient clipping at accumulation boundary
         for idx, opt in enumerate(optimizers):
             name = self._optimizer_index_to_name[idx]
@@ -345,7 +498,27 @@ class Module(pl.LightningModule):
                 )
                 logging.error(msg)
                 raise ValueError(msg)
-            opt.step()
+            # The ticker optimizer goes through ``LightningOptimizer.step()``
+            # as normal so its single tick advances ``global_step``. Every
+            # other optimizer (main or callback) keeps all of the strategy
+            # + precision-plugin machinery intact (AMP GradScaler.step,
+            # FP8 TransformerEngine calibration, DDP grad-sync, profiler
+            # timing) but suppresses the manual-opt progress counter via
+            # no-op hooks. The progress hooks are attached by
+            # ``lightning.pytorch.loops.optimization.manual.ManualOptimization``
+            # at batch start and reset at batch end; swapping them to
+            # no-ops for one call is reversible and side-effect-free.
+            if idx == ticker_idx:
+                opt.step()
+            else:
+                saved_before, saved_after = opt._on_before_step, opt._on_after_step
+                opt._on_before_step = _noop_hook
+                opt._on_after_step = _noop_hook
+                try:
+                    opt.step()
+                finally:
+                    opt._on_before_step = saved_before
+                    opt._on_after_step = saved_after
             zero_grad_opts.append(opt)
             # Step its scheduler if it exists
             if schedulers[idx] is not None:
@@ -364,6 +537,31 @@ class Module(pl.LightningModule):
             opt.zero_grad(set_to_none=True)
         return state
 
+    def _pick_global_step_ticker(self, optimizers) -> int:
+        """Return the index of the optimizer that should advance ``global_step``.
+
+        Exactly one optimizer per batch ticks the manual-opt progress
+        counter. Preference order:
+
+        1. First main optimizer (i.e. not registered as a callback opt).
+        2. First optimizer overall — used when ``Module(optim=None)`` and
+           the only optimizers came from ``TrainableCallback`` callbacks.
+           Without this fallback the counter never advances, so
+           ``Trainer(max_steps=N)`` is unreachable and ``fit`` loops
+           forever (the regression that motivated this method).
+
+        Returns 0 when ``optimizers`` is empty — Lightning's mock-opt
+        path handles the no-optimizer case earlier so this method
+        isn't reached in that branch.
+        """
+        if not optimizers:
+            return 0
+        for idx in range(len(optimizers)):
+            name = self._optimizer_index_to_name.get(idx)
+            if name is not None and name not in self._callback_optimizer_names:
+                return idx
+        return 0  # only callback optimizers — promote the first
+
     def on_train_start(self):
         """Validate and log the optimizer configuration at the start of training.
 
@@ -373,6 +571,17 @@ class Module(pl.LightningModule):
         class, clip value, and clip algorithm so misconfigured setups are caught early
         rather than silently misbehaving mid-run.
         """
+        # Refuse Module-level ``gpu_transform``. Two-ways-to-do-one-thing
+        # is a footgun: if a user sets it here AND on the dataset, the
+        # dataset's silently loses. Make it loud.
+        if getattr(self, "gpu_transform", None) is not None:
+            raise RuntimeError(
+                "Setting `gpu_transform` on the Module is not supported. "
+                "Attach it to the dataset (recommended: pass "
+                "`gpu_transform=...` to the dataset constructor) or to the "
+                "DataModule via `gpu_transform=...` / `gpu_transform={'train': ..., 'val': ...}`."
+            )
+
         log_header("Optimizers")
         optimizers = self.optimizers()
         if not isinstance(optimizers, (list, tuple)):
@@ -404,11 +613,13 @@ class Module(pl.LightningModule):
                 freq = getattr(self.trainer, "accumulate_grad_batches", 1)
                 freq = getattr(self.trainer, "accumulate_grad_batches_", freq)
                 freq = max(int(freq), 1)
-                # config priority
-                if hasattr(self, "optim"):
-                    freq = self.optim.get("frequency", freq)
-                else:
-                    freq = 1
+                # config priority — guard against ``self.optim is None``
+                # (eval-only ``Module(optim=None)`` setup) and against
+                # ``self.optim`` being a single per-optimizer config dict
+                # (no ``.get("frequency", ...)`` semantics there).
+                optim_cfg = getattr(self, "optim", None) or {}
+                if isinstance(optim_cfg, dict):
+                    freq = optim_cfg.get("frequency", freq)
                 self._optimizer_frequencies[name] = int(freq)
 
         table = PrettyTable()
