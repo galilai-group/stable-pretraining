@@ -224,6 +224,16 @@
     return r.json();
   }
 
+  async function patchRunMeta(runId, fields) {
+    const res = await fetch('/api/run-meta', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ run_id: runId, ...fields }),
+    });
+    if (!res.ok) throw new Error(await res.text().catch(() => String(res.status)));
+    return res.json();
+  }
+
   async function refreshRuns() {
     const runs = await fetchJSON('/api/runs');
     const seen = new Set();
@@ -661,11 +671,60 @@
     dot.style.background = runColor(r.run_id);
     row.appendChild(dot);
 
-    const name = document.createElement('div');
-    name.className = 'run-name';
-    name.title = `${r.run_id}\n${r.run_dir || ''}`;
-    name.textContent = r.run_id;
-    row.appendChild(name);
+    // Name column: primary display_name + optional dimmed run_id hint.
+    const nameWrap = document.createElement('div');
+    nameWrap.className = 'run-name';
+
+    const displayEl = document.createElement('div');
+    displayEl.className = 'run-display-name';
+    displayEl.textContent = r.display_name || r.run_id;
+    displayEl.title = `${r.run_id}\n${r.run_dir || ''}`;
+    nameWrap.appendChild(displayEl);
+
+    // Show run_id as a hint only when it differs from the display name
+    // (i.e. the path has been shortened, or a custom name was set).
+    if (r.display_name && r.display_name !== r.run_id) {
+      const hint = document.createElement('div');
+      hint.className = 'run-id-hint';
+      hint.textContent = r.run_id;
+      nameWrap.appendChild(hint);
+    }
+
+    // Double-click on the display name starts inline editing.
+    displayEl.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      const prev = r.display_name || r.run_id;
+      const input = document.createElement('input');
+      input.className = 'run-name-edit';
+      input.value = prev;
+      displayEl.replaceWith(input);
+      input.focus();
+      input.select();
+
+      let done = false;
+      function commit() {
+        if (done) return;
+        done = true;
+        const val = input.value.trim();
+        input.replaceWith(displayEl);
+        if (val && val !== prev) {
+          displayEl.textContent = val;
+          const run = state.runs.get(r.run_id);
+          if (run) run.display_name = val;
+          patchRunMeta(r.run_id, { display_name: val }).catch(() => {
+            displayEl.textContent = prev;
+            if (run) run.display_name = prev;
+          });
+        }
+      }
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', ke => {
+        if (ke.key === 'Enter') { ke.preventDefault(); input.blur(); }
+        if (ke.key === 'Escape') { done = true; input.replaceWith(displayEl); }
+      });
+    });
+
+    row.appendChild(nameWrap);
 
     if (r.status) {
       const st = document.createElement('div');
@@ -709,8 +768,8 @@
     // that affect appearance (visibility, loading-pulse) are repainted by
     // touching only the affected row's classList below.
     const layoutKey = JSON.stringify({
-      groupKeys: groups.map(g => [g.key, g.runs.map(r => r.run_id)]),
-      ungrouped: ungrouped.map(r => r.run_id),
+      groupKeys: groups.map(g => [g.key, g.runs.map(r => [r.run_id, r.display_name])]),
+      ungrouped: ungrouped.map(r => [r.run_id, r.display_name]),
       open: [...state.openSidebarGroups].sort(),
     });
     if (state._lastListKey === layoutKey) {
@@ -1170,7 +1229,7 @@
       dot.style.background = runColor(run.run_id);
       const lbl = document.createElement('span');
       lbl.className = 'rt-run-label';
-      lbl.textContent = run.run_id.split('/').pop() || run.run_id;
+      lbl.textContent = run.display_name || run.run_id;
       lbl.title = run.run_id;
       idTd.append(dot, lbl);
       tr.appendChild(idTd);
@@ -1880,7 +1939,7 @@
     row.appendChild(dot);
     const name = document.createElement('div');
     name.className = 'recent-run-name';
-    name.textContent = r.run_id;
+    name.textContent = r.display_name || r.run_id;
     name.title = `${r.run_id}\n${r.run_dir || ''}`;
     row.appendChild(name);
     if (r.status) {
@@ -2153,7 +2212,7 @@
     if (!r) return closeDetail();
 
     document.getElementById('detail-dot').style.background = runColor(r.run_id);
-    document.getElementById('detail-title').textContent = r.run_id;
+    document.getElementById('detail-title').textContent = r.display_name || r.run_id;
 
     const meta = {
       run_dir: r.run_dir,

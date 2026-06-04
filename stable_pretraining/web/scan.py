@@ -21,6 +21,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
+from ..registry._sidecar import SIDECAR_NAME, write_sidecar
+
 
 @dataclass
 class _Run:
@@ -388,9 +390,17 @@ class RunScanner:
     @staticmethod
     def _serialize(run: _Run) -> dict:
         s = run.sidecar
+        # display_name: explicit sidecar field wins; fall back to the last
+        # path component of run_id so short IDs stay readable by default.
+        display_name = (
+            s.get("display_name")
+            or run.run_id.rsplit("/", 1)[-1]
+            or run.run_id
+        )
         return {
             "run_id": run.run_id,
             "run_dir": str(run.run_dir),
+            "display_name": display_name,
             "status": s.get("status"),
             "created_at": s.get("created_at"),
             "tags": s.get("tags") or [],
@@ -716,6 +726,51 @@ class RunScanner:
         except OSError:
             pass
         return {"events": events}
+
+    _MUTABLE_FIELDS = frozenset({"display_name", "notes", "tags", "archived"})
+
+    def patch_run_meta(self, run_id: str, patch: dict) -> bool:
+        """Atomically apply a metadata patch to a run's sidecar.
+
+        Args:
+            run_id: The run to update (must be known to the scanner).
+            patch: Dict containing any subset of ``display_name``, ``notes``,
+                ``tags``, and ``archived``. Other keys raise ``ValueError``.
+
+        Returns:
+            ``True`` on success, ``False`` if ``run_id`` is not known.
+
+        Raises:
+            ValueError: If ``patch`` contains fields outside the mutable set.
+        """
+        bad = set(patch) - self._MUTABLE_FIELDS
+        if bad:
+            raise ValueError(f"unknown patch fields: {sorted(bad)}")
+
+        with self._lock:
+            run = self._runs.get(run_id)
+            if run is None:
+                return False
+            sidecar = dict(run.sidecar)
+            run_dir = run.run_dir
+
+        sidecar.update(patch)
+        write_sidecar(run_dir, sidecar)
+
+        try:
+            new_mtime = (run_dir / SIDECAR_NAME).stat().st_mtime
+        except OSError:
+            new_mtime = None
+
+        with self._lock:
+            run = self._runs.get(run_id)
+            if run is not None:
+                run.sidecar = sidecar
+                if new_mtime is not None:
+                    run.sidecar_mtime = new_mtime
+
+        self._publish("update", {"changed": [run_id], "removed": []})
+        return True
 
     def logs_index(self, run_id: str) -> Optional[dict]:
         """Discover ``.out`` / ``.err`` / ``.log`` files for a run.
