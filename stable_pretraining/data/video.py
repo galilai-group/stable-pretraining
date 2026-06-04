@@ -265,8 +265,17 @@ def build_lance_video_dataset(
 
     t0 = time.time()
     with progress:
-        with ctx.Pool(n_workers) as pool:
-            pool_iter = pool.imap(_encode_one_video, tasks, chunksize=1)
+        # workers=1 short-circuits the multiprocessing pool: spawning a
+        # single child process and re-importing ``stable_pretraining`` in
+        # it costs ~30s (the parent's entire dep tree, Lightning included)
+        # for zero parallelism benefit. Running ``_encode_one_video``
+        # in-process is semantically equivalent for n_workers=1 and lets
+        # tiny single-worker builds (notably the unit-test fixtures)
+        # finish in <1s instead of 30s. The spawn path is still used
+        # whenever n_workers > 1 — there we get real parallelism that
+        # pays for the import cost.
+        if n_workers == 1:
+            pool_iter = (_encode_one_video(task) for task in tasks)
             reader = pa.RecordBatchReader.from_batches(
                 _SCHEMA,
                 _batch_stream(
@@ -274,6 +283,16 @@ def build_lance_video_dataset(
                 ),
             )
             lance.write_dataset(reader, str(output_path), mode="create")
+        else:
+            with ctx.Pool(n_workers) as pool:
+                pool_iter = pool.imap(_encode_one_video, tasks, chunksize=1)
+                reader = pa.RecordBatchReader.from_batches(
+                    _SCHEMA,
+                    _batch_stream(
+                        pool_iter, video_records, skip_corrupt, progress, task_id
+                    ),
+                )
+                lance.write_dataset(reader, str(output_path), mode="create")
 
     elapsed = time.time() - t0
     total_frames = sum(v["T"] for v in video_records)

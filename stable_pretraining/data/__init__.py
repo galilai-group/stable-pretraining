@@ -4,9 +4,10 @@ This module provides dataset utilities, data loading, transformations,
 and other data-related functionality for the stable-pretraining framework.
 """
 
-from . import dataset_stats, sampler, synthetic_data, transforms
+from . import dataset_stats, gpu_transforms, sampler, synthetic_data, transforms
 from .collate import Collator
 from .datasets import Dataset, FromTorchDataset, HFDataset, Subset
+from .gpu_transforms import GPUCompose, MultiView, StackedMultiView, ToDevice
 from .download import bulk_download, download
 from .module import DataModule
 from .sampler import RandomBatchSampler, RepeatedRandomSampler, SupervisedBatchSampler
@@ -44,12 +45,20 @@ __all__ = [
     "dataset_stats",
     "static",  # Backward compatibility
     "transforms",
+    "gpu_transforms",
     "sampler",
     "synthetic_data",
     # Core classes
     "DataModule",
     "Collator",
     "Dataset",
+    # GPU-side transforms (ToDevice + GPUCompose + view fan-out wrappers
+    # are kornia-free; the kornia-backed ops live in ``gpu_transforms``
+    # submodule)
+    "ToDevice",
+    "GPUCompose",
+    "StackedMultiView",
+    "MultiView",
     # Real data wrappers
     "FromTorchDataset",
     "HFDataset",

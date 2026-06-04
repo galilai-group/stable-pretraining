@@ -107,7 +107,7 @@ module = spt.Module(
     projector=projector,
     predictor=predictor,
     # Corrected Usage: Use the imported 'forward' module
-    forward=forward.nnclr_forward,
+    forward=forward.nnclr,
     nnclr_loss=spt.losses.NTXEntLoss(temperature=0.5),
     optim={
         "optimizer": {"type": "LARS", "lr": 5, "weight_decay": 1e-6},

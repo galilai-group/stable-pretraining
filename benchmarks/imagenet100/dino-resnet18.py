@@ -5,7 +5,7 @@ from lightning.pytorch.loggers import WandbLogger
 from torch import nn
 
 import stable_pretraining as spt
-from stable_pretraining.forward import dino_forward
+from stable_pretraining.forward import dino
 from stable_pretraining.data import transforms
 import sys
 from pathlib import Path
@@ -180,7 +180,7 @@ wrapped_projector = spt.TeacherStudentWrapper(
 module = spt.Module(
     backbone=wrapped_backbone,
     projector=wrapped_projector,
-    forward=dino_forward,
+    forward=dino,
     dino_loss=spt.losses.DINOv1Loss(
         temperature_student=0.1,
         center_momentum=0.9,

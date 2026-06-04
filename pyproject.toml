@@ -48,6 +48,11 @@ dependencies = [
     # systems (ML / HPC). Same Python API as ``opencv-python`` but doesn't
     # require system-level libGL/X11 libraries.
     "opencv-python-headless",
+    # ``kornia`` powers the GPU-side batched transforms in
+    # ``stable_pretraining.data.gpu_transforms`` (the default fast-path for
+    # augmentation). Required because GPU transforms are part of the
+    # standard recommended pipeline.
+    "kornia",
 ]
 
 dynamic = ["version"]
@@ -74,6 +79,7 @@ swanlab = ["swanlab"]
 # Development and documentation tools
 dev = [
     "pytest",
+    "pytest-split",
     "coverage",
     "pytest-cov",
     "codecov",

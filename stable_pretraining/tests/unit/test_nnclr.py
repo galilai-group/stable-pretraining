@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 import pytest
 import torch
 from stable_pretraining.data.transforms import MultiViewTransform
-from stable_pretraining.forward import nnclr_forward
+from stable_pretraining.forward import nnclr
 
 
 def create_batch():
@@ -42,7 +42,7 @@ class TestNNCLRUnit:
             mock_support_set
         )
 
-        nnclr_forward_bound = nnclr_forward.__get__(mock_module, type(mock_module))
+        nnclr_forward_bound = nnclr.__get__(mock_module, type(mock_module))
 
         batch = create_batch()
         outputs = nnclr_forward_bound(batch, "train")
@@ -72,7 +72,7 @@ class TestNNCLRUnit:
             torch.tensor([])
         )
 
-        nnclr_forward_bound = nnclr_forward.__get__(mock_module, type(mock_module))
+        nnclr_forward_bound = nnclr.__get__(mock_module, type(mock_module))
 
         batch = create_batch()
 

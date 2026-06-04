@@ -27,7 +27,7 @@ Forward functions can be specified in YAML configs as string references:
 
     module:
       _target_: stable_pretraining.Module
-      forward: stable_pretraining.forward.simclr_forward
+      forward: stable_pretraining.forward.simclr
       backbone: ...
       projector: ...
       simclr_loss: ...
@@ -37,10 +37,10 @@ Or in Python code:
 .. code-block:: python
 
     from stable_pretraining import Module
-    from stable_pretraining.forward import simclr_forward
+    from stable_pretraining.forward import simclr
 
     module = Module(
-        forward=simclr_forward,
+        forward=simclr,
         backbone=backbone,
         projector=projector,
         simclr_loss=loss_fn
@@ -52,7 +52,7 @@ Available Forward Functions
 SimCLR
 ~~~~~~
 
-.. autofunction:: simclr_forward
+.. autofunction:: simclr
 
 **Required Module Attributes:**
 
@@ -65,7 +65,7 @@ SimCLR
 .. code-block:: yaml
 
     module:
-      forward: stable_pretraining.forward.simclr_forward
+      forward: stable_pretraining.forward.simclr
       backbone:
         _target_: stable_pretraining.backbone.from_torchvision
         model_name: resnet50
@@ -86,7 +86,7 @@ SimCLR
 NNCLR
 ~~~~~
 
-.. autofunction:: nnclr_forward
+.. autofunction:: nnclr
 
 **Required Module Attributes:**
 
@@ -106,7 +106,7 @@ NNCLR
 .. code-block:: yaml
 
     module:
-      forward: stable_pretraining.forward.nnclr_forward
+      forward: stable_pretraining.forward.nnclr
       backbone:
         _target_: stable_pretraining.backbone.from_torchvision
         model_name: resnet18
@@ -150,7 +150,7 @@ NNCLR
 BYOL
 ~~~~
 
-.. autofunction:: byol_forward
+.. autofunction:: byol
 
 **Required Module Attributes:**
 
@@ -171,7 +171,7 @@ BYOL
 .. code-block:: yaml
 
     module:
-      forward: stable_pretraining.forward.byol_forward
+      forward: stable_pretraining.forward.byol
       backbone: ...
       projector: ...
       predictor:
@@ -190,7 +190,7 @@ BYOL
 VICReg
 ~~~~~~
 
-.. autofunction:: vicreg_forward
+.. autofunction:: vicreg
 
 **Required Module Attributes:**
 
@@ -209,7 +209,7 @@ VICReg
 .. code-block:: yaml
 
     module:
-      forward: stable_pretraining.forward.vicreg_forward
+      forward: stable_pretraining.forward.vicreg
       backbone: ...
       projector: ...
       vicreg_loss:
@@ -221,7 +221,7 @@ VICReg
 Barlow Twins
 ~~~~~~~~~~~~
 
-.. autofunction:: barlow_twins_forward
+.. autofunction:: barlow_twins
 
 **Required Module Attributes:**
 
@@ -240,7 +240,7 @@ Barlow Twins
 .. code-block:: yaml
 
     module:
-      forward: stable_pretraining.forward.barlow_twins_forward
+      forward: stable_pretraining.forward.barlow_twins
       backbone: ...
       projector: ...
       barlow_loss:
@@ -250,7 +250,7 @@ Barlow Twins
 Supervised
 ~~~~~~~~~~
 
-.. autofunction:: supervised_forward
+.. autofunction:: supervised
 
 **Required Module Attributes:**
 
@@ -268,7 +268,7 @@ Supervised
 .. code-block:: yaml
 
     module:
-      forward: stable_pretraining.forward.supervised_forward
+      forward: stable_pretraining.forward.supervised
       backbone: ...
       classifier:
         _target_: torch.nn.Linear

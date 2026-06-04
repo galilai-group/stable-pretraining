@@ -107,7 +107,7 @@ module = spt.Module(
     backbone=backbone,
     projector=projector,
     predictor=predictor,
-    forward=forward.nnclr_forward,
+    forward=forward.nnclr,
     nnclr_loss=spt.losses.NTXEntLoss(temperature=0.1),
     optim={
         "optimizer": {

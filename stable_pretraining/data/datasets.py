@@ -48,10 +48,22 @@ class DatasetMixin:
     Provides transform application, PyTorch Lightning trainer integration
     (injecting ``global_step`` and ``current_epoch`` into every sample), and
     a unified ``process_sample`` pipeline.
+
+    Args:
+        transform: Per-sample CPU transform applied inside DataLoader
+            workers (called once per ``__getitem__`` / ``__iter__`` step).
+        gpu_transform: Optional batch-level GPU transform stored on the
+            dataset and **not** applied here. It is discovered by
+            :meth:`Module.on_after_batch_transfer` via the active
+            DataLoader and run on the post-collated batch (after Lightning
+            has moved it to the model's device). Use this for kornia /
+            :mod:`gpu_transforms` pipelines so the augmentation spec
+            lives next to the dataset spec.
     """
 
-    def __init__(self, transform=None):
+    def __init__(self, transform=None, gpu_transform=None):
         self.transform = transform
+        self.gpu_transform = gpu_transform
         self._trainer = None
 
     def set_pl_trainer(self, trainer: pl.Trainer):
@@ -59,15 +71,16 @@ class DatasetMixin:
         self._trainer = trainer
 
     def __getstate__(self):
-        # Drop the trainer back-reference. Pickle-walking it reaches
-        # `trainer.train_dataloader._iterator`, a
-        # `_MultiProcessingDataLoaderIter`, which raises on __getstate__.
-        # Spawn-mode DataLoader workers therefore can't serialise any
-        # dataset that has had `set_pl_trainer` called on it.
-        # Workers see only a snapshot of trainer state at spawn time
-        # anyway; `process_sample` already handles `_trainer is None`.
+        # Drop the trainer back-reference AND the gpu_transform reference.
+        # Trainer pickling reaches the active DataLoader's iterator
+        # (``_MultiProcessingDataLoaderIter``) which raises on
+        # ``__getstate__``; gpu_transform lives on the main process where
+        # the Module reads it during ``on_after_batch_transfer`` — workers
+        # never need it, and dropping it avoids serialising an nn.Module
+        # (and its buffers) into every worker spawn.
         state = self.__dict__.copy()
         state["_trainer"] = None
+        state["gpu_transform"] = None
         return state
 
     def process_sample(self, sample, **kwargs):
@@ -98,8 +111,8 @@ class DatasetMixin:
 class Dataset(DatasetMixin, torch.utils.data.Dataset):
     """Base map-style dataset with transform and trainer support."""
 
-    def __init__(self, transform=None):
-        DatasetMixin.__init__(self, transform)
+    def __init__(self, transform=None, gpu_transform=None):
+        DatasetMixin.__init__(self, transform, gpu_transform)
 
     def __getitem__(self, idx):
         raise NotImplementedError
@@ -111,8 +124,8 @@ class Dataset(DatasetMixin, torch.utils.data.Dataset):
 class IterableDataset(DatasetMixin, torch.utils.data.IterableDataset):
     """Base iterable (streaming) dataset with transform and trainer support."""
 
-    def __init__(self, transform=None):
-        DatasetMixin.__init__(self, transform)
+    def __init__(self, transform=None, gpu_transform=None):
+        DatasetMixin.__init__(self, transform, gpu_transform)
 
     def __iter__(self):
         raise NotImplementedError
@@ -186,8 +199,10 @@ class FromTorchDataset(Dataset):
         add_sample_idx: If ``True``, adds a ``sample_idx`` field to each sample.
     """
 
-    def __init__(self, dataset, names, transform=None, add_sample_idx=True):
-        super().__init__(transform)
+    def __init__(
+        self, dataset, names, transform=None, gpu_transform=None, add_sample_idx=True
+    ):
+        super().__init__(transform, gpu_transform=gpu_transform)
         self.dataset = dataset
         self.names = names
         self.add_sample_idx = add_sample_idx
@@ -226,9 +241,14 @@ class HFMapDataset(Dataset):
     """
 
     def __init__(
-        self, dataset, transform=None, rename_columns=None, remove_columns=None
+        self,
+        dataset,
+        transform=None,
+        rename_columns=None,
+        remove_columns=None,
+        gpu_transform=None,
     ):
-        super().__init__(transform)
+        super().__init__(transform, gpu_transform=gpu_transform)
         dataset = dataset.add_column("sample_idx", list(range(dataset.num_rows)))
         if rename_columns:
             for k, v in rename_columns.items():
@@ -281,9 +301,14 @@ class HFIterableDataset(IterableDataset):
     """
 
     def __init__(
-        self, dataset, transform=None, rename_columns=None, remove_columns=None
+        self,
+        dataset,
+        transform=None,
+        rename_columns=None,
+        remove_columns=None,
+        gpu_transform=None,
     ):
-        super().__init__(transform)
+        super().__init__(transform, gpu_transform=gpu_transform)
         dataset = dataset.map(
             lambda sample, idx: {**sample, "sample_idx": idx}, with_indices=True
         )
@@ -323,7 +348,12 @@ class HFIterableDataset(IterableDataset):
 
 
 def HFDataset(
-    *args, transform=None, rename_columns=None, remove_columns=None, **kwargs
+    *args,
+    transform=None,
+    gpu_transform=None,
+    rename_columns=None,
+    remove_columns=None,
+    **kwargs,
 ):
     """Create a HuggingFace dataset wrapper.
 
@@ -340,6 +370,10 @@ def HFDataset(
         *args: Positional arguments forwarded to ``datasets.load_dataset``
             (typically the dataset name/path).
         transform: Optional transform applied to every sample dict.
+        gpu_transform: Optional batch-level GPU transform stored on the
+            returned dataset (see :class:`DatasetMixin`). Discovered by
+            :meth:`Module.on_after_batch_transfer` and run on the
+            post-collated batch after device transfer.
         rename_columns: Optional ``{old: new}`` mapping of columns to rename.
         remove_columns: Optional list of column names to drop.
         **kwargs: Keyword arguments forwarded to ``datasets.load_dataset``
@@ -392,5 +426,17 @@ def HFDataset(
     dataset = with_hf_retry_ratelimit(load_dataset_fn, *args, **kwargs)
 
     if isinstance(dataset, datasets.IterableDataset):
-        return HFIterableDataset(dataset, transform, rename_columns, remove_columns)
-    return HFMapDataset(dataset, transform, rename_columns, remove_columns)
+        return HFIterableDataset(
+            dataset,
+            transform,
+            rename_columns,
+            remove_columns,
+            gpu_transform=gpu_transform,
+        )
+    return HFMapDataset(
+        dataset,
+        transform,
+        rename_columns,
+        remove_columns,
+        gpu_transform=gpu_transform,
+    )

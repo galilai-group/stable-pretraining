@@ -29,6 +29,12 @@ import sys
 
 os.environ["LOGURU_LEVEL"] = os.environ.get("LOGURU_LEVEL", "INFO")
 
+# Reduce the CUDA-allocator fragmentation that bites memory-hungry workloads
+# (e.g. ViT-L two-view at large batch). ``setdefault`` so users can override
+# by exporting the env var themselves. Must be set before PyTorch initialises
+# the allocator on first CUDA op.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 from loguru import logger
 from omegaconf import OmegaConf
 
@@ -174,6 +180,7 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     # Method classes (most-used; full catalog in stable_pretraining.methods)
     "BarlowTwins": ("stable_pretraining.methods.barlow_twins", "BarlowTwins"),
     "BYOL": ("stable_pretraining.methods.byol", "BYOL"),
+    "CrossMAE": ("stable_pretraining.methods.cross_mae", "CrossMAE"),
     "DINO": ("stable_pretraining.methods.dino", "DINO"),
     "DINOv2": ("stable_pretraining.methods.dinov2", "DINOv2"),
     "MAE": ("stable_pretraining.methods.mae", "MAE"),
@@ -240,6 +247,31 @@ def _do_deferred_init() -> None:
         datasets.logging.set_verbosity_info()
     except (ModuleNotFoundError, AttributeError):
         # AttributeError can occur with pyarrow version incompatibilities.
+        pass
+
+    # Auto-prefer the cuDNN SDPA backend on Hopper (H100/H200). cuDNN's
+    # attention kernels are FA3-tier on sm_90+ and often beat PyTorch's
+    # default backend pick for the same shapes; ``preferred_sdp_backend``
+    # is a hint, so torch still falls back automatically when cuDNN can't
+    # handle a given shape/dtype.
+    #
+    # The ``preferred_sdp_backend`` knob was added in a post-2.11 torch
+    # release. On older torch (incl. 2.11) all four SDPA backends are
+    # already enabled by default and the runtime picks per-call — there
+    # is no safe way to express a preference (forcing cuDNN by disabling
+    # the others removes the auto-fallback). The ``hasattr`` guard below
+    # makes this a no-op on older torch; on newer torch with the knob
+    # available, Hopper users get cuDNN-preferred automatically.
+    try:
+        import torch
+
+        if torch.cuda.is_available() and hasattr(
+            torch.backends.cuda, "preferred_sdp_backend"
+        ):
+            major, _minor = torch.cuda.get_device_capability()
+            if major >= 9:
+                torch.backends.cuda.preferred_sdp_backend = "cudnn"
+    except Exception:  # pragma: no cover - defensive
         pass
 
 
@@ -319,6 +351,7 @@ __all__ = [
     # Method classes (most-used; full catalog: stable_pretraining.methods)
     "BarlowTwins",
     "BYOL",
+    "CrossMAE",
     "DINO",
     "DINOv2",
     "MAE",

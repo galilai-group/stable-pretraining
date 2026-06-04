@@ -9,7 +9,7 @@ from lightning.pytorch.loggers import WandbLogger
 
 import stable_pretraining as spt
 from stable_pretraining.data import transforms
-from stable_pretraining.forward import byol_forward
+from stable_pretraining.forward import byol
 import sys
 from pathlib import Path
 
@@ -111,7 +111,7 @@ module = spt.Module(
     backbone=wrapped_backbone,
     projector=wrapped_projector,
     predictor=predictor,
-    forward=byol_forward,
+    forward=byol,
     byol_loss=spt.losses.BYOLLoss(),
     optim={
         "optimizer": {

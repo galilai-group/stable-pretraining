@@ -5,15 +5,15 @@ that can be used with the Module class. These functions define the training
 logic for each method and can be specified in YAML configs or Python code.
 
 Available forward functions:
-    - ``supervised_forward`` — standard supervised training
-    - ``simclr_forward`` — SimCLR contrastive learning
-    - ``byol_forward`` — BYOL momentum self-distillation
-    - ``vicreg_forward`` — VICReg variance-invariance-covariance regularization
-    - ``barlow_twins_forward`` — Barlow Twins cross-correlation alignment
-    - ``swav_forward`` — SwAV online clustering
-    - ``nnclr_forward`` — NNCLR nearest-neighbor contrastive learning
-    - ``dino_forward`` — DINO self-distillation with multi-crop
-    - ``dinov2_forward`` — DINOv2 with iBOT masked patch prediction
+    - ``supervised`` — standard supervised training
+    - ``simclr`` — SimCLR contrastive learning
+    - ``byol`` — BYOL momentum self-distillation
+    - ``vicreg`` — VICReg variance-invariance-covariance regularization
+    - ``barlow_twins`` — Barlow Twins cross-correlation alignment
+    - ``swav`` — SwAV online clustering
+    - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
+    - ``dino`` — DINO self-distillation with multi-crop
+    - ``dinov2`` — DINOv2 with iBOT masked patch prediction
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -25,16 +25,16 @@ Example:
 
         module:
           _target_: stable_pretraining.Module
-          forward: stable_pretraining.forward.simclr_forward
+          forward: stable_pretraining.forward.simclr
           backbone: ...
           projector: ...
 
     Using in Python code::
 
         from stable_pretraining import Module
-        from stable_pretraining.forward import simclr_forward
+        from stable_pretraining.forward import simclr
 
-        module = Module(forward=simclr_forward, backbone=backbone, projector=projector)
+        module = Module(forward=simclr, backbone=backbone, projector=projector)
 """
 
 from typing import Any
@@ -114,9 +114,7 @@ def _get_views_by_prefix(
     return global_views, local_views, all_views
 
 
-def supervised_forward(
-    self, batch: dict[str, Any], stage: str
-) -> dict[str, torch.Tensor]:
+def supervised(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for standard supervised training.
 
     This function implements traditional supervised learning with labels,
@@ -147,11 +145,11 @@ def supervised_forward(
 
             import torch
             import stable_pretraining as spt
-            from stable_pretraining.forward import supervised_forward
+            from stable_pretraining.forward import supervised
 
             backbone = spt.backbone.from_torchvision("resnet50")
             module = spt.Module(
-                forward=supervised_forward,
+                forward=supervised,
                 backbone=backbone,
                 classifier=torch.nn.Linear(2048, 10),
                 supervised_loss=torch.nn.CrossEntropyLoss(),
@@ -165,7 +163,7 @@ def supervised_forward(
     if "label" in batch:
         if not hasattr(self, "supervised_loss"):
             raise ValueError(
-                "supervised_forward requires 'supervised_loss' to be provided (e.g., nn.CrossEntropyLoss()). "
+                "supervised requires 'supervised_loss' to be provided (e.g., nn.CrossEntropyLoss()). "
                 "Pass it when constructing the Module: Module(..., supervised_loss=nn.CrossEntropyLoss(), ...)"
             )
         out["loss"] = self.supervised_loss(out["logits"], batch["label"])
@@ -181,7 +179,7 @@ def supervised_forward(
     return out
 
 
-def simclr_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+def simclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for SimCLR (Simple Contrastive Learning of Representations).
 
     SimCLR learns representations by maximizing agreement between differently
@@ -210,11 +208,11 @@ def simclr_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
 
             import torch
             import stable_pretraining as spt
-            from stable_pretraining.forward import simclr_forward
+            from stable_pretraining.forward import simclr
 
             backbone = spt.backbone.from_torchvision("resnet50")
             module = spt.Module(
-                forward=simclr_forward,
+                forward=simclr,
                 backbone=backbone,
                 projector=torch.nn.Linear(2048, 128),
                 simclr_loss=spt.losses.NTXEntLoss(temperature=0.5),
@@ -258,7 +256,7 @@ def simclr_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
     return out
 
 
-def byol_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+def byol(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for BYOL (Bootstrap Your Own Latent).
 
     BYOL learns representations without negative pairs by using a momentum-based
@@ -288,14 +286,14 @@ def byol_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
 
             import torch
             import stable_pretraining as spt
-            from stable_pretraining.forward import byol_forward
+            from stable_pretraining.forward import byol
 
             backbone = spt.TeacherStudentWrapper(
                 spt.backbone.from_torchvision("resnet50")
             )
             projector = spt.TeacherStudentWrapper(torch.nn.Linear(2048, 256))
             module = spt.Module(
-                forward=byol_forward,
+                forward=byol,
                 backbone=backbone,
                 projector=projector,
                 predictor=torch.nn.Linear(256, 256),
@@ -343,7 +341,7 @@ def byol_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
 
         if not hasattr(self, "byol_loss"):
             raise ValueError(
-                "byol_forward requires 'byol_loss' to be provided (e.g., spt.losses.BYOLLoss()). "
+                "byol requires 'byol_loss' to be provided (e.g., spt.losses.BYOLLoss()). "
                 "Pass it when constructing the Module: Module(..., byol_loss=spt.losses.BYOLLoss(), ...)"
             )
 
@@ -379,7 +377,7 @@ def byol_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
     return out
 
 
-def vicreg_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+def vicreg(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for VICReg (Variance-Invariance-Covariance Regularization).
 
     VICReg learns representations using three criteria: variance (maintaining
@@ -409,11 +407,11 @@ def vicreg_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
 
             import torch
             import stable_pretraining as spt
-            from stable_pretraining.forward import vicreg_forward
+            from stable_pretraining.forward import vicreg
 
             backbone = spt.backbone.from_torchvision("resnet50")
             module = spt.Module(
-                forward=vicreg_forward,
+                forward=vicreg,
                 backbone=backbone,
                 projector=torch.nn.Linear(2048, 2048),
                 vicreg_loss=spt.losses.VICRegLoss(),
@@ -457,9 +455,7 @@ def vicreg_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
     return out
 
 
-def barlow_twins_forward(
-    self, batch: dict[str, Any], stage: str
-) -> dict[str, torch.Tensor]:
+def barlow_twins(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for Barlow Twins.
 
     Barlow Twins learns representations by making the cross-correlation matrix
@@ -489,11 +485,11 @@ def barlow_twins_forward(
 
             import torch
             import stable_pretraining as spt
-            from stable_pretraining.forward import barlow_twins_forward
+            from stable_pretraining.forward import barlow_twins
 
             backbone = spt.backbone.from_torchvision("resnet50")
             module = spt.Module(
-                forward=barlow_twins_forward,
+                forward=barlow_twins,
                 backbone=backbone,
                 projector=torch.nn.Linear(2048, 8192),
                 barlow_loss=spt.losses.BarlowTwinsLoss(lambda_coeff=5e-3),
@@ -537,7 +533,7 @@ def barlow_twins_forward(
     return out
 
 
-def swav_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+def swav(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for SwAV (Swapping Assignments between Views).
 
     SwAV learns representations by predicting the cluster assignment (code) of one
@@ -549,12 +545,12 @@ def swav_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
 
             import torch
             import stable_pretraining as spt
-            from stable_pretraining.forward import swav_forward
+            from stable_pretraining.forward import swav
 
             backbone = spt.backbone.from_torchvision("resnet50")
             prototypes = torch.nn.Linear(128, 3000, bias=False)
             module = spt.Module(
-                forward=swav_forward,
+                forward=swav,
                 backbone=backbone,
                 projector=torch.nn.Linear(2048, 128),
                 prototypes=prototypes,
@@ -624,7 +620,7 @@ def _find_nearest_neighbors(query, support_set):
     return support_set[indices]
 
 
-def nnclr_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+def nnclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for NNCLR (Nearest-Neighbor Contrastive Learning).
 
     NNCLR learns representations by using the nearest neighbor of an augmented
@@ -657,11 +653,11 @@ def nnclr_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Te
 
             import torch
             import stable_pretraining as spt
-            from stable_pretraining.forward import nnclr_forward
+            from stable_pretraining.forward import nnclr
 
             backbone = spt.backbone.from_torchvision("resnet50")
             module = spt.Module(
-                forward=nnclr_forward,
+                forward=nnclr,
                 backbone=backbone,
                 projector=torch.nn.Linear(2048, 256),
                 predictor=torch.nn.Linear(256, 256),
@@ -738,7 +734,7 @@ def nnclr_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Te
     return out
 
 
-def dino_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+def dino(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for DINO (self-DIstillation with NO labels).
 
     DINO learns representations through self-distillation where a student network
@@ -774,14 +770,14 @@ def dino_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
         ::
 
             import stable_pretraining as spt
-            from stable_pretraining.forward import dino_forward
+            from stable_pretraining.forward import dino
 
             backbone = spt.TeacherStudentWrapper(
                 spt.backbone.vit_hf("google/vit-base-patch16-224")
             )
             projector = spt.TeacherStudentWrapper(spt.backbone.MLP(768, [2048], 65536))
             module = spt.Module(
-                forward=dino_forward,
+                forward=dino,
                 backbone=backbone,
                 projector=projector,
                 dino_loss=spt.losses.DINOv1Loss(out_dim=65536),
@@ -895,13 +891,13 @@ def dino_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
 
     if not hasattr(self, "dino_loss"):
         raise ValueError(
-            "dino_forward requires 'dino_loss' to be provided (e.g., spt.losses.DINOv1Loss()). "
+            "dino requires 'dino_loss' to be provided (e.g., spt.losses.DINOv1Loss()). "
             "Pass it when constructing the Module: Module(..., dino_loss=spt.losses.DINOv1Loss(), ...)"
         )
 
     if not hasattr(self, "projector"):
         raise ValueError(
-            "dino_forward requires 'projector' to be provided. "
+            "dino requires 'projector' to be provided. "
             "This should be a TeacherStudentWrapper containing the projector (MLP + normalize + prototypes). "
             "Pass it when constructing the Module: Module(..., projector=wrapped_projector, ...)"
         )
@@ -949,7 +945,7 @@ def dino_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
     return out
 
 
-def dinov2_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for DINOv2 with iBOT.
 
     DINOv2 combines two self-supervised losses:
@@ -988,7 +984,7 @@ def dinov2_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
         ::
 
             import stable_pretraining as spt
-            from stable_pretraining.forward import dinov2_forward
+            from stable_pretraining.forward import dinov2
 
             vit = spt.backbone.vit_hf(
                 "google/vit-base-patch16-224", use_mask_token=True
@@ -999,7 +995,7 @@ def dinov2_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
                 spt.backbone.MLP(768, [2048], 65536)
             )
             module = spt.Module(
-                forward=dinov2_forward,
+                forward=dinov2,
                 backbone=backbone,
                 projector=projector,
                 patch_projector=patch_projector,
@@ -1225,7 +1221,7 @@ def dinov2_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
 
             if not hasattr(self, "dinov2_loss"):
                 raise ValueError(
-                    "dinov2_forward requires 'dinov2_loss' to be provided (e.g., spt.losses.DINOv2Loss()). "
+                    "dinov2 requires 'dinov2_loss' to be provided (e.g., spt.losses.DINOv2Loss()). "
                     "Pass it when constructing the Module: Module(..., dinov2_loss=spt.losses.DINOv2Loss(), ...)"
                 )
 
@@ -1247,9 +1243,9 @@ def dinov2_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.T
     else:
         # No patch_projector provided - raise error instead of falling back to DINO-only
         raise ValueError(
-            "dinov2_forward requires 'patch_projector' for iBOT loss. "
+            "dinov2 requires 'patch_projector' for iBOT loss. "
             "Either provide a patch_projector: Module(..., patch_projector=...) "
-            "or use dino_forward instead if you only want the DINO (CLS token) loss without iBOT."
+            "or use dino instead if you only want the DINO (CLS token) loss without iBOT."
         )
 
     # Return flattened CLS features for callbacks (probes expect [n_global * batch_size, dim])

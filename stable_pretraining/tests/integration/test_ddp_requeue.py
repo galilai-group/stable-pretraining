@@ -64,7 +64,7 @@ def _make_module():
     return spt.Module(
         backbone=_make_backbone(),
         classifier=nn.Linear(EMBED_DIM, NUM_CLASSES),
-        forward=forward.supervised_forward,
+        forward=forward.supervised,
         supervised_loss=nn.CrossEntropyLoss(),
         optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
     )
