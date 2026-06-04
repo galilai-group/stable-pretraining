@@ -35,7 +35,11 @@
     // Currently selected (runId, stream_id) for each kind, persisted across
     // tab switches so the user doesn't lose their place.
     logSelection: { out: null, err: null },  // null or {runId, streamId}
+    logLivePaused: { out: false, err: false },
   };
+
+  // setInterval handles for log auto-refresh; null when not running.
+  const _logLiveTimers = { out: null, err: null };
 
   const SYNC_KEY = 'sptweb-x';
 
@@ -2345,6 +2349,11 @@
       if (state.detailRunId && removed.includes(state.detailRunId)) {
         closeDetail();
       }
+      // A run may have transitioned from running → completed/failed; check
+      // whether the live timer should be stopped.
+      if (state.activeTab === 'out' || state.activeTab === 'err') {
+        _updateLiveState(state.activeTab);
+      }
     });
     es.addEventListener('error', () => {
       // Browser auto-reconnects.
@@ -2408,8 +2417,13 @@
       pane.classList.toggle('active', pane.id === `tab-${name}`);
     }
     saveState();
+    // Stop live timers on both kinds first; isLiveLog now returns false for
+    // whichever kind is no longer the active tab.
+    _updateLiveState('out');
+    _updateLiveState('err');
     if (name === 'out' || name === 'err') {
       // Lazily fetch logs the first time the user opens a log tab.
+      // renderLogTab calls _updateLiveState(kind) to restart live if applicable.
       refreshLogStreamsForVisibleRuns().then(() => renderLogTab(name));
     } else if (name === 'table') {
       renderRunsTable();
@@ -2417,6 +2431,37 @@
   }
 
   // ---- logs -------------------------------------------------------------
+
+  function isLiveLog(kind) {
+    if (state.activeTab !== kind) return false;
+    if (state.logLivePaused[kind]) return false;
+    const sel = state.logSelection[kind];
+    if (!sel) return false;
+    const run = state.runs.get(sel.runId);
+    return !!(run && run.status === 'running');
+  }
+
+  function _updateLiveState(kind) {
+    const live = isLiveLog(kind);
+    const badgeId = kind === 'err' ? 'logs-err-live-badge' : 'logs-live-badge';
+    const pauseId = kind === 'err' ? 'logs-err-pause' : 'logs-pause';
+    const badge = document.getElementById(badgeId);
+    const pauseBtn = document.getElementById(pauseId);
+    if (badge) badge.hidden = !live;
+    if (pauseBtn) pauseBtn.hidden = !live;
+    if (live) {
+      if (_logLiveTimers[kind]) return;  // already running
+      _logLiveTimers[kind] = setInterval(() => {
+        if (!isLiveLog(kind)) { _updateLiveState(kind); return; }
+        loadLogContent(kind);
+      }, 5000);
+    } else {
+      if (_logLiveTimers[kind]) {
+        clearInterval(_logLiveTimers[kind]);
+        _logLiveTimers[kind] = null;
+      }
+    }
+  }
 
   async function fetchLogStreams(runId) {
     try {
@@ -2472,6 +2517,7 @@
         ? 'select one or more runs on the left to view their logs.'
         : `no .${kind} files were found for the selected run(s).`;
       state.logSelection[kind] = null;
+      _updateLiveState(kind);
       return;
     }
 
@@ -2490,6 +2536,7 @@
     }
     state.logSelection[kind] = { runId: active.runId, streamId: active.streamId };
     await loadLogContent(kind);
+    _updateLiveState(kind);
   }
 
   async function loadLogContent(kind) {
@@ -2501,8 +2548,14 @@
       view.textContent = '';
       return;
     }
+    // Capture scroll position before any DOM change; treat empty / first-load
+    // as "at bottom" so we scroll down on the initial fetch.
+    const hasContent = view.textContent && !view.classList.contains('empty')
+      && view.textContent !== 'loading...';
+    const atBottom = !hasContent
+      || (view.scrollHeight - view.scrollTop - view.clientHeight < 50);
     view.classList.remove('empty');
-    view.textContent = 'loading...';
+    if (!hasContent) view.textContent = 'loading...';
     try {
       const r = await fetch(
         `/api/log-content?run_id=${encodeURIComponent(sel.runId)}&stream_id=${encodeURIComponent(sel.streamId)}`,
@@ -2510,9 +2563,9 @@
       );
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const txt = await r.text();
+      const prevScrollTop = view.scrollTop;
       view.textContent = txt || '(empty)';
-      // Auto-scroll to the bottom (most recent output).
-      view.scrollTop = view.scrollHeight;
+      view.scrollTop = atBottom ? view.scrollHeight : prevScrollTop;
     } catch (e) {
       view.classList.add('empty');
       view.textContent = `failed to load: ${e.message || e}`;
@@ -2608,18 +2661,36 @@
     if (outSel) outSel.addEventListener('change', () => {
       const [runId, streamId] = outSel.value.split('::');
       state.logSelection.out = { runId, streamId };
-      loadLogContent('out');
+      state.logLivePaused.out = false;
+      loadLogContent('out').then(() => _updateLiveState('out'));
     });
     const errSel = document.getElementById('logs-err-stream-selector');
     if (errSel) errSel.addEventListener('change', () => {
       const [runId, streamId] = errSel.value.split('::');
       state.logSelection.err = { runId, streamId };
-      loadLogContent('err');
+      state.logLivePaused.err = false;
+      loadLogContent('err').then(() => _updateLiveState('err'));
     });
     const outRefresh = document.getElementById('logs-refresh');
-    if (outRefresh) outRefresh.addEventListener('click', () => loadLogContent('out'));
+    if (outRefresh) outRefresh.addEventListener('click', () => {
+      state.logLivePaused.out = false;
+      loadLogContent('out').then(() => _updateLiveState('out'));
+    });
     const errRefresh = document.getElementById('logs-err-refresh');
-    if (errRefresh) errRefresh.addEventListener('click', () => loadLogContent('err'));
+    if (errRefresh) errRefresh.addEventListener('click', () => {
+      state.logLivePaused.err = false;
+      loadLogContent('err').then(() => _updateLiveState('err'));
+    });
+    const outPause = document.getElementById('logs-pause');
+    if (outPause) outPause.addEventListener('click', () => {
+      state.logLivePaused.out = true;
+      _updateLiveState('out');
+    });
+    const errPause = document.getElementById('logs-err-pause');
+    if (errPause) errPause.addEventListener('click', () => {
+      state.logLivePaused.err = true;
+      _updateLiveState('err');
+    });
 
     document.getElementById('theme-toggle').addEventListener('click', () => {
       applyTheme(state.theme === 'dark' ? 'light' : 'dark');

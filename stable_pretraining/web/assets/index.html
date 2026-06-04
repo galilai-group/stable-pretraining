@@ -78,6 +78,8 @@
         <label class="control">stream
           <select id="logs-stream-selector"></select>
         </label>
+        <span id="logs-live-badge" class="log-live-badge" hidden>live</span>
+        <button id="logs-pause" class="icon-btn" type="button" title="pause auto-refresh" hidden>⏸</button>
         <button id="logs-refresh" class="icon-btn" type="button" title="refresh">↻</button>
       </div>
       <pre id="logs-out" class="log-view"></pre>
@@ -87,6 +89,8 @@
         <label class="control">stream
           <select id="logs-err-stream-selector"></select>
         </label>
+        <span id="logs-err-live-badge" class="log-live-badge" hidden>live</span>
+        <button id="logs-err-pause" class="icon-btn" type="button" title="pause auto-refresh" hidden>⏸</button>
         <button id="logs-err-refresh" class="icon-btn" type="button" title="refresh">↻</button>
       </div>
       <pre id="logs-err" class="log-view"></pre>

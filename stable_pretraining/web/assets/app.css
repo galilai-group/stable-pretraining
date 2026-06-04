@@ -404,6 +404,19 @@ body {
   font-style: italic;
   white-space: normal;
 }
+.log-live-badge {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.4px;
+  color: var(--success, #48bb78);
+  border: 1px solid var(--success, #48bb78);
+  border-radius: 3px;
+  padding: 1px 5px;
+  text-transform: uppercase;
+  animation: live-pulse 2s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
 
 /* ---- header status stats ------------------------------------------- */
 #status-row { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--muted); }
