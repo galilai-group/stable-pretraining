@@ -52,6 +52,7 @@
       <button class="tab active" data-tab="figures" type="button">figures</button>
       <button class="tab" data-tab="out" type="button">.out</button>
       <button class="tab" data-tab="err" type="button">.err</button>
+      <button class="tab" data-tab="table" type="button">table</button>
     </nav>
     <div id="tab-figures" class="tab-pane active">
       <div id="figures-controls">
@@ -89,6 +90,13 @@
         <button id="logs-err-refresh" class="icon-btn" type="button" title="refresh">↻</button>
       </div>
       <pre id="logs-err" class="log-view"></pre>
+    </div>
+    <div id="tab-table" class="tab-pane">
+      <div id="table-controls">
+        <input id="table-col-search" type="search" placeholder="filter columns..." autocomplete="off" spellcheck="false">
+        <span id="table-col-count" class="table-col-count"></span>
+      </div>
+      <div class="runs-table-wrap"></div>
     </div>
   </main>
 </div>

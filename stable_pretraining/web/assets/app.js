@@ -26,8 +26,10 @@
     expandedMetrics: new Set(),  // metric tree paths the user has expanded (closed by default)
     openSidebarGroups: new Set(), // sidebar group keys the user has expanded
     theme: 'dark',
-    activeTab: 'figures',   // 'figures' | 'out' | 'err'
+    activeTab: 'figures',   // 'figures' | 'out' | 'err' | 'table'
     metricSearch: '',
+    tableColSearch: '',
+    tableSort: null,         // null | { col: string, dir: 'asc' | 'desc' }
     // Cached per-run log discoveries: runId -> {streams, fetchedAt}
     logsIndex: new Map(),
     // Currently selected (runId, stream_id) for each kind, persisted across
@@ -92,6 +94,7 @@
       logY: state.logY,
       smoothing: state.smoothing,
       metricSearch: state.metricSearch,
+      tableColSearch: state.tableColSearch,
       activeTab: state.activeTab,
       theme: state.theme,
     };
@@ -115,7 +118,7 @@
           : [];
       }
       const tabParam = params.get('tab');
-      if (tabParam && ['figures', 'out', 'err'].includes(tabParam)) fragTab = tabParam;
+      if (tabParam && ['figures', 'out', 'err', 'table'].includes(tabParam)) fragTab = tabParam;
     }
 
     // Load localStorage snapshot.
@@ -134,6 +137,7 @@
       if (typeof saved.logY === 'boolean') state.logY = saved.logY;
       if (typeof saved.smoothing === 'number') state.smoothing = saved.smoothing;
       if (typeof saved.metricSearch === 'string') state.metricSearch = saved.metricSearch;
+      if (typeof saved.tableColSearch === 'string') state.tableColSearch = saved.tableColSearch;
       if (typeof saved.activeTab === 'string') state.activeTab = saved.activeTab;
       if (typeof saved.theme === 'string') state.theme = saved.theme;
       if (Array.isArray(saved.visible)) state._pendingVisible = new Set(saved.visible);
@@ -158,6 +162,8 @@
     if (lyEl) lyEl.checked = state.logY;
     const msEl = document.getElementById('metric-search');
     if (msEl) msEl.value = state.metricSearch;
+    const tcsEl = document.getElementById('table-col-search');
+    if (tcsEl) tcsEl.value = state.tableColSearch;
     // Apply active tab to DOM directly — calling setActiveTab() would fire
     // saveState() while state.visible is still empty (runs not yet loaded).
     for (const btn of document.querySelectorAll('#tabs .tab')) {
@@ -822,6 +828,7 @@
     requestAnimationFrame(() => {
       renderPending = false;
       renderCharts();
+      if (state.activeTab === 'table') renderRunsTable();
     });
   }
 
@@ -1017,6 +1024,176 @@
     for (const tag of mediaTags.keys()) updateMediaPanel(tag);
   }
 
+  // ---- runs table ---------------------------------------------------------
+
+  function formatCellValue(v) {
+    if (v == null) return '';
+    if (typeof v === 'boolean') return String(v);
+    if (typeof v === 'number') {
+      if (!isFinite(v)) return String(v);
+      if (Number.isInteger(v)) return String(v);
+      const abs = Math.abs(v);
+      if (abs !== 0 && (abs < 1e-3 || abs >= 1e6)) return v.toExponential(2);
+      return String(+v.toPrecision(4));
+    }
+    const s = String(v);
+    return s.length > 30 ? s.slice(0, 28) + '…' : s;
+  }
+
+  function renderRunsTable() {
+    const wrap = document.querySelector('#tab-table .runs-table-wrap');
+    if (!wrap) return;
+
+    const visIds = effectivelyVisible();
+    const runs = visIds.map(id => state.runs.get(id)).filter(Boolean);
+
+    const cnt = document.getElementById('table-col-count');
+
+    if (runs.length === 0) {
+      wrap.replaceChildren();
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'select runs on the left to compare them in the table';
+      wrap.appendChild(empty);
+      if (cnt) cnt.textContent = '';
+      return;
+    }
+
+    // Build union of hparam + summary column keys across all visible runs.
+    const hparamKeys = new Set();
+    const summaryKeys = new Set();
+    for (const r of runs) {
+      for (const k of Object.keys(r.hparams || {})) hparamKeys.add(k);
+      for (const k of Object.keys(r.summary || {})) summaryKeys.add(k);
+    }
+    const allCols = [
+      ...[...hparamKeys].sort().map(k => ({ id: `hparams.${k}`, label: k, section: 'hparams' })),
+      ...[...summaryKeys].sort().map(k => ({ id: `summary.${k}`, label: k, section: 'summary' })),
+    ];
+
+    // Filter columns by search.
+    const q = (state.tableColSearch || '').trim().toLowerCase();
+    const cols = q ? allCols.filter(c => c.label.toLowerCase().includes(q)) : allCols;
+
+    if (cnt) {
+      cnt.textContent = cols.length === allCols.length
+        ? `${allCols.length} cols`
+        : `${cols.length} / ${allCols.length} cols`;
+    }
+
+    // Determine which columns have any differing values.
+    const diffSet = new Set();
+    for (const col of cols) {
+      const vals = runs.map(r => {
+        const v = valueAt(r, col.id);
+        return v == null ? '\x00null' : String(v);
+      });
+      if (new Set(vals).size > 1) diffSet.add(col.id);
+    }
+
+    // Apply table sort.
+    let sortedRuns = [...runs];
+    const ts = state.tableSort;
+    if (ts) {
+      sortedRuns.sort((a, b) => {
+        const c = compareValues(valueAt(a, ts.col), valueAt(b, ts.col));
+        return ts.dir === 'asc' ? c : -c;
+      });
+    }
+
+    // Track the first column of each section for a visual separator.
+    const sectionStarts = new Set();
+    let lastSection = null;
+    for (const col of cols) {
+      if (col.section !== lastSection) { sectionStarts.add(col.id); lastSection = col.section; }
+    }
+
+    // Build table.
+    const table = document.createElement('table');
+    table.className = 'runs-table';
+
+    // Header row.
+    const thead = document.createElement('thead');
+    const hdrRow = document.createElement('tr');
+
+    const cornerTh = document.createElement('th');
+    cornerTh.className = 'rt-corner';
+    cornerTh.textContent = 'run';
+    hdrRow.appendChild(cornerTh);
+
+    for (const col of cols) {
+      const th = document.createElement('th');
+      const cls = ['rt-col-hdr', diffSet.has(col.id) ? 'col-diff' : 'col-same'];
+      if (sectionStarts.has(col.id)) cls.push('rt-section-start');
+      if (ts && ts.col === col.id) cls.push('rt-sorted');
+      th.className = cls.join(' ');
+      th.title = col.id;
+
+      const inner = document.createElement('span');
+      inner.className = 'rt-col-label';
+      inner.textContent = col.label;
+      th.appendChild(inner);
+
+      if (ts && ts.col === col.id) {
+        const arrow = document.createElement('span');
+        arrow.className = 'rt-sort-arrow';
+        arrow.textContent = ts.dir === 'asc' ? '↑' : '↓';
+        th.appendChild(arrow);
+      }
+
+      th.addEventListener('click', () => {
+        if (ts && ts.col === col.id) {
+          state.tableSort = ts.dir === 'asc' ? { col: col.id, dir: 'desc' } : null;
+        } else {
+          state.tableSort = { col: col.id, dir: 'asc' };
+        }
+        renderRunsTable();
+      });
+
+      hdrRow.appendChild(th);
+    }
+
+    thead.appendChild(hdrRow);
+    table.appendChild(thead);
+
+    // Body rows.
+    const tbody = document.createElement('tbody');
+    for (const run of sortedRuns) {
+      const tr = document.createElement('tr');
+      tr.addEventListener('click', () => openDetail(run.run_id));
+
+      // Sticky run-ID cell.
+      const idTd = document.createElement('td');
+      idTd.className = 'rt-run-id';
+      const dot = document.createElement('span');
+      dot.className = 'rt-dot';
+      dot.style.background = runColor(run.run_id);
+      const lbl = document.createElement('span');
+      lbl.className = 'rt-run-label';
+      lbl.textContent = run.run_id.split('/').pop() || run.run_id;
+      lbl.title = run.run_id;
+      idTd.append(dot, lbl);
+      tr.appendChild(idTd);
+
+      // Data cells.
+      for (const col of cols) {
+        const td = document.createElement('td');
+        const cls = [diffSet.has(col.id) ? 'cell-diff' : 'cell-same'];
+        if (sectionStarts.has(col.id)) cls.push('rt-section-start');
+        td.className = cls.join(' ');
+        const val = valueAt(run, col.id);
+        td.textContent = formatCellValue(val);
+        td.title = val != null ? String(val) : '';
+        tr.appendChild(td);
+      }
+
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    wrap.replaceChildren(table);
+  }
+
   function makePanel(fullName, displayName) {
     const panel = document.createElement('div');
     panel.className = 'chart-panel';
@@ -1031,6 +1208,9 @@
     const body = document.createElement('div');
     body.className = 'chart-body';
     panel.appendChild(body);
+    const annot = document.createElement('div');
+    annot.className = 'chart-annot';
+    panel.appendChild(annot);
     return panel;
   }
 
@@ -1325,7 +1505,19 @@
         spanGaps: true,
       });
     }
-    return { data, seriesCfg, runIds: series.map(s => s.id) };
+    const lower = lowerIsBetter(name);
+    const seriesStats = series.map(s => {
+      const raw = s.ys.filter(v => v != null && isFinite(v));
+      const lastVal = raw.length ? raw[raw.length - 1] : null;
+      const bestVal = raw.length ? (lower ? Math.min(...raw) : Math.max(...raw)) : null;
+      return { id: s.id, lastVal, bestVal };
+    });
+    return { data, seriesCfg, runIds: series.map(s => s.id), seriesStats };
+  }
+
+  function lowerIsBetter(name) {
+    const n = name.toLowerCase();
+    return n.includes('loss') || n.includes('err') || n.includes('perplexity') || n.includes('ppl');
   }
 
   function fmtTooltipNum(v) {
@@ -1477,12 +1669,70 @@
     };
   }
 
+  function updateAnnotTable(name, entry, seriesCfg, seriesStats) {
+    const annot = entry.panel.querySelector('.chart-annot');
+    if (!annot) return;
+    if (!seriesStats || seriesStats.length === 0) { annot.replaceChildren(); return; }
+
+    const lower = lowerIsBetter(name);
+    const validBests = seriesStats.map(s => s.bestVal).filter(v => v != null);
+    const overallBest = validBests.length
+      ? (lower ? Math.min(...validBests) : Math.max(...validBests))
+      : null;
+
+    annot.replaceChildren();
+
+    // Header row
+    const hdr = document.createElement('div');
+    hdr.className = 'chart-annot-row chart-annot-header';
+    hdr.innerHTML = '<span></span><span></span><span>last</span><span>' + (lower ? 'min' : 'max') + '</span>';
+    annot.appendChild(hdr);
+
+    for (let i = 0; i < seriesStats.length; i++) {
+      const { id, lastVal, bestVal } = seriesStats[i];
+      const seriesIdx = i + 1;
+      const s = seriesCfg[seriesIdx];
+      if (!s) continue;
+      const color = typeof s.stroke === 'function' ? s.stroke() : s.stroke;
+      const isBest = bestVal != null && bestVal === overallBest;
+
+      const row = document.createElement('div');
+      row.className = 'chart-annot-row' + (isBest ? ' annot-best' : '');
+      row.title = id;
+
+      const dot = document.createElement('span');
+      dot.className = 'annot-dot';
+      dot.style.background = color;
+
+      const label = document.createElement('span');
+      label.className = 'annot-label';
+      label.textContent = id.split('/').pop() || id;
+
+      const lastEl = document.createElement('span');
+      lastEl.className = 'annot-val';
+      lastEl.textContent = fmtTooltipNum(lastVal);
+
+      const bestEl = document.createElement('span');
+      bestEl.className = isBest ? 'annot-val annot-best-bold' : 'annot-val';
+      bestEl.textContent = fmtTooltipNum(bestVal);
+
+      row.append(dot, label, lastEl, bestEl);
+      row.addEventListener('click', () => {
+        if (!entry.plot) return;
+        const cur = entry.plot.series[seriesIdx];
+        if (!cur) return;
+        entry.plot.setSeries(seriesIdx, { show: cur.show === false });
+      });
+      annot.appendChild(row);
+    }
+  }
+
   function updateChart(name) {
     const entry = state.charts.get(name);
     if (!entry) return;
 
     const visibleIds = effectivelyVisible().sort();
-    const { data, seriesCfg, runIds } = buildChartData(name, visibleIds);
+    const { data, seriesCfg, runIds, seriesStats } = buildChartData(name, visibleIds);
 
     if (runIds.length === 0) {
       // No data yet for this chart with current selection; clear.
@@ -1491,6 +1741,7 @@
         entry.plot = null;
         entry.configKey = '';
       }
+      updateAnnotTable(name, entry, [], []);
       return;
     }
 
@@ -1498,6 +1749,7 @@
 
     if (entry.plot && entry.configKey === configKey) {
       entry.plot.setData(data);
+      updateAnnotTable(name, entry, seriesCfg, seriesStats);
       return;
     }
 
@@ -1506,6 +1758,7 @@
     const width = body.clientWidth || 400;
     entry.plot = new uPlot(makeUplotOpts(name, width, seriesCfg), data, body);
     entry.configKey = configKey;
+    updateAnnotTable(name, entry, seriesCfg, seriesStats);
   }
 
   // ---- landing / overview ---------------------------------------------
@@ -2037,7 +2290,7 @@
   // ---- tabs -------------------------------------------------------------
 
   function setActiveTab(name) {
-    if (!['figures', 'out', 'err'].includes(name)) return;
+    if (!['figures', 'out', 'err', 'table'].includes(name)) return;
     state.activeTab = name;
     for (const btn of document.querySelectorAll('#tabs .tab')) {
       btn.classList.toggle('active', btn.dataset.tab === name);
@@ -2049,6 +2302,8 @@
     if (name === 'out' || name === 'err') {
       // Lazily fetch logs the first time the user opens a log tab.
       refreshLogStreamsForVisibleRuns().then(() => renderLogTab(name));
+    } else if (name === 'table') {
+      renderRunsTable();
     }
   }
 
@@ -2226,6 +2481,16 @@
         state._lastTreeKey = null; // force rebuild
         scheduleRerender();
         saveState();
+      }, 80));
+    }
+
+    // Table column search
+    const tcs = document.getElementById('table-col-search');
+    if (tcs) {
+      tcs.addEventListener('input', debounce(e => {
+        state.tableColSearch = e.target.value;
+        saveState();
+        renderRunsTable();
       }, 80));
     }
 
