@@ -956,6 +956,27 @@ body {
 .kv-val.bool { color: var(--info); }
 .kv-val.null { color: var(--muted-2); font-style: italic; }
 
+/* ---- notes textarea ---------------------------------------------------- */
+.notes-section { margin-bottom: 6px; }
+.notes-textarea {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg); color: var(--text);
+  border: 1px solid transparent; border-radius: 4px;
+  padding: 5px 7px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; line-height: 1.5;
+  resize: none; overflow: hidden;
+  min-height: 32px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.notes-textarea::placeholder { color: var(--muted-2); font-style: italic; }
+.notes-textarea:hover { border-color: var(--border); }
+.notes-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
 /* --- initial-scan loading overlay -------------------------------------- */
 #scan-progress {
   position: fixed;

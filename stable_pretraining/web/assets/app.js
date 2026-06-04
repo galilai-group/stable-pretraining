@@ -2214,12 +2214,18 @@
     document.getElementById('detail-dot').style.background = runColor(r.run_id);
     document.getElementById('detail-title').textContent = r.display_name || r.run_id;
 
+    const body = document.getElementById('detail-body');
+
+    // Reuse the notes section if the user is actively editing to avoid losing cursor.
+    const prevNotes = body.querySelector('.notes-section');
+    const editing = prevNotes && document.activeElement === prevNotes.querySelector('textarea');
+    const notesSec = editing ? prevNotes : _makeNotesSection(r);
+
     const meta = {
       run_dir: r.run_dir,
       status: r.status,
       created_at: fmtTime(r.created_at),
       tags: (r.tags || []).join(', ') || null,
-      notes: r.notes || null,
       checkpoint_path: r.checkpoint_path,
     };
 
@@ -2232,17 +2238,61 @@
     const smSec = buildKVSection('summary', r.summary || {}, filter);
     if (smSec) sections.push(smSec);
 
-    const body = document.getElementById('detail-body');
     if (!sections.length) {
       const empty = document.createElement('div');
       empty.style.color = '#4a5568';
       empty.style.padding = '16px 0';
       empty.style.textAlign = 'center';
       empty.textContent = filter ? 'no keys match the filter' : 'no config recorded';
-      body.replaceChildren(empty);
+      body.replaceChildren(notesSec, empty);
     } else {
-      body.replaceChildren(...sections);
+      body.replaceChildren(notesSec, ...sections);
     }
+
+    // Fit textarea height to content. Deferred so the browser has laid out the
+    // element — renderDetail may be called while the modal is still hidden,
+    // in which case scrollHeight is 0 until the next paint.
+    if (!editing) {
+      const ta = notesSec.querySelector('textarea');
+      if (ta.value) {
+        requestAnimationFrame(() => {
+          ta.style.height = 'auto';
+          ta.style.height = ta.scrollHeight + 'px';
+        });
+      }
+    }
+  }
+
+  function _makeNotesSection(r) {
+    const sec = document.createElement('section');
+    sec.className = 'detail-section notes-section';
+    const h = document.createElement('h3');
+    h.textContent = 'notes';
+    const ta = document.createElement('textarea');
+    ta.className = 'notes-textarea';
+    ta.placeholder = 'add notes…';
+    ta.value = r.notes || '';
+    ta.addEventListener('input', () => {
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    });
+    ta.addEventListener('blur', async () => {
+      const run = state.runs.get(state.detailRunId);
+      if (!run) return;
+      const newVal = ta.value;
+      const oldVal = run.notes || '';
+      if (newVal === oldVal) return;
+      run.notes = newVal;
+      try {
+        await patchRunMeta(run.run_id, { notes: newVal });
+      } catch (e) {
+        console.warn('notes patch failed', e);
+        ta.value = run.notes = oldVal;
+      }
+    });
+    sec.appendChild(h);
+    sec.appendChild(ta);
+    return sec;
   }
 
   // ---- SSE --------------------------------------------------------------
