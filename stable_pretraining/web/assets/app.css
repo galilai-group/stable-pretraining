@@ -437,8 +437,8 @@ body {
 }
 .log-live-badge {
   font-size: 10px; font-weight: 600; letter-spacing: 0.4px;
-  color: var(--success, #48bb78);
-  border: 1px solid var(--success, #48bb78);
+  color: var(--bad);
+  border: 1px solid var(--bad);
   border-radius: 3px;
   padding: 1px 5px;
   text-transform: uppercase;
@@ -642,9 +642,18 @@ body {
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .chart-body { width: 100%; }
-.chart-zoom-reset {
+.chart-download-btn {
   flex-shrink: 0;
   margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s;
+  font-size: 11px;
+  padding: 1px 5px;
+}
+.chart-panel:hover .chart-download-btn { opacity: 1; }
+
+.chart-zoom-reset {
+  flex-shrink: 0;
   background: none;
   border: 1px solid var(--border);
   border-radius: 4px;

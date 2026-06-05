@@ -1319,6 +1319,37 @@
     wrap.replaceChildren(table);
   }
 
+  function downloadChartPNG(metricName, displayName) {
+    const entry = state.charts.get(metricName);
+    if (!entry || !entry.plot) return;
+    const srcCanvas = entry.plot.ctx.canvas;
+    const dpr = window.devicePixelRatio || 1;
+    const PAD = Math.round(12 * dpr);
+    const TITLE_H = Math.round(26 * dpr);
+    const off = document.createElement('canvas');
+    off.width  = srcCanvas.width + PAD * 2;
+    off.height = srcCanvas.height + TITLE_H + PAD * 2;
+    const ctx = off.getContext('2d');
+    ctx.fillStyle = themeColor('surface') || '#11151c';
+    ctx.fillRect(0, 0, off.width, off.height);
+    ctx.font = `bold ${Math.round(13 * dpr)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+    ctx.fillStyle = themeColor('text-strong') || '#f1f5f9';
+    ctx.fillText(displayName || metricName, PAD, PAD + Math.round(15 * dpr));
+    ctx.drawImage(srcCanvas, PAD, TITLE_H + PAD);
+    const fileName = (displayName || metricName).replace(/[/\\:*?"<>|]/g, '_') + '.png';
+    off.toBlob(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  }
+
   function makePanel(fullName, displayName) {
     const panel = document.createElement('div');
     panel.className = 'chart-panel';
@@ -1329,6 +1360,13 @@
     span.textContent = displayName || fullName;
     span.title = fullName;
     title.appendChild(span);
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'chart-download-btn icon-btn';
+    dlBtn.type = 'button';
+    dlBtn.title = 'download chart as PNG';
+    dlBtn.textContent = '⬇';
+    dlBtn.addEventListener('click', () => downloadChartPNG(fullName, displayName || fullName));
+    title.appendChild(dlBtn);
     const resetBtn = document.createElement('button');
     resetBtn.className = 'chart-zoom-reset';
     resetBtn.type = 'button';
