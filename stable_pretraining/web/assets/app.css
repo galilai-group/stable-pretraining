@@ -630,6 +630,19 @@ body {
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .chart-body { width: 100%; }
+.chart-zoom-reset {
+  flex-shrink: 0;
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  padding: 1px 5px;
+  cursor: pointer;
+}
+.chart-zoom-reset:hover { color: var(--text-strong); border-color: var(--accent); }
 
 /* ---- chart annotations ------------------------------------------------ */
 .chart-annot {
@@ -897,6 +910,11 @@ body {
 
 /* uPlot themed */
 .u-cursor-pt { mix-blend-mode: normal; }
+.u-select {
+  background: var(--accent-bg-strong);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+}
 
 /* In-chart cursor tooltip (custom uPlot plugin) */
 .spt-tip {

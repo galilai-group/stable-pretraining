@@ -1295,6 +1295,13 @@
     span.textContent = displayName || fullName;
     span.title = fullName;
     title.appendChild(span);
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'chart-zoom-reset';
+    resetBtn.type = 'button';
+    resetBtn.title = 'reset zoom';
+    resetBtn.textContent = '⤢';
+    resetBtn.hidden = true;
+    title.appendChild(resetBtn);
     panel.appendChild(title);
     const body = document.createElement('div');
     body.className = 'chart-body';
@@ -1732,7 +1739,7 @@
     };
   }
 
-  function makeUplotOpts(name, width, seriesCfg) {
+  function makeUplotOpts(name, width, seriesCfg, resetBtn) {
     const muted = themeColor('muted') || '#8aa0b8';
     const grid = themeColor('grid') || '#1f2630';
     return {
@@ -1757,6 +1764,18 @@
       series: seriesCfg,
       legend: { show: false },
       plugins: [tooltipPlugin()],
+      hooks: {
+        setScale: [
+          (u, key) => {
+            if (!resetBtn || key !== 'x') return;
+            const xData = u.data[0];
+            if (!xData || xData.length < 2) { resetBtn.hidden = true; return; }
+            const sc = u.scales.x;
+            const zoomed = sc.min > xData[0] || sc.max < xData[xData.length - 1];
+            resetBtn.hidden = !zoomed;
+          },
+        ],
+      },
     };
   }
 
@@ -1846,8 +1865,17 @@
 
     if (entry.plot) entry.plot.destroy();
     const body = entry.panel.querySelector('.chart-body');
+    const resetBtn = entry.panel.querySelector('.chart-zoom-reset');
+    if (resetBtn) resetBtn.hidden = true;
     const width = body.clientWidth || 400;
-    entry.plot = new uPlot(makeUplotOpts(name, width, seriesCfg), data, body);
+    entry.plot = new uPlot(makeUplotOpts(name, width, seriesCfg, resetBtn), data, body);
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        const xData = entry.plot && entry.plot.data[0];
+        if (!xData || !xData.length) return;
+        entry.plot.setScale('x', { min: xData[0], max: xData[xData.length - 1] });
+      };
+    }
     entry.configKey = configKey;
     updateAnnotTable(name, entry, seriesCfg, seriesStats);
   }
