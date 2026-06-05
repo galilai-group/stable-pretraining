@@ -72,6 +72,11 @@ write_to = "stable_pretraining/_version.py"
 write_to_template = "version = \"{version}\"\n"
 
 [project.optional-dependencies]
+# JAX / Flax-NNX backend (parallel to the default torch/Lightning one). Kept
+# optional so ``import stable_pretraining`` and the torch path never pull in
+# jax. Install with ``pip install -e ".[jax]"`` (CPU) or pick a CUDA jaxlib
+# wheel yourself for HPC, e.g. ``pip install -U "jax[cuda12]"``.
+jax = ["jax", "flax>=0.10.0", "optax"]
 # Trackio experiment tracking (gradio_client is needed for self-hosted server_url mode)
 trackio = ["trackio", "gradio_client"]
 # SwanLab experiment tracking
