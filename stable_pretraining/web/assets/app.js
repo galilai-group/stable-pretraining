@@ -436,6 +436,7 @@
 
   function valueAt(run, key) {
     if (!key) return null;
+    if (key === 'status') return effectiveStatus(run);
     if (key.indexOf('.') < 0) return run[key];
     const dot = key.indexOf('.');
     const ns = key.slice(0, dot);
@@ -671,8 +672,15 @@
     row.dataset.runId = r.run_id;
 
     const dot = document.createElement('div');
-    dot.className = 'run-dot';
-    dot.style.background = runColor(r.run_id);
+    if (isStale(r)) {
+      dot.className = 'run-dot stale';
+      dot.textContent = '⚠';
+      const staleMins = Math.floor((Date.now() / 1000 - r.heartbeat_at) / 60);
+      dot.title = `no heartbeat for ${staleMins > 0 ? staleMins + 'm' : '<1m'} — may have crashed`;
+    } else {
+      dot.className = 'run-dot';
+      dot.style.background = runColor(r.run_id);
+    }
     row.appendChild(dot);
 
     // Name column: primary display_name + optional dimmed run_id hint.
@@ -732,8 +740,9 @@
 
     if (r.status) {
       const st = document.createElement('div');
-      st.className = `run-status ${r.status}`;
-      st.textContent = r.status;
+      const es = effectiveStatus(r);
+      st.className = `run-status ${es}`;
+      st.textContent = es;
       row.appendChild(st);
     }
 
@@ -780,8 +789,8 @@
     // that affect appearance (visibility, loading-pulse) are repainted by
     // touching only the affected row's classList below.
     const layoutKey = JSON.stringify({
-      groupKeys: groups.map(g => [g.key, g.runs.map(r => [r.run_id, r.display_name])]),
-      ungrouped: ungrouped.map(r => [r.run_id, r.display_name]),
+      groupKeys: groups.map(g => [g.key, g.runs.map(r => [r.run_id, r.display_name, isStale(r)])]),
+      ungrouped: ungrouped.map(r => [r.run_id, r.display_name, isStale(r)]),
       open: [...state.openSidebarGroups].sort(),
     });
     if (state._lastListKey === layoutKey) {
@@ -1864,9 +1873,10 @@
     wrap.className = 'status-bars';
     const colors = {
       completed: '#34d399', running: '#22d3ee',
+      stale: '#f59e0b',
       failed: '#f87171', unknown: '#6b7280',
     };
-    const order = ['completed', 'running', 'failed'];
+    const order = ['completed', 'running', 'stale', 'failed'];
     const seen = new Set(Object.keys(counts));
     const sorted = [
       ...order.filter(k => seen.has(k)),
@@ -1946,8 +1956,15 @@
     const row = document.createElement('div');
     row.className = 'recent-run';
     const dot = document.createElement('div');
-    dot.className = 'run-dot';
-    dot.style.background = runColor(r.run_id);
+    if (isStale(r)) {
+      dot.className = 'run-dot stale';
+      dot.textContent = '⚠';
+      const staleMins = Math.floor((Date.now() / 1000 - r.heartbeat_at) / 60);
+      dot.title = `no heartbeat for ${staleMins > 0 ? staleMins + 'm' : '<1m'} — may have crashed`;
+    } else {
+      dot.className = 'run-dot';
+      dot.style.background = runColor(r.run_id);
+    }
     row.appendChild(dot);
     const name = document.createElement('div');
     name.className = 'recent-run-name';
@@ -1956,8 +1973,9 @@
     row.appendChild(name);
     if (r.status) {
       const st = document.createElement('div');
-      st.className = `run-status ${r.status}`;
-      st.textContent = r.status;
+      const es = effectiveStatus(r);
+      st.className = `run-status ${es}`;
+      st.textContent = es;
       row.appendChild(st);
     }
     const ago = document.createElement('div');
@@ -1975,13 +1993,16 @@
     const days = 30;
     const startDay = Math.floor((now - (days - 1) * oneDay) / oneDay) * oneDay;
     const totalBins = new Array(days).fill(0);
-    const failBins = new Array(days).fill(0);
+    const failBins  = new Array(days).fill(0);
+    const staleBins = new Array(days).fill(0);
     for (const r of runs) {
       if (!r.created_at) continue;
       const idx = Math.floor((r.created_at - startDay) / oneDay);
       if (idx < 0 || idx >= days) continue;
       totalBins[idx]++;
-      if (r.status === 'failed') failBins[idx]++;
+      const es = effectiveStatus(r);
+      if (es === 'failed') failBins[idx]++;
+      if (es === 'stale')  staleBins[idx]++;
     }
     const xs = new Array(days);
     for (let i = 0; i < days; i++) xs[i] = startDay + i * oneDay + oneDay / 2;
@@ -1990,10 +2011,11 @@
     const bars = uPlot.paths.bars
       ? uPlot.paths.bars({ size: [0.7, 80], align: 0 })
       : undefined;
-    const muted = themeColor('muted') || '#8aa0b8';
-    const grid = themeColor('grid') || '#1f2630';
+    const muted  = themeColor('muted')  || '#8aa0b8';
+    const grid   = themeColor('grid')   || '#1f2630';
     const accent = themeColor('accent') || '#22d3ee';
-    const bad = themeColor('bad') || '#f87171';
+    const bad    = themeColor('bad')    || '#f87171';
+    const warn   = themeColor('warn')   || '#f59e0b';
     new uPlot({
       width, height: 180,
       cursor: { drag: { x: false, y: false } },
@@ -2030,20 +2052,27 @@
         {
           label: 'failed',
           stroke: bad,
-          fill: bad + '8c',    // ~55% alpha
+          fill: bad + '8c',
+          paths: bars,
+          points: { show: false },
+        },
+        {
+          label: 'stale',
+          stroke: warn,
+          fill: warn + '8c',
           paths: bars,
           points: { show: false },
         },
       ],
       legend: { show: true, live: false },
-    }, [xs, totalBins, failBins], parent);
+    }, [xs, totalBins, failBins, staleBins], parent);
   }
 
   function renderOverview(root) {
     const allRuns = [...state.runs.values()].filter(passesFilters);
     const counts = {};
     for (const r of allRuns) {
-      const s = r.status || 'unknown';
+      const s = effectiveStatus(r) || 'unknown';
       counts[s] = (counts[s] || 0) + 1;
     }
 
@@ -2065,6 +2094,7 @@
     cards.className = 'stat-cards';
     cards.appendChild(statCard('total runs', allRuns.length, '#f1f5f9'));
     cards.appendChild(statCard('running',   counts.running   || 0, '#22d3ee'));
+    if (counts.stale) cards.appendChild(statCard('stale', counts.stale, '#f59e0b'));
     cards.appendChild(statCard('completed', counts.completed || 0, '#34d399'));
     cards.appendChild(statCard('failed',    counts.failed    || 0, '#f87171'));
     wrap.appendChild(cards);
@@ -2170,6 +2200,16 @@
     return null;
   }
 
+  function isStale(r) {
+    if (r.status !== 'running') return false;
+    if (!r.heartbeat_at) return false;
+    return (Date.now() / 1000) - r.heartbeat_at > 300;
+  }
+
+  function effectiveStatus(r) {
+    return isStale(r) ? 'stale' : (r.status || null);
+  }
+
   function classifyValue(v) {
     if (v == null) return 'null';
     if (typeof v === 'number') return 'num';
@@ -2263,7 +2303,7 @@
     }
     const meta = {
       run_dir: r.run_dir,
-      status: r.status,
+      status: effectiveStatus(r),
       started: fmtTime(r.created_at),
       ended: r.ended_at ? fmtTime(r.ended_at) : null,
       duration: fmtDuration(durSecs),
@@ -2432,15 +2472,17 @@
   // ---- header stats -----------------------------------------------------
 
   function updateHeaderStats() {
-    const counts = { running: 0, completed: 0, failed: 0 };
+    const counts = { running: 0, completed: 0, failed: 0, stale: 0 };
     for (const r of state.runs.values()) {
-      const s = r.status || 'unknown';
+      const s = effectiveStatus(r) || 'unknown';
       if (s in counts) counts[s] += 1;
     }
     for (const [k, v] of Object.entries(counts)) {
       const el = document.querySelector(`#stat-${k} .n`);
       if (el) el.textContent = String(v);
     }
+    const staleChip = document.getElementById('stat-stale');
+    if (staleChip) staleChip.hidden = counts.stale === 0;
   }
 
   // ---- tabs -------------------------------------------------------------
@@ -2815,12 +2857,14 @@
     wireControls();
     syncControlsToState();
     initTheme();
-    // Tick every minute to keep duration displays current for running runs.
+    // Tick every minute to keep duration displays and stale indicators current.
     setInterval(() => {
       for (const el of document.querySelectorAll('.run-dur[data-run-id]')) {
         const r = state.runs.get(el.dataset.runId);
         if (r) el.textContent = fmtRunDur(r) || '';
       }
+      renderRunList();
+      updateHeaderStats();
     }, 60_000);
     // Start SSE first so we don't miss progress events emitted between the
     // status fetch and the first scan-tick.

@@ -284,10 +284,18 @@ body {
 .run-status.completed { color: var(--good); }
 .run-status.failed    { color: var(--bad); }
 .run-status.running   { color: var(--accent); }
+.run-status.stale     { color: var(--warn, #f59e0b); }
 .run-dur {
   font-size: 10px; color: var(--muted-2);
   font-variant-numeric: tabular-nums;
   white-space: nowrap; flex-shrink: 0;
+}
+.run-dot.stale {
+  background: none; border: none;
+  color: var(--warn, #f59e0b);
+  font-size: 10px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: help;
 }
 
 .run-info {
@@ -433,6 +441,7 @@ body {
 .status-stat .dot.running   { background: #22d3ee; }
 .status-stat .dot.completed { background: #34d399; }
 .status-stat .dot.failed    { background: #f87171; }
+.status-stat .dot.stale     { background: var(--warn, #f59e0b); }
 .status-stat .n { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* ---- main / charts -------------------------------------------------- */
