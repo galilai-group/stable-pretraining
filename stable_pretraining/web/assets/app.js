@@ -2538,10 +2538,14 @@
 
     const body = document.getElementById('detail-body');
 
-    // Reuse the notes section if the user is actively editing to avoid losing cursor.
+    // Reuse the notes/tags sections if the user is actively editing to avoid losing cursor.
     const prevNotes = body.querySelector('.notes-section');
     const editing = prevNotes && document.activeElement === prevNotes.querySelector('textarea');
     const notesSec = editing ? prevNotes : _makeNotesSection(r);
+
+    const prevTags = body.querySelector('.tags-section');
+    const taggingActive = prevTags && document.activeElement === prevTags.querySelector('.tag-add-input');
+    const tagsSec = taggingActive ? prevTags : _makeTagsSection(r);
 
     const now = Date.now() / 1000;
     let durSecs = null;
@@ -2555,7 +2559,6 @@
       started: fmtTime(r.created_at),
       ended: r.ended_at ? fmtTime(r.ended_at) : null,
       duration: fmtDuration(durSecs),
-      tags: (r.tags || []).join(', ') || null,
       checkpoint_path: r.checkpoint_path,
     };
 
@@ -2574,9 +2577,9 @@
       empty.style.padding = '16px 0';
       empty.style.textAlign = 'center';
       empty.textContent = filter ? 'no keys match the filter' : 'no config recorded';
-      body.replaceChildren(notesSec, empty);
+      body.replaceChildren(notesSec, tagsSec, empty);
     } else {
-      body.replaceChildren(notesSec, ...sections);
+      body.replaceChildren(notesSec, tagsSec, ...sections);
     }
 
     // Fit textarea height to content. Deferred so the browser has laid out the
@@ -2622,6 +2625,99 @@
     });
     sec.appendChild(h);
     sec.appendChild(ta);
+    return sec;
+  }
+
+  function allExistingTags() {
+    const tags = new Set();
+    for (const r of state.runs.values()) {
+      for (const t of r.tags || []) tags.add(t);
+    }
+    return [...tags].sort();
+  }
+
+  async function _patchTags(runId, newTags) {
+    const run = state.runs.get(runId);
+    if (!run) return;
+    const prev = [...(run.tags || [])];
+    run.tags = newTags;
+    renderDetail();
+    renderRunList();
+    try {
+      await patchRunMeta(runId, { tags: newTags });
+    } catch (e) {
+      console.warn('tags patch failed', e);
+      run.tags = prev;
+      renderDetail();
+      renderRunList();
+    }
+  }
+
+  function _makeTagsSection(r) {
+    const sec = document.createElement('section');
+    sec.className = 'detail-section tags-section';
+    const h = document.createElement('h3');
+    h.textContent = 'tags';
+    sec.appendChild(h);
+
+    const pills = document.createElement('div');
+    pills.className = 'tag-pills';
+
+    for (const tag of r.tags || []) {
+      const pill = document.createElement('span');
+      pill.className = 'tag-pill';
+      const label = document.createElement('span');
+      label.textContent = tag;
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'tag-remove';
+      rm.title = `remove "${tag}"`;
+      rm.textContent = '×';
+      rm.addEventListener('click', () => {
+        _patchTags(r.run_id, (r.tags || []).filter(t => t !== tag));
+      });
+      pill.append(label, rm);
+      pills.appendChild(pill);
+    }
+
+    const listId = 'tag-suggestions-datalist';
+    let datalist = document.getElementById(listId);
+    if (!datalist) {
+      datalist = document.createElement('datalist');
+      datalist.id = listId;
+      document.body.appendChild(datalist);
+    }
+    datalist.replaceChildren(
+      ...allExistingTags()
+        .filter(t => !(r.tags || []).includes(t))
+        .map(t => { const o = document.createElement('option'); o.value = t; return o; })
+    );
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'tag-add-input';
+    input.placeholder = '+ tag';
+    input.setAttribute('list', listId);
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+
+    function commitInput() {
+      const val = input.value.trim();
+      input.value = '';
+      if (!val) return;
+      const current = r.tags || [];
+      if (current.includes(val)) return;
+      _patchTags(r.run_id, [...current, val]);
+    }
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commitInput(); }
+      else if (e.key === 'Escape') { input.value = ''; input.blur(); }
+    });
+    input.addEventListener('blur', commitInput);
+
+    pills.appendChild(input);
+    sec.appendChild(pills);
     return sec;
   }
 
