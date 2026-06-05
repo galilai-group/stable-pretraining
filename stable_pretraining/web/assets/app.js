@@ -48,6 +48,12 @@
 
   const SYNC_KEY = 'sptweb-x';
 
+  // Virtual scroll state — set by renderRunList when the flat list is large.
+  const VSCROLL_THRESHOLD = 300;
+  const VSCROLL_OVERSCAN  = 5;
+  let _rowHeight  = 34;
+  let _vScrollState = null;  // { el, runs } | null
+
   // ---- theme -----------------------------------------------------------
 
   const SUN_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">'
@@ -790,6 +796,15 @@
     document.getElementById('run-count').textContent =
       `${state.runs.size} run${state.runs.size === 1 ? '' : 's'}` +
       (filtered.length !== state.runs.size ? ` (${filtered.length} shown)` : '');
+
+    // Virtual scroll: flat list only (groups defeat windowing).
+    if (groups.length === 0 && sorted.length > VSCROLL_THRESHOLD) {
+      _vScrollState = { el, runs: sorted };
+      state._lastListKey = null;  // force full rebuild next time we drop below threshold
+      _applyVScrollWindow();
+      return;
+    }
+    _vScrollState = null;
 
     // Skip rebuilding the sidebar DOM when the *structure* (group keys,
     // run order, run count) hasn't changed. Background SSE updates fire
@@ -2885,6 +2900,69 @@
     }
   }
 
+  function initSidebarResize() {
+    const app     = document.getElementById('app');
+    const resizer = document.getElementById('sidebar-resizer');
+    const sidebar = document.getElementById('sidebar');
+
+    const saved = parseInt(localStorage.getItem('sptSidebarWidth'), 10);
+    if (saved && saved > 100 && saved < 800) {
+      app.style.gridTemplateColumns = `${saved}px 6px 1fr`;
+    }
+
+    resizer.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startW = sidebar.getBoundingClientRect().width;
+      resizer.classList.add('dragging');
+
+      function onMove(e) {
+        const newW = Math.max(160, Math.min(600, startW + (e.clientX - startX)));
+        app.style.gridTemplateColumns = `${newW}px 6px 1fr`;
+      }
+      function onUp() {
+        resizer.classList.remove('dragging');
+        const cols = getComputedStyle(app).gridTemplateColumns;
+        const w = parseInt(cols, 10);
+        if (w) localStorage.setItem('sptSidebarWidth', String(w));
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  function _applyVScrollWindow() {
+    if (!_vScrollState) return;
+    const { el, runs } = _vScrollState;
+    const rowH     = _rowHeight;
+    const scrollTop = el.scrollTop;
+    const clientH  = el.clientHeight || 500;
+
+    const firstIdx = Math.max(0, Math.floor(scrollTop / rowH) - VSCROLL_OVERSCAN);
+    const lastIdx  = Math.min(runs.length - 1,
+      Math.ceil((scrollTop + clientH) / rowH) + VSCROLL_OVERSCAN);
+
+    const frag = document.createDocumentFragment();
+    const topSpacer = document.createElement('div');
+    topSpacer.style.height = `${firstIdx * rowH}px`;
+    frag.appendChild(topSpacer);
+    for (let i = firstIdx; i <= lastIdx; i++) frag.appendChild(makeRunRow(runs[i]));
+    const botSpacer = document.createElement('div');
+    botSpacer.style.height = `${Math.max(0, runs.length - 1 - lastIdx) * rowH}px`;
+    frag.appendChild(botSpacer);
+
+    el.replaceChildren(frag);
+
+    // Update measured row height from the first rendered item.
+    const row0 = el.querySelector('.run-item');
+    if (row0) {
+      const h = row0.offsetHeight;
+      if (h > 1) _rowHeight = h + 1; // +1 for the gap
+    }
+  }
+
   function exportMetricsCSV() {
     const visIds = effectivelyVisible();
     const metricNames = visibleMetricNames();
@@ -3128,6 +3206,10 @@
     wireControls();
     syncControlsToState();
     initTheme();
+    initSidebarResize();
+    document.getElementById('run-list').addEventListener('scroll', () => {
+      if (_vScrollState) requestAnimationFrame(_applyVScrollWindow);
+    }, { passive: true });
     // Tick every minute to keep duration displays and stale indicators current.
     setInterval(() => {
       for (const el of document.querySelectorAll('.run-dur[data-run-id]')) {
