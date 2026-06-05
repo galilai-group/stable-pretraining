@@ -393,6 +393,12 @@ body {
   margin-left: -8px;
 }
 
+#export-csv {
+  margin-left: auto;
+  font-size: 12px;
+  padding: 3px 8px;
+}
+
 .logs-controls {
   display: flex; gap: 12px; align-items: center;
   padding: 8px 12px;

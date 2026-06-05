@@ -2857,6 +2857,42 @@
     }
   }
 
+  function exportMetricsCSV() {
+    const visIds = effectivelyVisible();
+    const metricNames = visibleMetricNames();
+    if (!visIds.length || !metricNames.length) return;
+
+    const rows = ['run_id,run_name,metric,step,epoch,value'];
+    for (const id of visIds) {
+      const run = state.runs.get(id);
+      const name = (run && run.display_name) || id;
+      const m = state.metrics.get(id);
+      if (!m) continue;
+      for (const metric of metricNames) {
+        const col = m.metrics[metric];
+        if (!col) continue;
+        for (let i = 0; i < col.y.length; i++) {
+          const step  = col.step[i]  ?? '';
+          const epoch = col.epoch[i] ?? '';
+          const val   = col.y[i]     ?? '';
+          const escapedName   = name.includes(',')   ? `"${name.replace(/"/g, '""')}"` : name;
+          const escapedMetric = metric.includes(',') ? `"${metric.replace(/"/g, '""')}"` : metric;
+          rows.push(`${id},${escapedName},${escapedMetric},${step},${epoch},${val}`);
+        }
+      }
+    }
+
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'spt_metrics.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function wireControls() {
     document.getElementById('run-search').addEventListener(
       'input',
@@ -2886,6 +2922,8 @@
 
     document.getElementById('select-all').addEventListener('click', () => setAllVisible(true));
     document.getElementById('clear-all').addEventListener('click', () => setAllVisible(false));
+
+    document.getElementById('export-csv').addEventListener('click', exportMetricsCSV);
 
     document.getElementById('add-filter-btn').addEventListener('click', () => openFilterDraft(null));
 
