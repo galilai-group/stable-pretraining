@@ -57,6 +57,87 @@ Unreleased
 - New API pages: :doc:`api/registry` (RegistryLogger + Registry query)
   and :doc:`api/web` (``serve`` entry point).
 
+**spt web — viewer improvements**
+
+- **State persistence & shareable URLs**: all interactive state
+  (selected runs, filters, group-by, sort, x-axis, smoothing, log-y, active
+  tab, theme) is serialised to ``localStorage`` on every mutation and restored
+  on load. The URL fragment is kept in sync (``#runs=…&tab=…``) so copying the
+  address bar produces a link that reopens the exact same selection.
+
+- **Chart value annotations**: each metric chart now has a compact table below
+  it showing the last and best value for every visible series. The best row is
+  highlighted; clicking a row toggles that series on/off. Lower-is-better is
+  inferred automatically from metric names containing ``loss``, ``err``,
+  ``perplexity``, or ``ppl``.
+
+- **Runs table view**: a fourth **table** tab renders a horizontally-scrollable
+  grid with one row per visible run and one column per hparam/summary key. Cells
+  whose values differ across runs are highlighted in amber; identical cells are
+  dimmed. Columns are sortable by click and filterable by a search box. The
+  run-ID column and header row are sticky.
+
+- **Run display names**: the sidebar and table now show ``display_name`` as the
+  primary label with the raw path shown as a dimmed hint. Double-clicking the
+  label opens an inline editor; changes are persisted via ``PATCH /api/run-meta``.
+
+- **Notes editing**: the run detail modal has an editable notes textarea that
+  auto-resizes to its content. Notes are saved on blur or ``Ctrl+Enter`` via
+  ``PATCH /api/run-meta``.
+
+- **Log auto-refresh / live tail**: the ``.out`` and ``.err`` tabs auto-refresh
+  every 10 s while the selected run is running or stale, showing a pulsing
+  **live** badge. A pause button stops the timer; a refresh button triggers a
+  manual fetch. Scroll position is preserved when the user has scrolled up.
+
+- **Elapsed time / duration**: each run row and the detail modal now show the
+  elapsed or total duration. Running runs tick forward every 60 s without a full
+  re-render. ``RegistryLogger.finalize()`` now records ``ended_at`` in the
+  sidecar so completed durations survive restarts.
+
+- **Heartbeat staleness**: runs whose heartbeat file is more than 5 minutes old
+  are flagged as **stale** with an amber ⚠ indicator in the sidebar, topbar
+  stats, detail modal, figures overview, and activity timeline. Filters,
+  group-by, and sort all treat stale as a distinct status value via a centralised
+  ``effectiveStatus()`` helper.
+
+- **Scatter plot**: the figures tab renders a scatter plot below the metric
+  charts when two or more runs are visible. X and Y axes are independently
+  selectable from any numeric ``hparams.*`` or ``summary.*`` key across visible
+  runs. Each run contributes one point (its final summary scalar). Axis
+  selection is persisted to ``localStorage``.
+
+- **CSV export**: a **download CSV** button in the figures toolbar downloads all
+  visible metrics for the currently selected runs as a flat CSV
+  (``run_id, run_name, metric, step, epoch, value``). Only the runs and metrics
+  currently in view (respecting the metric-search filter) are included. No
+  server round-trip — the data is built entirely from the in-memory metrics
+  cache.
+
+- **Zoom reset**: drag-selecting a region on any chart zooms all charts
+  simultaneously (shared sync key). A **⤢** reset button appears in the chart
+  title bar after zooming and resets all charts to their full x-range in one
+  click. The drag-selection region is now styled with an accent-coloured border
+  and fill.
+
+- **Sidebar resize + virtual scroll**: the sidebar can be dragged to any width
+  between 160 px and 600 px; the chosen width is persisted. The
+  search/filter/sort controls are now fixed at the top of the sidebar while the
+  run list scrolls independently below them. When more than 300 ungrouped runs
+  are visible, the run list switches to a virtual-scroll window so SSE updates
+  remain smooth at scale.
+
+- **Keyboard shortcuts**: ``/`` focuses metric search, ``r`` focuses run
+  search, ``t`` cycles tabs, ``Shift+A`` selects all, ``Shift+C`` clears all,
+  ``?`` opens a help popover listing all shortcuts. ``Esc`` exits focused inputs
+  and dismisses all modals and popovers.
+
+- **Tag editing**: run tags are now displayed as editable pills in the detail
+  modal. Clicking **star** on a pill removes the tag; a dashed ``+ tag`` input
+  with autocomplete (populated from tags on other runs) adds new ones. All
+  changes are persisted via ``PATCH /api/run-meta`` with optimistic updates and
+  revert on failure.
+
 Version 0.1
 -----------
 

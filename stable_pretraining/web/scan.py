@@ -393,9 +393,7 @@ class RunScanner:
         # display_name: explicit sidecar field wins; fall back to the last
         # path component of run_id so short IDs stay readable by default.
         display_name = (
-            s.get("display_name")
-            or run.run_id.rsplit("/", 1)[-1]
-            or run.run_id
+            s.get("display_name") or run.run_id.rsplit("/", 1)[-1] or run.run_id
         )
         try:
             hb_at = heartbeat_mtime(run.run_dir)
