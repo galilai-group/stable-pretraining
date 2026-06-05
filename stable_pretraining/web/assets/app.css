@@ -115,6 +115,7 @@ body {
   display: inline-flex; align-items: center; justify-content: center;
 }
 .icon-btn:hover { color: var(--accent); border-color: var(--accent); }
+.icon-btn.active { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
 .icon-btn svg { display: block; }
 
 /* ---- sidebar -------------------------------------------------------- */

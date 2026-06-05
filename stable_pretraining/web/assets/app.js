@@ -38,6 +38,7 @@
     logLivePaused: { out: false, err: false },
     scatterX: null,   // 'hparams.lr' | 'summary.val_acc' | …
     scatterY: null,
+    tableHideSame: false,
   };
 
   // setInterval handles for log auto-refresh; null when not running.
@@ -112,6 +113,7 @@
       tableColSearch: state.tableColSearch,
       scatterX: state.scatterX,
       scatterY: state.scatterY,
+      tableHideSame: state.tableHideSame,
       activeTab: state.activeTab,
       theme: state.theme,
     };
@@ -157,6 +159,7 @@
       if (typeof saved.tableColSearch === 'string') state.tableColSearch = saved.tableColSearch;
       if (typeof saved.scatterX === 'string') state.scatterX = saved.scatterX;
       if (typeof saved.scatterY === 'string') state.scatterY = saved.scatterY;
+      if (typeof saved.tableHideSame === 'boolean') state.tableHideSame = saved.tableHideSame;
       if (typeof saved.activeTab === 'string') state.activeTab = saved.activeTab;
       if (typeof saved.theme === 'string') state.theme = saved.theme;
       if (Array.isArray(saved.visible)) state._pendingVisible = new Set(saved.visible);
@@ -183,6 +186,11 @@
     if (msEl) msEl.value = state.metricSearch;
     const tcsEl = document.getElementById('table-col-search');
     if (tcsEl) tcsEl.value = state.tableColSearch;
+    const hsBtn = document.getElementById('table-hide-same');
+    if (hsBtn) {
+      hsBtn.textContent = state.tableHideSame ? 'show same' : 'hide same';
+      hsBtn.classList.toggle('active', state.tableHideSame);
+    }
     // Apply active tab to DOM directly — calling setActiveTab() would fire
     // saveState() while state.visible is still empty (runs not yet loaded).
     for (const btn of document.querySelectorAll('#tabs .tab')) {
@@ -1179,13 +1187,7 @@
 
     // Filter columns by search.
     const q = (state.tableColSearch || '').trim().toLowerCase();
-    const cols = q ? allCols.filter(c => c.label.toLowerCase().includes(q)) : allCols;
-
-    if (cnt) {
-      cnt.textContent = cols.length === allCols.length
-        ? `${allCols.length} cols`
-        : `${cols.length} / ${allCols.length} cols`;
-    }
+    let cols = q ? allCols.filter(c => c.label.toLowerCase().includes(q)) : allCols;
 
     // Determine which columns have any differing values.
     const diffSet = new Set();
@@ -1195,6 +1197,23 @@
         return v == null ? '\x00null' : String(v);
       });
       if (new Set(vals).size > 1) diffSet.add(col.id);
+    }
+
+    // Optionally hide columns where all visible runs have the same value.
+    if (state.tableHideSame) {
+      cols = cols.filter(c => diffSet.has(c.id));
+    }
+
+    if (cnt) {
+      const shown = cols.length;
+      const total = allCols.length;
+      if (shown === total) {
+        cnt.textContent = `${total} cols`;
+      } else if (state.tableHideSame && !q) {
+        cnt.textContent = `${shown} diff / ${total} cols`;
+      } else {
+        cnt.textContent = `${shown} / ${total} cols`;
+      }
     }
 
     // Apply table sort.
@@ -3239,6 +3258,18 @@
         saveState();
         renderRunsTable();
       }, 80));
+    }
+
+    // Table: hide same-value columns toggle
+    const hideSameBtn = document.getElementById('table-hide-same');
+    if (hideSameBtn) {
+      hideSameBtn.addEventListener('click', () => {
+        state.tableHideSame = !state.tableHideSame;
+        hideSameBtn.textContent = state.tableHideSame ? 'show same' : 'hide same';
+        hideSameBtn.classList.toggle('active', state.tableHideSame);
+        saveState();
+        renderRunsTable();
+      });
     }
 
     // Log tab selectors / refresh buttons
