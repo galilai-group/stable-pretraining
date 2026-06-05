@@ -3060,7 +3060,64 @@
       if (e.key === 'Escape') {
         const box = document.getElementById('image-lightbox');
         if (box && !box.hidden) closeLightbox();
+        const kbd = document.getElementById('kbd-overlay');
+        if (kbd && !kbd.hidden) kbd.hidden = true;
       }
+    });
+
+    // Global keyboard shortcuts — skip when focus is inside an input/textarea.
+    document.addEventListener('keydown', e => {
+      const tag = document.activeElement && document.activeElement.tagName;
+      const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+      if (e.key === '?' && !inInput) {
+        e.preventDefault();
+        const kbd = document.getElementById('kbd-overlay');
+        if (kbd) kbd.hidden = !kbd.hidden;
+        return;
+      }
+      if (inInput) return;
+
+      const tabs = ['figures', 'out', 'err', 'table'];
+
+      if (e.key === '/') {
+        e.preventDefault();
+        const ms = document.getElementById('metric-search');
+        if (ms) {
+          setActiveTab('figures');
+          ms.focus(); ms.select();
+          ms.addEventListener('keydown', function esc(ke) {
+            if (ke.key === 'Escape') { ke.preventDefault(); ms.blur(); ms.removeEventListener('keydown', esc); }
+          });
+        }
+      } else if (e.key === 'r') {
+        e.preventDefault();
+        const rs = document.getElementById('run-search');
+        if (rs) {
+          rs.focus();
+          rs.addEventListener('keydown', function esc(ke) {
+            if (ke.key === 'Escape') { ke.preventDefault(); rs.blur(); rs.removeEventListener('keydown', esc); }
+          });
+        }
+      } else if (e.key === 't') {
+        e.preventDefault();
+        const idx = tabs.indexOf(state.activeTab);
+        setActiveTab(tabs[(idx + 1) % tabs.length]);
+      } else if (e.key === 'A' && e.shiftKey) {
+        e.preventDefault();
+        setAllVisible(true);
+      } else if (e.key === 'C' && e.shiftKey) {
+        e.preventDefault();
+        setAllVisible(false);
+      }
+    });
+
+    document.getElementById('kbd-close')?.addEventListener('click', () => {
+      document.getElementById('kbd-overlay').hidden = true;
+    });
+    document.getElementById('kbd-overlay')?.addEventListener('click', e => {
+      if (e.target === document.getElementById('kbd-overlay'))
+        document.getElementById('kbd-overlay').hidden = true;
     });
 
     // Metric search (debounced; force a tree rebuild because the set of

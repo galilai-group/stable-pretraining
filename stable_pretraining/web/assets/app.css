@@ -981,6 +981,54 @@ body {
 
 /* ---- detail (config) modal ----------------------------------------- */
 
+/* ---- keyboard shortcuts popover ------------------------------------ */
+#kbd-overlay {
+  position: fixed; inset: 0;
+  background: var(--overlay);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; backdrop-filter: blur(2px);
+}
+#kbd-overlay[hidden] { display: none; }
+#kbd-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: min(400px, 92vw);
+  box-shadow: var(--shadow);
+  padding: 0 0 16px;
+}
+.kbd-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600; font-size: 13px; color: var(--text-strong);
+}
+#kbd-close {
+  background: none; border: none; color: var(--muted);
+  font-size: 22px; cursor: pointer; line-height: 1;
+  padding: 0 4px; font-family: inherit;
+}
+#kbd-close:hover { color: var(--text); }
+.kbd-table {
+  width: 100%; border-collapse: collapse;
+  margin-top: 8px; font-size: 13px;
+}
+.kbd-table td { padding: 6px 16px; vertical-align: middle; }
+.kbd-table td:first-child { white-space: nowrap; text-align: right; width: 1%; }
+.kbd-table td:last-child { color: var(--muted); padding-left: 20px; }
+kbd {
+  display: inline-block;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-strong);
+  box-shadow: 0 1px 0 var(--border-strong);
+  line-height: 1.6;
+}
+
 #detail-overlay {
   position: fixed; inset: 0;
   background: var(--overlay);

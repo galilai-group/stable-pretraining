@@ -130,6 +130,25 @@
     <div id="detail-body"></div>
   </div>
 </div>
+<div id="kbd-overlay" hidden role="dialog" aria-modal="true" aria-label="keyboard shortcuts">
+  <div id="kbd-card">
+    <div class="kbd-header">
+      <span>keyboard shortcuts</span>
+      <button id="kbd-close" type="button" title="close (Esc)" aria-label="close">×</button>
+    </div>
+    <table class="kbd-table">
+      <tbody>
+        <tr><td><kbd>/</kbd></td><td>focus metric search</td></tr>
+        <tr><td><kbd>r</kbd></td><td>focus run search</td></tr>
+        <tr><td><kbd>t</kbd></td><td>cycle tabs</td></tr>
+        <tr><td><kbd>Shift</kbd>+<kbd>A</kbd></td><td>select all visible runs</td></tr>
+        <tr><td><kbd>Shift</kbd>+<kbd>C</kbd></td><td>clear all runs</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>close modal / popover</td></tr>
+        <tr><td><kbd>?</kbd></td><td>show this help</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.31/dist/uPlot.iife.min.js"></script>
 <script src="/assets/app.js"></script>
 </body>
