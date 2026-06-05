@@ -1886,9 +1886,12 @@
     entry.plot = new uPlot(makeUplotOpts(name, width, seriesCfg, resetBtn), data, body);
     if (resetBtn) {
       resetBtn.onclick = () => {
-        const xData = entry.plot && entry.plot.data[0];
-        if (!xData || !xData.length) return;
-        entry.plot.setScale('x', { min: xData[0], max: xData[xData.length - 1] });
+        for (const [, e] of state.charts) {
+          if (!e.plot) continue;
+          const xData = e.plot.data[0];
+          if (!xData || !xData.length) continue;
+          e.plot.setScale('x', { min: xData[0], max: xData[xData.length - 1] });
+        }
       };
     }
     entry.configKey = configKey;
