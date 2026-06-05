@@ -667,6 +667,45 @@ body {
 .annot-val { text-align: right; white-space: nowrap; }
 .annot-best-bold { font-weight: 700; color: var(--text-strong); }
 
+/* ---- scatter section -------------------------------------------------- */
+
+.scatter-section {
+  margin: 16px 12px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.scatter-header {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.scatter-title {
+  font-size: 11px; font-weight: 600;
+  color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;
+  margin: 0; white-space: nowrap;
+}
+.scatter-controls {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.scatter-axis-label {
+  font-size: 11px; color: var(--muted);
+  display: flex; align-items: center; gap: 4px;
+}
+.scatter-axis-sel {
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 2px 5px; font-size: 11px; font-family: inherit;
+}
+.scatter-axis-sel:focus { outline: none; border-color: var(--accent); }
+.scatter-plot { padding: 8px; }
+.scatter-empty {
+  padding: 24px 12px;
+  color: var(--muted); font-size: 12px;
+  text-align: center; font-style: italic;
+}
+
 /* ---- runs table ------------------------------------------------------- */
 
 #table-controls {

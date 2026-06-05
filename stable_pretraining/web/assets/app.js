@@ -36,10 +36,15 @@
     // tab switches so the user doesn't lose their place.
     logSelection: { out: null, err: null },  // null or {runId, streamId}
     logLivePaused: { out: false, err: false },
+    scatterX: null,   // 'hparams.lr' | 'summary.val_acc' | …
+    scatterY: null,
   };
 
   // setInterval handles for log auto-refresh; null when not running.
   const _logLiveTimers = { out: null, err: null };
+
+  // Active uPlot instance for the scatter panel; null when not shown.
+  let _scatterPlot = null;
 
   const SYNC_KEY = 'sptweb-x';
 
@@ -99,6 +104,8 @@
       smoothing: state.smoothing,
       metricSearch: state.metricSearch,
       tableColSearch: state.tableColSearch,
+      scatterX: state.scatterX,
+      scatterY: state.scatterY,
       activeTab: state.activeTab,
       theme: state.theme,
     };
@@ -142,6 +149,8 @@
       if (typeof saved.smoothing === 'number') state.smoothing = saved.smoothing;
       if (typeof saved.metricSearch === 'string') state.metricSearch = saved.metricSearch;
       if (typeof saved.tableColSearch === 'string') state.tableColSearch = saved.tableColSearch;
+      if (typeof saved.scatterX === 'string') state.scatterX = saved.scatterX;
+      if (typeof saved.scatterY === 'string') state.scatterY = saved.scatterY;
       if (typeof saved.activeTab === 'string') state.activeTab = saved.activeTab;
       if (typeof saved.theme === 'string') state.theme = saved.theme;
       if (Array.isArray(saved.visible)) state._pendingVisible = new Set(saved.visible);
@@ -1051,6 +1060,7 @@
       for (const { panel } of state.mediaPanels.values()) panel.remove();
       state.mediaPanels.clear();
       state._lastTreeKey = null; // force rebuild next time we leave overview
+      if (_scatterPlot) { _scatterPlot.destroy(); _scatterPlot = null; }
       renderOverview(root);
       return;
     }
@@ -1102,6 +1112,7 @@
 
     for (const name of metrics) updateChart(name);
     for (const tag of mediaTags.keys()) updateMediaPanel(tag);
+    updateScatterSection(root);
   }
 
   // ---- runs table ---------------------------------------------------------
@@ -2066,6 +2077,200 @@
       ],
       legend: { show: true, live: false },
     }, [xs, totalBins, failBins, staleBins], parent);
+  }
+
+  // ---- scatter plot -------------------------------------------------------
+
+  function scatterNumericKeys() {
+    const keys = new Set();
+    for (const id of effectivelyVisible()) {
+      const r = state.runs.get(id);
+      if (!r) continue;
+      for (const [k, v] of Object.entries(r.summary || {}))
+        if (typeof v === 'number' && isFinite(v)) keys.add('summary.' + k);
+      for (const [k, v] of Object.entries(r.hparams || {}))
+        if (typeof v === 'number' && isFinite(v)) keys.add('hparams.' + k);
+    }
+    return [...keys].sort();
+  }
+
+  function getScatterVal(r, key) {
+    const v = valueAt(r, key);
+    return (typeof v === 'number' && isFinite(v)) ? v : null;
+  }
+
+  function _fillScatterSel(sel, keys, currentVal) {
+    sel.innerHTML = '';
+    const empty = document.createElement('option');
+    empty.value = ''; empty.textContent = '— select —';
+    sel.appendChild(empty);
+    for (const k of keys) {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = k.replace(/^(summary|hparams)\./, (_, ns) => ns + ': ');
+      if (k === currentVal) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    if (!currentVal || !keys.includes(currentVal)) sel.value = '';
+  }
+
+  function _rebuildScatterPlot(section) {
+    const plotDiv = section.querySelector('.scatter-plot');
+    if (_scatterPlot) { _scatterPlot.destroy(); _scatterPlot = null; }
+    plotDiv.replaceChildren();
+
+    const xKey = state.scatterX;
+    const yKey = state.scatterY;
+    if (!xKey || !yKey) {
+      const msg = document.createElement('div');
+      msg.className = 'scatter-empty';
+      msg.textContent = 'select x and y axes above to draw the scatter plot';
+      plotDiv.appendChild(msg);
+      return;
+    }
+
+    const validRuns = effectivelyVisible()
+      .map(id => state.runs.get(id))
+      .filter(r => r && getScatterVal(r, xKey) != null && getScatterVal(r, yKey) != null);
+
+    if (validRuns.length === 0) {
+      const msg = document.createElement('div');
+      msg.className = 'scatter-empty';
+      msg.textContent = 'no visible runs have both selected fields';
+      plotDiv.appendChild(msg);
+      return;
+    }
+
+    // Shared x-axis: deduplicated, sorted numeric x-values across all runs.
+    const allXVals = [...new Set(validRuns.map(r => getScatterVal(r, xKey)))].sort((a, b) => a - b);
+
+    const muted = themeColor('muted') || '#8aa0b8';
+    const grid  = themeColor('grid')  || '#1f2630';
+
+    const series = [{ label: '' }];
+    const data   = [allXVals];
+
+    for (const r of validRuns) {
+      const xv  = getScatterVal(r, xKey);
+      const yv  = getScatterVal(r, yKey);
+      const xi  = allXVals.indexOf(xv);
+      const yArr = new Array(allXVals.length).fill(null);
+      yArr[xi] = yv;
+      const color = runColor(r.run_id);
+      series.push({
+        label: r.display_name || r.run_id,
+        stroke: color, fill: color,
+        paths: () => null,
+        points: { show: true, size: 8, fill: color, stroke: color },
+      });
+      data.push(yArr);
+    }
+
+    const width = plotDiv.clientWidth || 600;
+    _scatterPlot = new uPlot({
+      width, height: 260,
+      cursor: { drag: { x: false, y: false } },
+      scales: { x: { time: false }, y: {} },
+      axes: [
+        {
+          label: xKey.replace(/^(summary|hparams)\./, ''),
+          stroke: muted, grid: { stroke: grid, width: 1 }, ticks: { stroke: grid },
+          size: 50,
+        },
+        {
+          label: yKey.replace(/^(summary|hparams)\./, ''),
+          stroke: muted, grid: { stroke: grid, width: 1 }, ticks: { stroke: grid },
+          size: 60,
+        },
+      ],
+      series,
+      legend: { show: true, live: true },
+    }, data, plotDiv);
+  }
+
+  function updateScatterSection(root) {
+    const visIds = effectivelyVisible();
+
+    // Hide when fewer than 2 runs are visible.
+    if (visIds.length < 2) {
+      const existing = root.querySelector('.scatter-section');
+      if (existing) {
+        if (_scatterPlot) { _scatterPlot.destroy(); _scatterPlot = null; }
+        existing.remove();
+      }
+      return;
+    }
+
+    // Create section on first use.
+    let section = root.querySelector('.scatter-section');
+    if (!section) {
+      section = document.createElement('div');
+      section.className = 'scatter-section';
+
+      const hdr = document.createElement('div');
+      hdr.className = 'scatter-header';
+      const title = document.createElement('h3');
+      title.className = 'scatter-title';
+      title.textContent = 'scatter';
+      hdr.appendChild(title);
+
+      const controls = document.createElement('div');
+      controls.className = 'scatter-controls';
+
+      const makeAxisLabel = (axis, selId) => {
+        const lbl = document.createElement('label');
+        lbl.className = 'scatter-axis-label';
+        lbl.textContent = axis + ' ';
+        const sel = document.createElement('select');
+        sel.className = 'scatter-axis-sel';
+        sel.id = selId;
+        lbl.appendChild(sel);
+        return lbl;
+      };
+
+      controls.appendChild(makeAxisLabel('x', 'scatter-x-sel'));
+      controls.appendChild(makeAxisLabel('y', 'scatter-y-sel'));
+      hdr.appendChild(controls);
+      section.appendChild(hdr);
+
+      const plotDiv = document.createElement('div');
+      plotDiv.className = 'scatter-plot';
+      section.appendChild(plotDiv);
+      root.appendChild(section);
+
+      section.querySelector('#scatter-x-sel').addEventListener('change', e => {
+        state.scatterX = e.target.value || null;
+        saveState();
+        _rebuildScatterPlot(section);
+      });
+      section.querySelector('#scatter-y-sel').addEventListener('change', e => {
+        state.scatterY = e.target.value || null;
+        saveState();
+        _rebuildScatterPlot(section);
+      });
+    }
+
+    const keys = scatterNumericKeys();
+    const xSel = section.querySelector('#scatter-x-sel');
+    const ySel = section.querySelector('#scatter-y-sel');
+    _fillScatterSel(xSel, keys, state.scatterX);
+    _fillScatterSel(ySel, keys, state.scatterY);
+
+    // Auto-select defaults on first visit: hparam for X, summary for Y.
+    if (!state.scatterX || !keys.includes(state.scatterX)) {
+      const def = keys.find(k => k.startsWith('hparams.')) || keys[0] || null;
+      state.scatterX = def;
+      if (xSel && def) xSel.value = def;
+    }
+    if (!state.scatterY || !keys.includes(state.scatterY)) {
+      const def = keys.find(k => k.startsWith('summary.'))
+        || keys.find(k => k !== state.scatterX)
+        || null;
+      state.scatterY = def;
+      if (ySel && def) ySel.value = def;
+    }
+
+    _rebuildScatterPlot(section);
   }
 
   function renderOverview(root) {
