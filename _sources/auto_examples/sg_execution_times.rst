@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:00.000** total execution time for 5 files **from auto_examples**:
+**00:00.000** total execution time for 7 files **from auto_examples**:
 
 .. container::
 
@@ -33,6 +33,12 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_imbalance_supervised_learning.py` (``imbalance_supervised_learning.py``)
+     - 00:00.000
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_jax_simclr_imagenette.py` (``jax_simclr_imagenette.py``)
+     - 00:00.000
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_jax_simclr_minimal.py` (``jax_simclr_minimal.py``)
      - 00:00.000
      - 0.0
    * - :ref:`sphx_glr_auto_examples_multi_layer_probe.py` (``multi_layer_probe.py``)

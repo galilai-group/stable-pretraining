@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+gd83f1426b documentation</title>
+    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+gc64acdc1e documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=91e5715e"></script>
+    <script src="_static/documentation_options.js?v=19d3bdcf"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/sg-tags.js?v=d80f6fa4"></script>
@@ -131,7 +131,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gd83f1426b documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gc64acdc1e documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -429,6 +429,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how">How?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-setup">Quick setup</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#second-tour">30-second tour</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#jax-backend-experimental">JAX backend (experimental)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#core-structure">Core Structure</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data">1 - Data</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#gpu-side-batched-augmentation-gpu-transform">GPU-side batched augmentation (<code class="docutils literal notranslate"><span class="pre">gpu_transform</span></code>)</a><ul class="nav section-nav flex-column">
@@ -503,6 +504,7 @@
 <a class="reference external" href="https://github.com/galilai-group/stable-pretraining/tree/main/benchmarks"><img alt="Benchmarks" src="https://img.shields.io/badge/Benchmarks-blue.svg" /></a>
 <a class="reference external" href="https://github.com/galilai-group/stable-pretraining/actions/workflows/testing.yml"><img alt="Test Status" src="https://github.com/galilai-group/stable-pretraining/actions/workflows/testing.yml/badge.svg" /></a>
 <a class="reference external" href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&amp;logoColor=white" /></a>
+<a class="reference internal" href="#jax-backend"><span class="xref myst"><img alt="JAX" src="https://img.shields.io/badge/JAX-experimental-9cf?logo=google&amp;logoColor=white" /></span></a>
 <a class="reference external" href="https://github.com/astral-sh/ruff"><img alt="Ruff" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" /></a>
 <a class="reference external" href="https://opensource.org/licenses/MIT"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
 <a class="reference external" href="https://wandb.ai/site"><img alt="WandB" src="https://raw.githubusercontent.com/wandb/assets/main/wandb-github-badge-gradient.svg" /></a></p>
@@ -512,9 +514,11 @@ attach without touching the training loop (<code class="docutils literal notrans
 <code class="docutils literal notranslate"><span class="pre">RankMe</span></code>, <code class="docutils literal notranslate"><span class="pre">LiDAR</span></code>, …), SLURM-grade requeue + atomic checkpoints +
 queryable run registry, GPU-side batched augmentation, and 30+ ready
 recipes spanning SSL, supervised, and multi-modal pretraining
-(SimCLR, DINO/DINOv2, MAE, BYOL, VICReg, Barlow Twins, LeJEPA, CLIP, …).</p>
-<p><a class="reference internal" href="#30s-tour"><span class="xref myst">30-second tour ↓</span></a> · <a class="reference internal" href="#built-in-methods">Built-in methods ↓</a> ·
-<a class="reference external" href="https://discord.gg/adzpqWKM25">Discord</a></p>
+(SimCLR, DINO/DINOv2, MAE, BYOL, VICReg, Barlow Twins, LeJEPA, CLIP, …).
+An <strong>experimental <a class="reference internal" href="#jax-backend"><span class="xref myst">JAX / Flax-NNX backend</span></a></strong> mirrors the same
+design (forward-dict, callbacks, SLURM-grade Manager) for users who prefer JAX.</p>
+<p><a class="reference internal" href="#30s-tour"><span class="xref myst">30-second tour ↓</span></a> · <a class="reference internal" href="#jax-backend"><span class="xref myst">JAX backend ↓</span></a> ·
+<a class="reference internal" href="#built-in-methods">Built-in methods ↓</a> · <a class="reference external" href="https://discord.gg/adzpqWKM25">Discord</a></p>
 <section id="table-of-contents">
 <h2>Table of Contents<a class="headerlink" href="#table-of-contents" title="Link to this heading">#</a></h2>
 <ul class="simple">
@@ -522,6 +526,7 @@ recipes spanning SSL, supervised, and multi-modal pretraining
 <li><p><a class="reference internal" href="#quick-setup">Quick Setup</a></p></li>
 <li><p><a class="reference internal" href="#quick-setup">Tutorial Notebook</a></p></li>
 <li><p><a class="reference internal" href="#30s-tour"><span class="xref myst">30-second tour</span></a></p></li>
+<li><p><a class="reference internal" href="#jax-backend"><span class="xref myst">JAX backend (experimental)</span></a></p></li>
 <li><p><a class="reference internal" href="#core-structure">Core Structure</a></p>
 <ul>
 <li><p><a class="reference internal" href="api/data/#module-stable_pretraining.data" title="stable_pretraining.data"><span class="xref myst py py-mod">Data</span></a></p></li>
@@ -691,6 +696,65 @@ dict the loss is computed from, without touching the loop.</p>
 training loop, GPU augmentation slots in via <code class="docutils literal notranslate"><span class="pre">dataset.gpu_transform=</span></code>
 (see <a class="reference internal" href="api/data/#module-stable_pretraining.data" title="stable_pretraining.data"><span class="xref myst py py-mod">§GPU-side batched augmentation</span></a>), and any intermediate
 quantity in the state dict is automatically available to loggers.</p>
+<p><a id="jax-backend"></a></p>
+</section>
+<section id="jax-backend-experimental">
+<h2>JAX backend (experimental)<a class="headerlink" href="#jax-backend-experimental" title="Link to this heading">#</a></h2>
+<p>A parallel <strong>JAX / <a class="reference external" href="https://flax.readthedocs.io/en/latest/nnx/">Flax-NNX</a></strong>
+backend lives under <code class="docutils literal notranslate"><span class="pre">stable_pretraining.jax</span></code> (install with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">&quot;.[jax]&quot;</span></code>).
+It is <strong>opt-in and isolated</strong> — <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">stable_pretraining</span></code> never imports JAX —
+and it mirrors the torch design: a stateless <code class="docutils literal notranslate"><span class="pre">forward(self,</span> <span class="pre">batch,</span> <span class="pre">stage)</span></code> that
+returns a state <strong>dict</strong>, callbacks that read that dict under the same
+Lightning-style hooks, and a <code class="docutils literal notranslate"><span class="pre">Manager</span></code> with the same <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code> run-dir layout</p>
+<ul class="simple">
+<li><p>SLURM preempt/requeue + atomic checkpoints. The engine underneath is
+JAX-native (<code class="docutils literal notranslate"><span class="pre">nnx.value_and_grad</span></code> + <code class="docutils literal notranslate"><span class="pre">optax</span></code>, <code class="docutils literal notranslate"><span class="pre">nnx.jit</span></code>), and metrics are plain
+<code class="docutils literal notranslate"><span class="pre">jnp</span></code>/NumPy — <strong>no torchmetrics</strong>.</p></li>
+</ul>
+<p>The same minimal SimCLR run, side by side:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ---- PyTorch / Lightning -------------------     # ---- JAX / Flax-NNX ----------------------------</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span>                    <span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining.jax</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spj</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span><span class="o">,</span><span class="w"> </span><span class="nn">lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>                       <span class="kn">from</span><span class="w"> </span><span class="nn">flax</span><span class="w"> </span><span class="kn">import</span> <span class="n">nnx</span>
+                                                     <span class="n">rngs</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">module</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">(</span>                                 <span class="n">module</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">Module</span><span class="p">(</span>
+    <span class="n">forward</span><span class="o">=</span><span class="n">spt</span><span class="o">.</span><span class="n">forward</span><span class="o">.</span><span class="n">simclr</span><span class="p">,</span>                          <span class="n">forward</span><span class="o">=</span><span class="n">spj</span><span class="o">.</span><span class="n">forward</span><span class="o">.</span><span class="n">simclr</span><span class="p">,</span>
+    <span class="n">backbone</span><span class="o">=</span><span class="n">spt</span><span class="o">.</span><span class="n">backbone</span><span class="o">.</span><span class="n">from_torchvision</span><span class="p">(</span>              <span class="n">backbone</span><span class="o">=</span><span class="n">spj</span><span class="o">.</span><span class="n">backbone</span><span class="o">.</span><span class="n">resnet18</span><span class="p">(</span>
+        <span class="s2">&quot;resnet18&quot;</span><span class="p">,</span> <span class="n">low_resolution</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>                    <span class="n">rngs</span><span class="o">=</span><span class="n">rngs</span><span class="p">,</span> <span class="n">low_resolution</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">projector</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span>                 <span class="n">projector</span><span class="o">=</span><span class="n">spj</span><span class="o">.</span><span class="n">backbone</span><span class="o">.</span><span class="n">MLP</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="p">[</span><span class="mi">128</span><span class="p">],</span> <span class="n">rngs</span><span class="o">=</span><span class="n">rngs</span><span class="p">),</span>
+    <span class="n">simclr_loss</span><span class="o">=</span><span class="n">spt</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">NTXEntLoss</span><span class="p">(</span><span class="mf">0.5</span><span class="p">),</span>              <span class="n">simclr_loss</span><span class="o">=</span><span class="n">spj</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">NTXEntLoss</span><span class="p">(</span><span class="mf">0.5</span><span class="p">),</span>
+    <span class="n">optim</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;optimizer&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;LARS&quot;</span><span class="p">,</span>                 <span class="n">optim</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;lars&quot;</span><span class="p">,</span>
+                         <span class="s2">&quot;lr&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">}},</span>                                 <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">},</span>
+<span class="p">)</span>                                                    <span class="p">)</span>
+<span class="n">probe</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">OnlineProbe</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;probe&quot;</span><span class="p">,</span>        <span class="n">probe</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">OnlineProbe</span><span class="p">(</span><span class="s2">&quot;probe&quot;</span><span class="p">,</span>
+    <span class="nb">input</span><span class="o">=</span><span class="s2">&quot;embedding&quot;</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span>                   <span class="n">probe</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">rngs</span><span class="o">=</span><span class="n">rngs</span><span class="p">))</span>
+    <span class="n">probe</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+    <span class="n">loss</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span><span class="p">())</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span><span class="n">max_epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>                 <span class="n">trainer</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span><span class="n">max_epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                     <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">probe</span><span class="p">])</span>                                    <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">probe</span><span class="p">])</span>
+<span class="n">spt</span><span class="o">.</span><span class="n">Manager</span><span class="p">(</span><span class="n">trainer</span><span class="o">=</span><span class="n">trainer</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="n">module</span><span class="p">,</span>          <span class="n">spj</span><span class="o">.</span><span class="n">Manager</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">dm</span><span class="p">)()</span>                                           <span class="n">train_loader</span><span class="p">,</span> <span class="n">val_loader</span><span class="p">)()</span>
+</pre></div>
+</div>
+<p><strong>Multi-GPU</strong> is one flag — <code class="docutils literal notranslate"><span class="pre">spj.Trainer(...,</span> <span class="pre">data_parallel=True)</span></code> shards each
+batch across all visible devices (SPMD); <strong>bf16</strong> mixed precision is
+<code class="docutils literal notranslate"><span class="pre">dtype=jnp.bfloat16</span></code> on the backbone.</p>
+<p><strong>What’s available today:</strong> methods SimCLR / VICReg / Barlow Twins / SimSiam /
+BYOL; backbones MLP / ResNet-{9,18,34,50,101,152} / ConvMixer / ViT-{tiny,small,
+base,large}; losses NT-Xent / InfoNCE / BYOL / VICReg / Barlow Twins / SwAV-Sinkhorn /
+neg-cosine; callbacks <code class="docutils literal notranslate"><span class="pre">OnlineProbe</span></code>, <code class="docutils literal notranslate"><span class="pre">OnlineKNN</span></code>, <code class="docutils literal notranslate"><span class="pre">RankMe</span></code>, <code class="docutils literal notranslate"><span class="pre">LiDAR</span></code>,
+<code class="docutils literal notranslate"><span class="pre">OnlineQueue</span></code>, <code class="docutils literal notranslate"><span class="pre">OnlineWriter</span></code>, <code class="docutils literal notranslate"><span class="pre">EarlyStopping</span></code>, EMA <code class="docutils literal notranslate"><span class="pre">TeacherStudentCallback</span></code>;
+checkpointing + exact resume; on-device augmentation (<code class="docutils literal notranslate"><span class="pre">spj.augment</span></code>). Every
+torch↔JAX numerical claim above is covered by parity regression tests.</p>
+<p><strong>Logging is identical to the torch path</strong> — not reimplemented. The JAX
+<code class="docutils literal notranslate"><span class="pre">Trainer</span></code> drives the <em>same</em> logger classes (<code class="docutils literal notranslate"><span class="pre">RegistryLogger</span></code>, WandB, Trackio,
+SwanLab) via <code class="docutils literal notranslate"><span class="pre">logger=</span></code>, <code class="docutils literal notranslate"><span class="pre">Module.log(name,</span> <span class="pre">value)</span></code> matches, and metric keys are
+the same (<code class="docutils literal notranslate"><span class="pre">fit/loss</span></code>, <code class="docutils literal notranslate"><span class="pre">train/&lt;p&gt;_loss</span></code>, <code class="docutils literal notranslate"><span class="pre">eval/&lt;p&gt;_acc</span></code>, bare <code class="docutils literal notranslate"><span class="pre">rankme</span></code>/<code class="docutils literal notranslate"><span class="pre">lidar</span></code>, …).
+<code class="docutils literal notranslate"><span class="pre">spj.Manager</span></code> auto-attaches the <code class="docutils literal notranslate"><span class="pre">RegistryLogger</span></code>, so JAX runs write the same
+<code class="docutils literal notranslate"><span class="pre">sidecar.json</span></code> and show up in <code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span> <span class="pre">ls/best/...</span></code> exactly like torch runs.
+Metrics use plain <code class="docutils literal notranslate"><span class="pre">jnp</span></code>/NumPy — no torchmetrics.</p>
+<p><strong>Still pending (vs the torch path):</strong> DINO/DINOv2/MAE/I-JEPA methods, the full
+ViT feature set (SwiGLU/QK-norm/RoPE), video backbones, and a few niche
+callbacks. Contributions welcome.</p>
 <p><a id="core-structure"></a></p>
 </section>
 <section id="core-structure">
@@ -2052,6 +2116,7 @@ loading, <code class="docutils literal notranslate"><span class="pre">Module</sp
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how">How?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-setup">Quick setup</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#second-tour">30-second tour</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#jax-backend-experimental">JAX backend (experimental)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#core-structure">Core Structure</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data">1 - Data</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#gpu-side-batched-augmentation-gpu-transform">GPU-side batched augmentation (<code class="docutils literal notranslate"><span class="pre">gpu_transform</span></code>)</a><ul class="nav section-nav flex-column">

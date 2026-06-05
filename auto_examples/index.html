@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Examples &#8212; stable-pretraining 0.1.dev1+gd83f1426b documentation</title>
+    <title>Examples &#8212; stable-pretraining 0.1.dev1+gc64acdc1e documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=91e5715e"></script>
+    <script src="../_static/documentation_options.js?v=19d3bdcf"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gd83f1426b documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gc64acdc1e documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -482,6 +482,9 @@ trials.</p>
 <div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="Retrieve run data from wandb using the stable_pretraining library."><img alt="" src="../_images/sphx_glr_wandb_reader_thumb.png" />
 <p><a class="reference internal" href="wandb_reader/"><span class="doc">Reading WandB Runs</span></a></p>
   <div class="sphx-glr-thumbnail-title">Reading WandB Runs</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="This mirrors the torch examples/ scripts but uses the parallel JAX backend (``stable_pretraining.jax``). The forward-function shape, the dict-flow, the callbacks, and the Lightning-style trainer hooks are all the same as on the torch path — only the engine underneath is JAX-native (functional grads + optax). Run with::"><img alt="" src="../_images/sphx_glr_jax_simclr_minimal_thumb.png" />
+<p><a class="reference internal" href="jax_simclr_minimal/"><span class="doc">&lt;no title&gt;</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Minimal SimCLR run on the JAX / Flax-NNX backend.</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="This example demonstrates how to use stable-SSL to train a supervised model on CIFAR10 with class imbalance."><img alt="" src="../_images/sphx_glr_imbalance_supervised_learning_thumb.png" />
 <p><a class="reference internal" href="imbalance_supervised_learning/"><span class="doc">Imbalanced Supervised Learning</span></a></p>
   <div class="sphx-glr-thumbnail-title">Imbalanced Supervised Learning</div>
@@ -491,6 +494,9 @@ trials.</p>
 </div><div class="sphx-glr-thumbcontainer" tooltip="This example demonstrates how to train models using supervised learning with stable-pretraining, including support for various datasets like ImageNet-10, ImageNet-100, and ImageNet-1k."><img alt="" src="../_images/sphx_glr_supervised_learning_thumb.png" />
 <p><a class="reference internal" href="supervised_learning/"><span class="doc">Supervised Learning Example</span></a></p>
   <div class="sphx-glr-thumbnail-title">Supervised Learning Example</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="Design choice (see the JAX backend docs): augmentation stays on CPU using the existing torchvision pipeline and we feed NHWC numpy arrays into the JAX trainer. Nothing in data/transforms.py is reimplemented — the array boundary is the clean seam between the two backends."><img alt="" src="../_images/sphx_glr_jax_simclr_imagenette_thumb.png" />
+<p><a class="reference internal" href="jax_simclr_imagenette/"><span class="doc">&lt;no title&gt;</span></a></p>
+  <div class="sphx-glr-thumbnail-title">SimCLR on ImageNette with the JAX / Flax-NNX backend, data-parallel over GPUs.</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="Train probes attached to multiple layers of a frozen backbone to monitor representation quality across depth."><img alt="" src="../_images/sphx_glr_multi_layer_probe_thumb.png" />
 <p><a class="reference internal" href="multi_layer_probe/"><span class="doc">Multi-layer Probe for Vision Models</span></a></p>
   <div class="sphx-glr-thumbnail-title">Multi-layer Probe for Vision Models</div>

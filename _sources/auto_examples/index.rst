@@ -88,6 +88,23 @@ trials.
 
 .. raw:: html
 
+    <div class="sphx-glr-thumbcontainer" tooltip="This mirrors the torch examples/ scripts but uses the parallel JAX backend (``stable_pretraining.jax``). The forward-function shape, the dict-flow, the callbacks, and the Lightning-style trainer hooks are all the same as on the torch path — only the engine underneath is JAX-native (functional grads + optax). Run with::">
+
+.. only:: html
+
+  .. image:: /auto_examples/images/thumb/sphx_glr_jax_simclr_minimal_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/jax_simclr_minimal`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Minimal SimCLR run on the JAX / Flax-NNX backend.</div>
+    </div>
+
+
+.. raw:: html
+
     <div class="sphx-glr-thumbcontainer" tooltip="This example demonstrates how to use stable-SSL to train a supervised model on CIFAR10 with class imbalance.">
 
 .. only:: html
@@ -139,6 +156,23 @@ trials.
 
 .. raw:: html
 
+    <div class="sphx-glr-thumbcontainer" tooltip="Design choice (see the JAX backend docs): augmentation stays on CPU using the existing torchvision pipeline and we feed NHWC numpy arrays into the JAX trainer. Nothing in data/transforms.py is reimplemented — the array boundary is the clean seam between the two backends.">
+
+.. only:: html
+
+  .. image:: /auto_examples/images/thumb/sphx_glr_jax_simclr_imagenette_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/jax_simclr_imagenette`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">SimCLR on ImageNette with the JAX / Flax-NNX backend, data-parallel over GPUs.</div>
+    </div>
+
+
+.. raw:: html
+
     <div class="sphx-glr-thumbcontainer" tooltip="Train probes attached to multiple layers of a frozen backbone to monitor representation quality across depth.">
 
 .. only:: html
@@ -165,9 +199,11 @@ trials.
    :hidden:
 
    /auto_examples/wandb_reader
+   /auto_examples/jax_simclr_minimal
    /auto_examples/imbalance_supervised_learning
    /auto_examples/wandb_figures
    /auto_examples/supervised_learning
+   /auto_examples/jax_simclr_imagenette
    /auto_examples/multi_layer_probe
 
 
