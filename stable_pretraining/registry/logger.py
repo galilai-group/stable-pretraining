@@ -177,6 +177,7 @@ class RegistryLogger(CSVLogger):
         # the registry can order runs chronologically regardless of how
         # often we flush.
         self._created_at: Optional[float] = None
+        self._ended_at: Optional[float] = None
         # First-write flag for summary.json — used to log a one-shot info
         # line on creation, then debug lines on subsequent rewrites so we
         # don't spam every flush.
@@ -262,6 +263,7 @@ class RegistryLogger(CSVLogger):
     def finalize(self, status: str) -> None:
         # Map Lightning status strings to our canonical vocabulary.
         self._status = {"success": "completed", "failed": "failed"}.get(status, status)
+        self._ended_at = time.time()
         # Parent writes CSVs.  We don't call super().finalize first
         # because _experiment may be None on rank-zero callers that
         # never logged — super() handles that no-op correctly.
@@ -406,6 +408,7 @@ class RegistryLogger(CSVLogger):
             run_dir=str(self._run_dir),
             status=self._status,
             created_at=self._created_at,
+            ended_at=self._ended_at,
             hparams=self._hparams,
             summary=self._summary,
             tags=self._tags,

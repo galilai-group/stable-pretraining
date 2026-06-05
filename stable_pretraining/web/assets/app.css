@@ -284,6 +284,11 @@ body {
 .run-status.completed { color: var(--good); }
 .run-status.failed    { color: var(--bad); }
 .run-status.running   { color: var(--accent); }
+.run-dur {
+  font-size: 10px; color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap; flex-shrink: 0;
+}
 
 .run-info {
   background: none; border: none; cursor: pointer;

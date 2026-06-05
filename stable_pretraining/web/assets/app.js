@@ -737,6 +737,14 @@
       row.appendChild(st);
     }
 
+    if (r.status === 'running' || r.ended_at) {
+      const dur = document.createElement('div');
+      dur.className = 'run-dur';
+      dur.dataset.runId = r.run_id;
+      dur.textContent = fmtRunDur(r) || '';
+      row.appendChild(dur);
+    }
+
     const info = document.createElement('button');
     info.type = 'button';
     info.className = 'run-info';
@@ -2140,6 +2148,28 @@
     return d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
   }
 
+  function fmtDuration(secs) {
+    if (secs == null || secs < 0) return null;
+    const s = Math.floor(secs);
+    if (s < 60) return '<1m';
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    const rm = m % 60;
+    if (h < 24) return rm > 0 ? `${h}h ${rm}m` : `${h}h`;
+    const d = Math.floor(h / 24);
+    const rh = h % 24;
+    return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
+  }
+
+  function fmtRunDur(r) {
+    if (!r.created_at) return null;
+    const now = Date.now() / 1000;
+    if (r.status === 'running') return fmtDuration(now - r.created_at);
+    if (r.ended_at) return fmtDuration(r.ended_at - r.created_at);
+    return null;
+  }
+
   function classifyValue(v) {
     if (v == null) return 'null';
     if (typeof v === 'number') return 'num';
@@ -2179,10 +2209,10 @@
     }
   }
 
-  function buildKVSection(label, kv, filter) {
+  function buildKVSection(label, kv, filter, sorted = true) {
     const entries = Object.entries(kv)
-      .filter(([k]) => !filter || k.toLowerCase().includes(filter))
-      .sort((a, b) => a[0].localeCompare(b[0]));
+      .filter(([k]) => !filter || k.toLowerCase().includes(filter));
+    if (sorted) entries.sort((a, b) => a[0].localeCompare(b[0]));
     if (!entries.length) return null;
 
     const section = document.createElement('section');
@@ -2225,17 +2255,25 @@
     const editing = prevNotes && document.activeElement === prevNotes.querySelector('textarea');
     const notesSec = editing ? prevNotes : _makeNotesSection(r);
 
+    const now = Date.now() / 1000;
+    let durSecs = null;
+    if (r.created_at) {
+      if (r.ended_at) durSecs = r.ended_at - r.created_at;
+      else if (r.status === 'running') durSecs = now - r.created_at;
+    }
     const meta = {
       run_dir: r.run_dir,
       status: r.status,
-      created_at: fmtTime(r.created_at),
+      started: fmtTime(r.created_at),
+      ended: r.ended_at ? fmtTime(r.ended_at) : null,
+      duration: fmtDuration(durSecs),
       tags: (r.tags || []).join(', ') || null,
       checkpoint_path: r.checkpoint_path,
     };
 
     const filter = state.detailFilter.toLowerCase();
     const sections = [];
-    const metaSec = buildKVSection('meta', meta, filter);
+    const metaSec = buildKVSection('meta', meta, filter, false);
     if (metaSec) sections.push(metaSec);
     const hpSec = buildKVSection('hparams', r.hparams || {}, filter);
     if (hpSec) sections.push(hpSec);
@@ -2777,6 +2815,13 @@
     wireControls();
     syncControlsToState();
     initTheme();
+    // Tick every minute to keep duration displays current for running runs.
+    setInterval(() => {
+      for (const el of document.querySelectorAll('.run-dur[data-run-id]')) {
+        const r = state.runs.get(el.dataset.runId);
+        if (r) el.textContent = fmtRunDur(r) || '';
+      }
+    }, 60_000);
     // Start SSE first so we don't miss progress events emitted between the
     // status fetch and the first scan-tick.
     startSSE();

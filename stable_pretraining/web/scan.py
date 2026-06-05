@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
-from ..registry._sidecar import SIDECAR_NAME, write_sidecar
+from ..registry._sidecar import SIDECAR_NAME, heartbeat_mtime, write_sidecar
 
 
 @dataclass
@@ -397,12 +397,18 @@ class RunScanner:
             or run.run_id.rsplit("/", 1)[-1]
             or run.run_id
         )
+        try:
+            hb_at = heartbeat_mtime(run.run_dir)
+        except OSError:
+            hb_at = None
         return {
             "run_id": run.run_id,
             "run_dir": str(run.run_dir),
             "display_name": display_name,
             "status": s.get("status"),
             "created_at": s.get("created_at"),
+            "ended_at": s.get("ended_at"),
+            "heartbeat_at": hb_at,
             "tags": s.get("tags") or [],
             "notes": s.get("notes") or "",
             "hparams": s.get("hparams") or {},
