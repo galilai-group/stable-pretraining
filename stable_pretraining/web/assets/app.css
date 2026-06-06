@@ -652,6 +652,36 @@ body {
 }
 .chart-panel:hover .chart-download-btn { opacity: 1; }
 
+.chart-combine-toggle {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 1px 6px;
+}
+.chart-panel:hover .chart-combine-toggle { opacity: 0.6; }
+.chart-combine-toggle.active { opacity: 1; }
+
+.chart-remove-btn {
+  flex-shrink: 0;
+  font-size: 14px;
+  padding: 1px 7px;
+}
+
+.combined-chart-panel {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+
+.combined-charts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.combined-charts-section:empty { display: none; }
+
 .chart-zoom-reset {
   flex-shrink: 0;
   background: none;

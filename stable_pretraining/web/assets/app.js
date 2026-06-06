@@ -39,6 +39,8 @@
     scatterX: null,   // 'hparams.lr' | 'summary.val_acc' | …
     scatterY: null,
     tableHideSame: false,
+    combineSelection: new Set(),  // metric names currently selected for combining
+    combinedCharts: [],           // [{id, metrics: string[]}]
   };
 
   // setInterval handles for log auto-refresh; null when not running.
@@ -116,6 +118,7 @@
       tableHideSame: state.tableHideSame,
       activeTab: state.activeTab,
       theme: state.theme,
+      combinedCharts: state.combinedCharts,
     };
     try { localStorage.setItem('spt-web-state', JSON.stringify(snap)); } catch {}
     const ids = [...state.visible].map(id => encodeURIComponent(id)).join(',');
@@ -162,6 +165,7 @@
       if (typeof saved.tableHideSame === 'boolean') state.tableHideSame = saved.tableHideSame;
       if (typeof saved.activeTab === 'string') state.activeTab = saved.activeTab;
       if (typeof saved.theme === 'string') state.theme = saved.theme;
+      if (Array.isArray(saved.combinedCharts)) state.combinedCharts = saved.combinedCharts;
       if (Array.isArray(saved.visible)) state._pendingVisible = new Set(saved.visible);
     }
 
@@ -1077,7 +1081,7 @@
     const mediaTags = visibleMediaTags();
     const allTags = [...new Set([...metrics, ...mediaTags.keys()])];
 
-    if (allTags.length === 0) {
+    if (allTags.length === 0 && state.combinedCharts.length === 0) {
       for (const { plot } of state.charts.values()) plot?.destroy();
       state.charts.clear();
       for (const { panel } of state.mediaPanels.values()) panel.remove();
@@ -1088,15 +1092,19 @@
       return;
     }
 
-    // Tear down chart panels for metrics that vanished.
+    // Tear down chart panels for metrics that vanished (skip combined charts).
     const metricSet = new Set(metrics);
+    let selectionChanged = false;
     for (const [name, entry] of [...state.charts.entries()]) {
+      if (name.startsWith('__combined__/')) continue;
       if (!metricSet.has(name) || mediaTags.has(name)) {
         entry.plot?.destroy();
         entry.panel.remove();
         state.charts.delete(name);
+        if (state.combineSelection.delete(name)) selectionChanged = true;
       }
     }
+    if (selectionChanged) updateCombineSelectionUI();
     // Tear down media panels for tags that vanished.
     for (const [tag, entry] of [...state.mediaPanels.entries()]) {
       if (!mediaTags.has(tag)) {
@@ -1104,6 +1112,14 @@
         state.mediaPanels.delete(tag);
       }
     }
+
+    // Combined charts section — pinned above the metric tree.
+    let combinedSection = root.querySelector(':scope > .combined-charts-section');
+    if (!combinedSection) {
+      combinedSection = document.createElement('div');
+      combinedSection.className = 'combined-charts-section';
+    }
+    renderCombinedCharts(combinedSection);
 
     // Skip the full tree rebuild when nothing structurally changed.
     // Streaming-metrics chunks fire scheduleRerender many times per
@@ -1120,7 +1136,7 @@
       const container = document.createElement('div');
       container.className = 'metric-tree';
       attachMetricTree(container, tree, '', mediaTags);
-      root.replaceChildren(container);
+      root.replaceChildren(combinedSection, container);
       state._lastTreeKey = treeKey;
 
       // After re-parenting, sizes may have changed. Resize each plot.
@@ -1131,6 +1147,8 @@
           if (w) entry.plot.setSize({ width: w, height: 240 });
         }
       }
+    } else if (root.firstChild !== combinedSection) {
+      root.prepend(combinedSection);
     }
 
     for (const name of metrics) updateChart(name);
@@ -1360,6 +1378,21 @@
     span.textContent = displayName || fullName;
     span.title = fullName;
     title.appendChild(span);
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'chart-combine-toggle icon-btn';
+    toggleBtn.type = 'button';
+    toggleBtn.title = 'select to combine into one chart';
+    toggleBtn.textContent = '+';
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.combineSelection.has(fullName)) {
+        state.combineSelection.delete(fullName);
+      } else {
+        state.combineSelection.add(fullName);
+      }
+      updateCombineSelectionUI();
+    });
+    title.appendChild(toggleBtn);
     const dlBtn = document.createElement('button');
     dlBtn.className = 'chart-download-btn icon-btn';
     dlBtn.type = 'button';
@@ -1688,6 +1721,179 @@
   function lowerIsBetter(name) {
     const n = name.toLowerCase();
     return n.includes('loss') || n.includes('err') || n.includes('perplexity') || n.includes('ppl');
+  }
+
+  // ---- combine-metrics feature ------------------------------------------
+
+  function updateCombineSelectionUI() {
+    const btn = document.getElementById('combine-btn');
+    if (!btn) return;
+    const n = state.combineSelection.size;
+    btn.textContent = `Combine (${n})`;
+    btn.hidden = n < 2;
+    for (const [name, entry] of state.charts.entries()) {
+      if (name.startsWith('__combined__/')) continue;
+      const toggleBtn = entry.panel.querySelector('.chart-combine-toggle');
+      if (toggleBtn) toggleBtn.classList.toggle('active', state.combineSelection.has(name));
+    }
+  }
+
+  function buildCombinedChartData(metricNames, runIds) {
+    const series = [];
+    const xUnion = new Set();
+    const multiRun = runIds.length > 1;
+    for (const metricName of metricNames) {
+      for (const id of runIds) {
+        const m = state.metrics.get(id);
+        if (!m || !m.metrics[metricName]) continue;
+        const col = m.metrics[metricName];
+        const xs = col[state.xAxis];
+        const fallback = (state.xAxis === 'epoch' && !xs?.some(v => v != null)) ? col.step : xs;
+        const xArr = fallback || col.step;
+        const filtered = { id, metricName, xs: [], ys: [] };
+        for (let i = 0; i < col.y.length; i++) {
+          const x = xArr ? xArr[i] : i;
+          if (x == null || !isFinite(x)) continue;
+          filtered.xs.push(x);
+          filtered.ys.push(col.y[i]);
+          xUnion.add(x);
+        }
+        if (filtered.ys.length) series.push(filtered);
+      }
+    }
+    const xs = [...xUnion].sort((a, b) => a - b);
+    const xIdx = new Map();
+    for (let i = 0; i < xs.length; i++) xIdx.set(xs[i], i);
+    const seriesCfg = [{}];
+    const data = [xs];
+    for (const s of series) {
+      const arr = new Array(xs.length).fill(null);
+      for (let i = 0; i < s.xs.length; i++) arr[xIdx.get(s.xs[i])] = s.ys[i];
+      data.push(emaSmooth(arr, state.smoothing));
+      const label = multiRun ? `${s.metricName} · ${s.id}` : s.metricName;
+      seriesCfg.push({
+        label,
+        runId: label,
+        stroke: runColor(multiRun ? `${s.metricName}:${s.id}` : s.metricName),
+        width: 1.6,
+        points: { show: false },
+        spanGaps: true,
+      });
+    }
+    const seriesStats = series.map(s => {
+      const raw = s.ys.filter(v => v != null && isFinite(v));
+      const lastVal = raw.length ? raw[raw.length - 1] : null;
+      const bestVal = raw.length ? Math.max(...raw) : null;
+      const label = multiRun ? `${s.metricName} · ${s.id}` : s.metricName;
+      return { id: label, lastVal, bestVal };
+    });
+    return { data, seriesCfg, seriesStats };
+  }
+
+  function makeCombinedPanel(combinedId, metricNames) {
+    const panel = document.createElement('div');
+    panel.className = 'chart-panel combined-chart-panel';
+    const title = document.createElement('div');
+    title.className = 'chart-title';
+    const span = document.createElement('span');
+    span.className = 'name';
+    const shortNames = metricNames.map(n => n.split('/').pop());
+    span.textContent = 'Combined: ' + shortNames.join(', ');
+    span.title = metricNames.join(', ');
+    title.appendChild(span);
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'chart-remove-btn icon-btn';
+    removeBtn.type = 'button';
+    removeBtn.title = 'remove combined chart';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => {
+      state.combinedCharts = state.combinedCharts.filter(c => c.id !== combinedId);
+      const key = '__combined__/' + combinedId;
+      const entry = state.charts.get(key);
+      if (entry) { entry.plot?.destroy(); state.charts.delete(key); }
+      panel.remove();
+      saveState();
+      updateCombineSelectionUI();
+    });
+    title.appendChild(removeBtn);
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'chart-download-btn icon-btn';
+    dlBtn.type = 'button';
+    dlBtn.title = 'download chart as PNG';
+    dlBtn.textContent = '⬇';
+    dlBtn.addEventListener('click', () => {
+      downloadChartPNG('__combined__/' + combinedId, 'Combined: ' + shortNames.join(', '));
+    });
+    title.appendChild(dlBtn);
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'chart-zoom-reset';
+    resetBtn.type = 'button';
+    resetBtn.title = 'reset zoom';
+    resetBtn.textContent = '⤢';
+    resetBtn.hidden = true;
+    title.appendChild(resetBtn);
+    panel.appendChild(title);
+    const body = document.createElement('div');
+    body.className = 'chart-body';
+    panel.appendChild(body);
+    const annot = document.createElement('div');
+    annot.className = 'chart-annot';
+    panel.appendChild(annot);
+    return panel;
+  }
+
+  function renderCombinedCharts(container) {
+    const visibleIds = effectivelyVisible().sort();
+    const validIds = new Set(state.combinedCharts.map(c => c.id));
+    for (const [key, entry] of [...state.charts.entries()]) {
+      if (!key.startsWith('__combined__/')) continue;
+      const id = key.slice('__combined__/'.length);
+      if (!validIds.has(id)) {
+        entry.plot?.destroy();
+        entry.panel.remove();
+        state.charts.delete(key);
+      }
+    }
+    for (const combined of state.combinedCharts) {
+      const key = '__combined__/' + combined.id;
+      let entry = state.charts.get(key);
+      if (!entry) {
+        const panel = makeCombinedPanel(combined.id, combined.metrics);
+        entry = { panel, plot: null, configKey: '' };
+        state.charts.set(key, entry);
+      }
+      container.appendChild(entry.panel);
+      const { data, seriesCfg, seriesStats } = buildCombinedChartData(combined.metrics, visibleIds);
+      const configKey = JSON.stringify([visibleIds, combined.metrics, state.xAxis, state.logY, state.theme]);
+      if (seriesCfg.length <= 1) {
+        if (entry.plot) { entry.plot.destroy(); entry.plot = null; entry.configKey = ''; }
+        updateAnnotTable(key, entry, [], []);
+        continue;
+      }
+      if (entry.plot && entry.configKey === configKey) {
+        entry.plot.setData(data);
+        updateAnnotTable(key, entry, seriesCfg, seriesStats);
+        continue;
+      }
+      if (entry.plot) entry.plot.destroy();
+      const body = entry.panel.querySelector('.chart-body');
+      const resetBtn = entry.panel.querySelector('.chart-zoom-reset');
+      if (resetBtn) resetBtn.hidden = true;
+      const width = body.clientWidth || 400;
+      entry.plot = new uPlot(makeUplotOpts(key, width, seriesCfg, resetBtn), data, body);
+      if (resetBtn) {
+        resetBtn.onclick = () => {
+          for (const [, e] of state.charts) {
+            if (!e.plot) continue;
+            const xData = e.plot.data[0];
+            if (!xData || !xData.length) continue;
+            e.plot.setScale('x', { min: xData[0], max: xData[xData.length - 1] });
+          }
+        };
+      }
+      entry.configKey = configKey;
+      updateAnnotTable(key, entry, seriesCfg, seriesStats);
+    }
   }
 
   function fmtTooltipNum(v) {
@@ -3186,6 +3392,17 @@
     document.getElementById('clear-all').addEventListener('click', () => setAllVisible(false));
 
     document.getElementById('export-csv').addEventListener('click', exportMetricsCSV);
+
+    document.getElementById('combine-btn').addEventListener('click', () => {
+      if (state.combineSelection.size < 2) return;
+      const id = String(Date.now());
+      const metrics = [...state.combineSelection];
+      state.combinedCharts.push({ id, metrics });
+      state.combineSelection.clear();
+      saveState();
+      scheduleRerender();
+      updateCombineSelectionUI();
+    });
 
     document.getElementById('add-filter-btn').addEventListener('click', () => openFilterDraft(null));
 
