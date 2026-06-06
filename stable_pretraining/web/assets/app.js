@@ -2606,11 +2606,11 @@
 
     const cards = document.createElement('div');
     cards.className = 'stat-cards';
-    cards.appendChild(statCard('total runs', allRuns.length, '#f1f5f9'));
-    cards.appendChild(statCard('running',   counts.running   || 0, '#22d3ee'));
-    if (counts.stale) cards.appendChild(statCard('stale', counts.stale, '#f59e0b'));
-    cards.appendChild(statCard('completed', counts.completed || 0, '#34d399'));
-    cards.appendChild(statCard('failed',    counts.failed    || 0, '#f87171'));
+    cards.appendChild(statCard('total runs', allRuns.length, themeColor('text-strong')));
+    cards.appendChild(statCard('running',   counts.running   || 0, themeColor('accent')));
+    if (counts.stale) cards.appendChild(statCard('stale', counts.stale, themeColor('warn')));
+    cards.appendChild(statCard('completed', counts.completed || 0, themeColor('good')));
+    cards.appendChild(statCard('failed',    counts.failed    || 0, themeColor('bad')));
     wrap.appendChild(cards);
 
     const activity = document.createElement('div');
