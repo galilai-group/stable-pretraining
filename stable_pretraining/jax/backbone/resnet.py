@@ -23,12 +23,12 @@ import jax.numpy as jnp
 from flax import nnx
 
 
-def _conv(din, dout, k, stride, rngs, padding, dtype=None):
+def _conv(din, d_out, k, stride, rngs, padding, dtype=None):
     # ``dtype`` is the *computation* dtype (e.g. bfloat16 for mixed precision);
     # ``param_dtype`` stays float32 so the weights are kept in full precision.
     return nnx.Conv(
         din,
-        dout,
+        d_out,
         kernel_size=(k, k),
         strides=(stride, stride),
         padding=padding,
@@ -46,12 +46,12 @@ def _bn(features, rngs, axis_name):
     )
 
 
-def _maybe_downsample(din, dout, stride, rngs, axis_name, dtype=None):
+def _maybe_downsample(din, d_out, stride, rngs, axis_name, dtype=None):
     """1x1-conv + BN projection shortcut, or ``None`` when shapes already match."""
-    if stride != 1 or din != dout:
+    if stride != 1 or din != d_out:
         return nnx.Sequential(
-            _conv(din, dout, 1, stride, rngs, "VALID", dtype),
-            _bn(dout, rngs, axis_name),
+            _conv(din, d_out, 1, stride, rngs, "VALID", dtype),
+            _bn(d_out, rngs, axis_name),
         )
     return None
 
@@ -61,15 +61,15 @@ class BasicBlock(nnx.Module):
 
     expansion = 1
 
-    def __init__(self, din, dout, stride, rngs, axis_name=None, dtype=None):
-        self.conv1 = _conv(din, dout, 3, stride, rngs, [(1, 1), (1, 1)], dtype)
-        self.bn1 = _bn(dout, rngs, axis_name)
-        self.conv2 = _conv(dout, dout, 3, 1, rngs, [(1, 1), (1, 1)], dtype)
-        self.bn2 = _bn(dout, rngs, axis_name)
+    def __init__(self, din, d_out, stride, rngs, axis_name=None, dtype=None):
+        self.conv1 = _conv(din, d_out, 3, stride, rngs, [(1, 1), (1, 1)], dtype)
+        self.bn1 = _bn(d_out, rngs, axis_name)
+        self.conv2 = _conv(d_out, d_out, 3, 1, rngs, [(1, 1), (1, 1)], dtype)
+        self.bn2 = _bn(d_out, rngs, axis_name)
         # Assign exactly once: mixing a static ``None`` then a module would
         # flip the attribute's pytree status and NNX rejects that.
         self.downsample = _maybe_downsample(
-            din, dout * self.expansion, stride, rngs, axis_name, dtype
+            din, d_out * self.expansion, stride, rngs, axis_name, dtype
         )
 
     def __call__(self, x):
@@ -84,15 +84,15 @@ class Bottleneck(nnx.Module):
 
     expansion = 4
 
-    def __init__(self, din, dout, stride, rngs, axis_name=None, dtype=None):
-        self.conv1 = _conv(din, dout, 1, 1, rngs, "VALID", dtype)
-        self.bn1 = _bn(dout, rngs, axis_name)
-        self.conv2 = _conv(dout, dout, 3, stride, rngs, [(1, 1), (1, 1)], dtype)
-        self.bn2 = _bn(dout, rngs, axis_name)
-        self.conv3 = _conv(dout, dout * self.expansion, 1, 1, rngs, "VALID", dtype)
-        self.bn3 = _bn(dout * self.expansion, rngs, axis_name)
+    def __init__(self, din, d_out, stride, rngs, axis_name=None, dtype=None):
+        self.conv1 = _conv(din, d_out, 1, 1, rngs, "VALID", dtype)
+        self.bn1 = _bn(d_out, rngs, axis_name)
+        self.conv2 = _conv(d_out, d_out, 3, stride, rngs, [(1, 1), (1, 1)], dtype)
+        self.bn2 = _bn(d_out, rngs, axis_name)
+        self.conv3 = _conv(d_out, d_out * self.expansion, 1, 1, rngs, "VALID", dtype)
+        self.bn3 = _bn(d_out * self.expansion, rngs, axis_name)
         self.downsample = _maybe_downsample(
-            din, dout * self.expansion, stride, rngs, axis_name, dtype
+            din, d_out * self.expansion, stride, rngs, axis_name, dtype
         )
 
     def __call__(self, x):

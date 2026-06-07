@@ -10,18 +10,18 @@ import jax.numpy as jnp
 from flax import nnx
 
 
-def _conv_bn(din, dout, rngs, k=3, stride=1):
+def _conv_bn(din, d_out, rngs, k=3, stride=1):
     return nnx.Sequential(
         nnx.Conv(
             din,
-            dout,
+            d_out,
             kernel_size=(k, k),
             strides=(stride, stride),
             padding=[(k // 2, k // 2)] * 2,
             use_bias=False,
             rngs=rngs,
         ),
-        nnx.BatchNorm(dout, momentum=0.9, rngs=rngs),
+        nnx.BatchNorm(d_out, momentum=0.9, rngs=rngs),
     )
 
 
