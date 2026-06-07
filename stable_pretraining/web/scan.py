@@ -760,7 +760,9 @@ class RunScanner:
         bad = set(patch) - self._MUTABLE_FIELDS
         if bad:
             raise ValueError(f"unknown patch fields: {sorted(bad)}")
-        if "display_name" in patch and not isinstance(patch["display_name"], (str, type(None))):
+        if "display_name" in patch and not isinstance(
+            patch["display_name"], (str, type(None))
+        ):
             raise ValueError("display_name must be a string")
         if "notes" in patch and not isinstance(patch["notes"], (str, type(None))):
             raise ValueError("notes must be a string")

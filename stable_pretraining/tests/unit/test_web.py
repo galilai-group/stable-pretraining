@@ -1,33 +1,32 @@
 """Unit tests for the spt web viewer backend.
 
-
   File-deletion safety
-    · metrics_json  returns {"metrics": {}} when metrics.csv is missing or
-      raises OSError on open (simulates file deleted mid-request)
-    · metrics_stream yields a "done" chunk instead of crashing
-    · log_content   returns None instead of crashing
+· metrics_json  returns {"metrics": {}} when metrics.csv is missing or
+raises OSError on open (simulates file deleted mid-request)
+· metrics_stream yields a "done" chunk instead of crashing
+· log_content   returns None instead of crashing
 
-  Rename / edit robustness
-    · patch_run_meta raises ValueError for unknown keys and wrong value types
-    · patch_run_meta returns False for an unknown run_id
-    · patch_run_meta happy path persists changes to the sidecar on disk
-    · do_PATCH HTTP handler returns 400 for bad fields / types, 404 for
-      unknown runs, 500 when write_sidecar raises OSError, and 200 on success
+Rename / edit robustness
+· patch_run_meta raises ValueError for unknown keys and wrong value types
+· patch_run_meta returns False for an unknown run_id
+· patch_run_meta happy path persists changes to the sidecar on disk
+· do_PATCH HTTP handler returns 400 for bad fields / types, 404 for
+unknown runs, 500 when write_sidecar raises OSError, and 200 on success
 
-  Serialization and data shapes
-    · _serialize display_name resolution order
-    · runs_json correct list structure and fields
-    · metrics_json_bytes byte cache and NaN/Inf sanitization
-    · _safe_dumps NaN/Inf → null
-    · CSV edge cases (header-only, non-finite values)
-    · log_content truncation behaviour
-    · logs_index discovery and stream_id stability
+Serialization and data shapes
+· _serialize display_name resolution order
+· runs_json correct list structure and fields
+· metrics_json_bytes byte cache and NaN/Inf sanitization
+· _safe_dumps NaN/Inf → null
+· CSV edge cases (header-only, non-finite values)
+· log_content truncation behaviour
+· logs_index discovery and stream_id stability
 
-  HTTP GET endpoints
-    · All GET routes (/, /assets, /api/runs, /api/scan-status, /api/metrics,
-      /api/logs, /api/log-content) return expected status codes
-    · Path traversal blocked with 403
-    · Missing parameters return 400
+HTTP GET endpoints
+· All GET routes (/, /assets, /api/runs, /api/scan-status, /api/metrics,
+/api/logs, /api/log-content) return expected status codes
+· Path traversal blocked with 403
+· Missing parameters return 400
 """
 
 from __future__ import annotations
@@ -59,8 +58,10 @@ def _make_scanner(root: Path) -> RunScanner:
 
 
 def _inject_run(scanner: RunScanner, run_dir: Path, **sidecar_kw) -> str:
-    """Write a sidecar, create the run directory, and register the run in
-    the scanner's in-memory map without starting the background thread."""
+    """Write a sidecar and register the run in the scanner's in-memory map.
+
+    Does not start the background thread.
+    """
     from stable_pretraining.registry._sidecar import make_sidecar, write_sidecar
 
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -218,7 +219,7 @@ class TestTOCTOUSafety:
         sc = _make_scanner(tmp_path)
         run_id = _inject_run(sc, tmp_path / "r1")
         (tmp_path / "r1" / "metrics.csv").write_text(
-            "step,val/acc\n" + "\n".join(f"{i},{i*0.01:.3f}" for i in range(20))
+            "step,val/acc\n" + "\n".join(f"{i},{i * 0.01:.3f}" for i in range(20))
         )
         chunks = [c for c in sc.metrics_stream(run_id) if c is not None]
         assert any(c.get("done") for c in chunks)
@@ -556,6 +557,8 @@ def _raw_get(base_url: str, path: str) -> int:
 
 
 class TestSafeDumps:
+    """Tests for the _safe_dumps NaN/Inf sanitization helper."""
+
     def test_nan_becomes_null(self):
         assert json.loads(_safe_dumps(float("nan"))) is None
 
@@ -589,6 +592,8 @@ class TestSafeDumps:
 
 
 class TestSerialize:
+    """Tests for RunScanner._serialize display_name resolution and field shapes."""
+
     def test_explicit_display_name_wins(self, tmp_path):
         sc = _make_scanner(tmp_path)
         run_dir = tmp_path / "run1"
@@ -616,14 +621,14 @@ class TestSerialize:
     def test_falls_back_to_last_path_component(self, tmp_path):
         sc = _make_scanner(tmp_path)
         run_dir = tmp_path / "parent" / "child_run"
-        run_id = _inject_run(sc, run_dir)
+        _inject_run(sc, run_dir)
         runs = sc.runs_json()
         assert runs[0]["display_name"] == "child_run"
 
     def test_falls_back_to_full_run_id_when_no_slash(self, tmp_path):
         sc = _make_scanner(tmp_path)
         run_dir = tmp_path / "flat"
-        run_id = _inject_run(sc, run_dir)
+        _inject_run(sc, run_dir)
         runs = sc.runs_json()
         assert runs[0]["display_name"] == "flat"
 
@@ -671,6 +676,8 @@ class TestSerialize:
 
 
 class TestRunsJson:
+    """Tests for RunScanner.runs_json list structure and field correctness."""
+
     def test_empty_when_no_runs(self, tmp_path):
         sc = _make_scanner(tmp_path)
         assert sc.runs_json() == []
@@ -713,6 +720,8 @@ class TestRunsJson:
 
 
 class TestMetricsCache:
+    """Tests for metrics_json mtime/size cache hit and invalidation."""
+
     def _write_csv(self, path: Path, rows: list[list]) -> None:
         import csv
 
@@ -748,7 +757,8 @@ class TestMetricsCache:
             [["step", "loss"], ["1", "0.5"], ["2", "0.3"], ["3", "0.1"]],
         )
         # Touch so the mtime definitely changes (some filesystems have 1 s resolution).
-        import os, time
+        import os
+        import time
 
         os.utime(csv_path, (time.time() + 2, time.time() + 2))
 
@@ -760,6 +770,8 @@ class TestMetricsCache:
 
 
 class TestMetricsJsonBytes:
+    """Tests for metrics_json_bytes byte cache and NaN/Inf sanitization."""
+
     def test_returns_valid_utf8_json(self, tmp_path):
         sc = _make_scanner(tmp_path)
         run_dir = tmp_path / "r"
@@ -798,6 +810,8 @@ class TestMetricsJsonBytes:
 
 
 class TestCsvEdgeCases:
+    """Tests for CSV parsing edge cases: empty files and non-finite float values."""
+
     def test_header_only_csv_returns_empty_metrics(self, tmp_path):
         sc = _make_scanner(tmp_path)
         run_dir = tmp_path / "r"
@@ -834,6 +848,8 @@ class TestCsvEdgeCases:
 
 
 class TestLogsIndex:
+    """Tests for RunScanner.logs_index discovery and stream_id stability."""
+
     def test_unknown_run_returns_none(self, tmp_path):
         sc = _make_scanner(tmp_path)
         assert sc.logs_index("no-such") is None
@@ -879,6 +895,8 @@ class TestLogsIndex:
 
 
 class TestLogContentTruncation:
+    """Tests for RunScanner.log_content tail-truncation behaviour."""
+
     def test_small_file_returned_in_full(self, tmp_path):
         sc = _make_scanner(tmp_path)
         run_dir = tmp_path / "r"
@@ -925,6 +943,8 @@ class TestLogContentTruncation:
 
 
 class TestGetEndpoints:
+    """Integration tests for all HTTP GET routes served by the web viewer."""
+
     def test_root_returns_200_html(self, web_server):
         _, base = web_server
         status, body, ctype = _do_get(base, "/")
