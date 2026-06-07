@@ -4,6 +4,7 @@
 [![Benchmarks](https://img.shields.io/badge/Benchmarks-blue.svg)](https://github.com/galilai-group/stable-pretraining/tree/main/benchmarks)
 [![Test Status](https://github.com/galilai-group/stable-pretraining/actions/workflows/testing.yml/badge.svg)](https://github.com/galilai-group/stable-pretraining/actions/workflows/testing.yml)
 [![PyTorch](https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
+[![JAX](https://img.shields.io/badge/JAX-experimental-9cf?logo=google&logoColor=white)](#jax-backend)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![WandB](https://raw.githubusercontent.com/wandb/assets/main/wandb-github-badge-gradient.svg)](https://wandb.ai/site)
@@ -17,9 +18,11 @@ attach without touching the training loop (`OnlineProbe`, `OnlineKNN`,
 queryable run registry, GPU-side batched augmentation, and 30+ ready
 recipes spanning SSL, supervised, and multi-modal pretraining
 (SimCLR, DINO/DINOv2, MAE, BYOL, VICReg, Barlow Twins, LeJEPA, CLIP, …).
+An **experimental [JAX / Flax-NNX backend](#jax-backend)** mirrors the same
+design (forward-dict, callbacks, SLURM-grade Manager) for users who prefer JAX.
 
-[30-second tour ↓](#30s-tour) · [Built-in methods ↓](#built-in-methods) ·
-[Discord](https://discord.gg/adzpqWKM25)
+[30-second tour ↓](#30s-tour) · [JAX backend ↓](#jax-backend) ·
+[Built-in methods ↓](#built-in-methods) · [Discord](https://discord.gg/adzpqWKM25)
 
 ## Table of Contents
 
@@ -27,6 +30,7 @@ recipes spanning SSL, supervised, and multi-modal pretraining
 - [Quick Setup](#quick-setup)
 - [Tutorial Notebook](#quick-setup)
 - [30-second tour](#30s-tour)
+- [JAX backend (experimental)](#jax-backend)
 - [Core Structure](#core-structure)
   - [Data](#data)
   - [Module](#module)
@@ -202,6 +206,69 @@ The dict-everywhere design means callbacks attach without modifying the
 training loop, GPU augmentation slots in via `dataset.gpu_transform=`
 (see [§GPU-side batched augmentation](#data)), and any intermediate
 quantity in the state dict is automatically available to loggers.
+
+<a id="jax-backend"></a>
+## JAX backend (experimental)
+
+A parallel **JAX / [Flax-NNX](https://flax.readthedocs.io/en/latest/nnx/)**
+backend lives under `stable_pretraining.jax` (install with `pip install -e ".[jax]"`).
+It is **opt-in and isolated** — `import stable_pretraining` never imports JAX —
+and it mirrors the torch design: a stateless `forward(self, batch, stage)` that
+returns a state **dict**, callbacks that read that dict under the same
+Lightning-style hooks, and a `Manager` with the same `cache_dir` run-dir layout
++ SLURM preempt/requeue + atomic checkpoints. The engine underneath is
+JAX-native (`nnx.value_and_grad` + `optax`, `nnx.jit`), and metrics are plain
+`jnp`/NumPy — **no torchmetrics**.
+
+The same minimal SimCLR run, side by side:
+
+```python
+# ---- PyTorch / Lightning -------------------     # ---- JAX / Flax-NNX ----------------------------
+import stable_pretraining as spt                    import stable_pretraining.jax as spj
+import torch, lightning as pl                       from flax import nnx
+                                                     rngs = nnx.Rngs(0)
+module = spt.Module(                                 module = spj.Module(
+    forward=spt.forward.simclr,                          forward=spj.forward.simclr,
+    backbone=spt.backbone.from_torchvision(              backbone=spj.backbone.resnet18(
+        "resnet18", low_resolution=True),                    rngs=rngs, low_resolution=True),
+    projector=torch.nn.Linear(512, 128),                 projector=spj.backbone.MLP(512, [128], rngs=rngs),
+    simclr_loss=spt.losses.NTXEntLoss(0.5),              simclr_loss=spj.losses.NTXEntLoss(0.5),
+    optim={"optimizer": {"type": "LARS",                 optim={"type": "lars",
+                         "lr": 5}},                                 "learning_rate": 5.0},
+)                                                    )
+probe = spt.OnlineProbe(module, name="probe",        probe = spj.OnlineProbe("probe",
+    input="embedding", target="label",                   probe=nnx.Linear(512, 10, rngs=rngs))
+    probe=torch.nn.Linear(512, 10),
+    loss=torch.nn.CrossEntropyLoss())
+trainer = pl.Trainer(max_epochs=100,                 trainer = spj.Trainer(max_epochs=100,
+                     callbacks=[probe])                                    callbacks=[probe])
+spt.Manager(trainer=trainer, module=module,          spj.Manager(trainer, module,
+            data=dm)()                                           train_loader, val_loader)()
+```
+
+**Multi-GPU** is one flag — `spj.Trainer(..., data_parallel=True)` shards each
+batch across all visible devices (SPMD); **bf16** mixed precision is
+`dtype=jnp.bfloat16` on the backbone.
+
+**What's available today:** methods SimCLR / VICReg / Barlow Twins / SimSiam /
+BYOL; backbones MLP / ResNet-{9,18,34,50,101,152} / ConvMixer / ViT-{tiny,small,
+base,large}; losses NT-Xent / InfoNCE / BYOL / VICReg / Barlow Twins / SwAV-Sinkhorn /
+neg-cosine; callbacks `OnlineProbe`, `OnlineKNN`, `RankMe`, `LiDAR`,
+`OnlineQueue`, `OnlineWriter`, `EarlyStopping`, EMA `TeacherStudentCallback`;
+checkpointing + exact resume; on-device augmentation (`spj.augment`). Every
+torch↔JAX numerical claim above is covered by parity regression tests.
+
+**Logging is identical to the torch path** — not reimplemented. The JAX
+`Trainer` drives the *same* logger classes (`RegistryLogger`, WandB, Trackio,
+SwanLab) via `logger=`, `Module.log(name, value)` matches, and metric keys are
+the same (`fit/loss`, `train/<p>_loss`, `eval/<p>_acc`, bare `rankme`/`lidar`, …).
+`spj.Manager` auto-attaches the `RegistryLogger`, so JAX runs write the same
+`sidecar.json` and show up in `spt registry ls/best/...` exactly like torch runs.
+Metrics use plain `jnp`/NumPy — no torchmetrics.
+
+**Still pending (vs the torch path):** DINO/DINOv2/MAE/I-JEPA methods, the full
+ViT feature set (SwiGLU/QK-norm/RoPE), video backbones, and a few niche
+callbacks. Contributions welcome.
 
 <a id="core-structure"></a>
 ## Core Structure
