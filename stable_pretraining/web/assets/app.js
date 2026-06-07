@@ -753,9 +753,11 @@
           displayEl.textContent = val;
           const run = state.runs.get(r.run_id);
           if (run) run.display_name = val;
-          patchRunMeta(r.run_id, { display_name: val }).catch(() => {
+          patchRunMeta(r.run_id, { display_name: val }).catch(err => {
             displayEl.textContent = prev;
-            if (run) run.display_name = prev;
+            const cur = state.runs.get(r.run_id);
+            if (cur) cur.display_name = prev;
+            showToast(`Rename failed — ${err.message || 'server error'}`);
           });
         }
       }
@@ -866,6 +868,10 @@
     }
     // Ungrouped runs (or all runs when groupBy is empty) flat at the bottom.
     for (const r of ungrouped) frag.appendChild(makeRunRow(r));
+    // Commit any in-progress inline name edit before tearing out the DOM —
+    // Chrome doesn't fire blur when an element is removed from the tree.
+    const activeEdit = el.querySelector('.run-name-edit');
+    if (activeEdit) activeEdit.blur();
     el.replaceChildren(frag);
   }
 
@@ -2914,8 +2920,8 @@
       try {
         await patchRunMeta(run.run_id, { notes: newVal });
       } catch (e) {
-        console.warn('notes patch failed', e);
         ta.value = run.notes = oldVal;
+        showToast(`Notes save failed — ${e.message || 'server error'}`);
       }
     });
     sec.appendChild(h);

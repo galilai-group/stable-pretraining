@@ -191,6 +191,9 @@ class _Handler(BaseHTTPRequestHandler):
             except ValueError as exc:
                 self._serve_json({"error": str(exc)}, 400)
                 return
+            except OSError as exc:
+                self._serve_json({"error": f"write failed: {exc}"}, 500)
+                return
 
             if not found:
                 self._serve_json({"error": "run not found"}, 404)
