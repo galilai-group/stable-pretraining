@@ -19,6 +19,7 @@ stable_pretraining/
   data/             # HFDataset, MultiViewTransform, RepeatedRandomSampler
   loggers/          # WandB, Trackio, SwanLab integrations
   registry/         # filesystem-first run registry (sidecars + SQLite)
+  web/              # local run viewer (spt web); reads RegistryLogger output
   optim/            # optimizer and scheduler factories
   utils/            # atomic checkpointing, lightning patch, error handling
   _config.py        # global config: spt.set(key, value) / spt.get_config()
@@ -223,6 +224,118 @@ spt registry best val_acc -n 5   # top 5 by metric
 spt registry export sweep.csv    # export to CSV
 spt registry scan --full         # rebuild SQLite cache
 ```
+
+## spt web — local run viewer
+
+`spt web` is a dependency-free local viewer for `RegistryLogger` runs — a
+WandB alternative requiring no account, no internet, and no extra dependencies
+beyond what the library ships. It reads `sidecar.json` + `metrics.csv` produced
+by `RegistryLogger` and serves a browser UI over stdlib `http.server` with
+Server-Sent Events for live updates.
+
+### Launching
+
+```bash
+# Scan any directory (scanner walks the tree to any depth)
+spt web runs/
+
+# No argument → uses {cache_dir}/runs automatically
+spt web
+
+# Custom host / port / poll interval (mtime-based, no inotify — NFS-safe)
+spt web runs/ --host 0.0.0.0 --port 8080 --poll 2.0
+```
+
+The viewer opens at `http://127.0.0.1:4242` by default. The page updates in
+real time as training writes new metrics — no reload needed.
+
+### Connection to RegistryLogger
+
+`Manager` automatically injects a `RegistryLogger` into every run. When using
+`Manager`, no extra configuration is needed: `spt web {cache_dir}/runs` will
+show all runs. The logger writes to `{run_dir}/`:
+
+| File | Written by | Displayed as |
+|------|------------|-------------|
+| `sidecar.json` | RegistryLogger | run metadata, hparams, summary, status, tags, notes |
+| `metrics.csv` | RegistryLogger | per-step charts (figures tab) |
+| `heartbeat` | RegistryLogger | mtime → stale detection (>5 min old without terminal status = ⚠ stale) |
+| `media.jsonl` | RegistryLogger | image/video media panel |
+| `*.out` / `*.err` | training process | log tab (auto-tails live runs) |
+
+To use `RegistryLogger` directly (outside `Manager`):
+```python
+from stable_pretraining.registry import RegistryLogger
+logger = RegistryLogger(run_dir="runs/my_run", run_id="my_run")
+trainer = pl.Trainer(logger=logger, ...)
+```
+
+### Run directory layout (what spt web expects)
+
+```
+{run_dir}/               ← any leaf directory that contains a sidecar.json
+  sidecar.json           ← required: run metadata
+  metrics.csv            ← optional: columns = step, epoch, <metric_name>, ...
+  heartbeat              ← optional: empty file; mtime = last alive timestamp
+  media.jsonl            ← optional: one JSON object per line, image/video events
+  train.out / train.err  ← optional: log files shown in the .out / .err tabs
+  checkpoints/           ← optional: ignored by the viewer
+```
+
+Runs do not need to be at the top level of the scanned directory — the scanner
+recurses to any depth.
+
+### sidecar.json schema
+
+Key fields agents may read or patch:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `run_id` | `str` | Unique identifier, usually path relative to cache_dir |
+| `display_name` | `str` | Human-readable label shown in the sidebar (editable via UI or `PATCH /api/run-meta`) |
+| `status` | `str` | `"running"` \| `"completed"` \| `"failed"` \| `"orphaned"` |
+| `hparams` | `dict` | Hyperparameters; logged via `log_hyperparams` |
+| `summary` | `dict` | Final scalars (e.g. best val_acc); populated by `RegistryLogger` at `finalize` |
+| `tags` | `list[str]` | Labels for filtering and grouping (editable via UI) |
+| `notes` | `str` | Free-text notes (editable via UI) |
+| `created_at` | `float` | Unix timestamp of run start |
+| `ended_at` | `float \| None` | Unix timestamp of run end; `None` while still running |
+
+The sidecar can be patched programmatically via the server's HTTP API while
+`spt web` is running:
+```python
+import requests
+requests.patch("http://127.0.0.1:4242/api/run-meta", json={
+    "run_id": "runs/my_run",
+    "display_name": "experiment-v2",
+    "tags": ["sweep", "lr-1e-3"],
+    "notes": "Increased weight decay.",
+})
+```
+Allowed mutable fields: `display_name`, `notes`, `tags`, `archived`.
+
+### UI features (for agents reasoning about what users can do)
+
+| Tab / panel | What it shows | Key interactions |
+|-------------|--------------|-----------------|
+| **Figures** | One uPlot chart per metric, all visible runs overlaid | Drag to zoom (synced across all charts); ↓ min / ↑ max direction toggle; `+` to combine metrics into one panel; `⬇` to download as PNG |
+| **Table** | Runs × (hparams + summary) comparison grid | Sortable columns; column search; "hide same" collapses identical columns; amber diff highlighting |
+| **.out / .err** | Last ~4 MiB of log files | Auto-refreshes every 10 s while run is live; pause button stops auto-refresh |
+| **Detail modal** | Full hparams / summary / tags / notes for one run | Notes and tags are editable in-place; double-click run name in sidebar to rename |
+| **Sidebar** | Run list | Search by name/tag/hparam; filter by field value; group-by any hparam key; sort by any metric |
+
+State (selected runs, filters, active tab, smoothing, theme) persists to
+`localStorage` across reloads. Visible run IDs and active tab are also written
+into the URL fragment (`#runs=id1,id2&tab=figures`) so a shared URL restores the
+exact selection.
+
+### When to suggest `spt web`
+
+- User wants to inspect or compare runs **locally** (no WandB account needed).
+- User wants to **monitor a live training run** — the viewer updates as metrics arrive.
+- User is running a **hyperparameter sweep** and wants to compare configs (table tab + hide-same).
+- User wants to see **log output** from a run: `spt web {parent_dir}`, then open the .out tab.
+- User asks "how do I see my training curves?" — `spt web` is the answer unless they already have WandB configured.
 
 ## Callback ordering
 
