@@ -41,6 +41,7 @@
     tableHideSame: false,
     combineSelection: new Set(),  // metric names currently selected for combining
     combinedCharts: [],           // [{id, metrics: string[]}]
+    metricDir: {},                // metric name -> true (lower better) | false (higher better); absent = auto
   };
 
   // setInterval handles for log auto-refresh; null when not running.
@@ -119,6 +120,7 @@
       activeTab: state.activeTab,
       theme: state.theme,
       combinedCharts: state.combinedCharts,
+      metricDir: state.metricDir,
     };
     try { localStorage.setItem('spt-web-state', JSON.stringify(snap)); } catch {}
     const ids = [...state.visible].map(id => encodeURIComponent(id)).join(',');
@@ -166,6 +168,7 @@
       if (typeof saved.activeTab === 'string') state.activeTab = saved.activeTab;
       if (typeof saved.theme === 'string') state.theme = saved.theme;
       if (Array.isArray(saved.combinedCharts)) state.combinedCharts = saved.combinedCharts;
+      if (saved.metricDir && typeof saved.metricDir === 'object' && !Array.isArray(saved.metricDir)) state.metricDir = saved.metricDir;
       if (Array.isArray(saved.visible)) state._pendingVisible = new Set(saved.visible);
     }
 
@@ -1368,6 +1371,15 @@
     }, 'image/png');
   }
 
+  function _refreshDirBtn(btn, name) {
+    const isOverride = name in state.metricDir;
+    const lower = isLowerBetter(name);
+    btn.textContent = lower ? '↓ min' : '↑ max';
+    btn.title = (lower ? 'lower is better' : 'higher is better')
+      + (isOverride ? ' (manual — click to toggle)' : ' (auto — click to override)');
+    btn.classList.toggle('active', isOverride);
+  }
+
   function makePanel(fullName, displayName) {
     const panel = document.createElement('div');
     panel.className = 'chart-panel';
@@ -1378,6 +1390,18 @@
     span.textContent = displayName || fullName;
     span.title = fullName;
     title.appendChild(span);
+    const dirBtn = document.createElement('button');
+    dirBtn.type = 'button';
+    dirBtn.className = 'chart-dir-btn icon-btn';
+    _refreshDirBtn(dirBtn, fullName);
+    dirBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.metricDir[fullName] = !isLowerBetter(fullName);
+      _refreshDirBtn(dirBtn, fullName);
+      scheduleRerender();
+      saveState();
+    });
+    title.appendChild(dirBtn);
     const toggleBtn = document.createElement('button');
     toggleBtn.className = 'chart-combine-toggle icon-btn';
     toggleBtn.type = 'button';
@@ -1708,7 +1732,7 @@
         spanGaps: true,
       });
     }
-    const lower = lowerIsBetter(name);
+    const lower = isLowerBetter(name);
     const seriesStats = series.map(s => {
       const raw = s.ys.filter(v => v != null && isFinite(v));
       const lastVal = raw.length ? raw[raw.length - 1] : null;
@@ -1721,6 +1745,11 @@
   function lowerIsBetter(name) {
     const n = name.toLowerCase();
     return n.includes('loss') || n.includes('err') || n.includes('perplexity') || n.includes('ppl');
+  }
+
+  function isLowerBetter(name) {
+    if (name in state.metricDir) return state.metricDir[name];
+    return lowerIsBetter(name);
   }
 
   // ---- combine-metrics feature ------------------------------------------
@@ -2062,7 +2091,7 @@
     if (!annot) return;
     if (!seriesStats || seriesStats.length === 0) { annot.replaceChildren(); return; }
 
-    const lower = lowerIsBetter(name);
+    const lower = isLowerBetter(name);
     const validBests = seriesStats.map(s => s.bestVal).filter(v => v != null);
     const overallBest = validBests.length
       ? (lower ? Math.min(...validBests) : Math.max(...validBests))

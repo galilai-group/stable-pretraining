@@ -696,6 +696,17 @@ body {
 }
 .chart-zoom-reset:hover { color: var(--text-strong); border-color: var(--accent); }
 
+.chart-dir-btn {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+.chart-panel:hover .chart-dir-btn { opacity: 1; }
+.chart-dir-btn.active { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); opacity: 1; }
+
 /* ---- chart annotations ------------------------------------------------ */
 .chart-annot {
   margin-top: 6px;
