@@ -64,22 +64,38 @@ if SWANLAB_AVAILABLE:
         them up automatically.
         """
 
+        # Upstream stores init kwargs in _init_kwargs; expose as _swanlab_init
+        # so our helpers and the checkpoint callback have a stable name.
+        @property
+        def _swanlab_init(self) -> Dict[str, Any]:
+            return self._init_kwargs  # type: ignore[attr-defined]
+
+        @property
+        def _project(self) -> Optional[str]:
+            return self._init_kwargs.get("project")  # type: ignore[attr-defined]
+
+        @property
+        def name(self) -> str:
+            return self._init_kwargs.get("project", "swanlab")  # type: ignore[attr-defined]
+
         @property
         def resume_info(self) -> Dict[str, Any]:
             """Snapshot of state needed to resume this run after requeue.
 
-            Prefers the live experiment's ``run_id`` when the experiment
-            has been initialised; falls back to whatever ``id=`` was passed
-            at construction.
+            Prefers the live experiment's ``id`` when the experiment has been
+            initialised; falls back to whatever ``id=`` was passed at
+            construction.
             """
             live_id = None
             exp = getattr(self, "_experiment", None)
             if exp is not None:
                 public = getattr(exp, "public", None)
                 live_id = getattr(public, "run_id", None) if public else None
-            init_cfg = getattr(self, "_swanlab_init", {}) or {}
+                if live_id is None:
+                    live_id = getattr(exp, "id", None)
+            init_cfg = self._swanlab_init
             return {
-                "project": getattr(self, "_project", init_cfg.get("project")),
+                "project": self._project,
                 "experiment_name": init_cfg.get("experiment_name"),
                 "group": init_cfg.get("group"),
                 "id": live_id or init_cfg.get("id"),
@@ -88,20 +104,13 @@ if SWANLAB_AVAILABLE:
         def set_resume(self, id: str) -> None:
             """Configure this logger to resume a previous experiment.
 
-            Mutates the underlying ``_swanlab_init`` dict so that the next
+            Mutates the underlying ``_init_kwargs`` dict so that the next
             call to ``swanlab.init()`` (triggered on first access to
             ``self.experiment``) picks up ``id=<id>`` with
             ``resume="must"``.  Call this *before* any logging happens.
             """
-            init_cfg = getattr(self, "_swanlab_init", None)
-            if init_cfg is None:
-                # Upstream shape changed — store on the instance so that
-                # users relying on set_resume() still see a well-defined
-                # attribute for debugging.
-                self._swanlab_init = {"id": id, "resume": "must"}
-                return
-            init_cfg["id"] = id
-            init_cfg["resume"] = "must"
+            self._init_kwargs["id"] = id  # type: ignore[attr-defined]
+            self._init_kwargs["resume"] = "must"  # type: ignore[attr-defined]
 
 else:
     # Placeholder that raises on instantiation so imports don't break when
