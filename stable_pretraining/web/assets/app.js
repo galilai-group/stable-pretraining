@@ -3036,6 +3036,15 @@
       try { payload = JSON.parse(ev.data); } catch { return; }
       const { changed = [], removed = [] } = payload;
 
+      // Capture names + visibility BEFORE refreshRuns() wipes them from state.
+      const removedNotable = removed.filter(id =>
+        state.visible.has(id) || id === state.detailRunId
+      );
+      const removedNames = new Map(removedNotable.map(id => {
+        const r = state.runs.get(id);
+        return [id, (r && r.display_name) || id.split('/').pop() || id];
+      }));
+
       // Refresh the index (cheap; sidecars only).
       await refreshRuns();
 
@@ -3071,10 +3080,40 @@
       if (state.activeTab === 'out' || state.activeTab === 'err') {
         _updateLiveState(state.activeTab);
       }
+      // Notify the user for any selected/viewed runs that were deleted.
+      for (const id of removedNotable) {
+        if (!state.runs.has(id)) {
+          showToast(`Run "${removedNames.get(id)}" was deleted from disk.`);
+        }
+      }
     });
     es.addEventListener('error', () => {
       // Browser auto-reconnects.
     });
+  }
+
+  // ---- toast notifications ----------------------------------------------
+
+  function showToast(msg, ttl = 7000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    const msgEl = document.createElement('span');
+    msgEl.className = 'toast-msg';
+    msgEl.textContent = msg;
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'toast-close';
+    closeBtn.textContent = '×';
+    closeBtn.title = 'dismiss';
+    toast.appendChild(msgEl);
+    toast.appendChild(closeBtn);
+    container.appendChild(toast);
+    let timer;
+    const dismiss = () => { clearTimeout(timer); toast.remove(); };
+    closeBtn.addEventListener('click', dismiss);
+    timer = setTimeout(dismiss, ttl);
   }
 
   // ---- controls ---------------------------------------------------------

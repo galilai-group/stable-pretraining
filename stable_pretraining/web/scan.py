@@ -438,7 +438,11 @@ class RunScanner:
             if cached is not None and (cached[0], cached[1]) == cache_key:
                 return cached[2]  # parsed dict (HTTP layer prefers metrics_json_bytes)
 
-        with mpath.open("r", newline="") as f:
+        try:
+            fh = mpath.open("r", newline="")
+        except OSError:
+            return {"metrics": {}}
+        with fh as f:
             reader = csv.reader(f)
             try:
                 header = next(reader)
@@ -560,7 +564,13 @@ class RunScanner:
 
         # Cold path: parse + emit incrementally so the browser can paint
         # while the file is still being read.
-        with mpath.open("r", newline="") as f:
+        try:
+            fh = mpath.open("r", newline="")
+        except OSError:
+            yield {"chunk": 0, "metrics": {}}
+            yield {"done": True}
+            return
+        with fh as f:
             reader = csv.reader(f)
             try:
                 header = next(reader)
@@ -870,7 +880,11 @@ class RunScanner:
             size = path.stat().st_size
         except OSError:
             return None
-        with path.open("rb") as f:
+        try:
+            fh = path.open("rb")
+        except OSError:
+            return None
+        with fh as f:
             if size > max_bytes:
                 f.seek(size - max_bytes)
                 # Discard up to the next newline to avoid a truncated line.
