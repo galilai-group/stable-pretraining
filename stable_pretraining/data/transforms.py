@@ -351,9 +351,9 @@ class RandomErasing(Transform, v2.RandomErasing):
         if self.p < 1 and torch.rand(1) >= self.p:
             x[self.get_name(x)] = torch.zeros(4)
             return x
-        params = self._get_params([self.nested_get(x, self.source)])
+        params = self.make_params([self.nested_get(x, self.source)])
         self.nested_set(
-            x, self._transform(self.nested_get(x, self.source), params), self.target
+            x, self.transform(self.nested_get(x, self.source), params), self.target
         )
         x[self.get_name(x)] = torch.Tensor(
             [params["i"], params["j"], params["h"], params["w"]]
@@ -383,9 +383,9 @@ class RandomAffine(Transform, v2.RandomAffine):
         self.target = target
 
     def __call__(self, x):
-        params = self._get_params([self.nested_get(x, self.source)])
+        params = self.make_params([self.nested_get(x, self.source)])
         self.nested_set(
-            x, self._transform(self.nested_get(x, self.source), params), self.target
+            x, self.transform(self.nested_get(x, self.source), params), self.target
         )
         x[self.get_name(x)] = torch.Tensor(
             [
@@ -418,9 +418,9 @@ class RandomPerspective(Transform, v2.RandomPerspective):
         if self.p < 1 and torch.rand(1) >= self.p:
             x[self.get_name(x)] = torch.zeros(8)
             return x
-        params = self._get_params([self.nested_get(x, self.source)])
+        params = self.make_params([self.nested_get(x, self.source)])
         self.nested_set(
-            x, self._transform(self.nested_get(x, self.source), params), self.target
+            x, self.transform(self.nested_get(x, self.source), params), self.target
         )
         coeffs = params["coefficients"]
         x[self.get_name(x)] = torch.Tensor(coeffs)
@@ -442,9 +442,9 @@ class GaussianNoise(Transform, v2.GaussianNoise):
         if self.p < 1 and torch.rand(1) >= self.p:
             x[self.get_name(x)] = torch.Tensor([0.0, 0.0])
             return x
-        params = self._get_params([self.nested_get(x, self.source)])
+        params = self.make_params([self.nested_get(x, self.source)])
         self.nested_set(
-            x, self._transform(self.nested_get(x, self.source), params), self.target
+            x, self.transform(self.nested_get(x, self.source), params), self.target
         )
         x[self.get_name(x)] = torch.Tensor([self.mean, self.sigma])
         return x
@@ -472,9 +472,9 @@ class GaussianBlur(Transform, v2.GaussianBlur):
         if self.p < 1 and torch.rand(1) >= self.p:
             x[self.get_name(x)] = torch.zeros((2,))
             return x
-        params = self._get_params([])
+        params = self.make_params([])
         self.nested_set(
-            x, self._transform(self.nested_get(x, self.source), params), self.target
+            x, self.transform(self.nested_get(x, self.source), params), self.target
         )
         x[self.get_name(x)] = torch.Tensor(params["sigma"])
         return x
@@ -612,7 +612,7 @@ class Resize(Transform, v2.Resize):
 
     def __call__(self, x):
         self.nested_set(
-            x, self._transform(self.nested_get(x, self.source), []), self.target
+            x, self.transform(self.nested_get(x, self.source), []), self.target
         )
         return x
 
@@ -640,9 +640,9 @@ class ColorJitter(Transform, v2.ColorJitter):
             self.nested_set(x, self.nested_get(x, self.source), self.target)
             x[self.get_name(x)] = torch.zeros(8)
             return x
-        params = self._get_params([])
+        params = self.make_params([])
         self.nested_set(
-            x, self._transform(self.nested_get(x, self.source), params), self.target
+            x, self.transform(self.nested_get(x, self.source), params), self.target
         )
         brightness_factor = params["brightness_factor"]
         contrast_factor = params["contrast_factor"]
@@ -673,9 +673,9 @@ class RandomRotation(Transform, v2.RandomRotation):
         self.target = target
 
     def __call__(self, x):
-        angle = self._get_params([])
+        angle = self.make_params([])
         self.nested_set(
-            x, self._transform(self.nested_get(x, self.source), angle), self.target
+            x, self.transform(self.nested_get(x, self.source), angle), self.target
         )
         x[self.get_name(x)] = angle
         return x
@@ -719,9 +719,9 @@ class RandomCrop(Transform, v2.RandomCrop):
         self.target = target
 
     def __call__(self, x):
-        params = self._get_params([self.nested_get(x, self.source)])
+        params = self.make_params([self.nested_get(x, self.source)])
         self.nested_set(
-            x, self._transform(self.nested_get(x, self.source), params), self.target
+            x, self.transform(self.nested_get(x, self.source), params), self.target
         )
         values = []
         values.append(params["needs_crop"])
@@ -778,15 +778,15 @@ class RandomResizedCrop(Transform, v2.RandomResizedCrop):
         self.target = target
 
     def __call__(self, x):
-        params = self._get_params([self.nested_get(x, self.source)])
+        params = self.make_params([self.nested_get(x, self.source)])
 
         candidates = self.nested_get(x, self.source)
         if type(candidates) in [tuple, list]:
-            out = [self._transform(c, params) for c in candidates]
+            out = [self.transform(c, params) for c in candidates]
             self.nested_set(x, out, self.target)
         else:
             self.nested_set(
-                x, self._transform(self.nested_get(x, self.source), params), self.target
+                x, self.transform(self.nested_get(x, self.source), params), self.target
             )
         values = []
         values.append(params["top"])
@@ -906,7 +906,7 @@ class CenterCrop(Transform, v2.CenterCrop):
 
     def __call__(self, x):
         self.nested_set(
-            x, self._transform(self.nested_get(x, self.source), []), self.target
+            x, self.transform(self.nested_get(x, self.source), []), self.target
         )
         return x
 
@@ -940,12 +940,12 @@ class ControlledTransform(Transform):
     ):
         super().__init__()
         self.seed_offset = seed_offset
-        self.transform = transform
+        self._transform = transform
         self.key = key
 
     def __call__(self, x):
         with random_seed(x["idx"] + self.seed_offset):
-            x = self.transform(x)
+            x = self._transform(x)
         return x
 
 
@@ -954,18 +954,18 @@ class Conditional(Transform):
 
     def __init__(self, transform, condition_key, apply_on_true=True):
         super().__init__()
-        self.transform = transform
+        self._transform = transform
         self.condition_key = condition_key
         self.apply_on_true = apply_on_true
 
     def __call__(self, x):
         if x[self.condition_key] and self.apply_on_true:
-            return self.transform(x)
+            return self._transform(x)
         elif not x[self.condition_key] and not self.apply_on_true:
-            return self.transform(x)
+            return self._transform(x)
         # if the transform is not applied we still inform the user
         # otherwise collate_fn will complain
-        x[self.transform.get_name(x)] = self.transform.BYPASS_VALUE
+        x[self._transform.get_name(x)] = self._transform.BYPASS_VALUE
         return x
 
 
