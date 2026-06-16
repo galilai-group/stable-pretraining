@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+gc64acdc1e documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g94121edb0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=19d3bdcf"></script>
+    <script src="../../../_static/documentation_options.js?v=e4ae1a17"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gc64acdc1e documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g94121edb0 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -1991,6 +1991,121 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_instantiated_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_instantiated_data</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_cfg_has</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;True if ``self.trainer`` config sets ``key`` to a real value.&quot;&quot;&quot;</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">DictConfig</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">cfg</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">is_missing</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">cfg</span> <span class="ow">and</span> <span class="n">cfg</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_effective_device_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Best-effort resolution of the Trainer&#39;s device count from config.</span>
+
+<span class="sd">        Returns ``None`` when it can&#39;t be determined or the accelerator is CPU.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">omegaconf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ListConfig</span>
+
+        <span class="n">cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span>
+        <span class="n">accel</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;accelerator&quot;</span><span class="p">,</span> <span class="s2">&quot;auto&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="s2">&quot;get&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;auto&quot;</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">accel</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="s2">&quot;tpu&quot;</span><span class="p">,</span> <span class="s2">&quot;mps&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">devices</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;devices&quot;</span><span class="p">,</span> <span class="s2">&quot;auto&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="s2">&quot;get&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;auto&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">devices</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">ListConfig</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">devices</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">devices</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>  <span class="c1"># guard: bool is an int subclass</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">devices</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">device_count</span><span class="p">()</span> <span class="k">if</span> <span class="n">devices</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="n">devices</span>
+        <span class="k">if</span> <span class="n">devices</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="s2">&quot;-1&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">device_count</span><span class="p">()</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">devices</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_fast_trainer_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fill in throughput-oriented Trainer defaults when fast mode is on.</span>
+
+<span class="sd">        Driven by ``spt.make_it_fast()`` (the process-global tag in</span>
+<span class="sd">        :mod:`stable_pretraining._fast`). Only fills in what the user left</span>
+<span class="sd">        unset — explicit ``trainer`` config always wins. Precision and the DDP</span>
+<span class="sd">        strategy are fixed at Trainer construction, so a pre-built</span>
+<span class="sd">        ``pl.Trainer`` can&#39;t be tuned here and we warn instead.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">_fast</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_fast</span><span class="o">.</span><span class="n">enabled</span><span class="p">():</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">):</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;! make_it_fast() is on but `trainer` was passed as an already-&quot;</span>
+                <span class="s2">&quot;built pl.Trainer; cannot apply bf16-mixed / DDP tuning &quot;</span>
+                <span class="s2">&quot;(precision &amp; strategy are fixed at construction). Pass `trainer`&quot;</span>
+                <span class="s2">&quot; as a config dict to get the fast defaults.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="n">DictConfig</span><span class="p">)):</span>
+            <span class="k">return</span>
+
+        <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+        <span class="c1"># --- precision: default to bf16-mixed when supported &amp; unset ---</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cfg_has</span><span class="p">(</span><span class="s2">&quot;precision&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_bf16_supported</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">[</span><span class="s2">&quot;precision&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;bf16-mixed&quot;</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  make_it_fast: trainer.precision → bf16-mixed&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;  make_it_fast: bf16 unsupported here; leaving precision default&quot;</span>
+                <span class="p">)</span>
+
+        <span class="c1"># --- DDP comm tuning (multi-GPU only) ---</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_tune_ddp_strategy</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_maybe_tune_ddp_strategy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Replace a plain DDP strategy with a comm-tuned ``DDPStrategy``.</span>
+
+<span class="sd">        Conservative: only touches the unset / plain-string DDP cases. A custom</span>
+<span class="sd">        strategy object, or a non-DDP strategy (fsdp/deepspeed/…), is left</span>
+<span class="sd">        untouched, as is any single-device run.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span>
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;strategy&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="s2">&quot;get&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="n">_tunable</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">&quot;auto&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ddp&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ddp_spawn&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ddp_find_unused_parameters_true&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ddp_find_unused_parameters_false&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">strategy</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="nb">str</span><span class="p">)):</span>
+            <span class="k">return</span>  <span class="c1"># user configured a strategy object/dict explicitly</span>
+        <span class="k">if</span> <span class="n">strategy</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_tunable</span><span class="p">:</span>
+            <span class="k">return</span>  <span class="c1"># fsdp / deepspeed / other — don&#39;t touch</span>
+
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_effective_device_count</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span>  <span class="c1"># single-device: DDP tuning is irrelevant</span>
+
+        <span class="n">find_unused</span> <span class="o">=</span> <span class="n">strategy</span> <span class="o">==</span> <span class="s2">&quot;ddp_find_unused_parameters_true&quot;</span>
+        <span class="c1"># A nested ``_target_`` dict so hydra.utils.instantiate builds it; this</span>
+        <span class="c1"># also slots cleanly into a DictConfig (a built object would not).</span>
+        <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;strategy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;_target_&quot;</span><span class="p">:</span> <span class="s2">&quot;lightning.pytorch.strategies.DDPStrategy&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;find_unused_parameters&quot;</span><span class="p">:</span> <span class="n">find_unused</span><span class="p">,</span>
+            <span class="s2">&quot;gradient_as_bucket_view&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  make_it_fast: trainer.strategy → tuned DDP &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(find_unused_parameters=</span><span class="si">{</span><span class="n">find_unused</span><span class="si">}</span><span class="s2">, gradient_as_bucket_view=True)&quot;</span>
+        <span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Run a full training loop — seed, build, checkpoint, fit, teardown.</span>
 
@@ -2031,6 +2146,10 @@
         <span class="k">if</span> <span class="n">run_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_inject_run_dir_into_trainer_config</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_warn_hydra_conflicts</span><span class="p">()</span>
+
+        <span class="c1"># make_it_fast(): fill in bf16-mixed precision + tuned DDP comm for any</span>
+        <span class="c1"># config-dict trainer (only where the user left them unset).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_apply_fast_trainer_defaults</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span>
