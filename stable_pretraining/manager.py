@@ -1606,6 +1606,121 @@ class Manager(submitit.helpers.Checkpointable):
             self._instantiated_data = self.data
         return self._instantiated_data
 
+    def _cfg_has(self, key: str) -> bool:
+        """True if ``self.trainer`` config sets ``key`` to a real value."""
+        cfg = self.trainer
+        if isinstance(cfg, DictConfig):
+            return key in cfg and not OmegaConf.is_missing(cfg, key)
+        if isinstance(cfg, dict):
+            return key in cfg and cfg[key] is not None
+        return False
+
+    def _effective_device_count(self) -> Optional[int]:
+        """Best-effort resolution of the Trainer's device count from config.
+
+        Returns ``None`` when it can't be determined or the accelerator is CPU.
+        """
+        import torch
+        from omegaconf import ListConfig
+
+        cfg = self.trainer
+        accel = cfg.get("accelerator", "auto") if hasattr(cfg, "get") else "auto"
+        if str(accel) in ("cpu", "tpu", "mps"):
+            return None
+        devices = cfg.get("devices", "auto") if hasattr(cfg, "get") else "auto"
+        if isinstance(devices, (list, tuple, ListConfig)):
+            return len(devices)
+        if isinstance(devices, bool):  # guard: bool is an int subclass
+            return None
+        if isinstance(devices, int):
+            return torch.cuda.device_count() if devices == -1 else devices
+        if devices in ("auto", "-1", None):
+            return torch.cuda.device_count() if torch.cuda.is_available() else None
+        try:
+            return int(devices)
+        except (TypeError, ValueError):
+            return None
+
+    def _apply_fast_trainer_defaults(self) -> None:
+        """Fill in throughput-oriented Trainer defaults when fast mode is on.
+
+        Driven by ``spt.make_it_fast()`` (the process-global tag in
+        :mod:`stable_pretraining._fast`). Only fills in what the user left
+        unset — explicit ``trainer`` config always wins. Precision and the DDP
+        strategy are fixed at Trainer construction, so a pre-built
+        ``pl.Trainer`` can't be tuned here and we warn instead.
+        """
+        from . import _fast
+
+        if not _fast.enabled():
+            return
+
+        if isinstance(self.trainer, pl.Trainer):
+            logging.warning(
+                "! make_it_fast() is on but `trainer` was passed as an already-"
+                "built pl.Trainer; cannot apply bf16-mixed / DDP tuning "
+                "(precision & strategy are fixed at construction). Pass `trainer`"
+                " as a config dict to get the fast defaults."
+            )
+            return
+        if not isinstance(self.trainer, (dict, DictConfig)):
+            return
+
+        import torch
+
+        # --- precision: default to bf16-mixed when supported & unset ---
+        if not self._cfg_has("precision"):
+            if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+                self.trainer["precision"] = "bf16-mixed"
+                logging.info("  make_it_fast: trainer.precision → bf16-mixed")
+            else:
+                logging.info(
+                    "  make_it_fast: bf16 unsupported here; leaving precision default"
+                )
+
+        # --- DDP comm tuning (multi-GPU only) ---
+        self._maybe_tune_ddp_strategy()
+
+    def _maybe_tune_ddp_strategy(self) -> None:
+        """Replace a plain DDP strategy with a comm-tuned ``DDPStrategy``.
+
+        Conservative: only touches the unset / plain-string DDP cases. A custom
+        strategy object, or a non-DDP strategy (fsdp/deepspeed/…), is left
+        untouched, as is any single-device run.
+        """
+        cfg = self.trainer
+        strategy = cfg.get("strategy", None) if hasattr(cfg, "get") else None
+
+        _tunable = (
+            None,
+            "auto",
+            "ddp",
+            "ddp_spawn",
+            "ddp_find_unused_parameters_true",
+            "ddp_find_unused_parameters_false",
+        )
+        if not (strategy is None or isinstance(strategy, str)):
+            return  # user configured a strategy object/dict explicitly
+        if strategy not in _tunable:
+            return  # fsdp / deepspeed / other — don't touch
+
+        n = self._effective_device_count()
+        if n is None or n <= 1:
+            return  # single-device: DDP tuning is irrelevant
+
+        find_unused = strategy == "ddp_find_unused_parameters_true"
+        # A nested ``_target_`` dict so hydra.utils.instantiate builds it; this
+        # also slots cleanly into a DictConfig (a built object would not).
+        cfg["strategy"] = {
+            "_target_": "lightning.pytorch.strategies.DDPStrategy",
+            "find_unused_parameters": find_unused,
+            "gradient_as_bucket_view": True,
+        }
+        logging.info(
+            f"  make_it_fast: trainer.strategy → tuned DDP "
+            f"(find_unused_parameters={find_unused}, gradient_as_bucket_view=True)"
+        )
+
     def __call__(self):
         """Run a full training loop — seed, build, checkpoint, fit, teardown.
 
@@ -1646,6 +1761,10 @@ class Manager(submitit.helpers.Checkpointable):
         if run_dir is not None:
             self._inject_run_dir_into_trainer_config(run_dir)
             self._warn_hydra_conflicts()
+
+        # make_it_fast(): fill in bf16-mixed precision + tuned DDP comm for any
+        # config-dict trainer (only where the user left them unset).
+        self._apply_fast_trainer_defaults()
 
         if isinstance(self.trainer, pl.Trainer):
             self._trainer = self.trainer

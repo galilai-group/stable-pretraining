@@ -34,6 +34,14 @@ try:
 except ImportError:
     _VIDEO_AVAILABLE = False
 
+# Image (Lance-backed) — same cv2-guard rationale as video above.
+try:
+    from .images import LanceImageDataset, build_lance_image_dataset  # noqa: F401
+
+    _IMAGE_AVAILABLE = True
+except ImportError:
+    _IMAGE_AVAILABLE = False
+
 # Backward compatibility
 static = dataset_stats
 # Legacy imports - these modules are now consolidated
@@ -90,3 +98,6 @@ __all__ = [
 
 if _VIDEO_AVAILABLE:
     __all__.extend(["LanceVideoSegments", "build_lance_video_dataset"])
+
+if _IMAGE_AVAILABLE:
+    __all__.extend(["LanceImageDataset", "build_lance_image_dataset"])
