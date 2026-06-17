@@ -95,6 +95,21 @@ class LogUnusedParametersOnce(Callback):
         if not self._enabled:
             return
 
+        # Under FSDP2 the parameters are DTensors and gradients flow through the
+        # transiently all-gathered plain tensor, not the DTensor handle, so
+        # ``Tensor.register_hook`` never fires — every parameter would be
+        # falsely reported as "unused". Self-disable rather than spam the logs.
+        from ..utils.fsdp2 import is_fsdp_strategy
+
+        if is_fsdp_strategy(trainer):
+            if self._verbose:
+                logger.info(
+                    "  LogUnusedParametersOnce disabled under FSDP2 "
+                    "(gradient hooks don't fire on DTensor parameters)."
+                )
+            self._enabled = False
+            return
+
         if trainer.global_step == 0 and batch_idx == 0:
             self._remove_hooks()
             self._used_flags.clear()

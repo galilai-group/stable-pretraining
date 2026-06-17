@@ -243,6 +243,16 @@ def _do_deferred_init() -> None:
     except Exception:  # pragma: no cover - defensive
         pass
 
+    # Register the ``"fsdp2"`` strategy in Lightning's StrategyRegistry so
+    # ``Trainer(strategy="fsdp2")`` works without any explicit import. Requires
+    # torch>=2.4 (fully_shard); a no-op/guarded fallback on older stacks.
+    try:
+        from .utils.fsdp2 import register_fsdp2_strategy
+
+        register_fsdp2_strategy()
+    except Exception:  # pragma: no cover - defensive (old torch / no distributed)
+        pass
+
     # Adjust HuggingFace datasets logging if available.
     try:
         import datasets
