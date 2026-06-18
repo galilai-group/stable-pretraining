@@ -423,6 +423,22 @@ class TestPatchRunMetaValidation:
         on_disk = read_sidecar(sidecar_path(tmp_path / "r1"))
         assert on_disk["tags"] == ["a", "b"]
 
+    def test_patch_persists_notes_to_sidecar(self, tmp_path):
+        from stable_pretraining.registry._sidecar import read_sidecar, sidecar_path
+
+        sc, run_id = self._setup(tmp_path)
+        sc.patch_run_meta(run_id, {"notes": "my experiment notes"})
+        on_disk = read_sidecar(sidecar_path(tmp_path / "r1"))
+        assert on_disk["notes"] == "my experiment notes"
+
+    def test_patch_persists_archived_to_sidecar(self, tmp_path):
+        from stable_pretraining.registry._sidecar import read_sidecar, sidecar_path
+
+        sc, run_id = self._setup(tmp_path)
+        sc.patch_run_meta(run_id, {"archived": True})
+        on_disk = read_sidecar(sidecar_path(tmp_path / "r1"))
+        assert on_disk["archived"] is True
+
     def test_patch_updates_in_memory_sidecar(self, tmp_path):
         """In-memory run.sidecar must reflect the patch immediately."""
         sc, run_id = self._setup(tmp_path)
@@ -514,6 +530,59 @@ class TestPatchHTTPHandler:
             status = exc.code
         assert status == 400
 
+    def test_body_too_large_returns_400(self, web_server):
+        """Content-Length > 64 KiB must be rejected before reading the body."""
+        _, base = web_server
+        port = int(base.rsplit(":", 1)[-1])
+        big_len = 64 * 1024 + 1
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.putrequest("PATCH", "/api/run-meta")
+        conn.putheader("Content-Type", "application/json")
+        conn.putheader("Content-Length", str(big_len))
+        conn.endheaders()
+        # Don't send the body — the server rejects on the header alone and
+        # returns 400 without calling rfile.read(), so no body is needed.
+        resp = conn.getresponse()
+        status = resp.status
+        resp.read()
+        conn.close()
+        assert status == 400
+
+    def test_non_dict_json_body_returns_400(self, web_server):
+        """A valid JSON array or scalar body (not an object) must return 400."""
+        _, base = web_server
+        body = json.dumps([1, 2, 3]).encode()
+        req = urllib.request.Request(
+            base + "/api/run-meta",
+            data=body,
+            method="PATCH",
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(body)),
+            },
+        )
+        try:
+            with urllib.request.urlopen(req) as resp:
+                status = resp.status
+        except urllib.error.HTTPError as exc:
+            status = exc.code
+        assert status == 400
+
+    def test_run_id_non_string_returns_400(self, tmp_path, web_server):
+        """run_id present but not a string must return 400."""
+        scanner, base = web_server
+        _inject_run(scanner, tmp_path / "r7")
+        status, body = _do_patch(base, {"run_id": 123, "display_name": "x"})
+        assert status == 400
+        assert "error" in body
+
+    def test_run_id_empty_string_returns_400(self, web_server):
+        """run_id present but empty string must return 400."""
+        _, base = web_server
+        status, body = _do_patch(base, {"run_id": "", "display_name": "x"})
+        assert status == 400
+        assert "error" in body
+
     def test_wrong_path_returns_404(self, web_server):
         _, base = web_server
         req = urllib.request.Request(
@@ -527,6 +596,37 @@ class TestPatchHTTPHandler:
                 pass
         except urllib.error.HTTPError as exc:
             assert exc.code == 404
+
+
+# ── TestPatchSSEPublish ───────────────────────────────────────────────────────
+
+
+class TestPatchSSEPublish:
+    """patch_run_meta must fire an SSE update on success and stay silent on failure."""
+
+    def test_publishes_update_on_success(self, tmp_path):
+        sc = _make_scanner(tmp_path)
+        run_id = _inject_run(sc, tmp_path / "r1")
+        q = sc.subscribe()
+        try:
+            sc.patch_run_meta(run_id, {"display_name": "new-name"})
+        finally:
+            sc.unsubscribe(q)
+        assert not q.empty()
+        event = q.get_nowait()
+        assert event["type"] == "update"
+        assert run_id in event["data"]["changed"]
+        assert event["data"]["removed"] == []
+
+    def test_does_not_publish_on_unknown_run(self, tmp_path):
+        sc = _make_scanner(tmp_path)
+        q = sc.subscribe()
+        try:
+            result = sc.patch_run_meta("no-such-run", {"display_name": "x"})
+        finally:
+            sc.unsubscribe(q)
+        assert result is False
+        assert q.empty()
 
 
 # ── GET helpers ───────────────────────────────────────────────────────────────
@@ -671,6 +771,57 @@ class TestSerialize:
         runs = sc.runs_json()
         assert runs[0]["heartbeat_at"] is None
 
+    def test_ended_at_roundtrip(self, tmp_path):
+        from stable_pretraining.registry._sidecar import make_sidecar, write_sidecar
+
+        sc = _make_scanner(tmp_path)
+        run_dir = tmp_path / "run_ended"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        run_id = str(run_dir.relative_to(sc.root))
+        ended_ts = 1_700_000_000.0
+        sid = make_sidecar(run_id=run_id, run_dir=str(run_dir), ended_at=ended_ts)
+        write_sidecar(run_dir, sid)
+        run = _Run(
+            run_id=run_id,
+            run_dir=run_dir,
+            sidecar_mtime=0.0,
+            metrics_mtime=0.0,
+            metrics_size=0,
+            sidecar=sid,
+        )
+        with sc._lock:
+            sc._runs[run_id] = run
+        runs = sc.runs_json()
+        assert runs[0]["ended_at"] == pytest.approx(ended_ts)
+
+    def test_heartbeat_at_roundtrip(self, tmp_path):
+        from stable_pretraining.registry._sidecar import (
+            make_sidecar,
+            touch_heartbeat,
+            write_sidecar,
+        )
+
+        sc = _make_scanner(tmp_path)
+        run_dir = tmp_path / "run_hb"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        run_id = str(run_dir.relative_to(sc.root))
+        sid = make_sidecar(run_id=run_id, run_dir=str(run_dir))
+        write_sidecar(run_dir, sid)
+        touch_heartbeat(run_dir)
+        hb_mtime = (run_dir / "heartbeat").stat().st_mtime
+        run = _Run(
+            run_id=run_id,
+            run_dir=run_dir,
+            sidecar_mtime=0.0,
+            metrics_mtime=0.0,
+            metrics_size=0,
+            sidecar=sid,
+        )
+        with sc._lock:
+            sc._runs[run_id] = run
+        runs = sc.runs_json()
+        assert runs[0]["heartbeat_at"] == pytest.approx(hb_mtime)
+
 
 # ── TestRunsJson ──────────────────────────────────────────────────────────────
 
@@ -736,8 +887,10 @@ class TestMetricsCache:
         self._write_csv(csv_path, [["step", "loss"], ["1", "0.5"], ["2", "0.3"]])
 
         first = sc.metrics_json(run_id)
-        # Second call should hit cache; patch open to detect if file is re-read.
-        with patch("builtins.open", side_effect=AssertionError("file re-opened")):
+        # Second call must hit the mtime/size cache without re-opening the file.
+        # Patch Path.open (the actual call site) — builtins.open is not used by
+        # mpath.open() so patching it would leave the cache test with no teeth.
+        with patch.object(Path, "open", side_effect=AssertionError("file re-opened")):
             second = sc.metrics_json(run_id)
         assert first == second
 
