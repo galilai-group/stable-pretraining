@@ -3404,6 +3404,18 @@
     const metricNames = visibleMetricNames();
     if (!visIds.length || !metricNames.length) return;
 
+    // Proper RFC-4180 quoting for a single cell value.
+    // - Quotes when the value contains , / " / newline / CR.
+    // - Escapes inner " by doubling.
+    // - Prefixes values that start with = + - @ with a tab so spreadsheet
+    //   apps (Excel, Google Sheets) don't interpret them as formulas.
+    function csvCell(v) {
+      let s = v == null ? '' : String(v);
+      if (s.length > 0 && '=+-@'.includes(s[0])) s = '\t' + s;
+      if (/[,"\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
     const rows = ['run_id,run_name,metric,step,epoch,value'];
     for (const id of visIds) {
       const run = state.runs.get(id);
@@ -3417,9 +3429,9 @@
           const step  = col.step[i]  ?? '';
           const epoch = col.epoch[i] ?? '';
           const val   = col.y[i]     ?? '';
-          const escapedName   = name.includes(',')   ? `"${name.replace(/"/g, '""')}"` : name;
-          const escapedMetric = metric.includes(',') ? `"${metric.replace(/"/g, '""')}"` : metric;
-          rows.push(`${id},${escapedName},${escapedMetric},${step},${epoch},${val}`);
+          // step / epoch / val are always numbers or '' from the CSV parser,
+          // so they need no quoting or injection guard.
+          rows.push([csvCell(id), csvCell(name), csvCell(metric), step, epoch, val].join(','));
         }
       }
     }
