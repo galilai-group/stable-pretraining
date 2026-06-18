@@ -247,8 +247,37 @@ def create_optimizer(
         )
         params = param_groups
 
+    # Fast-mode (spt.make_it_fast()): opt into the fused CUDA optimizer kernel
+    # for optimizers that support it. An explicit ``fused=...`` from the
+    # call-site always wins (we only fill in when unset).
+    if "fused" not in kwargs:
+        from .. import _fast
+
+        if (
+            _fast.enabled()
+            and torch.cuda.is_available()
+            and "fused" in inspect.signature(opt_class.__init__).parameters
+        ):
+            kwargs["fused"] = True
+            # Materialise params so the fused fallback below can retry — a bare
+            # generator (e.g. model.parameters()) would be exhausted by the
+            # first failed attempt.
+            if not isinstance(params, list):
+                params = list(params)
+
     try:
         return opt_class(params, **kwargs)
+    except (RuntimeError, ValueError) as e:
+        # fused=True raises (not a TypeError) when params aren't all CUDA
+        # floats — fall back to the non-fused kernel rather than crash.
+        if kwargs.get("fused"):
+            logging.warning(
+                f"fused {opt_class.__name__} unavailable "
+                f"({type(e).__name__}: {e}); retrying without fused."
+            )
+            kwargs.pop("fused")
+            return opt_class(params, **kwargs)
+        raise
     except TypeError as e:
         sig = inspect.signature(opt_class.__init__)
         required = [

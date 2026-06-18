@@ -278,6 +278,128 @@ def _do_deferred_init() -> None:
         pass
 
 
+def make_it_fast(
+    *,
+    tf32: bool = True,
+    matmul_precision: str = "high",
+    cudnn_benchmark: bool = True,
+    flash_sdp: bool = True,
+    inductor_cache: bool = True,
+    verbose: bool = True,
+) -> dict:
+    """Enable throughput-oriented global PyTorch settings in one call.
+
+    This is **opt-in**: ``import stable_pretraining`` never changes any torch
+    default. Call it once at the top of a training script when you want maximum
+    speed and don't need bit-exact reproducibility::
+
+        import stable_pretraining as spt
+
+        spt.make_it_fast()
+
+    Each setting is guarded so it's a safe no-op where it doesn't apply (CPU /
+    pre-Ampere GPU / older torch):
+
+    - ``torch.set_float32_matmul_precision(matmul_precision)`` — TF32 path for
+      fp32 matmuls (``"high"`` = TF32, ``"medium"`` = bf16, ``"highest"`` =
+      full fp32).
+    - ``cuda.matmul.allow_tf32`` / ``cudnn.allow_tf32`` — TF32 for matmul and
+      cuDNN convolutions (CUDA only).
+    - ``cudnn.benchmark`` — autotune conv algorithms per input shape. A clear
+      win for fixed input shapes (including fixed-size SSL multi-crop).
+      Automatically skipped when deterministic algorithms are enabled, because
+      the two conflict.
+    - flash + memory-efficient SDPA attention backends (CUDA only).
+    - ``TORCHINDUCTOR_FX_GRAPH_CACHE=1`` — persist ``torch.compile`` artifacts
+      across runs (set via ``setdefault``, so an explicit env var wins).
+
+    Besides the global torch flags above, calling this also flips a
+    process-global "fast mode" tag (:mod:`stable_pretraining._fast`) that
+    :class:`~stable_pretraining.Manager` and
+    :func:`~stable_pretraining.optim.create_optimizer` read later to fill in —
+    **only where you didn't configure them yourself** —:
+
+    - ``bf16-mixed`` Trainer precision (when CUDA + bf16 are available),
+    - tuned multi-GPU DDP comm (``gradient_as_bucket_view=True``,
+      ``find_unused_parameters=False``),
+    - the fused CUDA optimizer kernel (AdamW/SGD/Adam/…).
+
+    Because precision and the DDP strategy are fixed when the Trainer is
+    constructed, this must be called **before** you run the ``Manager``. If you
+    pass an already-built ``pl.Trainer``, the Manager can't retrofit those and
+    will warn.
+
+    Trade-offs to be aware of: TF32 and ``cudnn.benchmark`` both break
+    bit-exact reproducibility, and ``cudnn.benchmark`` can *hurt* when input
+    shapes vary every step (it re-tunes per new shape). Leave those toggles off
+    — or simply don't call this — when you need determinism.
+
+    Args:
+        tf32: Enable TF32 for matmul and cuDNN conv (CUDA only).
+        matmul_precision: Passed to ``torch.set_float32_matmul_precision``.
+            ``None`` skips it.
+        cudnn_benchmark: Enable the cuDNN autotuner (skipped under deterministic
+            mode).
+        flash_sdp: Enable flash + mem-efficient SDPA backends (CUDA only).
+        inductor_cache: ``setdefault`` the persistent inductor FX-graph cache.
+        verbose: Log a one-line summary of what was applied.
+
+    Returns:
+        A dict mapping each setting name to the value actually applied (or to a
+        short reason string when it was skipped). Handy for logging/asserting.
+    """
+    import torch
+
+    from . import _fast
+
+    applied: dict = {}
+
+    # Flip the process-global tag that Manager / create_optimizer read later.
+    _fast.set_enabled(True)
+    applied["fast_mode"] = True
+
+    if matmul_precision is not None:
+        torch.set_float32_matmul_precision(matmul_precision)
+        applied["matmul_precision"] = matmul_precision
+
+    cuda = torch.cuda.is_available()
+
+    if tf32:
+        if cuda:
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
+            applied["tf32"] = True
+        else:
+            applied["tf32"] = "skipped: no CUDA"
+
+    if cudnn_benchmark:
+        if torch.are_deterministic_algorithms_enabled():
+            applied["cudnn_benchmark"] = "skipped: deterministic mode enabled"
+        else:
+            torch.backends.cudnn.benchmark = True
+            applied["cudnn_benchmark"] = True
+
+    if flash_sdp and cuda:
+        for name in ("enable_flash_sdp", "enable_mem_efficient_sdp"):
+            fn = getattr(torch.backends.cuda, name, None)
+            if fn is not None:
+                try:
+                    fn(True)
+                    applied[name] = True
+                except Exception:  # pragma: no cover - defensive
+                    pass
+
+    if inductor_cache:
+        os.environ.setdefault("TORCHINDUCTOR_FX_GRAPH_CACHE", "1")
+        applied["TORCHINDUCTOR_FX_GRAPH_CACHE"] = os.environ[
+            "TORCHINDUCTOR_FX_GRAPH_CACHE"
+        ]
+
+    if verbose:
+        logger.info(f"make_it_fast applied: {applied}")
+    return applied
+
+
 def __getattr__(name: str):
     if name in _LAZY_SUBMODULES:
         mod = importlib.import_module(f".{name}", __name__)
@@ -324,6 +446,8 @@ __all__ = [
     # Global config
     "set",
     "get_config",
+    # Performance opt-in
+    "make_it_fast",
     # Callbacks
     "OnlineProbe",
     "SklearnCheckpoint",
