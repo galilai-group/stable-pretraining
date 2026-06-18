@@ -250,7 +250,11 @@ class Module(pl.LightningModule):
         raise NotImplementedError("The forward() method must be implemented.")
 
     def named_parameters(
-        self, with_callbacks=True, prefix: str = "", recurse: bool = True
+        self,
+        with_callbacks=True,
+        prefix: str = "",
+        recurse: bool = True,
+        remove_duplicate: bool = True,
     ):
         """Override to globally exclude callback-related parameters.
 
@@ -263,6 +267,8 @@ class Module(pl.LightningModule):
             prefix (str, optional): Prefix to prepend to parameter names. Defaults to "".
             recurse (bool, optional): If True, yields parameters of this module and all submodules.
                 If False, yields only direct parameters. Defaults to True.
+            remove_duplicate (bool, optional): Forwarded to ``torch.nn.Module.named_parameters``.
+                Defaults to True.
 
         Yields:
             tuple[str, torch.nn.Parameter]: Name and parameter pairs.
@@ -273,7 +279,11 @@ class Module(pl.LightningModule):
                 "! You are calling self.parameters which also gives callbacks "
                 "parameters, to remove them, pass `with_callbacks=False`"
             )
-        for name, param in super().named_parameters(prefix=prefix, recurse=recurse):
+        for name, param in super().named_parameters(
+            prefix=prefix,
+            recurse=recurse,
+            remove_duplicate=remove_duplicate,
+        ):
             is_callback = name.startswith("callbacks_")
             if is_callback and not with_callbacks:
                 continue
