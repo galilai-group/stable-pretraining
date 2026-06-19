@@ -83,6 +83,9 @@ jax = ["jax", "flax>=0.10.0", "optax"]
 trackio = ["trackio", "gradio_client"]
 # SwanLab experiment tracking
 swanlab = ["swanlab"]
+# DeepSpeed ZeRO sharding (partial: single-optimizer methods only; FSDP2 is the
+# preferred sharding path and needs no extra dep). Strategy: "deepspeed_stage_3".
+deepspeed = ["deepspeed"]
 # Development and documentation tools
 dev = [
     "pytest",

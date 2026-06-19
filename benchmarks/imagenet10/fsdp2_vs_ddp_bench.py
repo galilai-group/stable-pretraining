@@ -1,4 +1,4 @@
-"""Speed / memory micro-benchmark: FSDP2 vs DDP on Imagenette (ImageNet-10).
+r"""Speed / memory micro-benchmark: FSDP2 vs DDP on Imagenette (ImageNet-10).
 
 Trains a SimCLR-style two-view model on real Imagenette for a fixed number of
 steps and reports per-GPU peak memory and throughput, so the FSDP2 sharding
@@ -80,7 +80,7 @@ def _build_forward():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--strategy", choices=["ddp", "fsdp2"], required=True)
+    parser.add_argument("--strategy", required=True)  # ddp | fsdp2 | deepspeed_stage_3
     parser.add_argument("--backbone", default="vit_large_patch16_224")
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--steps", type=int, default=40)
@@ -123,7 +123,12 @@ def main():
         shuffle=True,
     )
 
-    backbone = spt.backbone.from_timm(args.backbone, num_classes=0)
+    # spt native backbones (e.g. vit_enormous_patch14_224 = ViT-e) take priority
+    # over timm names so we can benchmark the library's own large presets.
+    if hasattr(spt.backbone, args.backbone):
+        backbone = getattr(spt.backbone, args.backbone)(num_classes=0)
+    else:
+        backbone = spt.backbone.from_timm(args.backbone, num_classes=0)
     embed_dim = backbone.embed_dim
     module = spt.Module(
         forward=_build_forward(),
@@ -158,7 +163,19 @@ def main():
         callbacks=[bench],
     )
     torch.cuda.reset_peak_memory_stats()
-    trainer.fit(module, train_loader)
+    try:
+        trainer.fit(module, train_loader)
+    except torch.cuda.OutOfMemoryError:
+        # A clean, reportable outcome — e.g. DDP can't hold a full replica of a
+        # huge model while FSDP2/DeepSpeed shard it and fit.
+        if getattr(trainer, "is_global_zero", True):
+            print(
+                f"RESULT strategy={args.strategy} backbone={args.backbone} "
+                f"world={trainer.world_size} batch={args.batch_size} "
+                f"peak_mem_GiB=OOM step_s=OOM imgs_per_s=OOM",
+                flush=True,
+            )
+        return
 
     stats = bench.summarize(trainer.world_size, args.batch_size)
     if trainer.is_global_zero:

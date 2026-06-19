@@ -299,9 +299,12 @@ class Module(pl.LightningModule):
         if device_mesh is None:
             return  # not FSDP2 — nothing to shard
 
-        from .utils.fsdp2 import default_parallelize_fn
+        from .utils.fsdp2 import default_parallelize_fn, describe_fsdp_strategy
 
         log_header("FSDP2 configure_model")
+        # Verbose summary of the resolved sharding config — invaluable when
+        # debugging "is it actually sharding, and over how many ranks?".
+        logging.info(f"  fsdp2 strategy: {describe_fsdp_strategy(self.trainer)}")
         if self._parallelize_fn is None:
             # Default path: forward the strategy's mixed-precision policy.
             mp_policy = getattr(self.trainer.strategy, "_spt_mp_policy", None)
@@ -1027,6 +1030,23 @@ class Module(pl.LightningModule):
         logging.info(
             f"  Optimizer specified by Dict with keys {[k for k, _ in optim_items]}"
         )
+
+        # DeepSpeed's ZeRO engine owns exactly one optimizer; multiple optimizers
+        # (online probes, teacher-student EMA, ...) are unsupported. Fail early
+        # with a clear redirect to FSDP2 rather than the opaque downstream
+        # Lightning ``MisconfigurationException`` raised deep in DeepSpeed init.
+        if len(optim_items) > 1:
+            from .utils.fsdp2 import is_deepspeed_strategy
+
+            if is_deepspeed_strategy(getattr(self, "_trainer", None)):
+                raise RuntimeError(
+                    f"DeepSpeed supports a single optimizer only, but this run "
+                    f"configures {len(optim_items)} ({[k for k, _ in optim_items]}). "
+                    "Online probes (OnlineProbe/OnlineKNN/...) and teacher-student "
+                    "EMA each add their own optimizer and are incompatible with "
+                    "DeepSpeed. Use strategy='fsdp2' instead — it supports "
+                    "multi-optimizer / EMA / probe methods out of the box."
+                )
 
         # Build grouping with detailed logging
         params_by_name, named_params_by_name, modules_by_name = (

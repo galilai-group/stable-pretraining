@@ -563,6 +563,42 @@ manager()
 
 Once configured, the `Manager` connects all components and handles the training loop with precise logging and monitoring (optional).
 
+### Sharded training: FSDP2 & DeepSpeed
+
+For large models, shard parameters/gradients/optimizer state across GPUs by flipping a single trainer switch — no changes to your method, forward, or model. **FSDP2** (`strategy="fsdp2"`) is the recommended path: it supports the full library (including teacher/student EMA and the online-probe callbacks) and is verified numerically equivalent to DDP. **DeepSpeed** ZeRO-3 (`strategy="deepspeed_stage_3"`, install `".[deepspeed]"`) is *partially* supported — single-optimizer methods only; it hard-errors with multiple optimizers, so it can't be used with EMA methods or the online probes (use FSDP2 there). See [`docs/source/fsdp2.rst`](docs/source/fsdp2.rst).
+
+```python
+trainer = pl.Trainer(strategy="fsdp2", precision="bf16-mixed", accelerator="gpu", devices=8)
+```
+
+Practical notes:
+
+- **The strategy string is the only code change** — your model, forward, optimizer, and callbacks are untouched.
+- **Precision:** use `"bf16-mixed"` — FSDP2's `ModelParallelStrategy` rejects `"16-mixed"`.
+- **DeepSpeed:** `pip install -e ".[deepspeed]"` first; it's **single-optimizer only** (online probes / EMA methods raise a clear error pointing you back to FSDP2).
+- **Launching on SLURM:** start one task per GPU — `srun --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 python train.py` — because Lightning derives the world size from `SLURM_NTASKS`, not `devices=`. Off SLURM, just set `devices=8` and Lightning spawns the workers itself.
+- **Debugging:** when sharding is active, the log prints an `FSDP2 configure_model` header, the resolved strategy summary (`{fsdp2: True, data_parallel_size: 8, ...}`), and which subtrees were sharded — so you can confirm at a glance that it's sharding over the expected number of ranks.
+
+Sharding trades a little throughput for memory; the per-GPU saving scales with model size and rank count (`(R−1)/R × (params + grads + optimizer state)`). On a small model the saved state is dwarfed by activations (which sharding does not touch), so the win looks modest — but it grows fast with scale. Measured on Imagenette, H200, bf16:
+
+**ViT-L/16 (300M), 2 GPUs, batch 256** — small model, modest gap:
+
+| strategy | peak mem/GPU | img/s | notes |
+|---|---|---|---|
+| DDP | 90.5 GiB | 960 | full replica per GPU |
+| FSDP2 | 87.7 GiB | 930 | balanced default; full library support |
+| DeepSpeed ZeRO-3 | 77.7 GiB | 703 | more memory saved, lower throughput; single-optimizer only |
+
+**ViT-e/14 (3.8B), 8 GPUs, batch 16** — large model, the gap is decisive:
+
+| strategy | peak mem/GPU | img/s | notes |
+|---|---|---|---|
+| DDP | 113.1 GiB | 225 | replicates the full ~76 GiB of params+grads+optimizer state on every GPU |
+| FSDP2 | 62.2 GiB | 214 | shards that state 8 ways → **−45% memory** for ~4% throughput |
+| DeepSpeed ZeRO-3 | 46.6 GiB | 83 | shards most aggressively (**−59% memory**) but ~2.6× slower than FSDP2 here; single-optimizer only |
+
+At batch 64 *both* DDP and FSDP2 OOM (activations, which neither shards, become the wall) — combine sharding with activation checkpointing for the largest models. The trade-off sharpens with scale: FSDP2 is the throughput-friendly default, while DeepSpeed ZeRO-3 buys the most memory headroom at a real speed cost.
+
 <a id="global-configuration"></a>
 ## Global Configuration
 

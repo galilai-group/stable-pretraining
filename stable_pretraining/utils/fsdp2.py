@@ -59,6 +59,7 @@ __all__ = [
     "default_parallelize_fn",
     "assert_aligned_wrapping",
     "is_fsdp_strategy",
+    "is_deepspeed_strategy",
     "describe_fsdp_strategy",
     "register_fsdp2_strategy",
     "make_fsdp2_strategy",
@@ -94,6 +95,23 @@ def is_fsdp_strategy(strategy_or_trainer) -> bool:
     """
     strategy = getattr(strategy_or_trainer, "strategy", strategy_or_trainer)
     return isinstance(strategy, ModelParallelStrategy)
+
+
+def is_deepspeed_strategy(strategy_or_trainer) -> bool:
+    """Return ``True`` when a DeepSpeed strategy is active.
+
+    Uses the class name (not ``isinstance``) so it works even when the optional
+    ``deepspeed`` package isn't importable — handy for emitting a clear error
+    before Lightning's own DeepSpeed import path runs.
+
+    Args:
+        strategy_or_trainer: A ``pl.Trainer`` or a Lightning ``Strategy``.
+
+    Returns:
+        bool: ``True`` if the active strategy is a ``DeepSpeedStrategy``.
+    """
+    strategy = getattr(strategy_or_trainer, "strategy", strategy_or_trainer)
+    return type(strategy).__name__ == "DeepSpeedStrategy"
 
 
 def describe_fsdp_strategy(strategy_or_trainer) -> dict:
@@ -176,7 +194,15 @@ def _shard_subtree(
     for module in root.modules():
         if isinstance(module, (nn.ModuleList, nn.Sequential)):
             for block in module:
-                if id(block) not in seen and _has_params(block):
+                # Skip forward-less containers (``nn.ModuleList`` / ``nn.ModuleDict``):
+                # ``fully_shard`` rejects them. Their real parameter-owning blocks are
+                # reached on a later iteration (every container is visited by
+                # ``root.modules()``), so nested ModuleLists still shard correctly.
+                if (
+                    id(block) not in seen
+                    and _has_params(block)
+                    and not isinstance(block, (nn.ModuleList, nn.ModuleDict))
+                ):
                     seen.add(id(block))
                     blocks.append(block)
     # Deepest-first (more dots in the qualified name = deeper) so a nested

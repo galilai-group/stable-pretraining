@@ -89,6 +89,87 @@ class TestHelpers:
         params = list(m.named_parameters(remove_duplicate=False))
         assert len(params) > 0
 
+    def test_assert_aligned_dtype_and_buffer_mismatch(self):
+        from stable_pretraining.utils.fsdp2 import assert_aligned_wrapping
+
+        # dtype mismatch
+        with pytest.raises(RuntimeError, match="mismatch"):
+            assert_aligned_wrapping(nn.Linear(4, 4), nn.Linear(4, 4).half())
+
+        # buffer-count mismatch (same params, different number of buffers)
+        class _WithBuf(nn.Module):
+            def __init__(self, n_buf):
+                super().__init__()
+                self.lin = nn.Linear(4, 4)
+                for i in range(n_buf):
+                    self.register_buffer(f"buf{i}", torch.zeros(2))
+
+        with pytest.raises(RuntimeError, match="buffer"):
+            assert_aligned_wrapping(_WithBuf(1), _WithBuf(2))
+
+    def test_describe_real_strategy(self):
+        from stable_pretraining.utils.fsdp2 import (
+            describe_fsdp_strategy,
+            make_fsdp2_strategy,
+        )
+
+        d = describe_fsdp_strategy(make_fsdp2_strategy())
+        assert d["fsdp2"] is True
+        assert "data_parallel_size" in d
+        assert d["mp_policy"] is False
+
+    def test_setup_rejects_fsdp1(self):
+        from types import SimpleNamespace
+
+        import stable_pretraining as spt
+        from lightning.pytorch.strategies import FSDPStrategy
+
+        m = spt.Module(forward=lambda self, b, s: b, backbone=nn.Linear(4, 4))
+        m._trainer = SimpleNamespace(strategy=FSDPStrategy())
+        with pytest.raises(RuntimeError, match="FSDP1"):
+            m.setup("fit")
+
+    def test_setup_noop_under_non_fsdp(self):
+        from types import SimpleNamespace
+
+        import stable_pretraining as spt
+
+        m = spt.Module(forward=lambda self, b, s: b, backbone=nn.Linear(4, 4))
+        m._trainer = SimpleNamespace(strategy="ddp")
+        m.setup("fit")  # must not raise
+
+    def test_is_deepspeed_strategy(self):
+        from types import SimpleNamespace
+
+        from stable_pretraining.utils.fsdp2 import is_deepspeed_strategy
+
+        class DeepSpeedStrategy:  # name-based detection (no deepspeed import)
+            pass
+
+        assert is_deepspeed_strategy(SimpleNamespace(strategy=DeepSpeedStrategy()))
+        assert is_deepspeed_strategy("ddp") is False
+
+    def test_deepspeed_multi_optimizer_friendly_error(self):
+        from types import SimpleNamespace
+
+        import stable_pretraining as spt
+
+        class DeepSpeedStrategy:
+            pass
+
+        m = spt.Module(
+            forward=lambda self, b, s: b,
+            backbone=nn.Linear(4, 4),
+            projector=nn.Linear(4, 4),
+            optim={
+                "enc": {"modules": "backbone", "optimizer": {"type": "AdamW"}},
+                "proj": {"modules": "projector", "optimizer": {"type": "AdamW"}},
+            },
+        )
+        m._trainer = SimpleNamespace(strategy=DeepSpeedStrategy())
+        with pytest.raises(RuntimeError, match="single optimizer"):
+            m.configure_optimizers()
+
 
 # ---------------------------------------------------------------------------
 # CPU / gloo: real sharding mechanics
@@ -114,6 +195,32 @@ class TestCPUSharding:
         H.run_distributed(
             H.w_assert_aligned_rejects_dtensor_mismatch, world_size=2, backend="gloo"
         )
+
+    # --- edge cases ---------------------------------------------------------
+
+    def test_non_block_backbone(self):
+        H.run_distributed(H.w_non_block_backbone, world_size=2, backend="gloo")
+
+    def test_nested_modulelist(self):
+        H.run_distributed(H.w_nested_modulelist, world_size=2, backend="gloo")
+
+    def test_zero_coeff_teacher_student(self):
+        H.run_distributed(H.w_zero_coeff_teacher_student, world_size=2, backend="gloo")
+
+    def test_ema_numerical_correctness(self):
+        H.run_distributed(H.w_ema_numerical_correctness, world_size=2, backend="gloo")
+
+    def test_multiple_trainable_children(self):
+        H.run_distributed(H.w_multiple_trainable_children, world_size=2, backend="gloo")
+
+    def test_custom_parallelize_fn(self):
+        H.run_distributed(H.w_custom_parallelize_fn, world_size=2, backend="gloo")
+
+    def test_no_shardable_children_warns(self):
+        H.run_distributed(H.w_no_shardable_children_warns, world_size=2, backend="gloo")
+
+    def test_data_parallel_mesh_2d(self):
+        H.run_distributed(H.w_data_parallel_mesh_2d, world_size=2, backend="gloo")
 
     @pytest.mark.xfail(
         reason="Deferred bug: utils.all_gather/all_reduce discard the functional "

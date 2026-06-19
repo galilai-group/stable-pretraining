@@ -29,6 +29,38 @@ function, or method are required. When ``strategy="fsdp2"`` is active, the
 :meth:`~stable_pretraining.Module.configure_model` hook shards the trainable
 parts of your model before the optimizer is built.
 
+Launching multi-GPU
+-------------------
+
+Off SLURM, set ``devices=N`` and Lightning spawns one worker per GPU. **On
+SLURM, launch one task per GPU** — Lightning derives the world size from
+``SLURM_NTASKS``, not from ``devices=``::
+
+    srun --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 python train.py
+
+A mismatch (e.g. ``--ntasks=1`` with ``devices=8``) makes Lightning raise
+``You set devices=8 ... but the number of tasks per node configured in SLURM
+... does not match`` — set the two equal.
+
+Debugging
+---------
+
+When sharding runs, the log (rank 0) prints an ``FSDP2 configure_model`` header,
+a one-line **strategy summary** from
+:func:`~stable_pretraining.utils.fsdp2.describe_fsdp_strategy`
+(``{fsdp2: True, data_parallel_size: 8, tensor_parallel_size: 1, world_size: 8,
+...}``), and the list of **subtrees that were sharded**. Use it to confirm at a
+glance that FSDP2 is active and sharding over the expected number of ranks.
+Common signals:
+
+- *"no parameter-owning child modules found to shard"* — your trainable
+  parameters live directly on the ``Module`` rather than in a child; pass a
+  custom ``parallelize_fn`` (below).
+- An ``FSDP1`` ``RuntimeError`` at setup — you used ``strategy="fsdp"``; switch
+  to ``"fsdp2"``.
+- *"DeepSpeed supports a single optimizer only ..."* — a multi-optimizer / EMA /
+  probe method under DeepSpeed; use ``strategy="fsdp2"`` instead.
+
 What gets sharded
 -----------------
 
@@ -103,3 +135,23 @@ Notes & limitations
   ``ModelParallelStrategy`` (``save_distributed_checkpoint=True`` by default).
 * FSDP2 + ``ModelParallelStrategy`` is marked experimental upstream; APIs may
   evolve with PyTorch/Lightning.
+
+DeepSpeed (partial)
+-------------------
+
+DeepSpeed ZeRO-3 is **partially supported** as an alternative sharding backend.
+It works for **single-optimizer methods** with no changes — install the extra
+(``pip install -e ".[deepspeed]"``) and set the strategy::
+
+    trainer:
+      strategy: deepspeed_stage_3
+      precision: bf16-mixed
+
+This is verified to actually train (not silently no-op) under the library's
+manual-optimization loop — see
+``stable_pretraining/tests/distributed/run_deepspeed_smoke.py``.
+
+**Not supported under DeepSpeed:** teacher/student EMA (DINO/BYOL/MoCo) and the
+multi-optimizer online-probe callbacks (``OnlineProbe``/``OnlineKNN``/...) —
+ZeRO's single-engine model conflicts with them. For those methods, use
+``strategy="fsdp2"`` instead, which supports the full library out of the box.

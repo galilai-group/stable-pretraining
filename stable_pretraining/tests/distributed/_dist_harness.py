@@ -123,6 +123,36 @@ class TinyBackbone(nn.Module):
         return x
 
 
+class _PlainBackbone(nn.Module):
+    """No ModuleList/Sequential — block detection finds nothing, only root shards."""
+
+    def __init__(self, dim: int = 8):
+        super().__init__()
+        self.fc1 = nn.Linear(dim, dim)
+        self.fc2 = nn.Linear(dim, dim)
+        self.embed_dim = dim
+
+    def forward(self, x):
+        return self.fc2(torch.relu(self.fc1(x)))
+
+
+class _NestedBackbone(nn.Module):
+    """A ModuleList of stages, each itself a ModuleList of blocks (nested units)."""
+
+    def __init__(self, dim: int = 8):
+        super().__init__()
+        self.stages = nn.ModuleList(
+            [nn.ModuleList([_Block(dim) for _ in range(2)]) for _ in range(2)]
+        )
+        self.embed_dim = dim
+
+    def forward(self, x):
+        for stage in self.stages:
+            for blk in stage:
+                x = blk(x)
+        return x
+
+
 def _mesh(device_type: str, world_size: int):
     from torch.distributed.device_mesh import init_device_mesh
 
@@ -266,6 +296,129 @@ def w_assert_aligned_rejects_dtensor_mismatch(rank, world_size):
     except RuntimeError:
         raised = True
     assert raised, "mismatched DTensor placements should raise"
+
+
+def w_non_block_backbone(rank, world_size):
+    """Edge case: backbone with no ModuleList/Sequential → only the root shards."""
+    from stable_pretraining.utils.fsdp2 import _shard_subtree
+
+    bb = _PlainBackbone(dim=8)
+    _shard_subtree(bb, _mesh("cpu", world_size), None)
+    assert all(_is_dtensor(p) for p in bb.parameters())
+    bb(torch.randn(4, 8)).mean().backward()  # still trainable
+
+
+def w_nested_modulelist(rank, world_size):
+    """Edge case: nested ModuleLists shard deepest-first without double-wrapping."""
+    from stable_pretraining.utils.fsdp2 import _shard_subtree
+
+    bb = _NestedBackbone(dim=8)
+    _shard_subtree(bb, _mesh("cpu", world_size), None)
+    assert all(_is_dtensor(p) for p in bb.parameters())
+    bb(torch.randn(4, 8)).mean().backward()
+
+
+def w_zero_coeff_teacher_student(rank, world_size):
+    """Edge case: ema_coefficient==0 → teacher IS student → shard once, no error."""
+    from stable_pretraining.backbone.utils import TeacherStudentWrapper
+
+    student = TinyBackbone(dim=8, depth=2)
+    wrapper = TeacherStudentWrapper(
+        student, base_ema_coefficient=0.0, final_ema_coefficient=0.0
+    )
+    assert wrapper.teacher is wrapper.student, "teacher should be the student object"
+    wrapper.fsdp_setup(_mesh("cpu", world_size), None)  # must not double-shard/raise
+    assert all(_is_dtensor(p) for p in wrapper.student.parameters())
+    wrapper.forward_student(torch.randn(4, 8))
+
+
+def w_ema_numerical_correctness(rank, world_size):
+    """Edge case: teacher EMA value is exactly ema*teacher+(1-ema)*student on DTensors."""
+    from stable_pretraining.backbone.utils import TeacherStudentWrapper
+
+    torch.manual_seed(0)
+    ema = 0.9
+    wrapper = TeacherStudentWrapper(
+        TinyBackbone(dim=8, depth=1), base_ema_coefficient=ema, warm_init=True
+    )
+    wrapper.fsdp_setup(_mesh("cpu", world_size), None)
+    # After warm-init teacher==student; perturb student so the EMA is non-trivial.
+    with torch.no_grad():
+        for p in wrapper.student.parameters():
+            p.add_(1.0)
+    t0 = [p.to_local().clone() for p in wrapper.teacher.parameters()]
+    s = [p.to_local().clone() for p in wrapper.student.parameters()]
+    wrapper.train()
+    wrapper.update_teacher()
+    for before, sv, after in zip(t0, s, wrapper.teacher.parameters()):
+        expected = ema * before + (1 - ema) * sv
+        assert torch.allclose(after.to_local(), expected, atol=1e-5), "EMA value wrong"
+
+
+def w_multiple_trainable_children(rank, world_size):
+    """Edge case: backbone+projector+predictor all shard; callbacks stay plain."""
+    import stable_pretraining as spt
+    from stable_pretraining.utils.fsdp2 import default_parallelize_fn
+
+    module = spt.Module(
+        forward=lambda self, b, s: b,
+        backbone=TinyBackbone(dim=8, depth=2),
+        projector=nn.Linear(8, 8),
+        predictor=nn.Linear(8, 8),
+    )
+    module.callbacks_modules["probe"] = nn.Linear(8, 3)
+    default_parallelize_fn(module, _mesh("cpu", world_size))
+    for name in ("backbone", "projector", "predictor"):
+        assert all(_is_dtensor(p) for p in getattr(module, name).parameters()), name
+    assert all(not _is_dtensor(p) for p in module.callbacks_modules.parameters())
+
+
+def w_custom_parallelize_fn(rank, world_size):
+    """Edge case: Module(parallelize_fn=...) is dispatched instead of the default."""
+    import stable_pretraining as spt
+    from stable_pretraining.utils.fsdp2 import _shard_subtree
+
+    calls = {}
+
+    def custom(module, device_mesh):
+        calls["used"] = True
+        _shard_subtree(module.backbone, device_mesh["data_parallel"], None)
+
+    module = spt.Module(
+        forward=lambda self, b, s: b,
+        backbone=TinyBackbone(dim=8, depth=2),
+        parallelize_fn=custom,
+    )
+    module._device_mesh = _mesh("cpu", world_size)
+    module.configure_model()
+    assert calls.get("used") is True, "custom parallelize_fn was not called"
+    assert all(_is_dtensor(p) for p in module.backbone.parameters())
+
+
+def w_no_shardable_children_warns(rank, world_size):
+    """Edge case: a param-less module → warn + no-op, never raise."""
+    import stable_pretraining as spt
+    from stable_pretraining.utils.fsdp2 import default_parallelize_fn
+
+    module = spt.Module(forward=lambda self, b, s: b, backbone=nn.Identity())
+    default_parallelize_fn(module, _mesh("cpu", world_size))  # must not raise
+
+
+def w_data_parallel_mesh_2d(rank, world_size):
+    """Edge case: a 2-D (data_parallel × tensor_parallel=1) mesh shards over DP only."""
+    from torch.distributed.device_mesh import init_device_mesh
+
+    from stable_pretraining.utils.fsdp2 import _data_parallel_mesh, _shard_subtree
+
+    mesh2d = init_device_mesh(
+        "cpu", (world_size, 1), mesh_dim_names=("data_parallel", "tensor_parallel")
+    )
+    dp = _data_parallel_mesh(mesh2d)
+    assert dp.size() == world_size, "should slice the data_parallel dim"
+    bb = TinyBackbone(dim=8, depth=2)
+    _shard_subtree(bb, dp, None)
+    assert all(_is_dtensor(p) for p in bb.parameters())
+    bb(torch.randn(4, 8)).mean().backward()
 
 
 # ---------------------------------------------------------------------------
