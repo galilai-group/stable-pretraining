@@ -2655,3 +2655,54 @@ def vit_gigantic_patch14_224(**kwargs) -> ViT:
         mlp_ratio=64 / 13,
         **kwargs,
     )
+
+
+def vit_enormous_patch14_224(**kwargs) -> ViT:
+    """ViT-e/14 @ 224 (PaLI "enormous"). ``embed_dim=1792, depth=56, heads=16, mlp_ratio=15360/1792``.
+
+    Plain ViT, timm-compatible like the other presets (gelu MLP, learned absolute
+    pos embed, no QK-norm). ``1792 / 16 = 112`` head_dim.
+
+    Reference: Chen et al., "PaLI: A Jointly-Scaled Multilingual Language-Image Model" (2022).
+    """
+    return ViT(
+        img_size=224,
+        patch_size=14,
+        embed_dim=1792,
+        depth=56,
+        num_heads=16,
+        mlp_ratio=15360 / 1792,
+        **kwargs,
+    )
+
+
+def vit_intern6b_patch14_448(**kwargs) -> ViT:
+    """InternViT-6B/14 @ 448 architecture. ``embed_dim=3200, depth=48, heads=25, mlp_ratio=4``.
+
+    Matches the *shape* of OpenGVLab's InternViT-6B (``3200 / 25 = 128`` head_dim,
+    448px input → 32×32 patch grid). Enables learnable-stabilizer features used by
+    InternViT: ``use_qk_norm=True`` and ``use_layer_scale=True`` (LayerScale init
+    ``0.1``).
+
+    Note:
+        This builds a randomly-initialized model with the InternViT-6B
+        configuration. It is NOT checkpoint-compatible with the official
+        InternViT-6B weights: this module's :class:`QKNorm` is non-affine and
+        uses a ``qk_norm`` submodule, whereas InternViT uses learnable
+        ``attn.q_norm`` / ``attn.k_norm``. Loading the pretrained checkpoint
+        requires an affine QK-norm and a key-remap step (not done here).
+
+    Reference: Chen et al., "InternVL: Scaling up Vision Foundation Models ..." (2023).
+    """
+    return ViT(
+        img_size=448,
+        patch_size=14,
+        embed_dim=3200,
+        depth=48,
+        num_heads=25,
+        mlp_ratio=4.0,
+        use_qk_norm=True,
+        use_layer_scale=True,
+        layer_scale_init=0.1,
+        **kwargs,
+    )

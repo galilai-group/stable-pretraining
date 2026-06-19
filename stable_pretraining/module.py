@@ -171,12 +171,24 @@ class Module(pl.LightningModule):
 
     _warned_named_parameters = False
 
-    def __init__(self, *args, forward: callable = None, hparams: dict = None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        forward: callable = None,
+        hparams: dict = None,
+        parallelize_fn: callable = None,
+        **kwargs,
+    ):
         super().__init__()
         log_header("Module")
 
         # Manual optimization to support multiple optimizers and custom stepping
         self.automatic_optimization = False
+
+        # FSDP2 sharding hook (used only under ``strategy="fsdp2"``). ``None``
+        # means "use the library default" — resolved lazily in
+        # ``configure_model`` so we don't import the FSDP utils on every Module.
+        self._parallelize_fn = parallelize_fn
         self.callbacks_modules = torch.nn.ModuleDict()
         self.callbacks_metrics = torch.nn.ModuleDict()
 
@@ -249,8 +261,64 @@ class Module(pl.LightningModule):
     def forward(self, *args, **kwargs):
         raise NotImplementedError("The forward() method must be implemented.")
 
+    def setup(self, stage: str) -> None:
+        """Lightning setup hook — reject the legacy FSDP1 strategy.
+
+        FSDP1 (``Trainer(strategy="fsdp")``) uses a flat training-state machine
+        that asserts a single forward/backward per step, which breaks the
+        multi-forward methods that are this library's bread and butter (DINO,
+        I-JEPA, LeJEPA, ...). FSDP2 (``strategy="fsdp2"``) has no such
+        restriction, so we fail fast with a clear redirect.
+
+        Args:
+            stage: The Lightning stage (``"fit"``/``"validate"``/``"test"``/``"predict"``).
+        """
+        from lightning.pytorch.strategies import FSDPStrategy
+
+        if isinstance(getattr(self.trainer, "strategy", None), FSDPStrategy):
+            raise RuntimeError(
+                "stable-pretraining does not support FSDP1 "
+                "(Trainer(strategy='fsdp')). Use strategy='fsdp2' instead, which "
+                "supports the multi-forward methods (DINO/I-JEPA/LeJEPA/...)."
+            )
+
+    def configure_model(self) -> None:
+        """Lightning hook for FSDP2 — shard the model when a device mesh exists.
+
+        Under ``Trainer(strategy="fsdp2")``, ``ModelParallelStrategy`` builds a
+        device mesh and exposes it as ``self.device_mesh`` before calling this
+        hook. We dispatch to the configured ``parallelize_fn`` (default:
+        :func:`stable_pretraining.utils.fsdp2.default_parallelize_fn`) to apply
+        ``fully_shard``. Under any other strategy (single-device / DDP) there is
+        no mesh and this is a no-op.
+
+        Runs before ``configure_optimizers``, so optimizers are built over the
+        sharded ``DTensor`` parameters, as FSDP2 requires.
+        """
+        device_mesh = getattr(self, "device_mesh", None)
+        if device_mesh is None:
+            return  # not FSDP2 — nothing to shard
+
+        from .utils.fsdp2 import default_parallelize_fn, describe_fsdp_strategy
+
+        log_header("FSDP2 configure_model")
+        # Verbose summary of the resolved sharding config — invaluable when
+        # debugging "is it actually sharding, and over how many ranks?".
+        logging.info(f"  fsdp2 strategy: {describe_fsdp_strategy(self.trainer)}")
+        if self._parallelize_fn is None:
+            # Default path: forward the strategy's mixed-precision policy.
+            mp_policy = getattr(self.trainer.strategy, "_spt_mp_policy", None)
+            default_parallelize_fn(self, device_mesh, mp_policy=mp_policy)
+        else:
+            logging.info("  fsdp2: using user-provided parallelize_fn")
+            self._parallelize_fn(self, device_mesh)
+
     def named_parameters(
-        self, with_callbacks=True, prefix: str = "", recurse: bool = True
+        self,
+        with_callbacks=True,
+        prefix: str = "",
+        recurse: bool = True,
+        remove_duplicate: bool = True,
     ):
         """Override to globally exclude callback-related parameters.
 
@@ -263,6 +331,10 @@ class Module(pl.LightningModule):
             prefix (str, optional): Prefix to prepend to parameter names. Defaults to "".
             recurse (bool, optional): If True, yields parameters of this module and all submodules.
                 If False, yields only direct parameters. Defaults to True.
+            remove_duplicate (bool, optional): Whether to deduplicate shared parameters.
+                Must be accepted and forwarded because PyTorch's ``fully_shard`` (FSDP2)
+                wrap path calls ``named_parameters(remove_duplicate=False)``; without it
+                this override would raise ``TypeError`` before sharding. Defaults to True.
 
         Yields:
             tuple[str, torch.nn.Parameter]: Name and parameter pairs.
@@ -273,7 +345,9 @@ class Module(pl.LightningModule):
                 "! You are calling self.parameters which also gives callbacks "
                 "parameters, to remove them, pass `with_callbacks=False`"
             )
-        for name, param in super().named_parameters(prefix=prefix, recurse=recurse):
+        for name, param in super().named_parameters(
+            prefix=prefix, recurse=recurse, remove_duplicate=remove_duplicate
+        ):
             is_callback = name.startswith("callbacks_")
             if is_callback and not with_callbacks:
                 continue
@@ -650,7 +724,10 @@ class Module(pl.LightningModule):
             dict: Output dict returned by ``forward``.
         """
         batch["batch_idx"] = batch_idx
-        return self.forward(batch, stage="validate")
+        # Route through ``__call__`` (not ``.forward``) so FSDP2's all-gather
+        # pre-forward hooks fire — a direct ``.forward()`` would leave sharded
+        # DTensor params un-gathered. Harmless under DDP/single-device.
+        return self(batch, stage="validate")
 
     def test_step(self, batch, batch_idx):
         """Run the forward pass for a single test batch.
@@ -667,7 +744,7 @@ class Module(pl.LightningModule):
             dict: Output dict returned by ``forward``.
         """
         batch["batch_idx"] = batch_idx
-        return self.forward(batch, stage="test")
+        return self(batch, stage="test")
 
     def predict_step(self, batch, batch_idx):
         """Run the forward pass for a single prediction batch.
@@ -684,7 +761,7 @@ class Module(pl.LightningModule):
             dict: Output dict returned by ``forward``.
         """
         batch["batch_idx"] = batch_idx
-        return self.forward(batch, stage="predict")
+        return self(batch, stage="predict")
 
     def _get_scheduler_name(self, scheduler_config, scheduler_instance=None):
         """Extract scheduler name from various config formats.
@@ -953,6 +1030,23 @@ class Module(pl.LightningModule):
         logging.info(
             f"  Optimizer specified by Dict with keys {[k for k, _ in optim_items]}"
         )
+
+        # DeepSpeed's ZeRO engine owns exactly one optimizer; multiple optimizers
+        # (online probes, teacher-student EMA, ...) are unsupported. Fail early
+        # with a clear redirect to FSDP2 rather than the opaque downstream
+        # Lightning ``MisconfigurationException`` raised deep in DeepSpeed init.
+        if len(optim_items) > 1:
+            from .utils.fsdp2 import is_deepspeed_strategy
+
+            if is_deepspeed_strategy(getattr(self, "_trainer", None)):
+                raise RuntimeError(
+                    f"DeepSpeed supports a single optimizer only, but this run "
+                    f"configures {len(optim_items)} ({[k for k, _ in optim_items]}). "
+                    "Online probes (OnlineProbe/OnlineKNN/...) and teacher-student "
+                    "EMA each add their own optimizer and are incompatible with "
+                    "DeepSpeed. Use strategy='fsdp2' instead — it supports "
+                    "multi-optimizer / EMA / probe methods out of the box."
+                )
 
         # Build grouping with detailed logging
         params_by_name, named_params_by_name, modules_by_name = (

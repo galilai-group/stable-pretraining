@@ -67,6 +67,8 @@ from .vit import (
     vit_huge_patch16_224,
     vit_giant_patch14_224,
     vit_gigantic_patch14_224,
+    vit_enormous_patch14_224,
+    vit_intern6b_patch14_448,
 )
 
 from .aggregator import TensorAggregator
@@ -135,6 +137,8 @@ __all__ = [
     vit_huge_patch16_224,
     vit_giant_patch14_224,
     vit_gigantic_patch14_224,
+    vit_enormous_patch14_224,
+    vit_intern6b_patch14_448,
     CNNImageDecoder,
     ViTImageDecoder,
     build_image_decoder,

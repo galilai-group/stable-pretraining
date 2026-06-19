@@ -492,6 +492,30 @@ class TeacherStudentWrapper(nn.Module):
         """
         return self.forward_teacher(*args, **kwargs)
 
+    def fsdp_setup(self, mesh, mp_policy=None) -> None:
+        """Shard student and teacher identically for FSDP2 (DTensor) EMA.
+
+        Detected and called by
+        :func:`stable_pretraining.utils.fsdp2.default_parallelize_fn` under
+        ``strategy="fsdp2"``. The EMA update (:meth:`update_teacher`) zips
+        ``teacher.parameters()`` with ``student.parameters()`` and applies
+        in-place ops, so both must be wrapped into matching ``DTensor`` shards.
+        We shard each through the same code path and then assert alignment.
+
+        When ``teacher is student`` (the zero-coefficient memory-saving case)
+        only one subtree exists, so it is sharded once.
+
+        Args:
+            mesh: The 1-D data-parallel device mesh to shard over.
+            mp_policy: Optional FSDP2 mixed-precision policy.
+        """
+        from ..utils.fsdp2 import _shard_subtree, assert_aligned_wrapping
+
+        _shard_subtree(self.student, mesh, mp_policy)
+        if self.teacher is not self.student:
+            _shard_subtree(self.teacher, mesh, mp_policy)
+            assert_aligned_wrapping(self.student, self.teacher)
+
 
 def from_torchvision(model_name, low_resolution=False, **kwargs):
     """Load a backbone model.

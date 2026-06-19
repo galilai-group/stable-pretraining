@@ -9,10 +9,12 @@ authors = []
 license = {text = "MIT"}
 readme = {file = "README.md", content-type = "text/markdown"}
 dependencies = [
-    "torch",
+    # torch>=2.4 / lightning>=2.4 required for FSDP2 (torch fully_shard +
+    # Lightning's ModelParallelStrategy); see stable_pretraining.utils.fsdp2.
+    "torch>=2.4",
     "torchvision",
     "torchmetrics",
-    "lightning",
+    "lightning>=2.4",
     "hydra-core",
     "omegaconf",
     "loguru",
@@ -81,6 +83,9 @@ jax = ["jax", "flax>=0.10.0", "optax"]
 trackio = ["trackio", "gradio_client"]
 # SwanLab experiment tracking
 swanlab = ["swanlab"]
+# DeepSpeed ZeRO sharding (partial: single-optimizer methods only; FSDP2 is the
+# preferred sharding path and needs no extra dep). Strategy: "deepspeed_stage_3".
+deepspeed = ["deepspeed"]
 # Development and documentation tools
 dev = [
     "pytest",
