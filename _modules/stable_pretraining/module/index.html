@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g94121edb0 documentation</title>
+    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+gd1cbb9109 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=e4ae1a17"></script>
+    <script src="../../../_static/documentation_options.js?v=2cb99949"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g94121edb0 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gd1cbb9109 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -553,12 +553,24 @@
 
     <span class="n">_warned_named_parameters</span> <span class="o">=</span> <span class="kc">False</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">forward</span><span class="p">:</span> <span class="nb">callable</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">hparams</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+        <span class="n">forward</span><span class="p">:</span> <span class="nb">callable</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">hparams</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">parallelize_fn</span><span class="p">:</span> <span class="nb">callable</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;Module&quot;</span><span class="p">)</span>
 
         <span class="c1"># Manual optimization to support multiple optimizers and custom stepping</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">automatic_optimization</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># FSDP2 sharding hook (used only under ``strategy=&quot;fsdp2&quot;``). ``None``</span>
+        <span class="c1"># means &quot;use the library default&quot; — resolved lazily in</span>
+        <span class="c1"># ``configure_model`` so we don&#39;t import the FSDP utils on every Module.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parallelize_fn</span> <span class="o">=</span> <span class="n">parallelize_fn</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">callbacks_modules</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ModuleDict</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">callbacks_metrics</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ModuleDict</span><span class="p">()</span>
 
@@ -634,10 +646,72 @@
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;The forward() method must be implemented.&quot;</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="Module.setup">
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.setup">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Lightning setup hook — reject the legacy FSDP1 strategy.</span>
+
+<span class="sd">        FSDP1 (``Trainer(strategy=&quot;fsdp&quot;)``) uses a flat training-state machine</span>
+<span class="sd">        that asserts a single forward/backward per step, which breaks the</span>
+<span class="sd">        multi-forward methods that are this library&#39;s bread and butter (DINO,</span>
+<span class="sd">        I-JEPA, LeJEPA, ...). FSDP2 (``strategy=&quot;fsdp2&quot;``) has no such</span>
+<span class="sd">        restriction, so we fail fast with a clear redirect.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            stage: The Lightning stage (``&quot;fit&quot;``/``&quot;validate&quot;``/``&quot;test&quot;``/``&quot;predict&quot;``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.strategies</span><span class="w"> </span><span class="kn">import</span> <span class="n">FSDPStrategy</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="s2">&quot;strategy&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="n">FSDPStrategy</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;stable-pretraining does not support FSDP1 &quot;</span>
+                <span class="s2">&quot;(Trainer(strategy=&#39;fsdp&#39;)). Use strategy=&#39;fsdp2&#39; instead, which &quot;</span>
+                <span class="s2">&quot;supports the multi-forward methods (DINO/I-JEPA/LeJEPA/...).&quot;</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Module.configure_model">
+<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.configure_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">configure_model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Lightning hook for FSDP2 — shard the model when a device mesh exists.</span>
+
+<span class="sd">        Under ``Trainer(strategy=&quot;fsdp2&quot;)``, ``ModelParallelStrategy`` builds a</span>
+<span class="sd">        device mesh and exposes it as ``self.device_mesh`` before calling this</span>
+<span class="sd">        hook. We dispatch to the configured ``parallelize_fn`` (default:</span>
+<span class="sd">        :func:`stable_pretraining.utils.fsdp2.default_parallelize_fn`) to apply</span>
+<span class="sd">        ``fully_shard``. Under any other strategy (single-device / DDP) there is</span>
+<span class="sd">        no mesh and this is a no-op.</span>
+
+<span class="sd">        Runs before ``configure_optimizers``, so optimizers are built over the</span>
+<span class="sd">        sharded ``DTensor`` parameters, as FSDP2 requires.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">device_mesh</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;device_mesh&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">device_mesh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>  <span class="c1"># not FSDP2 — nothing to shard</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.utils.fsdp2</span><span class="w"> </span><span class="kn">import</span> <span class="n">default_parallelize_fn</span><span class="p">,</span> <span class="n">describe_fsdp_strategy</span>
+
+        <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;FSDP2 configure_model&quot;</span><span class="p">)</span>
+        <span class="c1"># Verbose summary of the resolved sharding config — invaluable when</span>
+        <span class="c1"># debugging &quot;is it actually sharding, and over how many ranks?&quot;.</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  fsdp2 strategy: </span><span class="si">{</span><span class="n">describe_fsdp_strategy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parallelize_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Default path: forward the strategy&#39;s mixed-precision policy.</span>
+            <span class="n">mp_policy</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span> <span class="s2">&quot;_spt_mp_policy&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">default_parallelize_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device_mesh</span><span class="p">,</span> <span class="n">mp_policy</span><span class="o">=</span><span class="n">mp_policy</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  fsdp2: using user-provided parallelize_fn&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parallelize_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device_mesh</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="Module.named_parameters">
 <a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.named_parameters">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">named_parameters</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">with_callbacks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">recurse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">with_callbacks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">recurse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">remove_duplicate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Override to globally exclude callback-related parameters.</span>
 
@@ -650,6 +724,10 @@
 <span class="sd">            prefix (str, optional): Prefix to prepend to parameter names. Defaults to &quot;&quot;.</span>
 <span class="sd">            recurse (bool, optional): If True, yields parameters of this module and all submodules.</span>
 <span class="sd">                If False, yields only direct parameters. Defaults to True.</span>
+<span class="sd">            remove_duplicate (bool, optional): Whether to deduplicate shared parameters.</span>
+<span class="sd">                Must be accepted and forwarded because PyTorch&#39;s ``fully_shard`` (FSDP2)</span>
+<span class="sd">                wrap path calls ``named_parameters(remove_duplicate=False)``; without it</span>
+<span class="sd">                this override would raise ``TypeError`` before sharding. Defaults to True.</span>
 
 <span class="sd">        Yields:</span>
 <span class="sd">            tuple[str, torch.nn.Parameter]: Name and parameter pairs.</span>
@@ -660,7 +738,9 @@
                 <span class="s2">&quot;! You are calling self.parameters which also gives callbacks &quot;</span>
                 <span class="s2">&quot;parameters, to remove them, pass `with_callbacks=False`&quot;</span>
             <span class="p">)</span>
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="n">prefix</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="n">recurse</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">(</span>
+            <span class="n">prefix</span><span class="o">=</span><span class="n">prefix</span><span class="p">,</span> <span class="n">recurse</span><span class="o">=</span><span class="n">recurse</span><span class="p">,</span> <span class="n">remove_duplicate</span><span class="o">=</span><span class="n">remove_duplicate</span>
+        <span class="p">):</span>
             <span class="n">is_callback</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;callbacks_&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">is_callback</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">with_callbacks</span><span class="p">:</span>
                 <span class="k">continue</span>
@@ -1058,7 +1138,10 @@
 <span class="sd">            dict: Output dict returned by ``forward``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;batch_idx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch_idx</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;validate&quot;</span><span class="p">)</span></div>
+        <span class="c1"># Route through ``__call__`` (not ``.forward``) so FSDP2&#39;s all-gather</span>
+        <span class="c1"># pre-forward hooks fire — a direct ``.forward()`` would leave sharded</span>
+        <span class="c1"># DTensor params un-gathered. Harmless under DDP/single-device.</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;validate&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Module.test_step">
@@ -1078,7 +1161,7 @@
 <span class="sd">            dict: Output dict returned by ``forward``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;batch_idx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch_idx</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Module.predict_step">
@@ -1098,7 +1181,7 @@
 <span class="sd">            dict: Output dict returned by ``forward``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;batch_idx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch_idx</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;predict&quot;</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;predict&quot;</span><span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_scheduler_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scheduler_config</span><span class="p">,</span> <span class="n">scheduler_instance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -1370,6 +1453,23 @@
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;  Optimizer specified by Dict with keys </span><span class="si">{</span><span class="p">[</span><span class="n">k</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">optim_items</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
+
+        <span class="c1"># DeepSpeed&#39;s ZeRO engine owns exactly one optimizer; multiple optimizers</span>
+        <span class="c1"># (online probes, teacher-student EMA, ...) are unsupported. Fail early</span>
+        <span class="c1"># with a clear redirect to FSDP2 rather than the opaque downstream</span>
+        <span class="c1"># Lightning ``MisconfigurationException`` raised deep in DeepSpeed init.</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">optim_items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">.utils.fsdp2</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_deepspeed_strategy</span>
+
+            <span class="k">if</span> <span class="n">is_deepspeed_strategy</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_trainer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)):</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;DeepSpeed supports a single optimizer only, but this run &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;configures </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">optim_items</span><span class="p">)</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="p">[</span><span class="n">k</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">optim_items</span><span class="p">]</span><span class="si">}</span><span class="s2">). &quot;</span>
+                    <span class="s2">&quot;Online probes (OnlineProbe/OnlineKNN/...) and teacher-student &quot;</span>
+                    <span class="s2">&quot;EMA each add their own optimizer and are incompatible with &quot;</span>
+                    <span class="s2">&quot;DeepSpeed. Use strategy=&#39;fsdp2&#39; instead — it supports &quot;</span>
+                    <span class="s2">&quot;multi-optimizer / EMA / probe methods out of the box.&quot;</span>
+                <span class="p">)</span>
 
         <span class="c1"># Build grouping with detailed logging</span>
         <span class="n">params_by_name</span><span class="p">,</span> <span class="n">named_params_by_name</span><span class="p">,</span> <span class="n">modules_by_name</span> <span class="o">=</span> <span class="p">(</span>

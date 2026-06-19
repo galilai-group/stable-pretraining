@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Module &#8212; stable-pretraining 0.1.dev1+g94121edb0 documentation</title>
+    <title>Module &#8212; stable-pretraining 0.1.dev1+gd1cbb9109 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=e4ae1a17"></script>
+    <script src="../../../_static/documentation_options.js?v=2cb99949"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g94121edb0 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gd1cbb9109 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -426,6 +426,7 @@
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module"><code class="docutils literal notranslate"><span class="pre">Module</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.after_manual_backward"><code class="docutils literal notranslate"><span class="pre">Module.after_manual_backward()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.configure_model"><code class="docutils literal notranslate"><span class="pre">Module.configure_model()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.configure_optimizers"><code class="docutils literal notranslate"><span class="pre">Module.configure_optimizers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.forward"><code class="docutils literal notranslate"><span class="pre">Module.forward()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.named_parameters"><code class="docutils literal notranslate"><span class="pre">Module.named_parameters()</span></code></a></li>
@@ -434,6 +435,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.parameters"><code class="docutils literal notranslate"><span class="pre">Module.parameters()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.predict_step"><code class="docutils literal notranslate"><span class="pre">Module.predict_step()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.rescale_loss_for_grad_acc"><code class="docutils literal notranslate"><span class="pre">Module.rescale_loss_for_grad_acc()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.setup"><code class="docutils literal notranslate"><span class="pre">Module.setup()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.test_step"><code class="docutils literal notranslate"><span class="pre">Module.test_step()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.training_step"><code class="docutils literal notranslate"><span class="pre">Module.training_step()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.validation_step"><code class="docutils literal notranslate"><span class="pre">Module.validation_step()</span></code></a></li>
@@ -454,7 +456,7 @@
 <h1>Module<a class="headerlink" href="#module" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="stable_pretraining.module.Module">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.module.</span></span><span class="sig-name descname"><span class="pre">Module</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">callable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hparams</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">stable_pretraining.module.</span></span><span class="sig-name descname"><span class="pre">Module</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">callable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hparams</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parallelize_fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">callable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.LightningModule.html#lightning.pytorch.core.LightningModule" title="(in PyTorch Lightning v2.6.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">LightningModule</span></code></a></p>
 <p>PyTorch Lightning module using manual optimization with multi-optimizer support.</p>
 <p><strong>Core usage</strong></p>
@@ -543,6 +545,20 @@ does nothing.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.module.Module.configure_model">
+<span class="sig-name descname"><span class="pre">configure_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module.configure_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module.configure_model" title="Link to this definition">#</a></dt>
+<dd><p>Lightning hook for FSDP2 — shard the model when a device mesh exists.</p>
+<p>Under <code class="docutils literal notranslate"><span class="pre">Trainer(strategy=&quot;fsdp2&quot;)</span></code>, <code class="docutils literal notranslate"><span class="pre">ModelParallelStrategy</span></code> builds a
+device mesh and exposes it as <code class="docutils literal notranslate"><span class="pre">self.device_mesh</span></code> before calling this
+hook. We dispatch to the configured <code class="docutils literal notranslate"><span class="pre">parallelize_fn</span></code> (default:
+<code class="xref py py-func docutils literal notranslate"><span class="pre">stable_pretraining.utils.fsdp2.default_parallelize_fn()</span></code>) to apply
+<code class="docutils literal notranslate"><span class="pre">fully_shard</span></code>. Under any other strategy (single-device / DDP) there is
+no mesh and this is a no-op.</p>
+<p>Runs before <code class="docutils literal notranslate"><span class="pre">configure_optimizers</span></code>, so optimizers are built over the
+sharded <code class="docutils literal notranslate"><span class="pre">DTensor</span></code> parameters, as FSDP2 requires.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.module.Module.configure_optimizers">
 <span class="sig-name descname"><span class="pre">configure_optimizers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module.configure_optimizers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module.configure_optimizers" title="Link to this definition">#</a></dt>
 <dd><p>Configure optimizers and schedulers for manual optimization.</p>
@@ -624,7 +640,7 @@ For multiple optimizers: Returns a tuple of (optimizers, schedulers).</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.module.Module.named_parameters">
-<span class="sig-name descname"><span class="pre">named_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">with_callbacks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recurse</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module.named_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module.named_parameters" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">named_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">with_callbacks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recurse</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_duplicate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module.named_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module.named_parameters" title="Link to this definition">#</a></dt>
 <dd><p>Override to globally exclude callback-related parameters.</p>
 <p>Excludes parameters that belong to <code class="docutils literal notranslate"><span class="pre">self.callbacks_modules</span></code> or <code class="docutils literal notranslate"><span class="pre">self.callbacks_metrics</span></code>.
 This prevents accidental optimization of callback/metric internals, even if external code
@@ -636,6 +652,10 @@ calls <code class="docutils literal notranslate"><span class="pre">self.paramete
 <li><p><strong>prefix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Prefix to prepend to parameter names. Defaults to “”.</p></li>
 <li><p><strong>recurse</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, yields parameters of this module and all submodules.
 If False, yields only direct parameters. Defaults to True.</p></li>
+<li><p><strong>remove_duplicate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to deduplicate shared parameters.
+Must be accepted and forwarded because PyTorch’s <code class="docutils literal notranslate"><span class="pre">fully_shard</span></code> (FSDP2)
+wrap path calls <code class="docutils literal notranslate"><span class="pre">named_parameters(remove_duplicate=False)</span></code>; without it
+this override would raise <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> before sharding. Defaults to True.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Yields<span class="colon">:</span></dt>
@@ -747,6 +767,22 @@ full batch, preventing the effective learning rate from growing with N.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.12)">torch.Tensor</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.module.Module.setup">
+<span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module.setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module.setup" title="Link to this definition">#</a></dt>
+<dd><p>Lightning setup hook — reject the legacy FSDP1 strategy.</p>
+<p>FSDP1 (<code class="docutils literal notranslate"><span class="pre">Trainer(strategy=&quot;fsdp&quot;)</span></code>) uses a flat training-state machine
+that asserts a single forward/backward per step, which breaks the
+multi-forward methods that are this library’s bread and butter (DINO,
+I-JEPA, LeJEPA, …). FSDP2 (<code class="docutils literal notranslate"><span class="pre">strategy=&quot;fsdp2&quot;</span></code>) has no such
+restriction, so we fail fast with a clear redirect.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>stage</strong> – The Lightning stage (<code class="docutils literal notranslate"><span class="pre">&quot;fit&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;validate&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;test&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;predict&quot;</span></code>).</p>
 </dd>
 </dl>
 </dd></dl>
@@ -885,6 +921,7 @@ callback via <code class="docutils literal notranslate"><span class="pre">on_val
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module"><code class="docutils literal notranslate"><span class="pre">Module</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.after_manual_backward"><code class="docutils literal notranslate"><span class="pre">Module.after_manual_backward()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.configure_model"><code class="docutils literal notranslate"><span class="pre">Module.configure_model()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.configure_optimizers"><code class="docutils literal notranslate"><span class="pre">Module.configure_optimizers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.forward"><code class="docutils literal notranslate"><span class="pre">Module.forward()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.named_parameters"><code class="docutils literal notranslate"><span class="pre">Module.named_parameters()</span></code></a></li>
@@ -893,6 +930,7 @@ callback via <code class="docutils literal notranslate"><span class="pre">on_val
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.parameters"><code class="docutils literal notranslate"><span class="pre">Module.parameters()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.predict_step"><code class="docutils literal notranslate"><span class="pre">Module.predict_step()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.rescale_loss_for_grad_acc"><code class="docutils literal notranslate"><span class="pre">Module.rescale_loss_for_grad_acc()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.setup"><code class="docutils literal notranslate"><span class="pre">Module.setup()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.test_step"><code class="docutils literal notranslate"><span class="pre">Module.test_step()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.training_step"><code class="docutils literal notranslate"><span class="pre">Module.training_step()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.validation_step"><code class="docutils literal notranslate"><span class="pre">Module.validation_step()</span></code></a></li>

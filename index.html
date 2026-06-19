@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+g94121edb0 documentation</title>
+    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+gd1cbb9109 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=e4ae1a17"></script>
+    <script src="_static/documentation_options.js?v=2cb99949"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/sg-tags.js?v=d80f6fa4"></script>
@@ -131,7 +131,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g94121edb0 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gd1cbb9109 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -450,6 +450,7 @@
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trainer">4 - Trainer</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sharded-training-fsdp2-deepspeed">Sharded training: FSDP2 &amp; DeepSpeed</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#global-configuration">Global Configuration</a></li>
@@ -1148,6 +1149,79 @@ DataLoader workers never serialise the nn.Module.</p>
 </pre></div>
 </div>
 <p>Once configured, the <code class="docutils literal notranslate"><span class="pre">Manager</span></code> connects all components and handles the training loop with precise logging and monitoring (optional).</p>
+</section>
+<section id="sharded-training-fsdp2-deepspeed">
+<h3>Sharded training: FSDP2 &amp; DeepSpeed<a class="headerlink" href="#sharded-training-fsdp2-deepspeed" title="Link to this heading">#</a></h3>
+<p>For large models, shard parameters/gradients/optimizer state across GPUs by flipping a single trainer switch — no changes to your method, forward, or model. <strong>FSDP2</strong> (<code class="docutils literal notranslate"><span class="pre">strategy=&quot;fsdp2&quot;</span></code>) is the recommended path: it supports the full library (including teacher/student EMA and the online-probe callbacks) and is verified numerically equivalent to DDP. <strong>DeepSpeed</strong> ZeRO-3 (<code class="docutils literal notranslate"><span class="pre">strategy=&quot;deepspeed_stage_3&quot;</span></code>, install <code class="docutils literal notranslate"><span class="pre">&quot;.[deepspeed]&quot;</span></code>) is <em>partially</em> supported — single-optimizer methods only; it hard-errors with multiple optimizers, so it can’t be used with EMA methods or the online probes (use FSDP2 there). See <a class="reference internal" href="#docs/source/fsdp2.rst"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">docs/source/fsdp2.rst</span></code></span></a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s2">&quot;fsdp2&quot;</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="s2">&quot;bf16-mixed&quot;</span><span class="p">,</span> <span class="n">accelerator</span><span class="o">=</span><span class="s2">&quot;gpu&quot;</span><span class="p">,</span> <span class="n">devices</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Practical notes:</p>
+<ul class="simple">
+<li><p><strong>The strategy string is the only code change</strong> — your model, forward, optimizer, and callbacks are untouched.</p></li>
+<li><p><strong>Precision:</strong> use <code class="docutils literal notranslate"><span class="pre">&quot;bf16-mixed&quot;</span></code> — FSDP2’s <code class="docutils literal notranslate"><span class="pre">ModelParallelStrategy</span></code> rejects <code class="docutils literal notranslate"><span class="pre">&quot;16-mixed&quot;</span></code>.</p></li>
+<li><p><strong>DeepSpeed:</strong> <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">&quot;.[deepspeed]&quot;</span></code> first; it’s <strong>single-optimizer only</strong> (online probes / EMA methods raise a clear error pointing you back to FSDP2).</p></li>
+<li><p><strong>Launching on SLURM:</strong> start one task per GPU — <code class="docutils literal notranslate"><span class="pre">srun</span> <span class="pre">--ntasks=8</span> <span class="pre">--gres=gpu:8</span> <span class="pre">--ntasks-per-node=8</span> <span class="pre">python</span> <span class="pre">train.py</span></code> — because Lightning derives the world size from <code class="docutils literal notranslate"><span class="pre">SLURM_NTASKS</span></code>, not <code class="docutils literal notranslate"><span class="pre">devices=</span></code>. Off SLURM, just set <code class="docutils literal notranslate"><span class="pre">devices=8</span></code> and Lightning spawns the workers itself.</p></li>
+<li><p><strong>Debugging:</strong> when sharding is active, the log prints an <code class="docutils literal notranslate"><span class="pre">FSDP2</span> <span class="pre">configure_model</span></code> header, the resolved strategy summary (<code class="docutils literal notranslate"><span class="pre">{fsdp2:</span> <span class="pre">True,</span> <span class="pre">data_parallel_size:</span> <span class="pre">8,</span> <span class="pre">...}</span></code>), and which subtrees were sharded — so you can confirm at a glance that it’s sharding over the expected number of ranks.</p></li>
+</ul>
+<p>Sharding trades a little throughput for memory; the per-GPU saving scales with model size and rank count (<code class="docutils literal notranslate"><span class="pre">(R−1)/R</span> <span class="pre">×</span> <span class="pre">(params</span> <span class="pre">+</span> <span class="pre">grads</span> <span class="pre">+</span> <span class="pre">optimizer</span> <span class="pre">state)</span></code>). On a small model the saved state is dwarfed by activations (which sharding does not touch), so the win looks modest — but it grows fast with scale. Measured on Imagenette, H200, bf16:</p>
+<p><strong>ViT-L/16 (300M), 2 GPUs, batch 256</strong> — small model, modest gap:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>strategy</p></th>
+<th class="head"><p>peak mem/GPU</p></th>
+<th class="head"><p>img/s</p></th>
+<th class="head"><p>notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>DDP</p></td>
+<td><p>90.5 GiB</p></td>
+<td><p>960</p></td>
+<td><p>full replica per GPU</p></td>
+</tr>
+<tr class="row-odd"><td><p>FSDP2</p></td>
+<td><p>87.7 GiB</p></td>
+<td><p>930</p></td>
+<td><p>balanced default; full library support</p></td>
+</tr>
+<tr class="row-even"><td><p>DeepSpeed ZeRO-3</p></td>
+<td><p>77.7 GiB</p></td>
+<td><p>703</p></td>
+<td><p>more memory saved, lower throughput; single-optimizer only</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>ViT-e/14 (3.8B), 8 GPUs, batch 16</strong> — large model, the gap is decisive:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>strategy</p></th>
+<th class="head"><p>peak mem/GPU</p></th>
+<th class="head"><p>img/s</p></th>
+<th class="head"><p>notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>DDP</p></td>
+<td><p>113.1 GiB</p></td>
+<td><p>225</p></td>
+<td><p>replicates the full ~76 GiB of params+grads+optimizer state on every GPU</p></td>
+</tr>
+<tr class="row-odd"><td><p>FSDP2</p></td>
+<td><p>62.2 GiB</p></td>
+<td><p>214</p></td>
+<td><p>shards that state 8 ways → <strong>−45% memory</strong> for ~4% throughput</p></td>
+</tr>
+<tr class="row-even"><td><p>DeepSpeed ZeRO-3</p></td>
+<td><p>46.6 GiB</p></td>
+<td><p>83</p></td>
+<td><p>shards most aggressively (<strong>−59% memory</strong>) but ~2.6× slower than FSDP2 here; single-optimizer only</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>At batch 64 <em>both</em> DDP and FSDP2 OOM (activations, which neither shards, become the wall) — combine sharding with activation checkpointing for the largest models. The trade-off sharpens with scale: FSDP2 is the throughput-friendly default, while DeepSpeed ZeRO-3 buys the most memory headroom at a real speed cost.</p>
 <p><a id="global-configuration"></a></p>
 </section>
 </section>
@@ -2137,6 +2211,7 @@ loading, <code class="docutils literal notranslate"><span class="pre">Module</sp
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trainer">4 - Trainer</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sharded-training-fsdp2-deepspeed">Sharded training: FSDP2 &amp; DeepSpeed</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#global-configuration">Global Configuration</a></li>

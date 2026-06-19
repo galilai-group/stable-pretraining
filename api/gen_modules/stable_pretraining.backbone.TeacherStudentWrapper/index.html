@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>TeacherStudentWrapper &#8212; stable-pretraining 0.1.dev1+g94121edb0 documentation</title>
+    <title>TeacherStudentWrapper &#8212; stable-pretraining 0.1.dev1+gd1cbb9109 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=e4ae1a17"></script>
+    <script src="../../../_static/documentation_options.js?v=2cb99949"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g94121edb0 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gd1cbb9109 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -428,6 +428,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.forward"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.forward()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.forward_student"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.forward_student()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.forward_teacher"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.forward_teacher()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.fsdp_setup"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.fsdp_setup()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.update_ema_coefficient"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.update_ema_coefficient()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.update_teacher"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.update_teacher()</span></code></a></li>
 </ul>
@@ -506,6 +507,28 @@ Commonly the teacher is evaluated, so we default to that.</p>
 <p>By default, the teacher network does not require grad.
 If ema_coefficient == 0, then teacher==student,
 so we wrap in torch.no_grad() to ensure no gradients flow.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.backbone.TeacherStudentWrapper.fsdp_setup">
+<span class="sig-name descname"><span class="pre">fsdp_setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mp_policy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../../_modules/stable_pretraining/backbone/utils/#TeacherStudentWrapper.fsdp_setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.backbone.TeacherStudentWrapper.fsdp_setup" title="Link to this definition">#</a></dt>
+<dd><p>Shard student and teacher identically for FSDP2 (DTensor) EMA.</p>
+<p>Detected and called by
+<code class="xref py py-func docutils literal notranslate"><span class="pre">stable_pretraining.utils.fsdp2.default_parallelize_fn()</span></code> under
+<code class="docutils literal notranslate"><span class="pre">strategy=&quot;fsdp2&quot;</span></code>. The EMA update (<a class="reference internal" href="#stable_pretraining.backbone.TeacherStudentWrapper.update_teacher" title="stable_pretraining.backbone.TeacherStudentWrapper.update_teacher"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update_teacher()</span></code></a>) zips
+<code class="docutils literal notranslate"><span class="pre">teacher.parameters()</span></code> with <code class="docutils literal notranslate"><span class="pre">student.parameters()</span></code> and applies
+in-place ops, so both must be wrapped into matching <code class="docutils literal notranslate"><span class="pre">DTensor</span></code> shards.
+We shard each through the same code path and then assert alignment.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">teacher</span> <span class="pre">is</span> <span class="pre">student</span></code> (the zero-coefficient memory-saving case)
+only one subtree exists, so it is sharded once.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mesh</strong> – The 1-D data-parallel device mesh to shard over.</p></li>
+<li><p><strong>mp_policy</strong> – Optional FSDP2 mixed-precision policy.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -597,6 +620,7 @@ not accumulate gradients, but the student remains fully trainable.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.forward"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.forward()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.forward_student"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.forward_student()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.forward_teacher"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.forward_teacher()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.fsdp_setup"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.fsdp_setup()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.update_ema_coefficient"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.update_ema_coefficient()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.backbone.TeacherStudentWrapper.update_teacher"><code class="docutils literal notranslate"><span class="pre">TeacherStudentWrapper.update_teacher()</span></code></a></li>
 </ul>

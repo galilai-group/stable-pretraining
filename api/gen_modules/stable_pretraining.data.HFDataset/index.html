@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>HFDataset &#8212; stable-pretraining 0.1.dev1+g94121edb0 documentation</title>
+    <title>HFDataset &#8212; stable-pretraining 0.1.dev1+gd1cbb9109 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=e4ae1a17"></script>
+    <script src="../../../_static/documentation_options.js?v=2cb99949"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g94121edb0 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gd1cbb9109 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -487,7 +487,10 @@ post-collated batch after device transfer.</p></li>
 
 <section id="examples-using-hfdataset">
 <span id="sphx-glr-backref-stable-pretraining-data-hfdataset"></span><h2>Examples using <code class="docutils literal notranslate"><span class="pre">HFDataset</span></code>:<a class="headerlink" href="#examples-using-hfdataset" title="Link to this heading">#</a></h2>
-<div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="Design choice (see the JAX backend docs): augmentation stays on CPU using the existing torchvision pipeline and we feed NHWC numpy arrays into the JAX trainer. Nothing in data/transforms.py is reimplemented — the array boundary is the clean seam between the two backends."><img alt="" src="../../../_images/sphx_glr_jax_simclr_imagenette_thumb.png" />
+<div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="A reference recipe for from-scratch supervised ViT classification that targets the &quot;typical&quot; ~82%+ top-1 (ViT-L; ViT-e is a scale stress-test, see note below), built to run efficiently and shard cleanly:"><img alt="" src="../../../_images/sphx_glr_imagenet1k_supervised_vit_fsdp2_thumb.png" />
+<p><a class="reference internal" href="../../../auto_examples/imagenet1k_supervised_vit_fsdp2/"><span class="doc">&lt;no title&gt;</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Supervised ImageNet-1k ViT training — SOTA (DeiT/AugReg) recipe, FSDP2, GPU-fast.</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="Design choice (see the JAX backend docs): augmentation stays on CPU using the existing torchvision pipeline and we feed NHWC numpy arrays into the JAX trainer. Nothing in data/transforms.py is reimplemented — the array boundary is the clean seam between the two backends."><img alt="" src="../../../_images/sphx_glr_jax_simclr_imagenette_thumb.png" />
 <p><a class="reference internal" href="../../../auto_examples/jax_simclr_imagenette/"><span class="doc">&lt;no title&gt;</span></a></p>
   <div class="sphx-glr-thumbnail-title">SimCLR on ImageNette with the JAX / Flax-NNX backend, data-parallel over GPUs.</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="Train probes attached to multiple layers of a frozen backbone to monitor representation quality across depth."><img alt="" src="../../../_images/sphx_glr_multi_layer_probe_thumb.png" />

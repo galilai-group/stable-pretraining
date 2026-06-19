@@ -1,0 +1,185 @@
+r"""Supervised ImageNet-1k ViT training — SOTA (DeiT/AugReg) recipe, FSDP2, GPU-fast.
+
+A reference recipe for from-scratch supervised ViT classification that targets the
+"typical" ~82%+ top-1 (ViT-L; ViT-e is a scale stress-test, see note below),
+built to run efficiently and shard cleanly:
+
+- **FSDP2 sharding** (``strategy="fsdp2"``) + **bf16-mixed** — fits large ViTs.
+- **100%-GPU augmentation**: the CPU workers only decode + resize; *all* heavy
+  augmentation (RandomResizedCrop, flip, RandAugment, normalize, RandomErasing)
+  runs batched on the GPU via ``gpu_transform`` (kornia), and Mixup/CutMix mix on
+  the GPU inside ``forward``. Keeps the GPUs fed instead of CPU-bound.
+- **DeiT/AugReg regularization**: RandAugment + Mixup + CutMix + label smoothing +
+  stochastic depth (``drop_path``) + strong weight decay + cosine schedule with
+  linear warmup.
+
+Launch on a >=2-GPU node (one task per GPU — Lightning reads ``SLURM_NTASKS``)::
+
+    srun --ntasks=8 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=12 \
+        python examples/imagenet1k_supervised_vit_fsdp2.py --backbone vit_large_patch16_224
+
+**Note on ViT-e:** ``vit_enormous_patch14_224`` (3.8B) is included to validate the
+FSDP2 path at scale; trained from scratch on ImageNet-1k it is *not* expected to
+reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.
+"""
+
+import argparse
+
+import lightning as pl
+import torch
+import torch.nn.functional as F
+import torchmetrics
+from torch.utils.data import DataLoader
+
+import stable_pretraining as spt
+from stable_pretraining.data import transforms
+from stable_pretraining.data.gpu_transforms import (
+    GPUCompose,
+    GPUNormalize,
+    GPURandAugment,
+    GPURandomErasing,
+    GPURandomHorizontalFlip,
+    GPURandomResizedCrop,
+    RandomMixupCutmix,
+    ToDevice,
+)
+
+_MEAN = [0.485, 0.456, 0.406]
+_STD = [0.229, 0.224, 0.225]
+NUM_CLASSES = 1000
+
+
+class TopkAccuracy(pl.Callback):
+    """Validation top-1 accuracy on the trained head's logits (``batch["logits"]``)."""
+
+    def __init__(self):
+        super().__init__()
+        self.acc = torchmetrics.classification.MulticlassAccuracy(NUM_CLASSES)
+
+    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        self.acc.to(pl_module.device)
+        self.acc.update(batch["logits"], batch["label"].long())
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        pl_module.log("val/top1", self.acc.compute(), prog_bar=True, sync_dist=True)
+        self.acc.reset()
+
+
+def build_loaders(batch_size, num_workers):
+    # CPU does the bare minimum (decode + square resize) so the GPU aug pipeline
+    # is the bottleneck-free fast path. Train images stay un-normalized [0,1]
+    # floats for the kornia GPU ops; val is fully prepared on CPU.
+    train_cpu = transforms.Compose(
+        transforms.RGB(),
+        transforms.Resize((256, 256)),
+        transforms.ToImage(),  # -> float tensor in [0, 1], no normalization
+    )
+    val_cpu = transforms.Compose(
+        transforms.RGB(),
+        transforms.Resize((256, 256)),
+        transforms.CenterCrop((224, 224)),
+        transforms.ToImage(mean=_MEAN, std=_STD),
+    )
+    train_ds = spt.data.HFDataset(
+        path="ILSVRC/imagenet-1k", split="train", transform=train_cpu
+    )
+    # Heavy augmentation, batched on GPU (DeiT/AugReg policy).
+    train_ds.gpu_transform = GPUCompose(
+        ToDevice(),
+        GPURandomResizedCrop(224, scale=(0.08, 1.0)),
+        GPURandomHorizontalFlip(p=0.5),
+        GPURandAugment(n=2, m=9),
+        GPUNormalize(mean=_MEAN, std=_STD),
+        GPURandomErasing(p=0.25),
+    )
+    val_ds = spt.data.HFDataset(
+        path="ILSVRC/imagenet-1k", split="validation", transform=val_cpu
+    )
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        drop_last=True,
+        shuffle=True,
+        pin_memory=True,
+        persistent_workers=num_workers > 0,
+    )
+    val_loader = DataLoader(
+        val_ds, batch_size=batch_size, num_workers=num_workers, pin_memory=True
+    )
+    return train_loader, val_loader
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--backbone", default="vit_large_patch16_224")
+    ap.add_argument("--epochs", type=int, default=300)
+    ap.add_argument("--batch-size", type=int, default=64, help="per-GPU batch")
+    ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--weight-decay", type=float, default=0.05)
+    ap.add_argument("--drop-path", type=float, default=0.4)  # DeiT-III ViT-L
+    ap.add_argument("--label-smoothing", type=float, default=0.1)
+    ap.add_argument("--num-workers", type=int, default=12)
+    args = ap.parse_args()
+
+    # Speed knobs (TF32 + autotuned cuDNN); bf16 comes from the Trainer.
+    torch.set_float32_matmul_precision("high")
+    torch.backends.cudnn.benchmark = True
+
+    train_loader, val_loader = build_loaders(args.batch_size, args.num_workers)
+    data = spt.data.DataModule(train=train_loader, val=val_loader)
+
+    backbone = getattr(spt.backbone, args.backbone)(
+        num_classes=NUM_CLASSES, drop_path_rate=args.drop_path
+    )
+    mixup = RandomMixupCutmix(
+        NUM_CLASSES,
+        mixup_alpha=0.8,
+        cutmix_alpha=1.0,
+        label_smoothing=args.label_smoothing,
+    )
+
+    def forward(self, batch, stage):
+        if self.training:
+            images, soft = mixup(batch["image"], batch["label"])
+            logits = self.backbone(images)
+            batch["loss"] = F.cross_entropy(logits, soft)
+        else:
+            batch["logits"] = self.backbone(batch["image"])
+        return batch
+
+    module = spt.Module(
+        backbone=backbone,
+        forward=forward,
+        hparams=vars(args),
+        optim={
+            "optimizer": {
+                "type": "AdamW",
+                "lr": args.lr,
+                "weight_decay": args.weight_decay,
+            },
+            "scheduler": "LinearWarmupCosineAnnealing",
+        },
+    )
+
+    trainer = dict(
+        strategy="fsdp2",
+        precision="bf16-mixed",
+        accelerator="gpu",
+        devices="auto",
+        max_epochs=args.epochs,
+        callbacks=[
+            pl.pytorch.callbacks.LearningRateMonitor(logging_interval="step"),
+            TopkAccuracy(),
+        ],
+        gradient_clip_val=1.0,
+        num_sanity_val_steps=0,
+        enable_checkpointing=True,
+    )
+    manager = spt.Manager(trainer=trainer, module=module, data=data)
+    manager()
+    manager.validate()
+
+
+if __name__ == "__main__":
+    main()

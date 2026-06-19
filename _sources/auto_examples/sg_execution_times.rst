@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:00.000** total execution time for 7 files **from auto_examples**:
+**00:00.000** total execution time for 8 files **from auto_examples**:
 
 .. container::
 
@@ -32,6 +32,9 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
+   * - :ref:`sphx_glr_auto_examples_imagenet1k_supervised_vit_fsdp2.py` (``imagenet1k_supervised_vit_fsdp2.py``)
+     - 00:00.000
+     - 0.0
    * - :ref:`sphx_glr_auto_examples_imbalance_supervised_learning.py` (``imbalance_supervised_learning.py``)
      - 00:00.000
      - 0.0

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.backbone.utils &#8212; stable-pretraining 0.1.dev1+g94121edb0 documentation</title>
+    <title>stable_pretraining.backbone.utils &#8212; stable-pretraining 0.1.dev1+gd1cbb9109 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=e4ae1a17"></script>
+    <script src="../../../../_static/documentation_options.js?v=2cb99949"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g94121edb0 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gd1cbb9109 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -896,6 +896,33 @@
 <span class="sd">        Commonly the teacher is evaluated, so we default to that.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward_teacher</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TeacherStudentWrapper.fsdp_setup">
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/#stable_pretraining.backbone.TeacherStudentWrapper.fsdp_setup">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fsdp_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">mp_policy</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Shard student and teacher identically for FSDP2 (DTensor) EMA.</span>
+
+<span class="sd">        Detected and called by</span>
+<span class="sd">        :func:`stable_pretraining.utils.fsdp2.default_parallelize_fn` under</span>
+<span class="sd">        ``strategy=&quot;fsdp2&quot;``. The EMA update (:meth:`update_teacher`) zips</span>
+<span class="sd">        ``teacher.parameters()`` with ``student.parameters()`` and applies</span>
+<span class="sd">        in-place ops, so both must be wrapped into matching ``DTensor`` shards.</span>
+<span class="sd">        We shard each through the same code path and then assert alignment.</span>
+
+<span class="sd">        When ``teacher is student`` (the zero-coefficient memory-saving case)</span>
+<span class="sd">        only one subtree exists, so it is sharded once.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mesh: The 1-D data-parallel device mesh to shard over.</span>
+<span class="sd">            mp_policy: Optional FSDP2 mixed-precision policy.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..utils.fsdp2</span><span class="w"> </span><span class="kn">import</span> <span class="n">_shard_subtree</span><span class="p">,</span> <span class="n">assert_aligned_wrapping</span>
+
+        <span class="n">_shard_subtree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">mp_policy</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">teacher</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="p">:</span>
+            <span class="n">_shard_subtree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">teacher</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">mp_policy</span><span class="p">)</span>
+            <span class="n">assert_aligned_wrapping</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">teacher</span><span class="p">)</span></div>
 </div>
 
 

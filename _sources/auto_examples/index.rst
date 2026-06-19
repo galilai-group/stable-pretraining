@@ -139,6 +139,23 @@ trials.
 
 .. raw:: html
 
+    <div class="sphx-glr-thumbcontainer" tooltip="A reference recipe for from-scratch supervised ViT classification that targets the &quot;typical&quot; ~82%+ top-1 (ViT-L; ViT-e is a scale stress-test, see note below), built to run efficiently and shard cleanly:">
+
+.. only:: html
+
+  .. image:: /auto_examples/images/thumb/sphx_glr_imagenet1k_supervised_vit_fsdp2_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/imagenet1k_supervised_vit_fsdp2`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Supervised ImageNet-1k ViT training — SOTA (DeiT/AugReg) recipe, FSDP2, GPU-fast.</div>
+    </div>
+
+
+.. raw:: html
+
     <div class="sphx-glr-thumbcontainer" tooltip="This example demonstrates how to train models using supervised learning with stable-pretraining, including support for various datasets like ImageNet-10, ImageNet-100, and ImageNet-1k.">
 
 .. only:: html
@@ -202,6 +219,7 @@ trials.
    /auto_examples/jax_simclr_minimal
    /auto_examples/imbalance_supervised_learning
    /auto_examples/wandb_figures
+   /auto_examples/imagenet1k_supervised_vit_fsdp2
    /auto_examples/supervised_learning
    /auto_examples/jax_simclr_imagenette
    /auto_examples/multi_layer_probe
