@@ -7,3 +7,7 @@ numpy==2.4.4
 timm==1.0.26
 transformers==5.4.0
 lightning==2.6.1
+# datasets>=2.20 is required for pyarrow>=21 (older datasets imported the removed
+# pyarrow.PyExtensionType). Pinned-floor so CI's --user install upgrades any
+# stale datasets; see pyproject for the full rationale.
+datasets>=2.20.0
