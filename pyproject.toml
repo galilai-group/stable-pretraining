@@ -83,8 +83,10 @@ write_to_template = "version = \"{version}\"\n"
 jax = ["jax", "flax>=0.10.0", "optax"]
 # Trackio experiment tracking (gradio_client is needed for self-hosted server_url mode)
 trackio = ["trackio", "gradio_client"]
-# SwanLab experiment tracking
-swanlab = ["swanlab"]
+# SwanLab experiment tracking. Floor >=0.8.0: that series moved the logger's
+# init kwargs to ``_init_kwargs`` (dropping ``_swanlab_init``/``_project``);
+# SwanLabLogger resolves both layouts but is developed against >=0.8.
+swanlab = ["swanlab>=0.8.0"]
 # DeepSpeed ZeRO sharding (partial: single-optimizer methods only; FSDP2 is the
 # preferred sharding path and needs no extra dep). Strategy: "deepspeed_stage_3".
 deepspeed = ["deepspeed"]
