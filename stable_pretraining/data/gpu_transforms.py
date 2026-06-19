@@ -545,6 +545,113 @@ class GPURandomErasing(_KorniaWrap):
         )
 
 
+class GPURandAugment(_KorniaWrap):
+    """Batched RandAugment on GPU (kornia ``auto.RandAugment``).
+
+    The automatic-augmentation policy used by the SOTA supervised ViT recipes
+    (DeiT/AugReg). Operates on float images in ``[0, 1]`` so place it **before**
+    :class:`GPUNormalize` in a :class:`GPUCompose` chain. Per-sample params are
+    not recorded (the auto-augment sub-policy structure isn't a flat dict).
+
+    Args:
+        n: Number of sequential sub-policies applied per image (default 2).
+        m: Magnitude in ``[0, 30]`` (default 10).
+    """
+
+    def __init__(
+        self,
+        n: int = 2,
+        m: int = 10,
+        source: str = "image",
+        target: str = "image",
+    ):
+        from kornia.augmentation.auto import RandAugment
+
+        super().__init__(
+            kornia_op=RandAugment(n=n, m=m),
+            source=source,
+            target=target,
+            record_params=False,
+        )
+
+
+class RandomMixupCutmix(nn.Module):
+    """GPU-native Mixup / CutMix with soft (smoothed) targets.
+
+    Applied at the **batch** level (it mixes samples *and* their labels), so it
+    is meant to be called inside the training ``forward`` on the already-on-GPU
+    batch — not inside a per-image :class:`GPUCompose` chain. Each call picks
+    Mixup or CutMix per batch (by ``switch_prob``), or passes through with
+    probability ``1 - prob``. Returns the mixed images and a
+    ``(B, num_classes)`` soft-label matrix with label smoothing folded in, ready
+    for ``F.cross_entropy(logits, soft_labels)``.
+
+    This reproduces the mixing used by DeiT/AugReg-style supervised training.
+
+    Args:
+        num_classes: Number of classes (for one-hot soft targets).
+        mixup_alpha: Beta parameter for Mixup (``0`` disables Mixup).
+        cutmix_alpha: Beta parameter for CutMix (``0`` disables CutMix).
+        prob: Probability of applying any mixing to a given batch.
+        switch_prob: Given mixing is applied, probability of CutMix vs Mixup.
+        label_smoothing: Smoothing applied to the (mixed) one-hot targets.
+    """
+
+    def __init__(
+        self,
+        num_classes: int,
+        mixup_alpha: float = 0.8,
+        cutmix_alpha: float = 1.0,
+        prob: float = 1.0,
+        switch_prob: float = 0.5,
+        label_smoothing: float = 0.1,
+    ):
+        super().__init__()
+        self.num_classes = int(num_classes)
+        self.mixup_alpha = float(mixup_alpha)
+        self.cutmix_alpha = float(cutmix_alpha)
+        self.prob = float(prob)
+        self.switch_prob = float(switch_prob)
+        self.label_smoothing = float(label_smoothing)
+
+    def _smooth_one_hot(self, labels: torch.Tensor) -> torch.Tensor:
+        off = self.label_smoothing / self.num_classes
+        on = 1.0 - self.label_smoothing + off
+        y = torch.full((labels.shape[0], self.num_classes), off, device=labels.device)
+        return y.scatter_(1, labels.long().view(-1, 1), on)
+
+    def forward(self, images: torch.Tensor, labels: torch.Tensor):
+        """Mix a batch. Returns ``(mixed_images, soft_labels)``."""
+        target = self._smooth_one_hot(labels)
+        if self.prob == 0.0 or float(torch.rand(())) >= self.prob:
+            return images, target
+
+        perm = torch.randperm(images.shape[0], device=images.device)
+        use_cutmix = self.cutmix_alpha > 0.0 and (
+            self.mixup_alpha <= 0.0 or float(torch.rand(())) < self.switch_prob
+        )
+        if use_cutmix:
+            lam = float(
+                torch.distributions.Beta(self.cutmix_alpha, self.cutmix_alpha).sample()
+            )
+            _, _, h, w = images.shape
+            r = (1.0 - lam) ** 0.5
+            cut_h, cut_w = int(h * r), int(w * r)
+            cy, cx = int(torch.randint(h, ())), int(torch.randint(w, ()))
+            y1, y2 = max(cy - cut_h // 2, 0), min(cy + cut_h // 2, h)
+            x1, x2 = max(cx - cut_w // 2, 0), min(cx + cut_w // 2, w)
+            images[:, :, y1:y2, x1:x2] = images[perm, :, y1:y2, x1:x2]
+            lam = 1.0 - ((y2 - y1) * (x2 - x1) / (h * w))  # true area ratio
+        else:
+            lam = float(
+                torch.distributions.Beta(self.mixup_alpha, self.mixup_alpha).sample()
+            )
+            images = lam * images + (1.0 - lam) * images[perm]
+
+        target = lam * target + (1.0 - lam) * target[perm]
+        return images, target
+
+
 class StackedMultiView(nn.Module):
     """Run a single GPU augmentation chain on a stacked ``(n_views * B, ...)`` batch.
 

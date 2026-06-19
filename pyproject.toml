@@ -32,12 +32,14 @@ dependencies = [
     "wandb",
     "hydra-submitit-launcher",
     "matplotlib",
-    "datasets",
-    # Range rather than exact pin (#411): the exact ``==20.0.0`` pin conflicted
-    # with downstream packages that also depend on pyarrow. Floor matches the
-    # version that's been release-tested; upper bound excludes major versions
-    # we haven't validated yet (currently 21..24 exist on PyPI).
-    "pyarrow>=20.0.0,<25",
+    # datasets>=2.20.0 dropped the import-time ``class _ArrayXDExtensionType(
+    # pa.PyExtensionType)`` that crashes under pyarrow>=21 (PyExtensionType was
+    # removed there). Older datasets is the ONLY thing in the stack that used
+    # it, so this floor is what lets us run modern pyarrow. Floor (not pin) so a
+    # stale ``pip install --user`` datasets is force-upgraded in CI.
+    "datasets>=2.20.0",
+    # No upper cap: the stack works with the latest pyarrow once datasets>=2.20.
+    "pyarrow>=20.0.0",
     "minari[hdf5]>=0.5.3",
     "scikit-learn>=1.7.0",
     "richuru",
