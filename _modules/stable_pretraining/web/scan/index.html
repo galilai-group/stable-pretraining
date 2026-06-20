@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.web.scan &#8212; stable-pretraining 0.1.dev1+g56f8cd53e documentation</title>
+    <title>stable_pretraining.web.scan &#8212; stable-pretraining 0.1.dev1+g35263d4c5 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=07c67b27"></script>
+    <script src="../../../../_static/documentation_options.js?v=50180792"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g56f8cd53e documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g35263d4c5 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -400,6 +400,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..registry._sidecar</span><span class="w"> </span><span class="kn">import</span> <span class="n">SIDECAR_NAME</span><span class="p">,</span> <span class="n">heartbeat_mtime</span><span class="p">,</span> <span class="n">write_sidecar</span>
 
 
 <span class="nd">@dataclass</span>
@@ -776,11 +778,23 @@
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_serialize</span><span class="p">(</span><span class="n">run</span><span class="p">:</span> <span class="n">_Run</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
         <span class="n">s</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">sidecar</span>
+        <span class="c1"># display_name: explicit sidecar field wins; fall back to the last</span>
+        <span class="c1"># path component of run_id so short IDs stay readable by default.</span>
+        <span class="n">display_name</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;display_name&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">run</span><span class="o">.</span><span class="n">run_id</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">or</span> <span class="n">run</span><span class="o">.</span><span class="n">run_id</span>
+        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">hb_at</span> <span class="o">=</span> <span class="n">heartbeat_mtime</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">run_dir</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">hb_at</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="n">run</span><span class="o">.</span><span class="n">run_id</span><span class="p">,</span>
             <span class="s2">&quot;run_dir&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">run_dir</span><span class="p">),</span>
+            <span class="s2">&quot;display_name&quot;</span><span class="p">:</span> <span class="n">display_name</span><span class="p">,</span>
             <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">),</span>
             <span class="s2">&quot;created_at&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;created_at&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;ended_at&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ended_at&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;heartbeat_at&quot;</span><span class="p">:</span> <span class="n">hb_at</span><span class="p">,</span>
             <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tags&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[],</span>
             <span class="s2">&quot;notes&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;notes&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
             <span class="s2">&quot;hparams&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hparams&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{},</span>
@@ -812,7 +826,11 @@
             <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">cached</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cached</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="n">cache_key</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">cached</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>  <span class="c1"># parsed dict (HTTP layer prefers metrics_json_bytes)</span>
 
-        <span class="k">with</span> <span class="n">mpath</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fh</span> <span class="o">=</span> <span class="n">mpath</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="p">{}}</span>
+        <span class="k">with</span> <span class="n">fh</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">header</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">reader</span><span class="p">)</span>
@@ -936,7 +954,13 @@
 
         <span class="c1"># Cold path: parse + emit incrementally so the browser can paint</span>
         <span class="c1"># while the file is still being read.</span>
-        <span class="k">with</span> <span class="n">mpath</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fh</span> <span class="o">=</span> <span class="n">mpath</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;chunk&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="p">{}}</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;done&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+            <span class="k">return</span>
+        <span class="k">with</span> <span class="n">fh</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">header</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">reader</span><span class="p">)</span>
@@ -1114,6 +1138,64 @@
         <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;events&quot;</span><span class="p">:</span> <span class="n">events</span><span class="p">}</span></div>
 
 
+    <span class="n">_MUTABLE_FIELDS</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">&quot;display_name&quot;</span><span class="p">,</span> <span class="s2">&quot;notes&quot;</span><span class="p">,</span> <span class="s2">&quot;tags&quot;</span><span class="p">,</span> <span class="s2">&quot;archived&quot;</span><span class="p">})</span>
+
+<div class="viewcode-block" id="RunScanner.patch_run_meta">
+<a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/#stable_pretraining.web.scan.RunScanner.patch_run_meta">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">patch_run_meta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">patch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Atomically apply a metadata patch to a run&#39;s sidecar.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            run_id: The run to update (must be known to the scanner).</span>
+<span class="sd">            patch: Dict containing any subset of ``display_name``, ``notes``,</span>
+<span class="sd">                ``tags``, and ``archived``. Other keys raise ``ValueError``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``True`` on success, ``False`` if ``run_id`` is not known.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If ``patch`` contains fields outside the mutable set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bad</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">patch</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_MUTABLE_FIELDS</span>
+        <span class="k">if</span> <span class="n">bad</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unknown patch fields: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">bad</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;display_name&quot;</span> <span class="ow">in</span> <span class="n">patch</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="n">patch</span><span class="p">[</span><span class="s2">&quot;display_name&quot;</span><span class="p">],</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;display_name must be a string&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;notes&quot;</span> <span class="ow">in</span> <span class="n">patch</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">patch</span><span class="p">[</span><span class="s2">&quot;notes&quot;</span><span class="p">],</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">))):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;notes must be a string&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;tags&quot;</span> <span class="ow">in</span> <span class="n">patch</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">patch</span><span class="p">[</span><span class="s2">&quot;tags&quot;</span><span class="p">],</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;tags must be a list&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;archived&quot;</span> <span class="ow">in</span> <span class="n">patch</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">patch</span><span class="p">[</span><span class="s2">&quot;archived&quot;</span><span class="p">],</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;archived must be a boolean&quot;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">run</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="n">sidecar</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">sidecar</span><span class="p">)</span>
+            <span class="n">run_dir</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">run_dir</span>
+
+        <span class="n">sidecar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">patch</span><span class="p">)</span>
+        <span class="n">write_sidecar</span><span class="p">(</span><span class="n">run_dir</span><span class="p">,</span> <span class="n">sidecar</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">new_mtime</span> <span class="o">=</span> <span class="p">(</span><span class="n">run_dir</span> <span class="o">/</span> <span class="n">SIDECAR_NAME</span><span class="p">)</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">new_mtime</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">run</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">run</span><span class="o">.</span><span class="n">sidecar</span> <span class="o">=</span> <span class="n">sidecar</span>
+                <span class="k">if</span> <span class="n">new_mtime</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">run</span><span class="o">.</span><span class="n">sidecar_mtime</span> <span class="o">=</span> <span class="n">new_mtime</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_publish</span><span class="p">(</span><span class="s2">&quot;update&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;changed&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">run_id</span><span class="p">],</span> <span class="s2">&quot;removed&quot;</span><span class="p">:</span> <span class="p">[]})</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
 <div class="viewcode-block" id="RunScanner.logs_index">
 <a class="viewcode-back" href="../../../../api/gen_modules/stable_pretraining.web.scan.RunScanner/#stable_pretraining.web.scan.RunScanner.logs_index">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">logs_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
@@ -1213,7 +1295,11 @@
             <span class="n">size</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span>
         <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
-        <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fh</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">with</span> <span class="n">fh</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="n">max_bytes</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">size</span> <span class="o">-</span> <span class="n">max_bytes</span><span class="p">)</span>
                 <span class="c1"># Discard up to the next newline to avoid a truncated line.</span>

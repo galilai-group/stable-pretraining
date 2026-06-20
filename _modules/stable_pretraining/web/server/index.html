@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.web.server &#8212; stable-pretraining 0.1.dev1+g56f8cd53e documentation</title>
+    <title>stable_pretraining.web.server &#8212; stable-pretraining 0.1.dev1+g35263d4c5 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=07c67b27"></script>
+    <script src="../../../../_static/documentation_options.js?v=50180792"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g56f8cd53e documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g35263d4c5 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -390,6 +390,7 @@
 <span class="sd">    GET /api/logs?run_id=…           → JSON list of available .out/.err streams</span>
 <span class="sd">    GET /api/log-content?run_id=…&amp;stream_id=… → text/plain (last ~4 MiB)</span>
 <span class="sd">    GET /api/stream                  → Server-Sent Events stream of update deltas</span>
+<span class="sd">    PATCH /api/run-meta              → mutate display_name / notes / tags / archived</span>
 
 <span class="sd">ThreadingHTTPServer spawns a thread per request; SSE handlers hold a</span>
 <span class="sd">thread for the connection lifetime, which is fine for a local viewer.</span>
@@ -535,6 +536,50 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">end_headers</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="s2">&quot;Not Found&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">BrokenPipeError</span><span class="p">,</span> <span class="ne">ConnectionResetError</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">do_PATCH</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: N802</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="o">!=</span> <span class="s2">&quot;/api/run-meta&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="s2">&quot;Not Found&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="n">length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Content-Length&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">length</span> <span class="o">&gt;</span> <span class="mi">64</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_serve_json</span><span class="p">({</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;request body too large&quot;</span><span class="p">},</span> <span class="mi">400</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">patch</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rfile</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">length</span><span class="p">))</span>
+            <span class="k">except</span> <span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_serve_json</span><span class="p">({</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;invalid JSON&quot;</span><span class="p">},</span> <span class="mi">400</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">patch</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_serve_json</span><span class="p">({</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;body must be a JSON object&quot;</span><span class="p">},</span> <span class="mi">400</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="n">run_id</span> <span class="o">=</span> <span class="n">patch</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;run_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">run_id</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_serve_json</span><span class="p">({</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;missing run_id&quot;</span><span class="p">},</span> <span class="mi">400</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">found</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scanner</span><span class="o">.</span><span class="n">patch_run_meta</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">patch</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_serve_json</span><span class="p">({</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)},</span> <span class="mi">400</span><span class="p">)</span>
+                <span class="k">return</span>
+            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_serve_json</span><span class="p">({</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;write failed: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span> <span class="mi">500</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">found</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_serve_json</span><span class="p">({</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;run not found&quot;</span><span class="p">},</span> <span class="mi">404</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_serve_json</span><span class="p">({</span><span class="s2">&quot;ok&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">BrokenPipeError</span><span class="p">,</span> <span class="ne">ConnectionResetError</span><span class="p">):</span>
             <span class="k">pass</span>
 

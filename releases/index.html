@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Releases &#8212; stable-pretraining 0.1.dev1+g56f8cd53e documentation</title>
+    <title>Releases &#8212; stable-pretraining 0.1.dev1+g35263d4c5 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=07c67b27"></script>
+    <script src="../_static/documentation_options.js?v=50180792"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g56f8cd53e documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g35263d4c5 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -494,6 +494,74 @@ resume / requeue / DDP semantics, media layout) and <a class="reference internal
 (full <code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">run</span></code> / <code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">web</span></code> / <code class="docutils literal notranslate"><span class="pre">spt</span> <span class="pre">registry</span></code> reference).</p></li>
 <li><p>New API pages: <a class="reference internal" href="../api/registry/"><span class="doc">stable_pretraining.registry</span></a> (RegistryLogger + Registry query)
 and <a class="reference internal" href="../api/web/"><span class="doc">stable_pretraining.web</span></a> (<code class="docutils literal notranslate"><span class="pre">serve</span></code> entry point).</p></li>
+</ul>
+<p><strong>spt web — viewer improvements</strong></p>
+<ul class="simple">
+<li><p><strong>State persistence &amp; shareable URLs</strong>: all interactive state
+(selected runs, filters, group-by, sort, x-axis, smoothing, log-y, active
+tab, theme) is serialised to <code class="docutils literal notranslate"><span class="pre">localStorage</span></code> on every mutation and restored
+on load. The URL fragment is kept in sync (<code class="docutils literal notranslate"><span class="pre">#runs=…&amp;tab=…</span></code>) so copying the
+address bar produces a link that reopens the exact same selection.</p></li>
+<li><p><strong>Chart value annotations</strong>: each metric chart now has a compact table below
+it showing the last and best value for every visible series. The best row is
+highlighted; clicking a row toggles that series on/off. Lower-is-better is
+inferred automatically from metric names containing <code class="docutils literal notranslate"><span class="pre">loss</span></code>, <code class="docutils literal notranslate"><span class="pre">err</span></code>,
+<code class="docutils literal notranslate"><span class="pre">perplexity</span></code>, or <code class="docutils literal notranslate"><span class="pre">ppl</span></code>.</p></li>
+<li><p><strong>Runs table view</strong>: a fourth <strong>table</strong> tab renders a horizontally-scrollable
+grid with one row per visible run and one column per hparam/summary key. Cells
+whose values differ across runs are highlighted in amber; identical cells are
+dimmed. Columns are sortable by click and filterable by a search box. The
+run-ID column and header row are sticky.</p></li>
+<li><p><strong>Run display names</strong>: the sidebar and table now show <code class="docutils literal notranslate"><span class="pre">display_name</span></code> as the
+primary label with the raw path shown as a dimmed hint. Double-clicking the
+label opens an inline editor; changes are persisted via <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/api/run-meta</span></code>.</p></li>
+<li><p><strong>Notes editing</strong>: the run detail modal has an editable notes textarea that
+auto-resizes to its content. Notes are saved on blur or <code class="docutils literal notranslate"><span class="pre">Ctrl+Enter</span></code> via
+<code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/api/run-meta</span></code>.</p></li>
+<li><p><strong>Log auto-refresh / live tail</strong>: the <code class="docutils literal notranslate"><span class="pre">.out</span></code> and <code class="docutils literal notranslate"><span class="pre">.err</span></code> tabs auto-refresh
+every 10 s while the selected run is running or stale, showing a pulsing
+<strong>live</strong> badge. A pause button stops the timer; a refresh button triggers a
+manual fetch. Scroll position is preserved when the user has scrolled up.</p></li>
+<li><p><strong>Elapsed time / duration</strong>: each run row and the detail modal now show the
+elapsed or total duration. Running runs tick forward every 60 s without a full
+re-render. <code class="docutils literal notranslate"><span class="pre">RegistryLogger.finalize()</span></code> now records <code class="docutils literal notranslate"><span class="pre">ended_at</span></code> in the
+sidecar so completed durations survive restarts.</p></li>
+<li><p><strong>Heartbeat staleness</strong>: runs whose heartbeat file is more than 5 minutes old
+are flagged as <strong>stale</strong> with an amber ⚠ indicator in the sidebar, topbar
+stats, detail modal, figures overview, and activity timeline. Filters,
+group-by, and sort all treat stale as a distinct status value via a centralised
+<code class="docutils literal notranslate"><span class="pre">effectiveStatus()</span></code> helper.</p></li>
+<li><p><strong>Scatter plot</strong>: the figures tab renders a scatter plot below the metric
+charts when two or more runs are visible. X and Y axes are independently
+selectable from any numeric <code class="docutils literal notranslate"><span class="pre">hparams.*</span></code> or <code class="docutils literal notranslate"><span class="pre">summary.*</span></code> key across visible
+runs. Each run contributes one point (its final summary scalar). Axis
+selection is persisted to <code class="docutils literal notranslate"><span class="pre">localStorage</span></code>.</p></li>
+<li><p><strong>CSV export</strong>: a <strong>download CSV</strong> button in the figures toolbar downloads all
+visible metrics for the currently selected runs as a flat CSV
+(<code class="docutils literal notranslate"><span class="pre">run_id,</span> <span class="pre">run_name,</span> <span class="pre">metric,</span> <span class="pre">step,</span> <span class="pre">epoch,</span> <span class="pre">value</span></code>). Only the runs and metrics
+currently in view (respecting the metric-search filter) are included. No
+server round-trip — the data is built entirely from the in-memory metrics
+cache.</p></li>
+<li><p><strong>Zoom reset</strong>: drag-selecting a region on any chart zooms all charts
+simultaneously (shared sync key). A <strong>⤢</strong> reset button appears in the chart
+title bar after zooming and resets all charts to their full x-range in one
+click. The drag-selection region is now styled with an accent-coloured border
+and fill.</p></li>
+<li><p><strong>Sidebar resize + virtual scroll</strong>: the sidebar can be dragged to any width
+between 160 px and 600 px; the chosen width is persisted. The
+search/filter/sort controls are now fixed at the top of the sidebar while the
+run list scrolls independently below them. When more than 300 ungrouped runs
+are visible, the run list switches to a virtual-scroll window so SSE updates
+remain smooth at scale.</p></li>
+<li><p><strong>Keyboard shortcuts</strong>: <code class="docutils literal notranslate"><span class="pre">/</span></code> focuses metric search, <code class="docutils literal notranslate"><span class="pre">r</span></code> focuses run
+search, <code class="docutils literal notranslate"><span class="pre">t</span></code> cycles tabs, <code class="docutils literal notranslate"><span class="pre">Shift+A</span></code> selects all, <code class="docutils literal notranslate"><span class="pre">Shift+C</span></code> clears all,
+<code class="docutils literal notranslate"><span class="pre">?</span></code> opens a help popover listing all shortcuts. <code class="docutils literal notranslate"><span class="pre">Esc</span></code> exits focused inputs
+and dismisses all modals and popovers.</p></li>
+<li><p><strong>Tag editing</strong>: run tags are now displayed as editable pills in the detail
+modal. Clicking <strong>star</strong> on a pill removes the tag; a dashed <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">tag</span></code> input
+with autocomplete (populated from tags on other runs) adds new ones. All
+changes are persisted via <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/api/run-meta</span></code> with optimistic updates and
+revert on failure.</p></li>
 </ul>
 </section>
 <section id="version-0-1">

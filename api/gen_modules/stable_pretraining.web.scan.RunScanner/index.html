@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>RunScanner &#8212; stable-pretraining 0.1.dev1+g56f8cd53e documentation</title>
+    <title>RunScanner &#8212; stable-pretraining 0.1.dev1+g35263d4c5 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=07c67b27"></script>
+    <script src="../../../_static/documentation_options.js?v=50180792"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g56f8cd53e documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g35263d4c5 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -430,6 +430,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.media_json"><code class="docutils literal notranslate"><span class="pre">RunScanner.media_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.metrics_json_bytes"><code class="docutils literal notranslate"><span class="pre">RunScanner.metrics_json_bytes()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.metrics_stream"><code class="docutils literal notranslate"><span class="pre">RunScanner.metrics_stream()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.patch_run_meta"><code class="docutils literal notranslate"><span class="pre">RunScanner.patch_run_meta()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.progress_json"><code class="docutils literal notranslate"><span class="pre">RunScanner.progress_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.start"><code class="docutils literal notranslate"><span class="pre">RunScanner.start()</span></code></a></li>
 </ul>
@@ -527,6 +528,27 @@ reads of the same run hit the warm cache.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="stable_pretraining.web.scan.RunScanner.patch_run_meta">
+<span class="sig-name descname"><span class="pre">patch_run_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../../_modules/stable_pretraining/web/scan/#RunScanner.patch_run_meta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.web.scan.RunScanner.patch_run_meta" title="Link to this definition">#</a></dt>
+<dd><p>Atomically apply a metadata patch to a run’s sidecar.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>run_id</strong> – The run to update (must be known to the scanner).</p></li>
+<li><p><strong>patch</strong> – Dict containing any subset of <code class="docutils literal notranslate"><span class="pre">display_name</span></code>, <code class="docutils literal notranslate"><span class="pre">notes</span></code>,
+<code class="docutils literal notranslate"><span class="pre">tags</span></code>, and <code class="docutils literal notranslate"><span class="pre">archived</span></code>. Other keys raise <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> on success, <code class="docutils literal notranslate"><span class="pre">False</span></code> if <code class="docutils literal notranslate"><span class="pre">run_id</span></code> is not known.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">patch</span></code> contains fields outside the mutable set.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.web.scan.RunScanner.progress_json">
 <span class="sig-name descname"><span class="pre">progress_json</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../../../_modules/stable_pretraining/web/scan/#RunScanner.progress_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.web.scan.RunScanner.progress_json" title="Link to this definition">#</a></dt>
 <dd><p>Snapshot of the current scan progress (used by the UI loading bar).</p>
@@ -591,6 +613,7 @@ about discovered runs via the SSE /api/stream channel.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.media_json"><code class="docutils literal notranslate"><span class="pre">RunScanner.media_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.metrics_json_bytes"><code class="docutils literal notranslate"><span class="pre">RunScanner.metrics_json_bytes()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.metrics_stream"><code class="docutils literal notranslate"><span class="pre">RunScanner.metrics_stream()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.patch_run_meta"><code class="docutils literal notranslate"><span class="pre">RunScanner.patch_run_meta()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.progress_json"><code class="docutils literal notranslate"><span class="pre">RunScanner.progress_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.web.scan.RunScanner.start"><code class="docutils literal notranslate"><span class="pre">RunScanner.start()</span></code></a></li>
 </ul>
