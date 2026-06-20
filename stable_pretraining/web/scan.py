@@ -21,6 +21,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
+from ..registry._sidecar import SIDECAR_NAME, heartbeat_mtime, write_sidecar
+
 
 @dataclass
 class _Run:
@@ -388,11 +390,23 @@ class RunScanner:
     @staticmethod
     def _serialize(run: _Run) -> dict:
         s = run.sidecar
+        # display_name: explicit sidecar field wins; fall back to the last
+        # path component of run_id so short IDs stay readable by default.
+        display_name = (
+            s.get("display_name") or run.run_id.rsplit("/", 1)[-1] or run.run_id
+        )
+        try:
+            hb_at = heartbeat_mtime(run.run_dir)
+        except OSError:
+            hb_at = None
         return {
             "run_id": run.run_id,
             "run_dir": str(run.run_dir),
+            "display_name": display_name,
             "status": s.get("status"),
             "created_at": s.get("created_at"),
+            "ended_at": s.get("ended_at"),
+            "heartbeat_at": hb_at,
             "tags": s.get("tags") or [],
             "notes": s.get("notes") or "",
             "hparams": s.get("hparams") or {},
@@ -424,7 +438,11 @@ class RunScanner:
             if cached is not None and (cached[0], cached[1]) == cache_key:
                 return cached[2]  # parsed dict (HTTP layer prefers metrics_json_bytes)
 
-        with mpath.open("r", newline="") as f:
+        try:
+            fh = mpath.open("r", newline="")
+        except OSError:
+            return {"metrics": {}}
+        with fh as f:
             reader = csv.reader(f)
             try:
                 header = next(reader)
@@ -546,7 +564,13 @@ class RunScanner:
 
         # Cold path: parse + emit incrementally so the browser can paint
         # while the file is still being read.
-        with mpath.open("r", newline="") as f:
+        try:
+            fh = mpath.open("r", newline="")
+        except OSError:
+            yield {"chunk": 0, "metrics": {}}
+            yield {"done": True}
+            return
+        with fh as f:
             reader = csv.reader(f)
             try:
                 header = next(reader)
@@ -717,6 +741,61 @@ class RunScanner:
             pass
         return {"events": events}
 
+    _MUTABLE_FIELDS = frozenset({"display_name", "notes", "tags", "archived"})
+
+    def patch_run_meta(self, run_id: str, patch: dict) -> bool:
+        """Atomically apply a metadata patch to a run's sidecar.
+
+        Args:
+            run_id: The run to update (must be known to the scanner).
+            patch: Dict containing any subset of ``display_name``, ``notes``,
+                ``tags``, and ``archived``. Other keys raise ``ValueError``.
+
+        Returns:
+            ``True`` on success, ``False`` if ``run_id`` is not known.
+
+        Raises:
+            ValueError: If ``patch`` contains fields outside the mutable set.
+        """
+        bad = set(patch) - self._MUTABLE_FIELDS
+        if bad:
+            raise ValueError(f"unknown patch fields: {sorted(bad)}")
+        if "display_name" in patch and not isinstance(
+            patch["display_name"], (str, type(None))
+        ):
+            raise ValueError("display_name must be a string")
+        if "notes" in patch and not isinstance(patch["notes"], (str, type(None))):
+            raise ValueError("notes must be a string")
+        if "tags" in patch and not isinstance(patch["tags"], list):
+            raise ValueError("tags must be a list")
+        if "archived" in patch and not isinstance(patch["archived"], bool):
+            raise ValueError("archived must be a boolean")
+
+        with self._lock:
+            run = self._runs.get(run_id)
+            if run is None:
+                return False
+            sidecar = dict(run.sidecar)
+            run_dir = run.run_dir
+
+        sidecar.update(patch)
+        write_sidecar(run_dir, sidecar)
+
+        try:
+            new_mtime = (run_dir / SIDECAR_NAME).stat().st_mtime
+        except OSError:
+            new_mtime = None
+
+        with self._lock:
+            run = self._runs.get(run_id)
+            if run is not None:
+                run.sidecar = sidecar
+                if new_mtime is not None:
+                    run.sidecar_mtime = new_mtime
+
+        self._publish("update", {"changed": [run_id], "removed": []})
+        return True
+
     def logs_index(self, run_id: str) -> Optional[dict]:
         """Discover ``.out`` / ``.err`` / ``.log`` files for a run.
 
@@ -811,7 +890,11 @@ class RunScanner:
             size = path.stat().st_size
         except OSError:
             return None
-        with path.open("rb") as f:
+        try:
+            fh = path.open("rb")
+        except OSError:
+            return None
+        with fh as f:
             if size > max_bytes:
                 f.seek(size - max_bytes)
                 # Discard up to the next newline to avoid a truncated line.

@@ -10,6 +10,7 @@ Routes:
     GET /api/logs?run_id=…           → JSON list of available .out/.err streams
     GET /api/log-content?run_id=…&stream_id=… → text/plain (last ~4 MiB)
     GET /api/stream                  → Server-Sent Events stream of update deltas
+    PATCH /api/run-meta              → mutate display_name / notes / tags / archived
 
 ThreadingHTTPServer spawns a thread per request; SSE handlers hold a
 thread for the connection lifetime, which is fine for a local viewer.
@@ -155,6 +156,50 @@ class _Handler(BaseHTTPRequestHandler):
                 self.end_headers()
             else:
                 self.send_error(404, "Not Found")
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def do_PATCH(self) -> None:  # noqa: N802
+        try:
+            url = urlparse(self.path)
+            if url.path != "/api/run-meta":
+                self.send_error(404, "Not Found")
+                return
+
+            length = int(self.headers.get("Content-Length", 0))
+            if length > 64 * 1024:
+                self._serve_json({"error": "request body too large"}, 400)
+                return
+
+            try:
+                patch = json.loads(self.rfile.read(length))
+            except (json.JSONDecodeError, ValueError):
+                self._serve_json({"error": "invalid JSON"}, 400)
+                return
+
+            if not isinstance(patch, dict):
+                self._serve_json({"error": "body must be a JSON object"}, 400)
+                return
+
+            run_id = patch.pop("run_id", None)
+            if not run_id or not isinstance(run_id, str):
+                self._serve_json({"error": "missing run_id"}, 400)
+                return
+
+            try:
+                found = self.scanner.patch_run_meta(run_id, patch)
+            except ValueError as exc:
+                self._serve_json({"error": str(exc)}, 400)
+                return
+            except OSError as exc:
+                self._serve_json({"error": f"write failed: {exc}"}, 500)
+                return
+
+            if not found:
+                self._serve_json({"error": "run not found"}, 404)
+                return
+
+            self._serve_json({"ok": True})
         except (BrokenPipeError, ConnectionResetError):
             pass
 

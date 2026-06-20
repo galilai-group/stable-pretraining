@@ -16,6 +16,7 @@
       <span class="status-stat" id="stat-running"   title="running runs">·  <span class="dot running"></span><span class="n">0</span> running</span>
       <span class="status-stat" id="stat-completed" title="completed runs">·  <span class="dot completed"></span><span class="n">0</span> done</span>
       <span class="status-stat" id="stat-failed"    title="failed runs">·  <span class="dot failed"></span><span class="n">0</span> failed</span>
+      <span class="status-stat" id="stat-stale"     title="stale runs — no heartbeat for >5m" hidden>·  <span class="dot stale"></span><span class="n">0</span> stale</span>
     </div>
     <div class="spacer"></div>
     <button id="theme-toggle" class="icon-btn" type="button" title="toggle light/dark theme" aria-label="toggle theme"></button>
@@ -47,11 +48,13 @@
     </div>
     <div id="run-list"></div>
   </aside>
+  <div id="sidebar-resizer" aria-hidden="true"></div>
   <main id="main-panel">
     <nav id="tabs" class="tabs" role="tablist">
       <button class="tab active" data-tab="figures" type="button">figures</button>
       <button class="tab" data-tab="out" type="button">.out</button>
       <button class="tab" data-tab="err" type="button">.err</button>
+      <button class="tab" data-tab="table" type="button">table</button>
     </nav>
     <div id="tab-figures" class="tab-pane active">
       <div id="figures-controls">
@@ -69,6 +72,8 @@
         <input id="metric-search" type="search" placeholder="filter metrics by name..."
                autocomplete="off" spellcheck="false">
         <span id="metric-search-status" class="metric-search-status"></span>
+        <button id="export-csv" class="icon-btn" type="button" title="export visible metrics as CSV">⬇ CSV</button>
+        <button id="combine-btn" class="icon-btn" type="button" title="combine selected metrics into one chart" hidden>Combine (0)</button>
       </div>
       <div id="charts"><div class="empty-state">select a run on the left to plot its metrics</div></div>
     </div>
@@ -77,6 +82,8 @@
         <label class="control">stream
           <select id="logs-stream-selector"></select>
         </label>
+        <span id="logs-live-badge" class="log-live-badge" hidden>live</span>
+        <button id="logs-pause" class="icon-btn" type="button" title="pause auto-refresh" hidden>⏸</button>
         <button id="logs-refresh" class="icon-btn" type="button" title="refresh">↻</button>
       </div>
       <pre id="logs-out" class="log-view"></pre>
@@ -86,9 +93,19 @@
         <label class="control">stream
           <select id="logs-err-stream-selector"></select>
         </label>
+        <span id="logs-err-live-badge" class="log-live-badge" hidden>live</span>
+        <button id="logs-err-pause" class="icon-btn" type="button" title="pause auto-refresh" hidden>⏸</button>
         <button id="logs-err-refresh" class="icon-btn" type="button" title="refresh">↻</button>
       </div>
       <pre id="logs-err" class="log-view"></pre>
+    </div>
+    <div id="tab-table" class="tab-pane">
+      <div id="table-controls">
+        <input id="table-col-search" type="search" placeholder="filter columns..." autocomplete="off" spellcheck="false">
+        <span id="table-col-count" class="table-col-count"></span>
+        <button id="table-hide-same" class="icon-btn" type="button" title="hide columns with identical values across all visible runs">hide same</button>
+      </div>
+      <div class="runs-table-wrap"></div>
     </div>
   </main>
 </div>
@@ -115,6 +132,26 @@
     <div id="detail-body"></div>
   </div>
 </div>
+<div id="kbd-overlay" hidden role="dialog" aria-modal="true" aria-label="keyboard shortcuts">
+  <div id="kbd-card">
+    <div class="kbd-header">
+      <span>keyboard shortcuts</span>
+      <button id="kbd-close" type="button" title="close (Esc)" aria-label="close">×</button>
+    </div>
+    <table class="kbd-table">
+      <tbody>
+        <tr><td><kbd>/</kbd></td><td>focus metric search</td></tr>
+        <tr><td><kbd>r</kbd></td><td>focus run search</td></tr>
+        <tr><td><kbd>t</kbd></td><td>cycle tabs</td></tr>
+        <tr><td><kbd>Shift</kbd>+<kbd>A</kbd></td><td>select all visible runs</td></tr>
+        <tr><td><kbd>Shift</kbd>+<kbd>C</kbd></td><td>clear all runs</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>close modal / popover</td></tr>
+        <tr><td><kbd>?</kbd></td><td>show this help</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<div id="toast-container" aria-live="polite" aria-atomic="false"></div>
 <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.31/dist/uPlot.iife.min.js"></script>
 <script src="/assets/app.js"></script>
 </body>

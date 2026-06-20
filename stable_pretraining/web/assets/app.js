@@ -26,16 +26,37 @@
     expandedMetrics: new Set(),  // metric tree paths the user has expanded (closed by default)
     openSidebarGroups: new Set(), // sidebar group keys the user has expanded
     theme: 'dark',
-    activeTab: 'figures',   // 'figures' | 'out' | 'err'
+    activeTab: 'figures',   // 'figures' | 'out' | 'err' | 'table'
     metricSearch: '',
+    tableColSearch: '',
+    tableSort: null,         // null | { col: string, dir: 'asc' | 'desc' }
     // Cached per-run log discoveries: runId -> {streams, fetchedAt}
     logsIndex: new Map(),
     // Currently selected (runId, stream_id) for each kind, persisted across
     // tab switches so the user doesn't lose their place.
     logSelection: { out: null, err: null },  // null or {runId, streamId}
+    logLivePaused: { out: false, err: false },
+    scatterX: null,   // 'hparams.lr' | 'summary.val_acc' | …
+    scatterY: null,
+    tableHideSame: false,
+    combineSelection: new Set(),  // metric names currently selected for combining
+    combinedCharts: [],           // [{id, metrics: string[]}]
+    metricDir: {},                // metric name -> true (lower better) | false (higher better); absent = auto
   };
 
+  // setInterval handles for log auto-refresh; null when not running.
+  const _logLiveTimers = { out: null, err: null };
+
+  // Active uPlot instance for the scatter panel; null when not shown.
+  let _scatterPlot = null;
+
   const SYNC_KEY = 'sptweb-x';
+
+  // Virtual scroll state — set by renderRunList when the flat list is large.
+  const VSCROLL_THRESHOLD = 300;
+  const VSCROLL_OVERSCAN  = 5;
+  let _rowHeight  = 34;
+  let _vScrollState = null;  // { el, runs } | null
 
   // ---- theme -----------------------------------------------------------
 
@@ -79,6 +100,135 @@
     applyTheme(saved);
   }
 
+  // ---- state persistence -----------------------------------------------
+
+  function saveState() {
+    const snap = {
+      visible: [...state.visible],
+      filters: state.filters,
+      groupBy: state.groupBy,
+      sortBy: state.sortBy,
+      sortDesc: state.sortDesc,
+      xAxis: state.xAxis,
+      logY: state.logY,
+      smoothing: state.smoothing,
+      metricSearch: state.metricSearch,
+      tableColSearch: state.tableColSearch,
+      scatterX: state.scatterX,
+      scatterY: state.scatterY,
+      tableHideSame: state.tableHideSame,
+      activeTab: state.activeTab,
+      theme: state.theme,
+      combinedCharts: state.combinedCharts,
+      metricDir: state.metricDir,
+    };
+    try { localStorage.setItem('spt-web-state', JSON.stringify(snap)); } catch {}
+    const ids = [...state.visible].map(id => encodeURIComponent(id)).join(',');
+    try {
+      history.replaceState(null, '', '#runs=' + ids + '&tab=' + encodeURIComponent(state.activeTab));
+    } catch {}
+  }
+
+  function loadState() {
+    // Parse URL fragment first (wins over localStorage on conflict).
+    let fragVisible = null;
+    let fragTab = null;
+    if (location.hash.length > 1) {
+      const params = new URLSearchParams(location.hash.slice(1));
+      const runsParam = params.get('runs');
+      if (runsParam !== null) {
+        fragVisible = runsParam
+          ? runsParam.split(',').filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch { return s; } })
+          : [];
+      }
+      const tabParam = params.get('tab');
+      if (tabParam && ['figures', 'out', 'err', 'table'].includes(tabParam)) fragTab = tabParam;
+    }
+
+    // Load localStorage snapshot.
+    let saved = null;
+    try {
+      const raw = localStorage.getItem('spt-web-state');
+      if (raw) saved = JSON.parse(raw);
+    } catch {}
+
+    if (saved && typeof saved === 'object') {
+      if (Array.isArray(saved.filters)) state.filters = saved.filters;
+      if (typeof saved.groupBy === 'string') state.groupBy = saved.groupBy;
+      if (typeof saved.sortBy === 'string') state.sortBy = saved.sortBy;
+      if (typeof saved.sortDesc === 'boolean') state.sortDesc = saved.sortDesc;
+      if (typeof saved.xAxis === 'string') state.xAxis = saved.xAxis;
+      if (typeof saved.logY === 'boolean') state.logY = saved.logY;
+      if (typeof saved.smoothing === 'number') state.smoothing = saved.smoothing;
+      if (typeof saved.metricSearch === 'string') state.metricSearch = saved.metricSearch;
+      if (typeof saved.tableColSearch === 'string') state.tableColSearch = saved.tableColSearch;
+      if (typeof saved.scatterX === 'string') state.scatterX = saved.scatterX;
+      if (typeof saved.scatterY === 'string') state.scatterY = saved.scatterY;
+      if (typeof saved.tableHideSame === 'boolean') state.tableHideSame = saved.tableHideSame;
+      if (typeof saved.activeTab === 'string') state.activeTab = saved.activeTab;
+      if (typeof saved.theme === 'string') state.theme = saved.theme;
+      if (Array.isArray(saved.combinedCharts)) state.combinedCharts = saved.combinedCharts;
+      if (saved.metricDir && typeof saved.metricDir === 'object' && !Array.isArray(saved.metricDir)) state.metricDir = saved.metricDir;
+      if (Array.isArray(saved.visible)) state._pendingVisible = new Set(saved.visible);
+    }
+
+    // Fragment overrides localStorage for visible runs and active tab.
+    if (fragVisible !== null) state._pendingVisible = new Set(fragVisible);
+    if (fragTab !== null) state.activeTab = fragTab;
+
+    // Keep the legacy spt-web-theme key in sync so initTheme() still works.
+    try { localStorage.setItem('spt-web-theme', state.theme); } catch {}
+  }
+
+  function syncControlsToState() {
+    const smEl = document.getElementById('smoothing');
+    const smvEl = document.getElementById('smoothing-val');
+    if (smEl) smEl.value = String(state.smoothing);
+    if (smvEl) smvEl.textContent = state.smoothing.toFixed(2);
+    const xEl = document.getElementById('x-axis');
+    if (xEl) xEl.value = state.xAxis;
+    const lyEl = document.getElementById('log-y');
+    if (lyEl) lyEl.checked = state.logY;
+    const msEl = document.getElementById('metric-search');
+    if (msEl) msEl.value = state.metricSearch;
+    const tcsEl = document.getElementById('table-col-search');
+    if (tcsEl) tcsEl.value = state.tableColSearch;
+    const hsBtn = document.getElementById('table-hide-same');
+    if (hsBtn) {
+      hsBtn.textContent = state.tableHideSame ? 'show same' : 'hide same';
+      hsBtn.classList.toggle('active', state.tableHideSame);
+    }
+    // Apply active tab to DOM directly — calling setActiveTab() would fire
+    // saveState() while state.visible is still empty (runs not yet loaded).
+    for (const btn of document.querySelectorAll('#tabs .tab')) {
+      btn.classList.toggle('active', btn.dataset.tab === state.activeTab);
+    }
+    for (const pane of document.querySelectorAll('.tab-pane')) {
+      pane.classList.toggle('active', pane.id === `tab-${state.activeTab}`);
+    }
+  }
+
+  async function applyPendingVisible() {
+    if (!state._pendingVisible) return;
+    const ids = [...state._pendingVisible].filter(id => state.runs.has(id));
+    state._pendingVisible = null;
+    if (!ids.length) return;
+    for (const id of ids) state.visible.add(id);
+    const needMetrics = ids.filter(id => !state.metrics.has(id));
+    const needMedia = ids.filter(id => {
+      if (state.media.has(id)) return false;
+      const r = state.runs.get(id);
+      return r && r.has_media;
+    });
+    await Promise.all([...needMetrics.map(fetchMetrics), ...needMedia.map(fetchMedia)]);
+    renderRunList();
+    scheduleRerender();
+    if (state.activeTab === 'out' || state.activeTab === 'err') {
+      await refreshLogStreamsForVisibleRuns();
+      renderLogTab(state.activeTab);
+    }
+  }
+
   // ---- color: stable hash → HSL ----------------------------------------
 
   const colorCache = new Map();
@@ -108,6 +258,16 @@
     return r.json();
   }
 
+  async function patchRunMeta(runId, fields) {
+    const res = await fetch('/api/run-meta', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ run_id: runId, ...fields }),
+    });
+    if (!res.ok) throw new Error(await res.text().catch(() => String(res.status)));
+    return res.json();
+  }
+
   async function refreshRuns() {
     const runs = await fetchJSON('/api/runs');
     const seen = new Set();
@@ -125,6 +285,7 @@
     }
     renderRunList();
     updateHeaderStats();
+    await applyPendingVisible();
   }
 
   // Stream-fetch metrics via NDJSON. The server emits one JSON object per
@@ -305,6 +466,7 @@
 
   function valueAt(run, key) {
     if (!key) return null;
+    if (key === 'status') return effectiveStatus(run);
     if (key.indexOf('.') < 0) return run[key];
     const dot = key.indexOf('.');
     const ns = key.slice(0, dot);
@@ -438,6 +600,7 @@
         renderFilters();
         renderRunList();
         scheduleRerender();
+        saveState();
       });
       chip.appendChild(rm);
 
@@ -524,6 +687,7 @@
       renderFilters();
       renderRunList();
       scheduleRerender();
+      saveState();
     });
   }
 
@@ -538,21 +702,88 @@
     row.dataset.runId = r.run_id;
 
     const dot = document.createElement('div');
-    dot.className = 'run-dot';
-    dot.style.background = runColor(r.run_id);
+    if (isStale(r)) {
+      dot.className = 'run-dot stale';
+      dot.textContent = '⚠';
+      const staleMins = Math.floor((Date.now() / 1000 - r.heartbeat_at) / 60);
+      dot.title = `no heartbeat for ${staleMins > 0 ? staleMins + 'm' : '<1m'} — may have crashed`;
+    } else {
+      dot.className = 'run-dot';
+      dot.style.background = runColor(r.run_id);
+    }
     row.appendChild(dot);
 
-    const name = document.createElement('div');
-    name.className = 'run-name';
-    name.title = `${r.run_id}\n${r.run_dir || ''}`;
-    name.textContent = r.run_id;
-    row.appendChild(name);
+    // Name column: primary display_name + optional dimmed run_id hint.
+    const nameWrap = document.createElement('div');
+    nameWrap.className = 'run-name';
+
+    const displayEl = document.createElement('div');
+    displayEl.className = 'run-display-name';
+    displayEl.textContent = r.display_name || r.run_id;
+    displayEl.title = `${r.run_id}\n${r.run_dir || ''}`;
+    nameWrap.appendChild(displayEl);
+
+    // Show run_id as a hint only when it differs from the display name
+    // (i.e. the path has been shortened, or a custom name was set).
+    if (r.display_name && r.display_name !== r.run_id) {
+      const hint = document.createElement('div');
+      hint.className = 'run-id-hint';
+      hint.textContent = r.run_id;
+      nameWrap.appendChild(hint);
+    }
+
+    // Double-click on the display name starts inline editing.
+    displayEl.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      const prev = r.display_name || r.run_id;
+      const input = document.createElement('input');
+      input.className = 'run-name-edit';
+      input.value = prev;
+      displayEl.replaceWith(input);
+      input.focus();
+      input.select();
+
+      let done = false;
+      function commit() {
+        if (done) return;
+        done = true;
+        const val = input.value.trim();
+        input.replaceWith(displayEl);
+        if (val && val !== prev) {
+          displayEl.textContent = val;
+          const run = state.runs.get(r.run_id);
+          if (run) run.display_name = val;
+          patchRunMeta(r.run_id, { display_name: val }).catch(err => {
+            displayEl.textContent = prev;
+            const cur = state.runs.get(r.run_id);
+            if (cur) cur.display_name = prev;
+            showToast(`Rename failed — ${err.message || 'server error'}`);
+          });
+        }
+      }
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', ke => {
+        if (ke.key === 'Enter') { ke.preventDefault(); input.blur(); }
+        if (ke.key === 'Escape') { done = true; input.replaceWith(displayEl); }
+      });
+    });
+
+    row.appendChild(nameWrap);
 
     if (r.status) {
       const st = document.createElement('div');
-      st.className = `run-status ${r.status}`;
-      st.textContent = r.status;
+      const es = effectiveStatus(r);
+      st.className = `run-status ${es}`;
+      st.textContent = es;
       row.appendChild(st);
+    }
+
+    if (r.status === 'running' || r.ended_at) {
+      const dur = document.createElement('div');
+      dur.className = 'run-dur';
+      dur.dataset.runId = r.run_id;
+      dur.textContent = fmtRunDur(r) || '';
+      row.appendChild(dur);
     }
 
     const info = document.createElement('button');
@@ -583,6 +814,15 @@
       `${state.runs.size} run${state.runs.size === 1 ? '' : 's'}` +
       (filtered.length !== state.runs.size ? ` (${filtered.length} shown)` : '');
 
+    // Virtual scroll: flat list only (groups defeat windowing).
+    if (groups.length === 0 && sorted.length > VSCROLL_THRESHOLD) {
+      _vScrollState = { el, runs: sorted };
+      state._lastListKey = null;  // force full rebuild next time we drop below threshold
+      _applyVScrollWindow();
+      return;
+    }
+    _vScrollState = null;
+
     // Skip rebuilding the sidebar DOM when the *structure* (group keys,
     // run order, run count) hasn't changed. Background SSE updates fire
     // every few seconds during training; rebuilding 2 000+ rows on every
@@ -590,8 +830,8 @@
     // that affect appearance (visibility, loading-pulse) are repainted by
     // touching only the affected row's classList below.
     const layoutKey = JSON.stringify({
-      groupKeys: groups.map(g => [g.key, g.runs.map(r => r.run_id)]),
-      ungrouped: ungrouped.map(r => r.run_id),
+      groupKeys: groups.map(g => [g.key, g.runs.map(r => [r.run_id, r.display_name, isStale(r)])]),
+      ungrouped: ungrouped.map(r => [r.run_id, r.display_name, isStale(r)]),
       open: [...state.openSidebarGroups].sort(),
     });
     if (state._lastListKey === layoutKey) {
@@ -628,6 +868,10 @@
     }
     // Ungrouped runs (or all runs when groupBy is empty) flat at the bottom.
     for (const r of ungrouped) frag.appendChild(makeRunRow(r));
+    // Commit any in-progress inline name edit before tearing out the DOM —
+    // Chrome doesn't fire blur when an element is removed from the tree.
+    const activeEdit = el.querySelector('.run-name-edit');
+    if (activeEdit) activeEdit.blur();
     el.replaceChildren(frag);
   }
 
@@ -641,6 +885,7 @@
       state.visible.delete(id);
       renderRunList();
       scheduleRerender();
+      saveState();
       return;
     }
     state.visible.add(id);
@@ -664,6 +909,7 @@
     }
     renderRunList();
     scheduleRerender();
+    saveState();
     if (state.activeTab === 'out' || state.activeTab === 'err') {
       // Selection changed → log-stream options change.
       fetchLogStreams(id).then(() => renderLogTab(state.activeTab));
@@ -692,6 +938,7 @@
     }
     renderRunList();
     scheduleRerender();
+    saveState();
     if (state.activeTab === 'out' || state.activeTab === 'err') {
       refreshLogStreamsForVisibleRuns().then(() => renderLogTab(state.activeTab));
     }
@@ -706,6 +953,7 @@
     requestAnimationFrame(() => {
       renderPending = false;
       renderCharts();
+      if (state.activeTab === 'table') renderRunsTable();
     });
   }
 
@@ -842,25 +1090,30 @@
     const mediaTags = visibleMediaTags();
     const allTags = [...new Set([...metrics, ...mediaTags.keys()])];
 
-    if (allTags.length === 0) {
+    if (allTags.length === 0 && state.combinedCharts.length === 0) {
       for (const { plot } of state.charts.values()) plot?.destroy();
       state.charts.clear();
       for (const { panel } of state.mediaPanels.values()) panel.remove();
       state.mediaPanels.clear();
       state._lastTreeKey = null; // force rebuild next time we leave overview
+      if (_scatterPlot) { _scatterPlot.destroy(); _scatterPlot = null; }
       renderOverview(root);
       return;
     }
 
-    // Tear down chart panels for metrics that vanished.
+    // Tear down chart panels for metrics that vanished (skip combined charts).
     const metricSet = new Set(metrics);
+    let selectionChanged = false;
     for (const [name, entry] of [...state.charts.entries()]) {
+      if (name.startsWith('__combined__/')) continue;
       if (!metricSet.has(name) || mediaTags.has(name)) {
         entry.plot?.destroy();
         entry.panel.remove();
         state.charts.delete(name);
+        if (state.combineSelection.delete(name)) selectionChanged = true;
       }
     }
+    if (selectionChanged) updateCombineSelectionUI();
     // Tear down media panels for tags that vanished.
     for (const [tag, entry] of [...state.mediaPanels.entries()]) {
       if (!mediaTags.has(tag)) {
@@ -868,6 +1121,14 @@
         state.mediaPanels.delete(tag);
       }
     }
+
+    // Combined charts section — pinned above the metric tree.
+    let combinedSection = root.querySelector(':scope > .combined-charts-section');
+    if (!combinedSection) {
+      combinedSection = document.createElement('div');
+      combinedSection.className = 'combined-charts-section';
+    }
+    renderCombinedCharts(combinedSection);
 
     // Skip the full tree rebuild when nothing structurally changed.
     // Streaming-metrics chunks fire scheduleRerender many times per
@@ -884,7 +1145,7 @@
       const container = document.createElement('div');
       container.className = 'metric-tree';
       attachMetricTree(container, tree, '', mediaTags);
-      root.replaceChildren(container);
+      root.replaceChildren(combinedSection, container);
       state._lastTreeKey = treeKey;
 
       // After re-parenting, sizes may have changed. Resize each plot.
@@ -895,10 +1156,234 @@
           if (w) entry.plot.setSize({ width: w, height: 240 });
         }
       }
+    } else if (root.firstChild !== combinedSection) {
+      root.prepend(combinedSection);
     }
 
     for (const name of metrics) updateChart(name);
     for (const tag of mediaTags.keys()) updateMediaPanel(tag);
+    updateScatterSection(root);
+  }
+
+  // ---- runs table ---------------------------------------------------------
+
+  function formatCellValue(v) {
+    if (v == null) return '';
+    if (typeof v === 'boolean') return String(v);
+    if (typeof v === 'number') {
+      if (!isFinite(v)) return String(v);
+      if (Number.isInteger(v)) return String(v);
+      const abs = Math.abs(v);
+      if (abs !== 0 && (abs < 1e-3 || abs >= 1e6)) return v.toExponential(2);
+      return String(+v.toPrecision(4));
+    }
+    const s = String(v);
+    return s.length > 30 ? s.slice(0, 28) + '…' : s;
+  }
+
+  function renderRunsTable() {
+    const wrap = document.querySelector('#tab-table .runs-table-wrap');
+    if (!wrap) return;
+
+    const visIds = effectivelyVisible();
+    const runs = visIds.map(id => state.runs.get(id)).filter(Boolean);
+
+    const cnt = document.getElementById('table-col-count');
+
+    if (runs.length === 0) {
+      wrap.replaceChildren();
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'select runs on the left to compare them in the table';
+      wrap.appendChild(empty);
+      if (cnt) cnt.textContent = '';
+      return;
+    }
+
+    // Build union of hparam + summary column keys across all visible runs.
+    const hparamKeys = new Set();
+    const summaryKeys = new Set();
+    for (const r of runs) {
+      for (const k of Object.keys(r.hparams || {})) hparamKeys.add(k);
+      for (const k of Object.keys(r.summary || {})) summaryKeys.add(k);
+    }
+    const allCols = [
+      ...[...hparamKeys].sort().map(k => ({ id: `hparams.${k}`, label: k, section: 'hparams' })),
+      ...[...summaryKeys].sort().map(k => ({ id: `summary.${k}`, label: k, section: 'summary' })),
+    ];
+
+    // Filter columns by search.
+    const q = (state.tableColSearch || '').trim().toLowerCase();
+    let cols = q ? allCols.filter(c => c.label.toLowerCase().includes(q)) : allCols;
+
+    // Determine which columns have any differing values.
+    const diffSet = new Set();
+    for (const col of cols) {
+      const vals = runs.map(r => {
+        const v = valueAt(r, col.id);
+        return v == null ? '\x00null' : String(v);
+      });
+      if (new Set(vals).size > 1) diffSet.add(col.id);
+    }
+
+    // Optionally hide columns where all visible runs have the same value.
+    if (state.tableHideSame) {
+      cols = cols.filter(c => diffSet.has(c.id));
+    }
+
+    if (cnt) {
+      const shown = cols.length;
+      const total = allCols.length;
+      if (shown === total) {
+        cnt.textContent = `${total} cols`;
+      } else if (state.tableHideSame && !q) {
+        cnt.textContent = `${shown} diff / ${total} cols`;
+      } else {
+        cnt.textContent = `${shown} / ${total} cols`;
+      }
+    }
+
+    // Apply table sort.
+    let sortedRuns = [...runs];
+    const ts = state.tableSort;
+    if (ts) {
+      sortedRuns.sort((a, b) => {
+        const c = compareValues(valueAt(a, ts.col), valueAt(b, ts.col));
+        return ts.dir === 'asc' ? c : -c;
+      });
+    }
+
+    // Track the first column of each section for a visual separator.
+    const sectionStarts = new Set();
+    let lastSection = null;
+    for (const col of cols) {
+      if (col.section !== lastSection) { sectionStarts.add(col.id); lastSection = col.section; }
+    }
+
+    // Build table.
+    const table = document.createElement('table');
+    table.className = 'runs-table';
+
+    // Header row.
+    const thead = document.createElement('thead');
+    const hdrRow = document.createElement('tr');
+
+    const cornerTh = document.createElement('th');
+    cornerTh.className = 'rt-corner';
+    cornerTh.textContent = 'run';
+    hdrRow.appendChild(cornerTh);
+
+    for (const col of cols) {
+      const th = document.createElement('th');
+      const cls = ['rt-col-hdr', diffSet.has(col.id) ? 'col-diff' : 'col-same'];
+      if (sectionStarts.has(col.id)) cls.push('rt-section-start');
+      if (ts && ts.col === col.id) cls.push('rt-sorted');
+      th.className = cls.join(' ');
+      th.title = col.id;
+
+      const inner = document.createElement('span');
+      inner.className = 'rt-col-label';
+      inner.textContent = col.label;
+      th.appendChild(inner);
+
+      if (ts && ts.col === col.id) {
+        const arrow = document.createElement('span');
+        arrow.className = 'rt-sort-arrow';
+        arrow.textContent = ts.dir === 'asc' ? '↑' : '↓';
+        th.appendChild(arrow);
+      }
+
+      th.addEventListener('click', () => {
+        if (ts && ts.col === col.id) {
+          state.tableSort = ts.dir === 'asc' ? { col: col.id, dir: 'desc' } : null;
+        } else {
+          state.tableSort = { col: col.id, dir: 'asc' };
+        }
+        renderRunsTable();
+      });
+
+      hdrRow.appendChild(th);
+    }
+
+    thead.appendChild(hdrRow);
+    table.appendChild(thead);
+
+    // Body rows.
+    const tbody = document.createElement('tbody');
+    for (const run of sortedRuns) {
+      const tr = document.createElement('tr');
+      tr.addEventListener('click', () => openDetail(run.run_id));
+
+      // Sticky run-ID cell.
+      const idTd = document.createElement('td');
+      idTd.className = 'rt-run-id';
+      const dot = document.createElement('span');
+      dot.className = 'rt-dot';
+      dot.style.background = runColor(run.run_id);
+      const lbl = document.createElement('span');
+      lbl.className = 'rt-run-label';
+      lbl.textContent = run.display_name || run.run_id;
+      lbl.title = run.run_id;
+      idTd.append(dot, lbl);
+      tr.appendChild(idTd);
+
+      // Data cells.
+      for (const col of cols) {
+        const td = document.createElement('td');
+        const cls = [diffSet.has(col.id) ? 'cell-diff' : 'cell-same'];
+        if (sectionStarts.has(col.id)) cls.push('rt-section-start');
+        td.className = cls.join(' ');
+        const val = valueAt(run, col.id);
+        td.textContent = formatCellValue(val);
+        td.title = val != null ? String(val) : '';
+        tr.appendChild(td);
+      }
+
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    wrap.replaceChildren(table);
+  }
+
+  function downloadChartPNG(metricName, displayName) {
+    const entry = state.charts.get(metricName);
+    if (!entry || !entry.plot) return;
+    const srcCanvas = entry.plot.ctx.canvas;
+    const dpr = window.devicePixelRatio || 1;
+    const PAD = Math.round(12 * dpr);
+    const TITLE_H = Math.round(26 * dpr);
+    const off = document.createElement('canvas');
+    off.width  = srcCanvas.width + PAD * 2;
+    off.height = srcCanvas.height + TITLE_H + PAD * 2;
+    const ctx = off.getContext('2d');
+    ctx.fillStyle = themeColor('surface') || '#11151c';
+    ctx.fillRect(0, 0, off.width, off.height);
+    ctx.font = `bold ${Math.round(13 * dpr)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+    ctx.fillStyle = themeColor('text-strong') || '#f1f5f9';
+    ctx.fillText(displayName || metricName, PAD, PAD + Math.round(15 * dpr));
+    ctx.drawImage(srcCanvas, PAD, TITLE_H + PAD);
+    const fileName = (displayName || metricName).replace(/[/\\:*?"<>|]/g, '_') + '.png';
+    off.toBlob(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  }
+
+  function _refreshDirBtn(btn, name) {
+    const isOverride = name in state.metricDir;
+    const lower = isLowerBetter(name);
+    btn.textContent = lower ? '↓ min' : '↑ max';
+    btn.title = (lower ? 'lower is better' : 'higher is better')
+      + (isOverride ? ' (manual — click to toggle)' : ' (auto — click to override)');
+    btn.classList.toggle('active', isOverride);
   }
 
   function makePanel(fullName, displayName) {
@@ -911,10 +1396,54 @@
     span.textContent = displayName || fullName;
     span.title = fullName;
     title.appendChild(span);
+    const dirBtn = document.createElement('button');
+    dirBtn.type = 'button';
+    dirBtn.className = 'chart-dir-btn icon-btn';
+    _refreshDirBtn(dirBtn, fullName);
+    dirBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.metricDir[fullName] = !isLowerBetter(fullName);
+      _refreshDirBtn(dirBtn, fullName);
+      scheduleRerender();
+      saveState();
+    });
+    title.appendChild(dirBtn);
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'chart-combine-toggle icon-btn';
+    toggleBtn.type = 'button';
+    toggleBtn.title = 'select to combine into one chart';
+    toggleBtn.textContent = '+';
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.combineSelection.has(fullName)) {
+        state.combineSelection.delete(fullName);
+      } else {
+        state.combineSelection.add(fullName);
+      }
+      updateCombineSelectionUI();
+    });
+    title.appendChild(toggleBtn);
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'chart-download-btn icon-btn';
+    dlBtn.type = 'button';
+    dlBtn.title = 'download chart as PNG';
+    dlBtn.textContent = '⬇';
+    dlBtn.addEventListener('click', () => downloadChartPNG(fullName, displayName || fullName));
+    title.appendChild(dlBtn);
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'chart-zoom-reset';
+    resetBtn.type = 'button';
+    resetBtn.title = 'reset zoom';
+    resetBtn.textContent = '⤢';
+    resetBtn.hidden = true;
+    title.appendChild(resetBtn);
     panel.appendChild(title);
     const body = document.createElement('div');
     body.className = 'chart-body';
     panel.appendChild(body);
+    const annot = document.createElement('div');
+    annot.className = 'chart-annot';
+    panel.appendChild(annot);
     return panel;
   }
 
@@ -1209,7 +1738,197 @@
         spanGaps: true,
       });
     }
-    return { data, seriesCfg, runIds: series.map(s => s.id) };
+    const lower = isLowerBetter(name);
+    const seriesStats = series.map(s => {
+      const raw = s.ys.filter(v => v != null && isFinite(v));
+      const lastVal = raw.length ? raw[raw.length - 1] : null;
+      const bestVal = raw.length ? (lower ? Math.min(...raw) : Math.max(...raw)) : null;
+      return { id: s.id, lastVal, bestVal };
+    });
+    return { data, seriesCfg, runIds: series.map(s => s.id), seriesStats };
+  }
+
+  function lowerIsBetter(name) {
+    const n = name.toLowerCase();
+    return n.includes('loss') || n.includes('err') || n.includes('perplexity') || n.includes('ppl');
+  }
+
+  function isLowerBetter(name) {
+    if (name in state.metricDir) return state.metricDir[name];
+    return lowerIsBetter(name);
+  }
+
+  // ---- combine-metrics feature ------------------------------------------
+
+  function updateCombineSelectionUI() {
+    const btn = document.getElementById('combine-btn');
+    if (!btn) return;
+    const n = state.combineSelection.size;
+    btn.textContent = `Combine (${n})`;
+    btn.hidden = n < 2;
+    for (const [name, entry] of state.charts.entries()) {
+      if (name.startsWith('__combined__/')) continue;
+      const toggleBtn = entry.panel.querySelector('.chart-combine-toggle');
+      if (toggleBtn) toggleBtn.classList.toggle('active', state.combineSelection.has(name));
+    }
+  }
+
+  function buildCombinedChartData(metricNames, runIds) {
+    const series = [];
+    const xUnion = new Set();
+    const multiRun = runIds.length > 1;
+    for (const metricName of metricNames) {
+      for (const id of runIds) {
+        const m = state.metrics.get(id);
+        if (!m || !m.metrics[metricName]) continue;
+        const col = m.metrics[metricName];
+        const xs = col[state.xAxis];
+        const fallback = (state.xAxis === 'epoch' && !xs?.some(v => v != null)) ? col.step : xs;
+        const xArr = fallback || col.step;
+        const filtered = { id, metricName, xs: [], ys: [] };
+        for (let i = 0; i < col.y.length; i++) {
+          const x = xArr ? xArr[i] : i;
+          if (x == null || !isFinite(x)) continue;
+          filtered.xs.push(x);
+          filtered.ys.push(col.y[i]);
+          xUnion.add(x);
+        }
+        if (filtered.ys.length) series.push(filtered);
+      }
+    }
+    const xs = [...xUnion].sort((a, b) => a - b);
+    const xIdx = new Map();
+    for (let i = 0; i < xs.length; i++) xIdx.set(xs[i], i);
+    const seriesCfg = [{}];
+    const data = [xs];
+    for (const s of series) {
+      const arr = new Array(xs.length).fill(null);
+      for (let i = 0; i < s.xs.length; i++) arr[xIdx.get(s.xs[i])] = s.ys[i];
+      data.push(emaSmooth(arr, state.smoothing));
+      const label = multiRun ? `${s.metricName} · ${s.id}` : s.metricName;
+      seriesCfg.push({
+        label,
+        runId: label,
+        stroke: runColor(multiRun ? `${s.metricName}:${s.id}` : s.metricName),
+        width: 1.6,
+        points: { show: false },
+        spanGaps: true,
+      });
+    }
+    const seriesStats = series.map(s => {
+      const raw = s.ys.filter(v => v != null && isFinite(v));
+      const lastVal = raw.length ? raw[raw.length - 1] : null;
+      const bestVal = raw.length ? Math.max(...raw) : null;
+      const label = multiRun ? `${s.metricName} · ${s.id}` : s.metricName;
+      return { id: label, lastVal, bestVal };
+    });
+    return { data, seriesCfg, seriesStats };
+  }
+
+  function makeCombinedPanel(combinedId, metricNames) {
+    const panel = document.createElement('div');
+    panel.className = 'chart-panel combined-chart-panel';
+    const title = document.createElement('div');
+    title.className = 'chart-title';
+    const span = document.createElement('span');
+    span.className = 'name';
+    const shortNames = metricNames.map(n => n.split('/').pop());
+    span.textContent = 'Combined: ' + shortNames.join(', ');
+    span.title = metricNames.join(', ');
+    title.appendChild(span);
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'chart-remove-btn icon-btn';
+    removeBtn.type = 'button';
+    removeBtn.title = 'remove combined chart';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => {
+      state.combinedCharts = state.combinedCharts.filter(c => c.id !== combinedId);
+      const key = '__combined__/' + combinedId;
+      const entry = state.charts.get(key);
+      if (entry) { entry.plot?.destroy(); state.charts.delete(key); }
+      panel.remove();
+      saveState();
+      updateCombineSelectionUI();
+    });
+    title.appendChild(removeBtn);
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'chart-download-btn icon-btn';
+    dlBtn.type = 'button';
+    dlBtn.title = 'download chart as PNG';
+    dlBtn.textContent = '⬇';
+    dlBtn.addEventListener('click', () => {
+      downloadChartPNG('__combined__/' + combinedId, 'Combined: ' + shortNames.join(', '));
+    });
+    title.appendChild(dlBtn);
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'chart-zoom-reset';
+    resetBtn.type = 'button';
+    resetBtn.title = 'reset zoom';
+    resetBtn.textContent = '⤢';
+    resetBtn.hidden = true;
+    title.appendChild(resetBtn);
+    panel.appendChild(title);
+    const body = document.createElement('div');
+    body.className = 'chart-body';
+    panel.appendChild(body);
+    const annot = document.createElement('div');
+    annot.className = 'chart-annot';
+    panel.appendChild(annot);
+    return panel;
+  }
+
+  function renderCombinedCharts(container) {
+    const visibleIds = effectivelyVisible().sort();
+    const validIds = new Set(state.combinedCharts.map(c => c.id));
+    for (const [key, entry] of [...state.charts.entries()]) {
+      if (!key.startsWith('__combined__/')) continue;
+      const id = key.slice('__combined__/'.length);
+      if (!validIds.has(id)) {
+        entry.plot?.destroy();
+        entry.panel.remove();
+        state.charts.delete(key);
+      }
+    }
+    for (const combined of state.combinedCharts) {
+      const key = '__combined__/' + combined.id;
+      let entry = state.charts.get(key);
+      if (!entry) {
+        const panel = makeCombinedPanel(combined.id, combined.metrics);
+        entry = { panel, plot: null, configKey: '' };
+        state.charts.set(key, entry);
+      }
+      container.appendChild(entry.panel);
+      const { data, seriesCfg, seriesStats } = buildCombinedChartData(combined.metrics, visibleIds);
+      const configKey = JSON.stringify([visibleIds, combined.metrics, state.xAxis, state.logY, state.theme]);
+      if (seriesCfg.length <= 1) {
+        if (entry.plot) { entry.plot.destroy(); entry.plot = null; entry.configKey = ''; }
+        updateAnnotTable(key, entry, [], []);
+        continue;
+      }
+      if (entry.plot && entry.configKey === configKey) {
+        entry.plot.setData(data);
+        updateAnnotTable(key, entry, seriesCfg, seriesStats);
+        continue;
+      }
+      if (entry.plot) entry.plot.destroy();
+      const body = entry.panel.querySelector('.chart-body');
+      const resetBtn = entry.panel.querySelector('.chart-zoom-reset');
+      if (resetBtn) resetBtn.hidden = true;
+      const width = body.clientWidth || 400;
+      entry.plot = new uPlot(makeUplotOpts(key, width, seriesCfg, resetBtn), data, body);
+      if (resetBtn) {
+        resetBtn.onclick = () => {
+          for (const [, e] of state.charts) {
+            if (!e.plot) continue;
+            const xData = e.plot.data[0];
+            if (!xData || !xData.length) continue;
+            e.plot.setScale('x', { min: xData[0], max: xData[xData.length - 1] });
+          }
+        };
+      }
+      entry.configKey = configKey;
+      updateAnnotTable(key, entry, seriesCfg, seriesStats);
+    }
   }
 
   function fmtTooltipNum(v) {
@@ -1333,7 +2052,7 @@
     };
   }
 
-  function makeUplotOpts(name, width, seriesCfg) {
+  function makeUplotOpts(name, width, seriesCfg, resetBtn) {
     const muted = themeColor('muted') || '#8aa0b8';
     const grid = themeColor('grid') || '#1f2630';
     return {
@@ -1358,7 +2077,77 @@
       series: seriesCfg,
       legend: { show: false },
       plugins: [tooltipPlugin()],
+      hooks: {
+        setScale: [
+          (u, key) => {
+            if (!resetBtn || key !== 'x') return;
+            const xData = u.data[0];
+            if (!xData || xData.length < 2) { resetBtn.hidden = true; return; }
+            const sc = u.scales.x;
+            const zoomed = sc.min > xData[0] || sc.max < xData[xData.length - 1];
+            resetBtn.hidden = !zoomed;
+          },
+        ],
+      },
     };
+  }
+
+  function updateAnnotTable(name, entry, seriesCfg, seriesStats) {
+    const annot = entry.panel.querySelector('.chart-annot');
+    if (!annot) return;
+    if (!seriesStats || seriesStats.length === 0) { annot.replaceChildren(); return; }
+
+    const lower = isLowerBetter(name);
+    const validBests = seriesStats.map(s => s.bestVal).filter(v => v != null);
+    const overallBest = validBests.length
+      ? (lower ? Math.min(...validBests) : Math.max(...validBests))
+      : null;
+
+    annot.replaceChildren();
+
+    // Header row
+    const hdr = document.createElement('div');
+    hdr.className = 'chart-annot-row chart-annot-header';
+    hdr.innerHTML = '<span></span><span></span><span>last</span><span>' + (lower ? 'min' : 'max') + '</span>';
+    annot.appendChild(hdr);
+
+    for (let i = 0; i < seriesStats.length; i++) {
+      const { id, lastVal, bestVal } = seriesStats[i];
+      const seriesIdx = i + 1;
+      const s = seriesCfg[seriesIdx];
+      if (!s) continue;
+      const color = typeof s.stroke === 'function' ? s.stroke() : s.stroke;
+      const isBest = bestVal != null && bestVal === overallBest;
+
+      const row = document.createElement('div');
+      row.className = 'chart-annot-row' + (isBest ? ' annot-best' : '');
+      row.title = id;
+
+      const dot = document.createElement('span');
+      dot.className = 'annot-dot';
+      dot.style.background = color;
+
+      const label = document.createElement('span');
+      label.className = 'annot-label';
+      label.textContent = id.split('/').pop() || id;
+
+      const lastEl = document.createElement('span');
+      lastEl.className = 'annot-val';
+      lastEl.textContent = fmtTooltipNum(lastVal);
+
+      const bestEl = document.createElement('span');
+      bestEl.className = isBest ? 'annot-val annot-best-bold' : 'annot-val';
+      bestEl.textContent = fmtTooltipNum(bestVal);
+
+      row.append(dot, label, lastEl, bestEl);
+      row.addEventListener('click', () => {
+        if (!entry.plot) return;
+        const cur = entry.plot.series[seriesIdx];
+        if (!cur) return;
+        entry.plot.setSeries(seriesIdx, { show: cur.show === false });
+      });
+      annot.appendChild(row);
+    }
   }
 
   function updateChart(name) {
@@ -1366,7 +2155,7 @@
     if (!entry) return;
 
     const visibleIds = effectivelyVisible().sort();
-    const { data, seriesCfg, runIds } = buildChartData(name, visibleIds);
+    const { data, seriesCfg, runIds, seriesStats } = buildChartData(name, visibleIds);
 
     if (runIds.length === 0) {
       // No data yet for this chart with current selection; clear.
@@ -1375,6 +2164,7 @@
         entry.plot = null;
         entry.configKey = '';
       }
+      updateAnnotTable(name, entry, [], []);
       return;
     }
 
@@ -1382,14 +2172,28 @@
 
     if (entry.plot && entry.configKey === configKey) {
       entry.plot.setData(data);
+      updateAnnotTable(name, entry, seriesCfg, seriesStats);
       return;
     }
 
     if (entry.plot) entry.plot.destroy();
     const body = entry.panel.querySelector('.chart-body');
+    const resetBtn = entry.panel.querySelector('.chart-zoom-reset');
+    if (resetBtn) resetBtn.hidden = true;
     const width = body.clientWidth || 400;
-    entry.plot = new uPlot(makeUplotOpts(name, width, seriesCfg), data, body);
+    entry.plot = new uPlot(makeUplotOpts(name, width, seriesCfg, resetBtn), data, body);
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        for (const [, e] of state.charts) {
+          if (!e.plot) continue;
+          const xData = e.plot.data[0];
+          if (!xData || !xData.length) continue;
+          e.plot.setScale('x', { min: xData[0], max: xData[xData.length - 1] });
+        }
+      };
+    }
     entry.configKey = configKey;
+    updateAnnotTable(name, entry, seriesCfg, seriesStats);
   }
 
   // ---- landing / overview ---------------------------------------------
@@ -1424,9 +2228,10 @@
     wrap.className = 'status-bars';
     const colors = {
       completed: '#34d399', running: '#22d3ee',
+      stale: '#f59e0b',
       failed: '#f87171', unknown: '#6b7280',
     };
-    const order = ['completed', 'running', 'failed'];
+    const order = ['completed', 'running', 'stale', 'failed'];
     const seen = new Set(Object.keys(counts));
     const sorted = [
       ...order.filter(k => seen.has(k)),
@@ -1506,18 +2311,26 @@
     const row = document.createElement('div');
     row.className = 'recent-run';
     const dot = document.createElement('div');
-    dot.className = 'run-dot';
-    dot.style.background = runColor(r.run_id);
+    if (isStale(r)) {
+      dot.className = 'run-dot stale';
+      dot.textContent = '⚠';
+      const staleMins = Math.floor((Date.now() / 1000 - r.heartbeat_at) / 60);
+      dot.title = `no heartbeat for ${staleMins > 0 ? staleMins + 'm' : '<1m'} — may have crashed`;
+    } else {
+      dot.className = 'run-dot';
+      dot.style.background = runColor(r.run_id);
+    }
     row.appendChild(dot);
     const name = document.createElement('div');
     name.className = 'recent-run-name';
-    name.textContent = r.run_id;
+    name.textContent = r.display_name || r.run_id;
     name.title = `${r.run_id}\n${r.run_dir || ''}`;
     row.appendChild(name);
     if (r.status) {
       const st = document.createElement('div');
-      st.className = `run-status ${r.status}`;
-      st.textContent = r.status;
+      const es = effectiveStatus(r);
+      st.className = `run-status ${es}`;
+      st.textContent = es;
       row.appendChild(st);
     }
     const ago = document.createElement('div');
@@ -1535,13 +2348,16 @@
     const days = 30;
     const startDay = Math.floor((now - (days - 1) * oneDay) / oneDay) * oneDay;
     const totalBins = new Array(days).fill(0);
-    const failBins = new Array(days).fill(0);
+    const failBins  = new Array(days).fill(0);
+    const staleBins = new Array(days).fill(0);
     for (const r of runs) {
       if (!r.created_at) continue;
       const idx = Math.floor((r.created_at - startDay) / oneDay);
       if (idx < 0 || idx >= days) continue;
       totalBins[idx]++;
-      if (r.status === 'failed') failBins[idx]++;
+      const es = effectiveStatus(r);
+      if (es === 'failed') failBins[idx]++;
+      if (es === 'stale')  staleBins[idx]++;
     }
     const xs = new Array(days);
     for (let i = 0; i < days; i++) xs[i] = startDay + i * oneDay + oneDay / 2;
@@ -1550,10 +2366,11 @@
     const bars = uPlot.paths.bars
       ? uPlot.paths.bars({ size: [0.7, 80], align: 0 })
       : undefined;
-    const muted = themeColor('muted') || '#8aa0b8';
-    const grid = themeColor('grid') || '#1f2630';
+    const muted  = themeColor('muted')  || '#8aa0b8';
+    const grid   = themeColor('grid')   || '#1f2630';
     const accent = themeColor('accent') || '#22d3ee';
-    const bad = themeColor('bad') || '#f87171';
+    const bad    = themeColor('bad')    || '#f87171';
+    const warn   = themeColor('warn')   || '#f59e0b';
     new uPlot({
       width, height: 180,
       cursor: { drag: { x: false, y: false } },
@@ -1590,20 +2407,221 @@
         {
           label: 'failed',
           stroke: bad,
-          fill: bad + '8c',    // ~55% alpha
+          fill: bad + '8c',
+          paths: bars,
+          points: { show: false },
+        },
+        {
+          label: 'stale',
+          stroke: warn,
+          fill: warn + '8c',
           paths: bars,
           points: { show: false },
         },
       ],
       legend: { show: true, live: false },
-    }, [xs, totalBins, failBins], parent);
+    }, [xs, totalBins, failBins, staleBins], parent);
+  }
+
+  // ---- scatter plot -------------------------------------------------------
+
+  function scatterNumericKeys() {
+    const keys = new Set();
+    for (const id of effectivelyVisible()) {
+      const r = state.runs.get(id);
+      if (!r) continue;
+      for (const [k, v] of Object.entries(r.summary || {}))
+        if (typeof v === 'number' && isFinite(v)) keys.add('summary.' + k);
+      for (const [k, v] of Object.entries(r.hparams || {}))
+        if (typeof v === 'number' && isFinite(v)) keys.add('hparams.' + k);
+    }
+    return [...keys].sort();
+  }
+
+  function getScatterVal(r, key) {
+    const v = valueAt(r, key);
+    return (typeof v === 'number' && isFinite(v)) ? v : null;
+  }
+
+  function _fillScatterSel(sel, keys, currentVal) {
+    sel.innerHTML = '';
+    const empty = document.createElement('option');
+    empty.value = ''; empty.textContent = '— select —';
+    sel.appendChild(empty);
+    for (const k of keys) {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = k.replace(/^(summary|hparams)\./, (_, ns) => ns + ': ');
+      if (k === currentVal) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    if (!currentVal || !keys.includes(currentVal)) sel.value = '';
+  }
+
+  function _rebuildScatterPlot(section) {
+    const plotDiv = section.querySelector('.scatter-plot');
+    if (_scatterPlot) { _scatterPlot.destroy(); _scatterPlot = null; }
+    plotDiv.replaceChildren();
+
+    const xKey = state.scatterX;
+    const yKey = state.scatterY;
+    if (!xKey || !yKey) {
+      const msg = document.createElement('div');
+      msg.className = 'scatter-empty';
+      msg.textContent = 'select x and y axes above to draw the scatter plot';
+      plotDiv.appendChild(msg);
+      return;
+    }
+
+    const validRuns = effectivelyVisible()
+      .map(id => state.runs.get(id))
+      .filter(r => r && getScatterVal(r, xKey) != null && getScatterVal(r, yKey) != null);
+
+    if (validRuns.length === 0) {
+      const msg = document.createElement('div');
+      msg.className = 'scatter-empty';
+      msg.textContent = 'no visible runs have both selected fields';
+      plotDiv.appendChild(msg);
+      return;
+    }
+
+    // Shared x-axis: deduplicated, sorted numeric x-values across all runs.
+    const allXVals = [...new Set(validRuns.map(r => getScatterVal(r, xKey)))].sort((a, b) => a - b);
+
+    const muted = themeColor('muted') || '#8aa0b8';
+    const grid  = themeColor('grid')  || '#1f2630';
+
+    const series = [{ label: '' }];
+    const data   = [allXVals];
+
+    for (const r of validRuns) {
+      const xv  = getScatterVal(r, xKey);
+      const yv  = getScatterVal(r, yKey);
+      const xi  = allXVals.indexOf(xv);
+      const yArr = new Array(allXVals.length).fill(null);
+      yArr[xi] = yv;
+      const color = runColor(r.run_id);
+      series.push({
+        label: r.display_name || r.run_id,
+        stroke: color, fill: color,
+        paths: () => null,
+        points: { show: true, size: 8, fill: color, stroke: color },
+      });
+      data.push(yArr);
+    }
+
+    const width = plotDiv.clientWidth || 600;
+    _scatterPlot = new uPlot({
+      width, height: 260,
+      cursor: { drag: { x: false, y: false } },
+      scales: { x: { time: false }, y: {} },
+      axes: [
+        {
+          label: xKey.replace(/^(summary|hparams)\./, ''),
+          stroke: muted, grid: { stroke: grid, width: 1 }, ticks: { stroke: grid },
+          size: 50,
+        },
+        {
+          label: yKey.replace(/^(summary|hparams)\./, ''),
+          stroke: muted, grid: { stroke: grid, width: 1 }, ticks: { stroke: grid },
+          size: 60,
+        },
+      ],
+      series,
+      legend: { show: true, live: true },
+    }, data, plotDiv);
+  }
+
+  function updateScatterSection(root) {
+    const visIds = effectivelyVisible();
+
+    // Hide when fewer than 2 runs are visible.
+    if (visIds.length < 2) {
+      const existing = root.querySelector('.scatter-section');
+      if (existing) {
+        if (_scatterPlot) { _scatterPlot.destroy(); _scatterPlot = null; }
+        existing.remove();
+      }
+      return;
+    }
+
+    // Create section on first use.
+    let section = root.querySelector('.scatter-section');
+    if (!section) {
+      section = document.createElement('div');
+      section.className = 'scatter-section';
+
+      const hdr = document.createElement('div');
+      hdr.className = 'scatter-header';
+      const title = document.createElement('h3');
+      title.className = 'scatter-title';
+      title.textContent = 'scatter';
+      hdr.appendChild(title);
+
+      const controls = document.createElement('div');
+      controls.className = 'scatter-controls';
+
+      const makeAxisLabel = (axis, selId) => {
+        const lbl = document.createElement('label');
+        lbl.className = 'scatter-axis-label';
+        lbl.textContent = axis + ' ';
+        const sel = document.createElement('select');
+        sel.className = 'scatter-axis-sel';
+        sel.id = selId;
+        lbl.appendChild(sel);
+        return lbl;
+      };
+
+      controls.appendChild(makeAxisLabel('x', 'scatter-x-sel'));
+      controls.appendChild(makeAxisLabel('y', 'scatter-y-sel'));
+      hdr.appendChild(controls);
+      section.appendChild(hdr);
+
+      const plotDiv = document.createElement('div');
+      plotDiv.className = 'scatter-plot';
+      section.appendChild(plotDiv);
+      root.appendChild(section);
+
+      section.querySelector('#scatter-x-sel').addEventListener('change', e => {
+        state.scatterX = e.target.value || null;
+        saveState();
+        _rebuildScatterPlot(section);
+      });
+      section.querySelector('#scatter-y-sel').addEventListener('change', e => {
+        state.scatterY = e.target.value || null;
+        saveState();
+        _rebuildScatterPlot(section);
+      });
+    }
+
+    const keys = scatterNumericKeys();
+    const xSel = section.querySelector('#scatter-x-sel');
+    const ySel = section.querySelector('#scatter-y-sel');
+    _fillScatterSel(xSel, keys, state.scatterX);
+    _fillScatterSel(ySel, keys, state.scatterY);
+
+    // Auto-select defaults on first visit: hparam for X, summary for Y.
+    if (!state.scatterX || !keys.includes(state.scatterX)) {
+      const def = keys.find(k => k.startsWith('hparams.')) || keys[0] || null;
+      state.scatterX = def;
+      if (xSel && def) xSel.value = def;
+    }
+    if (!state.scatterY || !keys.includes(state.scatterY)) {
+      const def = keys.find(k => k.startsWith('summary.'))
+        || keys.find(k => k !== state.scatterX)
+        || null;
+      state.scatterY = def;
+      if (ySel && def) ySel.value = def;
+    }
+
+    _rebuildScatterPlot(section);
   }
 
   function renderOverview(root) {
     const allRuns = [...state.runs.values()].filter(passesFilters);
     const counts = {};
     for (const r of allRuns) {
-      const s = r.status || 'unknown';
+      const s = effectiveStatus(r) || 'unknown';
       counts[s] = (counts[s] || 0) + 1;
     }
 
@@ -1623,10 +2641,11 @@
 
     const cards = document.createElement('div');
     cards.className = 'stat-cards';
-    cards.appendChild(statCard('total runs', allRuns.length, '#f1f5f9'));
-    cards.appendChild(statCard('running',   counts.running   || 0, '#22d3ee'));
-    cards.appendChild(statCard('completed', counts.completed || 0, '#34d399'));
-    cards.appendChild(statCard('failed',    counts.failed    || 0, '#f87171'));
+    cards.appendChild(statCard('total runs', allRuns.length, themeColor('text-strong')));
+    cards.appendChild(statCard('running',   counts.running   || 0, themeColor('accent')));
+    if (counts.stale) cards.appendChild(statCard('stale', counts.stale, themeColor('warn')));
+    cards.appendChild(statCard('completed', counts.completed || 0, themeColor('good')));
+    cards.appendChild(statCard('failed',    counts.failed    || 0, themeColor('bad')));
     wrap.appendChild(cards);
 
     const activity = document.createElement('div');
@@ -1708,6 +2727,38 @@
     return d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
   }
 
+  function fmtDuration(secs) {
+    if (secs == null || secs < 0) return null;
+    const s = Math.floor(secs);
+    if (s < 60) return '<1m';
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    const rm = m % 60;
+    if (h < 24) return rm > 0 ? `${h}h ${rm}m` : `${h}h`;
+    const d = Math.floor(h / 24);
+    const rh = h % 24;
+    return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
+  }
+
+  function fmtRunDur(r) {
+    if (!r.created_at) return null;
+    const now = Date.now() / 1000;
+    if (r.status === 'running') return fmtDuration(now - r.created_at);
+    if (r.ended_at) return fmtDuration(r.ended_at - r.created_at);
+    return null;
+  }
+
+  function isStale(r) {
+    if (r.status !== 'running') return false;
+    if (!r.heartbeat_at) return false;
+    return (Date.now() / 1000) - r.heartbeat_at > 300;
+  }
+
+  function effectiveStatus(r) {
+    return isStale(r) ? 'stale' : (r.status || null);
+  }
+
   function classifyValue(v) {
     if (v == null) return 'null';
     if (typeof v === 'number') return 'num';
@@ -1747,10 +2798,10 @@
     }
   }
 
-  function buildKVSection(label, kv, filter) {
+  function buildKVSection(label, kv, filter, sorted = true) {
     const entries = Object.entries(kv)
-      .filter(([k]) => !filter || k.toLowerCase().includes(filter))
-      .sort((a, b) => a[0].localeCompare(b[0]));
+      .filter(([k]) => !filter || k.toLowerCase().includes(filter));
+    if (sorted) entries.sort((a, b) => a[0].localeCompare(b[0]));
     if (!entries.length) return null;
 
     const section = document.createElement('section');
@@ -1784,37 +2835,191 @@
     if (!r) return closeDetail();
 
     document.getElementById('detail-dot').style.background = runColor(r.run_id);
-    document.getElementById('detail-title').textContent = r.run_id;
+    document.getElementById('detail-title').textContent = r.display_name || r.run_id;
 
+    const body = document.getElementById('detail-body');
+
+    // Reuse the notes/tags sections if the user is actively editing to avoid losing cursor.
+    const prevNotes = body.querySelector('.notes-section');
+    const editing = prevNotes && document.activeElement === prevNotes.querySelector('textarea');
+    const notesSec = editing ? prevNotes : _makeNotesSection(r);
+
+    const prevTags = body.querySelector('.tags-section');
+    const taggingActive = prevTags && document.activeElement === prevTags.querySelector('.tag-add-input');
+    const tagsSec = taggingActive ? prevTags : _makeTagsSection(r);
+
+    const now = Date.now() / 1000;
+    let durSecs = null;
+    if (r.created_at) {
+      if (r.ended_at) durSecs = r.ended_at - r.created_at;
+      else if (r.status === 'running') durSecs = now - r.created_at;
+    }
     const meta = {
       run_dir: r.run_dir,
-      status: r.status,
-      created_at: fmtTime(r.created_at),
-      tags: (r.tags || []).join(', ') || null,
-      notes: r.notes || null,
+      status: effectiveStatus(r),
+      started: fmtTime(r.created_at),
+      ended: r.ended_at ? fmtTime(r.ended_at) : null,
+      duration: fmtDuration(durSecs),
       checkpoint_path: r.checkpoint_path,
     };
 
     const filter = state.detailFilter.toLowerCase();
     const sections = [];
-    const metaSec = buildKVSection('meta', meta, filter);
+    const metaSec = buildKVSection('meta', meta, filter, false);
     if (metaSec) sections.push(metaSec);
     const hpSec = buildKVSection('hparams', r.hparams || {}, filter);
     if (hpSec) sections.push(hpSec);
     const smSec = buildKVSection('summary', r.summary || {}, filter);
     if (smSec) sections.push(smSec);
 
-    const body = document.getElementById('detail-body');
     if (!sections.length) {
       const empty = document.createElement('div');
       empty.style.color = '#4a5568';
       empty.style.padding = '16px 0';
       empty.style.textAlign = 'center';
       empty.textContent = filter ? 'no keys match the filter' : 'no config recorded';
-      body.replaceChildren(empty);
+      body.replaceChildren(notesSec, tagsSec, empty);
     } else {
-      body.replaceChildren(...sections);
+      body.replaceChildren(notesSec, tagsSec, ...sections);
     }
+
+    // Fit textarea height to content. Deferred so the browser has laid out the
+    // element — renderDetail may be called while the modal is still hidden,
+    // in which case scrollHeight is 0 until the next paint.
+    if (!editing) {
+      const ta = notesSec.querySelector('textarea');
+      if (ta.value) {
+        requestAnimationFrame(() => {
+          ta.style.height = 'auto';
+          ta.style.height = ta.scrollHeight + 'px';
+        });
+      }
+    }
+  }
+
+  function _makeNotesSection(r) {
+    const sec = document.createElement('section');
+    sec.className = 'detail-section notes-section';
+    const h = document.createElement('h3');
+    h.textContent = 'notes';
+    const ta = document.createElement('textarea');
+    ta.className = 'notes-textarea';
+    ta.placeholder = 'add notes…';
+    ta.value = r.notes || '';
+    ta.addEventListener('input', () => {
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    });
+    ta.addEventListener('blur', async () => {
+      const run = state.runs.get(state.detailRunId);
+      if (!run) return;
+      const newVal = ta.value;
+      const oldVal = run.notes || '';
+      if (newVal === oldVal) return;
+      run.notes = newVal;
+      try {
+        await patchRunMeta(run.run_id, { notes: newVal });
+      } catch (e) {
+        ta.value = run.notes = oldVal;
+        showToast(`Notes save failed — ${e.message || 'server error'}`);
+      }
+    });
+    sec.appendChild(h);
+    sec.appendChild(ta);
+    return sec;
+  }
+
+  function allExistingTags() {
+    const tags = new Set();
+    for (const r of state.runs.values()) {
+      for (const t of r.tags || []) tags.add(t);
+    }
+    return [...tags].sort();
+  }
+
+  async function _patchTags(runId, newTags) {
+    const run = state.runs.get(runId);
+    if (!run) return;
+    const prev = [...(run.tags || [])];
+    run.tags = newTags;
+    renderDetail();
+    renderRunList();
+    try {
+      await patchRunMeta(runId, { tags: newTags });
+    } catch (e) {
+      console.warn('tags patch failed', e);
+      run.tags = prev;
+      renderDetail();
+      renderRunList();
+    }
+  }
+
+  function _makeTagsSection(r) {
+    const sec = document.createElement('section');
+    sec.className = 'detail-section tags-section';
+    const h = document.createElement('h3');
+    h.textContent = 'tags';
+    sec.appendChild(h);
+
+    const pills = document.createElement('div');
+    pills.className = 'tag-pills';
+
+    for (const tag of r.tags || []) {
+      const pill = document.createElement('span');
+      pill.className = 'tag-pill';
+      const label = document.createElement('span');
+      label.textContent = tag;
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'tag-remove';
+      rm.title = `remove "${tag}"`;
+      rm.textContent = '×';
+      rm.addEventListener('click', () => {
+        _patchTags(r.run_id, (r.tags || []).filter(t => t !== tag));
+      });
+      pill.append(label, rm);
+      pills.appendChild(pill);
+    }
+
+    const listId = 'tag-suggestions-datalist';
+    let datalist = document.getElementById(listId);
+    if (!datalist) {
+      datalist = document.createElement('datalist');
+      datalist.id = listId;
+      document.body.appendChild(datalist);
+    }
+    datalist.replaceChildren(
+      ...allExistingTags()
+        .filter(t => !(r.tags || []).includes(t))
+        .map(t => { const o = document.createElement('option'); o.value = t; return o; })
+    );
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'tag-add-input';
+    input.placeholder = '+ tag';
+    input.setAttribute('list', listId);
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+
+    function commitInput() {
+      const val = input.value.trim();
+      input.value = '';
+      if (!val) return;
+      const current = r.tags || [];
+      if (current.includes(val)) return;
+      _patchTags(r.run_id, [...current, val]);
+    }
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commitInput(); }
+      else if (e.key === 'Escape') { input.value = ''; input.blur(); }
+    });
+    input.addEventListener('blur', commitInput);
+
+    pills.appendChild(input);
+    sec.appendChild(pills);
+    return sec;
   }
 
   // ---- SSE --------------------------------------------------------------
@@ -1836,6 +3041,15 @@
       let payload;
       try { payload = JSON.parse(ev.data); } catch { return; }
       const { changed = [], removed = [] } = payload;
+
+      // Capture names + visibility BEFORE refreshRuns() wipes them from state.
+      const removedNotable = removed.filter(id =>
+        state.visible.has(id) || id === state.detailRunId
+      );
+      const removedNames = new Map(removedNotable.map(id => {
+        const r = state.runs.get(id);
+        return [id, (r && r.display_name) || id.split('/').pop() || id];
+      }));
 
       // Refresh the index (cheap; sidecars only).
       await refreshRuns();
@@ -1867,10 +3081,45 @@
       if (state.detailRunId && removed.includes(state.detailRunId)) {
         closeDetail();
       }
+      // A run may have transitioned from running → completed/failed; check
+      // whether the live timer should be stopped.
+      if (state.activeTab === 'out' || state.activeTab === 'err') {
+        _updateLiveState(state.activeTab);
+      }
+      // Notify the user for any selected/viewed runs that were deleted.
+      for (const id of removedNotable) {
+        if (!state.runs.has(id)) {
+          showToast(`Run "${removedNames.get(id)}" was deleted from disk.`);
+        }
+      }
     });
     es.addEventListener('error', () => {
       // Browser auto-reconnects.
     });
+  }
+
+  // ---- toast notifications ----------------------------------------------
+
+  function showToast(msg, ttl = 7000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    const msgEl = document.createElement('span');
+    msgEl.className = 'toast-msg';
+    msgEl.textContent = msg;
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'toast-close';
+    closeBtn.textContent = '×';
+    closeBtn.title = 'dismiss';
+    toast.appendChild(msgEl);
+    toast.appendChild(closeBtn);
+    container.appendChild(toast);
+    let timer;
+    const dismiss = () => { clearTimeout(timer); toast.remove(); };
+    closeBtn.addEventListener('click', dismiss);
+    timer = setTimeout(dismiss, ttl);
   }
 
   // ---- controls ---------------------------------------------------------
@@ -1907,21 +3156,23 @@
   // ---- header stats -----------------------------------------------------
 
   function updateHeaderStats() {
-    const counts = { running: 0, completed: 0, failed: 0 };
+    const counts = { running: 0, completed: 0, failed: 0, stale: 0 };
     for (const r of state.runs.values()) {
-      const s = r.status || 'unknown';
+      const s = effectiveStatus(r) || 'unknown';
       if (s in counts) counts[s] += 1;
     }
     for (const [k, v] of Object.entries(counts)) {
       const el = document.querySelector(`#stat-${k} .n`);
       if (el) el.textContent = String(v);
     }
+    const staleChip = document.getElementById('stat-stale');
+    if (staleChip) staleChip.hidden = counts.stale === 0;
   }
 
   // ---- tabs -------------------------------------------------------------
 
   function setActiveTab(name) {
-    if (!['figures', 'out', 'err'].includes(name)) return;
+    if (!['figures', 'out', 'err', 'table'].includes(name)) return;
     state.activeTab = name;
     for (const btn of document.querySelectorAll('#tabs .tab')) {
       btn.classList.toggle('active', btn.dataset.tab === name);
@@ -1929,13 +3180,52 @@
     for (const pane of document.querySelectorAll('.tab-pane')) {
       pane.classList.toggle('active', pane.id === `tab-${name}`);
     }
+    saveState();
+    // Stop live timers on both kinds first; isLiveLog now returns false for
+    // whichever kind is no longer the active tab.
+    _updateLiveState('out');
+    _updateLiveState('err');
     if (name === 'out' || name === 'err') {
       // Lazily fetch logs the first time the user opens a log tab.
+      // renderLogTab calls _updateLiveState(kind) to restart live if applicable.
       refreshLogStreamsForVisibleRuns().then(() => renderLogTab(name));
+    } else if (name === 'table') {
+      renderRunsTable();
     }
   }
 
   // ---- logs -------------------------------------------------------------
+
+  function isLiveLog(kind) {
+    if (state.activeTab !== kind) return false;
+    if (state.logLivePaused[kind]) return false;
+    const sel = state.logSelection[kind];
+    if (!sel) return false;
+    const run = state.runs.get(sel.runId);
+    return !!(run && run.status === 'running');
+  }
+
+  function _updateLiveState(kind) {
+    const live = isLiveLog(kind);
+    const badgeId = kind === 'err' ? 'logs-err-live-badge' : 'logs-live-badge';
+    const pauseId = kind === 'err' ? 'logs-err-pause' : 'logs-pause';
+    const badge = document.getElementById(badgeId);
+    const pauseBtn = document.getElementById(pauseId);
+    if (badge) badge.hidden = !live;
+    if (pauseBtn) pauseBtn.hidden = !live;
+    if (live) {
+      if (_logLiveTimers[kind]) return;  // already running
+      _logLiveTimers[kind] = setInterval(() => {
+        if (!isLiveLog(kind)) { _updateLiveState(kind); return; }
+        loadLogContent(kind);
+      }, 5000);
+    } else {
+      if (_logLiveTimers[kind]) {
+        clearInterval(_logLiveTimers[kind]);
+        _logLiveTimers[kind] = null;
+      }
+    }
+  }
 
   async function fetchLogStreams(runId) {
     try {
@@ -1991,6 +3281,7 @@
         ? 'select one or more runs on the left to view their logs.'
         : `no .${kind} files were found for the selected run(s).`;
       state.logSelection[kind] = null;
+      _updateLiveState(kind);
       return;
     }
 
@@ -2009,6 +3300,7 @@
     }
     state.logSelection[kind] = { runId: active.runId, streamId: active.streamId };
     await loadLogContent(kind);
+    _updateLiveState(kind);
   }
 
   async function loadLogContent(kind) {
@@ -2020,8 +3312,14 @@
       view.textContent = '';
       return;
     }
+    // Capture scroll position before any DOM change; treat empty / first-load
+    // as "at bottom" so we scroll down on the initial fetch.
+    const hasContent = view.textContent && !view.classList.contains('empty')
+      && view.textContent !== 'loading...';
+    const atBottom = !hasContent
+      || (view.scrollHeight - view.scrollTop - view.clientHeight < 50);
     view.classList.remove('empty');
-    view.textContent = 'loading...';
+    if (!hasContent) view.textContent = 'loading...';
     try {
       const r = await fetch(
         `/api/log-content?run_id=${encodeURIComponent(sel.runId)}&stream_id=${encodeURIComponent(sel.streamId)}`,
@@ -2029,13 +3327,124 @@
       );
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const txt = await r.text();
+      const prevScrollTop = view.scrollTop;
       view.textContent = txt || '(empty)';
-      // Auto-scroll to the bottom (most recent output).
-      view.scrollTop = view.scrollHeight;
+      view.scrollTop = atBottom ? view.scrollHeight : prevScrollTop;
     } catch (e) {
       view.classList.add('empty');
       view.textContent = `failed to load: ${e.message || e}`;
     }
+  }
+
+  function initSidebarResize() {
+    const app     = document.getElementById('app');
+    const resizer = document.getElementById('sidebar-resizer');
+    const sidebar = document.getElementById('sidebar');
+
+    const saved = parseInt(localStorage.getItem('sptSidebarWidth'), 10);
+    if (saved && saved > 100 && saved < 800) {
+      app.style.gridTemplateColumns = `${saved}px 6px 1fr`;
+    }
+
+    resizer.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startW = sidebar.getBoundingClientRect().width;
+      resizer.classList.add('dragging');
+
+      function onMove(e) {
+        const newW = Math.max(160, Math.min(600, startW + (e.clientX - startX)));
+        app.style.gridTemplateColumns = `${newW}px 6px 1fr`;
+      }
+      function onUp() {
+        resizer.classList.remove('dragging');
+        const cols = getComputedStyle(app).gridTemplateColumns;
+        const w = parseInt(cols, 10);
+        if (w) localStorage.setItem('sptSidebarWidth', String(w));
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  function _applyVScrollWindow() {
+    if (!_vScrollState) return;
+    const { el, runs } = _vScrollState;
+    const rowH     = _rowHeight;
+    const scrollTop = el.scrollTop;
+    const clientH  = el.clientHeight || 500;
+
+    const firstIdx = Math.max(0, Math.floor(scrollTop / rowH) - VSCROLL_OVERSCAN);
+    const lastIdx  = Math.min(runs.length - 1,
+      Math.ceil((scrollTop + clientH) / rowH) + VSCROLL_OVERSCAN);
+
+    const frag = document.createDocumentFragment();
+    const topSpacer = document.createElement('div');
+    topSpacer.style.height = `${firstIdx * rowH}px`;
+    frag.appendChild(topSpacer);
+    for (let i = firstIdx; i <= lastIdx; i++) frag.appendChild(makeRunRow(runs[i]));
+    const botSpacer = document.createElement('div');
+    botSpacer.style.height = `${Math.max(0, runs.length - 1 - lastIdx) * rowH}px`;
+    frag.appendChild(botSpacer);
+
+    el.replaceChildren(frag);
+
+    // Update measured row height from the first rendered item.
+    const row0 = el.querySelector('.run-item');
+    if (row0) {
+      const h = row0.offsetHeight;
+      if (h > 1) _rowHeight = h + 1; // +1 for the gap
+    }
+  }
+
+  function exportMetricsCSV() {
+    const visIds = effectivelyVisible();
+    const metricNames = visibleMetricNames();
+    if (!visIds.length || !metricNames.length) return;
+
+    // Proper RFC-4180 quoting for a single cell value.
+    // - Quotes when the value contains , / " / newline / CR.
+    // - Escapes inner " by doubling.
+    // - Prefixes values that start with = + - @ with a tab so spreadsheet
+    //   apps (Excel, Google Sheets) don't interpret them as formulas.
+    function csvCell(v) {
+      let s = v == null ? '' : String(v);
+      if (s.length > 0 && '=+-@'.includes(s[0])) s = '\t' + s;
+      if (/[,"\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    const rows = ['run_id,run_name,metric,step,epoch,value'];
+    for (const id of visIds) {
+      const run = state.runs.get(id);
+      const name = (run && run.display_name) || id;
+      const m = state.metrics.get(id);
+      if (!m) continue;
+      for (const metric of metricNames) {
+        const col = m.metrics[metric];
+        if (!col) continue;
+        for (let i = 0; i < col.y.length; i++) {
+          const step  = col.step[i]  ?? '';
+          const epoch = col.epoch[i] ?? '';
+          const val   = col.y[i]     ?? '';
+          // step / epoch / val are always numbers or '' from the CSV parser,
+          // so they need no quoting or injection guard.
+          rows.push([csvCell(id), csvCell(name), csvCell(metric), step, epoch, val].join(','));
+        }
+      }
+    }
+
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'spt_metrics.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   function wireControls() {
@@ -2050,20 +3459,36 @@
       state.smoothing = parseFloat(e.target.value);
       smv.textContent = state.smoothing.toFixed(2);
       scheduleRerender();
+      saveState();
     });
 
     document.getElementById('x-axis').addEventListener('change', e => {
       state.xAxis = e.target.value;
       scheduleRerender();
+      saveState();
     });
 
     document.getElementById('log-y').addEventListener('change', e => {
       state.logY = e.target.checked;
       scheduleRerender();
+      saveState();
     });
 
     document.getElementById('select-all').addEventListener('click', () => setAllVisible(true));
     document.getElementById('clear-all').addEventListener('click', () => setAllVisible(false));
+
+    document.getElementById('export-csv').addEventListener('click', exportMetricsCSV);
+
+    document.getElementById('combine-btn').addEventListener('click', () => {
+      if (state.combineSelection.size < 2) return;
+      const id = String(Date.now());
+      const metrics = [...state.combineSelection];
+      state.combinedCharts.push({ id, metrics });
+      state.combineSelection.clear();
+      saveState();
+      scheduleRerender();
+      updateCombineSelectionUI();
+    });
 
     document.getElementById('add-filter-btn').addEventListener('click', () => openFilterDraft(null));
 
@@ -2072,6 +3497,7 @@
       renderRunList();
       // Group key shows up in chart legends → rebuild charts.
       scheduleRerender();
+      saveState();
     });
 
     // Tabs
@@ -2093,7 +3519,64 @@
       if (e.key === 'Escape') {
         const box = document.getElementById('image-lightbox');
         if (box && !box.hidden) closeLightbox();
+        const kbd = document.getElementById('kbd-overlay');
+        if (kbd && !kbd.hidden) kbd.hidden = true;
       }
+    });
+
+    // Global keyboard shortcuts — skip when focus is inside an input/textarea.
+    document.addEventListener('keydown', e => {
+      const tag = document.activeElement && document.activeElement.tagName;
+      const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+      if (e.key === '?' && !inInput) {
+        e.preventDefault();
+        const kbd = document.getElementById('kbd-overlay');
+        if (kbd) kbd.hidden = !kbd.hidden;
+        return;
+      }
+      if (inInput) return;
+
+      const tabs = ['figures', 'out', 'err', 'table'];
+
+      if (e.key === '/') {
+        e.preventDefault();
+        const ms = document.getElementById('metric-search');
+        if (ms) {
+          setActiveTab('figures');
+          ms.focus(); ms.select();
+          ms.addEventListener('keydown', function esc(ke) {
+            if (ke.key === 'Escape') { ke.preventDefault(); ms.blur(); ms.removeEventListener('keydown', esc); }
+          });
+        }
+      } else if (e.key === 'r') {
+        e.preventDefault();
+        const rs = document.getElementById('run-search');
+        if (rs) {
+          rs.focus();
+          rs.addEventListener('keydown', function esc(ke) {
+            if (ke.key === 'Escape') { ke.preventDefault(); rs.blur(); rs.removeEventListener('keydown', esc); }
+          });
+        }
+      } else if (e.key === 't') {
+        e.preventDefault();
+        const idx = tabs.indexOf(state.activeTab);
+        setActiveTab(tabs[(idx + 1) % tabs.length]);
+      } else if (e.key === 'A' && e.shiftKey) {
+        e.preventDefault();
+        setAllVisible(true);
+      } else if (e.key === 'C' && e.shiftKey) {
+        e.preventDefault();
+        setAllVisible(false);
+      }
+    });
+
+    document.getElementById('kbd-close')?.addEventListener('click', () => {
+      document.getElementById('kbd-overlay').hidden = true;
+    });
+    document.getElementById('kbd-overlay')?.addEventListener('click', e => {
+      if (e.target === document.getElementById('kbd-overlay'))
+        document.getElementById('kbd-overlay').hidden = true;
     });
 
     // Metric search (debounced; force a tree rebuild because the set of
@@ -2104,7 +3587,30 @@
         state.metricSearch = e.target.value;
         state._lastTreeKey = null; // force rebuild
         scheduleRerender();
+        saveState();
       }, 80));
+    }
+
+    // Table column search
+    const tcs = document.getElementById('table-col-search');
+    if (tcs) {
+      tcs.addEventListener('input', debounce(e => {
+        state.tableColSearch = e.target.value;
+        saveState();
+        renderRunsTable();
+      }, 80));
+    }
+
+    // Table: hide same-value columns toggle
+    const hideSameBtn = document.getElementById('table-hide-same');
+    if (hideSameBtn) {
+      hideSameBtn.addEventListener('click', () => {
+        state.tableHideSame = !state.tableHideSame;
+        hideSameBtn.textContent = state.tableHideSame ? 'show same' : 'hide same';
+        hideSameBtn.classList.toggle('active', state.tableHideSame);
+        saveState();
+        renderRunsTable();
+      });
     }
 
     // Log tab selectors / refresh buttons
@@ -2112,26 +3618,46 @@
     if (outSel) outSel.addEventListener('change', () => {
       const [runId, streamId] = outSel.value.split('::');
       state.logSelection.out = { runId, streamId };
-      loadLogContent('out');
+      state.logLivePaused.out = false;
+      loadLogContent('out').then(() => _updateLiveState('out'));
     });
     const errSel = document.getElementById('logs-err-stream-selector');
     if (errSel) errSel.addEventListener('change', () => {
       const [runId, streamId] = errSel.value.split('::');
       state.logSelection.err = { runId, streamId };
-      loadLogContent('err');
+      state.logLivePaused.err = false;
+      loadLogContent('err').then(() => _updateLiveState('err'));
     });
     const outRefresh = document.getElementById('logs-refresh');
-    if (outRefresh) outRefresh.addEventListener('click', () => loadLogContent('out'));
+    if (outRefresh) outRefresh.addEventListener('click', () => {
+      state.logLivePaused.out = false;
+      loadLogContent('out').then(() => _updateLiveState('out'));
+    });
     const errRefresh = document.getElementById('logs-err-refresh');
-    if (errRefresh) errRefresh.addEventListener('click', () => loadLogContent('err'));
+    if (errRefresh) errRefresh.addEventListener('click', () => {
+      state.logLivePaused.err = false;
+      loadLogContent('err').then(() => _updateLiveState('err'));
+    });
+    const outPause = document.getElementById('logs-pause');
+    if (outPause) outPause.addEventListener('click', () => {
+      state.logLivePaused.out = true;
+      _updateLiveState('out');
+    });
+    const errPause = document.getElementById('logs-err-pause');
+    if (errPause) errPause.addEventListener('click', () => {
+      state.logLivePaused.err = true;
+      _updateLiveState('err');
+    });
 
     document.getElementById('theme-toggle').addEventListener('click', () => {
       applyTheme(state.theme === 'dark' ? 'light' : 'dark');
+      saveState();
     });
 
     document.getElementById('sort-by').addEventListener('change', e => {
       state.sortBy = e.target.value;
       renderRunList();
+      saveState();
     });
 
     const sortDirBtn = document.getElementById('sort-dir');
@@ -2140,6 +3666,7 @@
       state.sortDesc = !state.sortDesc;
       sortDirBtn.textContent = state.sortDesc ? '↓' : '↑';
       renderRunList();
+      saveState();
     });
 
     // Detail modal wiring.
@@ -2203,8 +3730,23 @@
   // ---- init -------------------------------------------------------------
 
   async function main() {
+    loadState();
     wireControls();
+    syncControlsToState();
     initTheme();
+    initSidebarResize();
+    document.getElementById('run-list').addEventListener('scroll', () => {
+      if (_vScrollState) requestAnimationFrame(_applyVScrollWindow);
+    }, { passive: true });
+    // Tick every minute to keep duration displays and stale indicators current.
+    setInterval(() => {
+      for (const el of document.querySelectorAll('.run-dur[data-run-id]')) {
+        const r = state.runs.get(el.dataset.runId);
+        if (r) el.textContent = fmtRunDur(r) || '';
+      }
+      renderRunList();
+      updateHeaderStats();
+    }, 60_000);
     // Start SSE first so we don't miss progress events emitted between the
     // status fetch and the first scan-tick.
     startSSE();

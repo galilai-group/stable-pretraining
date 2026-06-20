@@ -159,9 +159,12 @@ docs/source/modules.rst
 outputs/
 multirun/
 ./data/
+mock_runs/
 examples/data/
 wandb/
-DISCOVERABILITY_PLAN.md
+SPT_WEB_PLAN.md
+scripts/
+.DS_Store
 
 *.ckpt
 *.pt
