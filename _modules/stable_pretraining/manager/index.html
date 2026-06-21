@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+gae21828b4 documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g65c0742cb documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=89135abd"></script>
+    <script src="../../../_static/documentation_options.js?v=893100e1"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gae21828b4 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g65c0742cb documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -395,8 +395,9 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">submitit</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callback</span><span class="p">,</span> <span class="n">ModelCheckpoint</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.utilities.rank_zero</span><span class="w"> </span><span class="kn">import</span> <span class="n">rank_zero_only</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">rank_zero_only</span><span class="p">,</span> <span class="n">seed_everything</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">omegaconf</span><span class="w"> </span><span class="kn">import</span> <span class="n">DictConfig</span><span class="p">,</span> <span class="n">OmegaConf</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">WANDB_AVAILABLE</span>
@@ -1907,6 +1908,59 @@
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">num_sanity_val_steps</span> <span class="o">=</span> <span class="mi">0</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_manual_optimization</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Let a manual-optimization module accept Trainer-level grad clip / accumulation.</span>
+
+<span class="sd">        Lightning&#39;s ``_verify_manual_optimization_support`` validator *raises*</span>
+<span class="sd">        when a manual-optimization module (``automatic_optimization is False``,</span>
+<span class="sd">        which every :class:`~stable_pretraining.Module` is) is paired with a</span>
+<span class="sd">        Trainer that has ``gradient_clip_val &gt; 0`` or</span>
+<span class="sd">        ``accumulate_grad_batches != 1`` — because under manual optimization</span>
+<span class="sd">        Lightning cannot apply them automatically. ``Module.training_step``</span>
+<span class="sd">        *does* apply them itself (strategy-aware clipping via</span>
+<span class="sd">        ``self.clip_gradients`` + frequency-based accumulation), so the</span>
+<span class="sd">        validation is the only obstacle.</span>
+
+<span class="sd">        That validator runs at the very start of ``trainer.fit()`` — before any</span>
+<span class="sd">        ``LightningModule`` hook (``setup`` / ``configure_model``) — so the only</span>
+<span class="sd">        clean place to defuse it is here, right before ``fit``. We move the two</span>
+<span class="sd">        values onto ``*_`` attributes that ``Module.on_train_start`` reads back,</span>
+<span class="sd">        then reset the originals so Lightning&#39;s validator passes. This replaces</span>
+<span class="sd">        a previous global monkey-patch of Lightning&#39;s private validator</span>
+<span class="sd">        function; doing it here keeps the behavior identical for the supported</span>
+<span class="sd">        ``Manager`` entry point without reaching into Lightning internals.</span>
+
+<span class="sd">        No-op for automatic-optimization modules (Lightning handles clipping /</span>
+<span class="sd">        accumulation natively for those) and when neither value is set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">module</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">instantiated_module</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span>
+        <span class="c1"># Automatic-optimization modules let Lightning handle clip/accumulation;</span>
+        <span class="c1"># never strip those (it would silently disable them).</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="s2">&quot;automatic_optimization&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">gradient_clip_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">trainer</span><span class="o">.</span><span class="n">gradient_clip_val</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">trainer</span><span class="o">.</span><span class="n">gradient_clip_val_</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">gradient_clip_val</span>
+            <span class="n">trainer</span><span class="o">.</span><span class="n">gradient_clip_algorithm_</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">gradient_clip_algorithm</span>
+            <span class="n">trainer</span><span class="o">.</span><span class="n">gradient_clip_val</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;  manual-opt: moved gradient_clip_val=&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">gradient_clip_val_</span><span class="si">}</span><span class="s2"> (algorithm=&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">gradient_clip_algorithm_</span><span class="si">}</span><span class="s2">) onto trainer.gradient_clip_val_; &quot;</span>
+                <span class="s2">&quot;Module.training_step applies it via self.clip_gradients().&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">accumulate_grad_batches</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">trainer</span><span class="o">.</span><span class="n">accumulate_grad_batches_</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">accumulate_grad_batches</span>
+            <span class="n">trainer</span><span class="o">.</span><span class="n">accumulate_grad_batches</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;  manual-opt: moved accumulate_grad_batches=&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">accumulate_grad_batches_</span><span class="si">}</span><span class="s2"> onto &quot;</span>
+                <span class="s2">&quot;trainer.accumulate_grad_batches_; Module.training_step steps &quot;</span>
+                <span class="s2">&quot;optimizers on the accumulation boundary.&quot;</span>
+            <span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_inject_hydra_hparams</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Inject the full flattened Hydra config into the module&#39;s hparams.</span>
 
@@ -2122,7 +2176,7 @@
 <span class="sd">        This is the primary programmatic entry point. Calling ``manager()``</span>
 <span class="sd">        performs the following steps in order:</span>
 
-<span class="sd">        1. Seeds the global RNG via ``pl.seed_everything``.</span>
+<span class="sd">        1. Seeds the global RNG via ``seed_everything``.</span>
 <span class="sd">        2. Resolves (or creates) a ``run_dir`` under ``cache_dir`` for</span>
 <span class="sd">           checkpointing and logger output.  No-op when ``cache_dir`` is not</span>
 <span class="sd">           configured.</span>
@@ -2149,7 +2203,7 @@
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  cwd: </span><span class="si">{</span><span class="n">Path</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;Seed&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  seed: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">pl</span><span class="o">.</span><span class="n">seed_everything</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">seed_everything</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="c1"># --- cache_dir: resolve run directory and inject into trainer config ---</span>
         <span class="n">run_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_run_dir</span><span class="p">()</span>
@@ -2288,6 +2342,11 @@
         <span class="c1"># call; users who explicitly want it can set the attribute back</span>
         <span class="c1"># on the trainer after Manager construction.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_maybe_skip_sanity_on_requeue</span><span class="p">()</span>
+
+        <span class="c1"># Defuse Lightning&#39;s manual-optimization validation (replaces the old</span>
+        <span class="c1"># global monkey-patch); must run before trainer.fit() since the</span>
+        <span class="c1"># validator fires before any LightningModule hook.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_manual_optimization</span><span class="p">()</span>
 
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;TrainerFit&quot;</span><span class="p">)</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ckpt_path:     </span><span class="si">{</span><span class="n">ckpt_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>

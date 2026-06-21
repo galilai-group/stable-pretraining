@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.registry.logger &#8212; stable-pretraining 0.1.dev1+gae21828b4 documentation</title>
+    <title>stable_pretraining.registry.logger &#8212; stable-pretraining 0.1.dev1+g65c0742cb documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=89135abd"></script>
+    <script src="../../../../_static/documentation_options.js?v=893100e1"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gae21828b4 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g65c0742cb documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -418,7 +418,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.loggers</span><span class="w"> </span><span class="kn">import</span> <span class="n">CSVLogger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.loggers.csv_logs</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExperimentWriter</span> <span class="k">as</span> <span class="n">_LightningCSVWriter</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.utilities.rank_zero</span><span class="w"> </span><span class="kn">import</span> <span class="n">rank_zero_only</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..utils.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">rank_zero_only</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">_sidecar</span>
 
