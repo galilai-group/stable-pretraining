@@ -21,7 +21,7 @@ Usage:
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
-from lightning.pytorch.utilities.rank_zero import rank_zero_only
+from .utils.distributed import rank_zero_only
 
 from .config import instantiate_from_config
 

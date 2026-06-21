@@ -4,7 +4,7 @@ from typing import Any, Union
 
 import hydra
 import omegaconf
-from lightning.pytorch.utilities.rank_zero import rank_zero_warn
+from .utils.distributed import rank_zero_warn
 
 
 def collapse_nested_dict(

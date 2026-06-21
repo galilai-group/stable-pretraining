@@ -36,8 +36,9 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, Optional, Union
 
-from lightning.pytorch.loggers.logger import Logger, rank_zero_experiment
-from lightning.pytorch.utilities.rank_zero import rank_zero_only
+from lightning.pytorch.loggers.logger import Logger
+
+from ..utils.distributed import rank_zero_experiment, rank_zero_only
 
 try:
     import trackio

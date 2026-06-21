@@ -12,8 +12,9 @@ import time
 
 import lightning as pl
 from lightning.pytorch.callbacks import Callback
-from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
+
+from ..utils.distributed import rank_zero_only
 
 from .utils import log_header
 

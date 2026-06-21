@@ -38,7 +38,8 @@ import csv as _csv
 from loguru import logger as logging
 from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.loggers.csv_logs import ExperimentWriter as _LightningCSVWriter
-from lightning.pytorch.utilities.rank_zero import rank_zero_only
+
+from ..utils.distributed import rank_zero_only
 
 from . import _sidecar
 

@@ -224,14 +224,6 @@ def _do_deferred_init() -> None:
         return
     _DEFERRED_INIT_DONE = True
 
-    # Apply Lightning's manual-optimisation patch (needs Lightning loaded).
-    try:
-        from .utils.lightning_patch import apply_manual_optimization_patch
-
-        apply_manual_optimization_patch()
-    except Exception:  # pragma: no cover - defensive
-        pass
-
     # Install crash-safe checkpoint saving (writes to ``.<name>.<rand>.tmp``
     # in the target dir, then atomically renames). Replaces Lightning's
     # built-in ``_atomic_save`` which falls back to non-atomic copy across

@@ -15,8 +15,9 @@ import lightning as pl
 import pandas as pd
 import submitit
 from lightning.pytorch.callbacks import Callback, ModelCheckpoint
-from lightning.pytorch.utilities.rank_zero import rank_zero_only
 from loguru import logger as logging
+
+from .utils.distributed import rank_zero_only, seed_everything
 from omegaconf import DictConfig, OmegaConf
 
 from . import WANDB_AVAILABLE
@@ -1525,6 +1526,59 @@ class Manager(submitit.helpers.Checkpointable):
         )
         self._trainer.num_sanity_val_steps = 0
 
+    def _prepare_manual_optimization(self) -> None:
+        """Let a manual-optimization module accept Trainer-level grad clip / accumulation.
+
+        Lightning's ``_verify_manual_optimization_support`` validator *raises*
+        when a manual-optimization module (``automatic_optimization is False``,
+        which every :class:`~stable_pretraining.Module` is) is paired with a
+        Trainer that has ``gradient_clip_val > 0`` or
+        ``accumulate_grad_batches != 1`` — because under manual optimization
+        Lightning cannot apply them automatically. ``Module.training_step``
+        *does* apply them itself (strategy-aware clipping via
+        ``self.clip_gradients`` + frequency-based accumulation), so the
+        validation is the only obstacle.
+
+        That validator runs at the very start of ``trainer.fit()`` — before any
+        ``LightningModule`` hook (``setup`` / ``configure_model``) — so the only
+        clean place to defuse it is here, right before ``fit``. We move the two
+        values onto ``*_`` attributes that ``Module.on_train_start`` reads back,
+        then reset the originals so Lightning's validator passes. This replaces
+        a previous global monkey-patch of Lightning's private validator
+        function; doing it here keeps the behavior identical for the supported
+        ``Manager`` entry point without reaching into Lightning internals.
+
+        No-op for automatic-optimization modules (Lightning handles clipping /
+        accumulation natively for those) and when neither value is set.
+        """
+        module = self.instantiated_module
+        trainer = self._trainer
+        # Automatic-optimization modules let Lightning handle clip/accumulation;
+        # never strip those (it would silently disable them).
+        if getattr(module, "automatic_optimization", True):
+            return
+
+        if trainer.gradient_clip_val is not None and trainer.gradient_clip_val > 0:
+            trainer.gradient_clip_val_ = trainer.gradient_clip_val
+            trainer.gradient_clip_algorithm_ = trainer.gradient_clip_algorithm
+            trainer.gradient_clip_val = None
+            logging.info(
+                "  manual-opt: moved gradient_clip_val="
+                f"{trainer.gradient_clip_val_} (algorithm="
+                f"{trainer.gradient_clip_algorithm_}) onto trainer.gradient_clip_val_; "
+                "Module.training_step applies it via self.clip_gradients()."
+            )
+
+        if trainer.accumulate_grad_batches != 1:
+            trainer.accumulate_grad_batches_ = trainer.accumulate_grad_batches
+            trainer.accumulate_grad_batches = 1
+            logging.info(
+                "  manual-opt: moved accumulate_grad_batches="
+                f"{trainer.accumulate_grad_batches_} onto "
+                "trainer.accumulate_grad_batches_; Module.training_step steps "
+                "optimizers on the accumulation boundary."
+            )
+
     def _inject_hydra_hparams(self) -> None:
         """Inject the full flattened Hydra config into the module's hparams.
 
@@ -1737,7 +1791,7 @@ class Manager(submitit.helpers.Checkpointable):
         This is the primary programmatic entry point. Calling ``manager()``
         performs the following steps in order:
 
-        1. Seeds the global RNG via ``pl.seed_everything``.
+        1. Seeds the global RNG via ``seed_everything``.
         2. Resolves (or creates) a ``run_dir`` under ``cache_dir`` for
            checkpointing and logger output.  No-op when ``cache_dir`` is not
            configured.
@@ -1764,7 +1818,7 @@ class Manager(submitit.helpers.Checkpointable):
         logging.info(f"  cwd: {Path().resolve()}")
         log_header("Seed")
         logging.info(f"  seed: {self.seed}")
-        pl.seed_everything(self.seed, workers=True)
+        seed_everything(self.seed, workers=True)
 
         # --- cache_dir: resolve run directory and inject into trainer config ---
         run_dir = self._resolve_run_dir()
@@ -1903,6 +1957,11 @@ class Manager(submitit.helpers.Checkpointable):
         # call; users who explicitly want it can set the attribute back
         # on the trainer after Manager construction.
         self._maybe_skip_sanity_on_requeue()
+
+        # Defuse Lightning's manual-optimization validation (replaces the old
+        # global monkey-patch); must run before trainer.fit() since the
+        # validator fires before any LightningModule hook.
+        self._prepare_manual_optimization()
 
         log_header("TrainerFit")
         logging.info(f"  ckpt_path:     {ckpt_path}")

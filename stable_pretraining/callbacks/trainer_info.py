@@ -3,8 +3,9 @@ import torch
 from lightning.pytorch import Callback
 from loguru import logger as logging
 from prettytable import PrettyTable
-from lightning.pytorch.utilities import rank_zero_only
 import os
+
+from ..utils.distributed import rank_zero_only
 from ..data.module import DataModule
 from .utils import log_callbacks_order, log_header
 

@@ -27,8 +27,9 @@ from typing import List, Optional, Sequence, Tuple
 
 from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.trainer.trainer import Trainer
-from lightning.pytorch.utilities.rank_zero import rank_zero_only
 from loguru import logger
+
+from ..utils.distributed import rank_zero_only
 
 from .utils import log_header
 
