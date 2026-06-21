@@ -502,3 +502,67 @@ class TestPrintSignalInfo:
     def test_with_label(self):
         # Should not raise; label is purely cosmetic.
         print_signal_info("post-fit")
+
+
+@pytest.mark.unit
+class TestDistributedCheckpointResume:
+    """FSDP2 distributed checkpoints are directories, not single files.
+
+    They are saved as a directory of ``*.distcp`` shards (one per rank).
+    Regression for a bug where requeue-resume and fresh-run ``ckpt_path``
+    validation both used ``Path.is_file()``, which is ``False`` for the
+    directory form — so every sharded (FSDP2 / ``save_distributed_checkpoint``)
+    run refused to resume on SLURM requeue even though ``last.ckpt`` was on disk.
+    """
+
+    @staticmethod
+    def _make_distributed_ckpt(path: Path) -> Path:
+        """Create a fake distributed checkpoint (a directory of shards)."""
+        path.mkdir(parents=True)
+        (path / "__0_0.distcp").touch()
+        (path / ".metadata").touch()
+        return path
+
+    def test_requeue_accepts_directory_last_ckpt(
+        self, manager_factory, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        run_dir = tmp_path / "run"
+        last_ckpt = self._make_distributed_ckpt(run_dir / "checkpoints" / "last.ckpt")
+        manager = manager_factory(
+            callbacks=[], ckpt_path=None, trainer_enable_checkpointing=True
+        )
+        monkeypatch.setattr(
+            "stable_pretraining.manager._is_slurm_requeue", lambda: True
+        )
+        path, weights_only = manager._resolve_load_path(run_dir)
+        assert path == str(last_ckpt)
+        # Requeue always full-restores (optimizer/scheduler/RNG).
+        assert weights_only is False
+
+    def test_requeue_missing_last_ckpt_still_raises(
+        self, manager_factory, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        run_dir = tmp_path / "run"
+        (run_dir / "checkpoints").mkdir(parents=True)  # no last.ckpt at all
+        manager = manager_factory(
+            callbacks=[], ckpt_path=None, trainer_enable_checkpointing=True
+        )
+        monkeypatch.setattr(
+            "stable_pretraining.manager._is_slurm_requeue", lambda: True
+        )
+        with pytest.raises(RuntimeError, match="no last.ckpt"):
+            manager._resolve_load_path(run_dir)
+
+    def test_init_accepts_directory_ckpt_path(self, tmp_path: Path):
+        """A distributed-checkpoint directory is a valid fresh-run ``ckpt_path``."""
+        ckpt_dir = self._make_distributed_ckpt(tmp_path / "last.ckpt")
+        trainer = BoringTrainer(
+            default_root_dir=str(tmp_path), enable_checkpointing=True
+        )
+        manager = Manager(
+            trainer=trainer,
+            module=BoringModule(),
+            data=BoringDataModule(),
+            ckpt_path=str(ckpt_dir),
+        )
+        assert manager.ckpt_path == ckpt_dir

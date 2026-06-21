@@ -528,9 +528,13 @@ class Manager(submitit.helpers.Checkpointable):
                     "regardless of where the process is launched from."
                 )
             p = p.with_suffix(".ckpt")
-            if not p.is_file():
+            # ``exists()`` not ``is_file()``: a distributed (FSDP2) checkpoint
+            # is a directory of ``*.distcp`` shards, not a single file. Accept
+            # both so an FSDP2 ``last.ckpt`` can be passed as a fresh-run
+            # ``ckpt_path`` too.
+            if not p.exists():
                 raise FileNotFoundError(
-                    f"`ckpt_path` was set to {p} but no such file exists. "
+                    f"`ckpt_path` was set to {p} but no such file/dir exists. "
                     "Refusing to silently start training from scratch."
                 )
             ckpt_path = p
@@ -1243,7 +1247,13 @@ class Manager(submitit.helpers.Checkpointable):
                     "picks up exactly where it left off. The user ckpt_path "
                     "is only consumed on the FIRST (fresh) invocation."
                 )
-            if not last_ckpt.is_file():
+            # ``exists()`` not ``is_file()``: an FSDP2 *distributed* checkpoint
+            # is saved as a DIRECTORY of ``*.distcp`` shards (one per rank),
+            # while a plain checkpoint is a single file. Both are valid
+            # ``last.ckpt`` forms — gating on ``is_file()`` made every sharded
+            # (FSDP2 / save_distributed_checkpoint=True) run refuse to resume
+            # on requeue even though the checkpoint was written correctly.
+            if not last_ckpt.exists():
                 raise RuntimeError(
                     f"REQUEUE but no last.ckpt to resume from at {last_ckpt}. "
                     "The original run was preempted before saving its first "
