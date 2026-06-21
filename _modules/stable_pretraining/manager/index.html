@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g35263d4c5 documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+gae21828b4 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=50180792"></script>
+    <script src="../../../_static/documentation_options.js?v=89135abd"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g35263d4c5 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gae21828b4 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -910,9 +910,13 @@
                     <span class="s2">&quot;regardless of where the process is launched from.&quot;</span>
                 <span class="p">)</span>
             <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.ckpt&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="c1"># ``exists()`` not ``is_file()``: a distributed (FSDP2) checkpoint</span>
+            <span class="c1"># is a directory of ``*.distcp`` shards, not a single file. Accept</span>
+            <span class="c1"># both so an FSDP2 ``last.ckpt`` can be passed as a fresh-run</span>
+            <span class="c1"># ``ckpt_path`` too.</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                 <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;`ckpt_path` was set to </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2"> but no such file exists. &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;`ckpt_path` was set to </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2"> but no such file/dir exists. &quot;</span>
                     <span class="s2">&quot;Refusing to silently start training from scratch.&quot;</span>
                 <span class="p">)</span>
             <span class="n">ckpt_path</span> <span class="o">=</span> <span class="n">p</span>
@@ -1625,7 +1629,13 @@
                     <span class="s2">&quot;picks up exactly where it left off. The user ckpt_path &quot;</span>
                     <span class="s2">&quot;is only consumed on the FIRST (fresh) invocation.&quot;</span>
                 <span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">last_ckpt</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="c1"># ``exists()`` not ``is_file()``: an FSDP2 *distributed* checkpoint</span>
+            <span class="c1"># is saved as a DIRECTORY of ``*.distcp`` shards (one per rank),</span>
+            <span class="c1"># while a plain checkpoint is a single file. Both are valid</span>
+            <span class="c1"># ``last.ckpt`` forms — gating on ``is_file()`` made every sharded</span>
+            <span class="c1"># (FSDP2 / save_distributed_checkpoint=True) run refuse to resume</span>
+            <span class="c1"># on requeue even though the checkpoint was written correctly.</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">last_ckpt</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                 <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;REQUEUE but no last.ckpt to resume from at </span><span class="si">{</span><span class="n">last_ckpt</span><span class="si">}</span><span class="s2">. &quot;</span>
                     <span class="s2">&quot;The original run was preempted before saving its first &quot;</span>

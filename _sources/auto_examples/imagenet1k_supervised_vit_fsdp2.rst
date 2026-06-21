@@ -41,7 +41,7 @@ Launch on a >=2-GPU node (one task per GPU — Lightning reads ``SLURM_NTASKS``)
 FSDP2 path at scale; trained from scratch on ImageNet-1k it is *not* expected to
 reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.
 
-.. GENERATED FROM PYTHON SOURCE LINES 25-186
+.. GENERATED FROM PYTHON SOURCE LINES 25-250
 
 .. code-block:: Python
 
@@ -73,30 +73,53 @@ reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.
 
 
     class TopkAccuracy(pl.Callback):
-        """Validation top-1 accuracy on the trained head's logits (``batch["logits"]``)."""
+        """Validation top-1 / top-5 accuracy on the head's logits (``batch["logits"]``).
+
+        Uses ``average="micro"`` (correct / total) — the standard ImageNet top-1
+        every paper reports. ``torchmetrics``'s
+        :class:`~torchmetrics.classification.MulticlassAccuracy` defaults to
+        ``average="macro"`` (mean of per-class recall); on the full balanced
+        ImageNet val set macro and micro nearly coincide, but micro is the
+        unambiguous convention, so we pin it and add top-5 alongside.
+        """
 
         def __init__(self):
             super().__init__()
-            self.acc = torchmetrics.classification.MulticlassAccuracy(NUM_CLASSES)
+            MCA = torchmetrics.classification.MulticlassAccuracy
+            self.top1 = MCA(NUM_CLASSES, top_k=1, average="micro")
+            self.top5 = MCA(NUM_CLASSES, top_k=5, average="micro")
 
         def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-            self.acc.to(pl_module.device)
-            self.acc.update(batch["logits"], batch["label"].long())
+            self.top1.to(pl_module.device)
+            self.top5.to(pl_module.device)
+            self.top1.update(batch["logits"], batch["label"].long())
+            self.top5.update(batch["logits"], batch["label"].long())
 
         def on_validation_epoch_end(self, trainer, pl_module):
-            pl_module.log("val/top1", self.acc.compute(), prog_bar=True, sync_dist=True)
-            self.acc.reset()
+            pl_module.log("val/top1", self.top1.compute(), prog_bar=True, sync_dist=True)
+            pl_module.log("val/top5", self.top5.compute(), prog_bar=True, sync_dist=True)
+            self.top1.reset()
+            self.top5.reset()
 
 
-    def build_loaders(batch_size, num_workers):
+    def build_loaders(batch_size, num_workers, use_randaug=True, cpu_norm=False):
         # CPU does the bare minimum (decode + square resize) so the GPU aug pipeline
         # is the bottleneck-free fast path. Train images stay un-normalized [0,1]
         # floats for the kornia GPU ops; val is fully prepared on CPU.
-        train_cpu = transforms.Compose(
-            transforms.RGB(),
-            transforms.Resize((256, 256)),
-            transforms.ToImage(),  # -> float tensor in [0, 1], no normalization
-        )
+        if cpu_norm:
+            # debug path: full CPU pipeline producing normalized 224 crops, no gpu_transform
+            train_cpu = transforms.Compose(
+                transforms.RGB(),
+                transforms.RandomResizedCrop((224, 224), scale=(0.08, 1.0)),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.ToImage(mean=_MEAN, std=_STD),
+            )
+        else:
+            train_cpu = transforms.Compose(
+                transforms.RGB(),
+                transforms.Resize((256, 256)),
+                transforms.ToImage(),  # [0,1], GPU pipeline normalizes
+            )
         val_cpu = transforms.Compose(
             transforms.RGB(),
             transforms.Resize((256, 256)),
@@ -107,14 +130,18 @@ reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.
             path="ILSVRC/imagenet-1k", split="train", transform=train_cpu
         )
         # Heavy augmentation, batched on GPU (DeiT/AugReg policy).
-        train_ds.gpu_transform = GPUCompose(
+        aug = [
             ToDevice(),
             GPURandomResizedCrop(224, scale=(0.08, 1.0)),
             GPURandomHorizontalFlip(p=0.5),
-            GPURandAugment(n=2, m=9),
-            GPUNormalize(mean=_MEAN, std=_STD),
-            GPURandomErasing(p=0.25),
-        )
+        ]
+        if use_randaug:
+            aug.append(GPURandAugment(n=2, m=9))
+        aug.append(GPUNormalize(mean=_MEAN, std=_STD))
+        if use_randaug:
+            aug.append(GPURandomErasing(p=0.25))
+        if not cpu_norm:
+            train_ds.gpu_transform = GPUCompose(aug)
         val_ds = spt.data.HFDataset(
             path="ILSVRC/imagenet-1k", split="validation", transform=val_cpu
         )
@@ -136,20 +163,43 @@ reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.
     def main():
         ap = argparse.ArgumentParser()
         ap.add_argument("--backbone", default="vit_large_patch16_224")
+        ap.add_argument("--strategy", default="fsdp2", help="fsdp2 | ddp | auto (debug)")
+        ap.add_argument("--devices", default="auto", help="'auto' or an int (debug)")
         ap.add_argument("--epochs", type=int, default=300)
+        ap.add_argument(
+            "--max-steps", type=int, default=0, help=">0 caps steps (smoke test)"
+        )
         ap.add_argument("--batch-size", type=int, default=64, help="per-GPU batch")
         ap.add_argument("--lr", type=float, default=1e-3)
         ap.add_argument("--weight-decay", type=float, default=0.05)
         ap.add_argument("--drop-path", type=float, default=0.4)  # DeiT-III ViT-L
         ap.add_argument("--label-smoothing", type=float, default=0.1)
         ap.add_argument("--num-workers", type=int, default=12)
+        ap.add_argument("--no-randaug", action="store_true", help="debug: drop RandAugment")
+        ap.add_argument("--no-mixup", action="store_true", help="debug: drop Mixup/CutMix")
+        ap.add_argument(
+            "--cpu-norm",
+            action="store_true",
+            help="debug: normalize on CPU, no gpu_transform",
+        )
+        ap.add_argument(
+            "--overfit-batches",
+            type=int,
+            default=0,
+            help="debug: Lightning overfit_batches",
+        )
         args = ap.parse_args()
 
         # Speed knobs (TF32 + autotuned cuDNN); bf16 comes from the Trainer.
         torch.set_float32_matmul_precision("high")
         torch.backends.cudnn.benchmark = True
 
-        train_loader, val_loader = build_loaders(args.batch_size, args.num_workers)
+        train_loader, val_loader = build_loaders(
+            args.batch_size,
+            args.num_workers,
+            use_randaug=not args.no_randaug,
+            cpu_norm=args.cpu_norm,
+        )
         data = spt.data.DataModule(train=train_loader, val=val_loader)
 
         backbone = getattr(spt.backbone, args.backbone)(
@@ -164,9 +214,18 @@ reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.
 
         def forward(self, batch, stage):
             if self.training:
-                images, soft = mixup(batch["image"], batch["label"])
+                if args.no_mixup:
+                    images, target = batch["image"], batch["label"]
+                else:
+                    images, target = mixup(batch["image"], batch["label"])
                 logits = self.backbone(images)
-                batch["loss"] = F.cross_entropy(logits, soft)
+                loss = F.cross_entropy(logits, target)
+                batch["loss"] = loss
+                # Log train loss so we can actually see whether the backbone learns
+                # (CE starts near ln(1000)=6.9; flat there = frozen, dropping = learning).
+                self.log(
+                    "train/loss", loss.detach(), prog_bar=True, on_step=True, sync_dist=True
+                )
             else:
                 batch["logits"] = self.backbone(batch["image"])
             return batch
@@ -185,17 +244,22 @@ reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.
             },
         )
 
-        trainer = dict(
-            strategy="fsdp2",
+        # Pass a real pl.Trainer (not a config dict): the Manager wraps a dict
+        # trainer in OmegaConf, which can't hold callback *instances*
+        # (UnsupportedValueType). Callback instances are fine on a built Trainer.
+        devices = args.devices if args.devices == "auto" else int(args.devices)
+        trainer = pl.Trainer(
+            strategy=args.strategy,
             precision="bf16-mixed",
             accelerator="gpu",
-            devices="auto",
+            devices=devices,
             max_epochs=args.epochs,
+            max_steps=args.max_steps if args.max_steps > 0 else -1,
+            overfit_batches=args.overfit_batches if args.overfit_batches > 0 else 0.0,
             callbacks=[
                 pl.pytorch.callbacks.LearningRateMonitor(logging_interval="step"),
                 TopkAccuracy(),
             ],
-            gradient_clip_val=1.0,
             num_sanity_val_steps=0,
             enable_checkpointing=True,
         )
