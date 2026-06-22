@@ -1,6 +1,5 @@
 """Unified log reader for local and wandb logs."""
 
-import logging
 import re
 from abc import ABC, abstractmethod
 from multiprocessing import Pool
@@ -9,25 +8,26 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from loguru import logger
 from tqdm import tqdm
 
 try:
     import jsonlines
 except ModuleNotFoundError:
-    logging.warning(
+    logger.warning(
         "jsonlines module is not installed, local log reading will not work."
     )
 
 try:
     import omegaconf
 except ModuleNotFoundError:
-    logging.warning("omegaconf module is not installed, config loading will not work.")
+    logger.warning("omegaconf module is not installed, config loading will not work.")
 
 try:
     import wandb as wandbapi
     from tqdm.contrib.logging import logging_redirect_tqdm
 except ModuleNotFoundError:
-    logging.warning(
+    logger.warning(
         "Wandb module is not installed, make sure to not use wandb for logging "
         "or an error will be thrown."
     )
@@ -113,8 +113,8 @@ class LocalLogReader(LogReader):
 
         values = []
         logs_files = list(_path.glob("logs_rank_*.jsonl"))
-        logging.info(f"Reading .jsonl files from {_path}")
-        logging.info(f"\t=> {len(logs_files)} ranks detected")
+        logger.info(f"Reading .jsonl files from {_path}")
+        logger.info(f"\t=> {len(logs_files)} ranks detected")
 
         for log_file in logs_files:
             rank = int(log_file.stem.split("rank_")[1])
@@ -122,7 +122,7 @@ class LocalLogReader(LogReader):
                 obj["rank"] = rank
                 values.append(obj)
 
-        logging.info(f"\t=> total length of logs: {len(values)}")
+        logger.info(f"\t=> total length of logs: {len(values)}")
         return values
 
     def read_project(
@@ -143,7 +143,6 @@ class LocalLogReader(LogReader):
         configs = []
         values = []
 
-        logging.basicConfig(level=logging.INFO)
         if logging_redirect_tqdm:
             with logging_redirect_tqdm():
                 args = [run.parent for run in runs]
@@ -294,7 +293,7 @@ class WandbLogReader(LogReader):
             per_page=per_page,
             include_sweeps=include_sweeps,
         )
-        logging.info(f"Found {len(runs)} runs for project {project}")
+        logger.info(f"Found {len(runs)} runs for project {project}")
 
         if return_summary:
             data = []
@@ -368,7 +367,7 @@ class TableFormatter:
         Returns:
             Formatted table as DataFrame
         """
-        logging.info(f"Creating table from {len(configs)} runs.")
+        logger.info(f"Creating table from {len(configs)} runs.")
         filters = filters or {}
 
         df = pd.DataFrame(configs).T
@@ -381,12 +380,12 @@ class TableFormatter:
                 v = [v]
             s = df[k].isin(v)
             df = df.loc[s]
-            logging.info(f"After filtering {k}, {len(df)} runs are left.")
+            logger.info(f"After filtering {k}, {len(df)} runs are left.")
 
         rows = natural_sort(df[row].astype(str).unique())
-        logging.info(f"Found rows: {rows}")
+        logger.info(f"Found rows: {rows}")
         columns = natural_sort(df[column].astype(str).unique())
-        logging.info(f"Found columns: {columns}")
+        logger.info(f"Found columns: {columns}")
 
         output = pd.DataFrame(columns=columns, index=rows)
 
@@ -395,11 +394,11 @@ class TableFormatter:
                 cell_runs = (df[row].astype(str) == r) & (df[column].astype(str) == c)
                 n = np.count_nonzero(cell_runs)
                 samples = []
-                logging.info(f"Number of runs for cell ({r}, {c}): {n}")
+                logger.info(f"Number of runs for cell ({r}, {c}): {n}")
 
                 for id in df[cell_runs].index.values:
                     if value not in dfs[id].columns:
-                        logging.info(f"Run {id} missing {value}, skipping....")
+                        logger.info(f"Run {id} missing {value}, skipping....")
                         continue
                     samples.append(dfs[id][value].values.reshape(-1))
 

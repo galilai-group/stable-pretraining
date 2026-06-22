@@ -10,7 +10,6 @@ for the parity assertions.
 """
 
 import functools
-import logging
 import os
 import random
 import warnings
@@ -19,8 +18,7 @@ from typing import Callable, Optional, Union
 import torch
 import torch.distributed as dist
 import torch.distributed.nn
-
-log = logging.getLogger(__name__)
+from loguru import logger
 
 # Same precedence Lightning uses (see ``lightning.fabric.utilities.rank_zero``):
 # LOCAL_RANK before SLURM_PROCID because SLURM_PROCID can be set even when SLURM
@@ -116,10 +114,9 @@ def rank_zero_warn(message: Union[str, Warning], stacklevel: int = 4, **kwargs) 
 
 
 @rank_zero_only
-def rank_zero_info(*args, stacklevel: int = 4, **kwargs) -> None:
+def rank_zero_info(message, *args, **kwargs) -> None:
     """Emit an info-level log message only on global rank 0."""
-    kwargs["stacklevel"] = stacklevel
-    log.info(*args, **kwargs)
+    logger.info(message, *args, **kwargs)
 
 
 class _DummyExperiment:
@@ -217,7 +214,7 @@ def seed_everything(
         )
 
     if verbose:
-        log.info(f"Seed set to {seed}")
+        logger.info(f"Seed set to {seed}")
 
     os.environ["PL_GLOBAL_SEED"] = str(seed)
     random.seed(seed)
