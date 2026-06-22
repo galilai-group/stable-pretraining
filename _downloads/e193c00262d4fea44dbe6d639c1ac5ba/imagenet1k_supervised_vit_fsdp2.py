@@ -79,7 +79,9 @@ class TopkAccuracy(pl.Callback):
         self.top5.reset()
 
 
-def build_loaders(batch_size, num_workers, use_randaug=True, cpu_norm=False):
+def build_loaders(
+    batch_size, num_workers, use_randaug=True, cpu_norm=False, randaug_m=9
+):
     # CPU does the bare minimum (decode + square resize) so the GPU aug pipeline
     # is the bottleneck-free fast path. Train images stay un-normalized [0,1]
     # floats for the kornia GPU ops; val is fully prepared on CPU.
@@ -113,7 +115,15 @@ def build_loaders(batch_size, num_workers, use_randaug=True, cpu_norm=False):
         GPURandomHorizontalFlip(p=0.5),
     ]
     if use_randaug:
-        aug.append(GPURandAugment(n=2, m=9))
+        # WARNING: kornia 0.8.3 auto.RandAugment is BROKEN — its `auto_contrast`
+        # and `posterize` ops go fully black at any magnitude, and `brightness`/
+        # `contrast` have an inverted magnitude map. RandAugment randomly draws
+        # these, so a fraction of every batch is corrupted (black/blown) at ANY
+        # `m` — verified by per-op probing + visualizing the augmented tensors.
+        # No `m` is safe; this is why the full recipe never learned. The fix is
+        # to use torchvision's RandAugment instead (correct across magnitudes).
+        # `--randaug-m` is retained only for the debug record.
+        aug.append(GPURandAugment(n=2, m=randaug_m))
     aug.append(GPUNormalize(mean=_MEAN, std=_STD))
     if use_randaug:
         aug.append(GPURandomErasing(p=0.25))
@@ -149,10 +159,23 @@ def main():
     ap.add_argument("--batch-size", type=int, default=64, help="per-GPU batch")
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--weight-decay", type=float, default=0.05)
-    ap.add_argument("--drop-path", type=float, default=0.4)  # DeiT-III ViT-L
+    # Stochastic depth. DeiT-III ViT-L uses 0.4, but that is tuned for an
+    # 800-epoch schedule and badly suppresses a *from-scratch* model early
+    # (it can't get a foothold — verified: train loss stays at ln(1000) for
+    # epochs). 0.1 (AugReg ViT-L) lets it learn from epoch 0; raise toward 0.3
+    # for very long runs.
+    ap.add_argument("--drop-path", type=float, default=0.1)
+    # Mixup/CutMix application probability. Always-on (1.0) soft targets are
+    # also too harsh from scratch; 0.5 (stochastic, half the batches see clean
+    # hard labels) gives the model a foothold while keeping the regularizer.
+    ap.add_argument("--mixup-prob", type=float, default=0.5)
     ap.add_argument("--label-smoothing", type=float, default=0.1)
     ap.add_argument("--num-workers", type=int, default=12)
     ap.add_argument("--no-randaug", action="store_true", help="debug: drop RandAugment")
+    # kornia RandAugment magnitude. kornia 0.8.3 runs ~3x hotter than
+    # torchvision at the same value, so 3 (≈ torchvision's 9) is the sane
+    # default for the kornia GPU op; 9 corrupts images.
+    ap.add_argument("--randaug-m", type=int, default=3)
     ap.add_argument("--no-mixup", action="store_true", help="debug: drop Mixup/CutMix")
     ap.add_argument(
         "--cpu-norm",
@@ -165,17 +188,30 @@ def main():
         default=0,
         help="debug: Lightning overfit_batches",
     )
+    ap.add_argument(
+        "--ckpt-every-n-steps",
+        type=int,
+        default=250,
+        help="save requeue last.ckpt every N steps (spot-preemption safety; "
+        "an epoch is too coarse if preemption strikes before it finishes)",
+    )
     args = ap.parse_args()
 
     # Speed knobs (TF32 + autotuned cuDNN); bf16 comes from the Trainer.
     torch.set_float32_matmul_precision("high")
     torch.backends.cudnn.benchmark = True
 
+    # Spot partitions preempt often — a 10-min epoch may never finish, leaving
+    # no checkpoint to resume from (the next requeue then fails). Save the
+    # requeue last.ckpt every N steps so an in-flight checkpoint always exists.
+    spt.set(requeue_checkpoint_every_n_steps=args.ckpt_every_n_steps)
+
     train_loader, val_loader = build_loaders(
         args.batch_size,
         args.num_workers,
         use_randaug=not args.no_randaug,
         cpu_norm=args.cpu_norm,
+        randaug_m=args.randaug_m,
     )
     data = spt.data.DataModule(train=train_loader, val=val_loader)
 
@@ -186,6 +222,7 @@ def main():
         NUM_CLASSES,
         mixup_alpha=0.8,
         cutmix_alpha=1.0,
+        prob=args.mixup_prob,
         label_smoothing=args.label_smoothing,
     )
 

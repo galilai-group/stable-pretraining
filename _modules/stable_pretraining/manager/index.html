@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g65c0742cb documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+g95b315356 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=893100e1"></script>
+    <script src="../../../_static/documentation_options.js?v=c0bf119a"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g65c0742cb documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g95b315356 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -397,7 +397,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callback</span><span class="p">,</span> <span class="n">ModelCheckpoint</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.utils.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">rank_zero_only</span><span class="p">,</span> <span class="n">seed_everything</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils.distributed</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_rank</span><span class="p">,</span> <span class="n">rank_zero_only</span><span class="p">,</span> <span class="n">seed_everything</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">omegaconf</span><span class="w"> </span><span class="kn">import</span> <span class="n">DictConfig</span><span class="p">,</span> <span class="n">OmegaConf</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">WANDB_AVAILABLE</span>
@@ -1176,12 +1176,18 @@
         <span class="c1"># last-writer-wins), rank-0 picks the dir and publishes it to a shared</span>
         <span class="c1"># handoff file; non-zero ranks block on that file and adopt it.</span>
         <span class="c1">#</span>
-        <span class="c1"># Lightning&#39;s `rank_zero_only.rank` is the source of truth: it&#39;s</span>
-        <span class="c1"># initialised at import time from the same env vars (`RANK`,</span>
-        <span class="c1"># `SLURM_PROCID`, ...) that DDP launchers set, and reused by every</span>
-        <span class="c1"># `@rank_zero_only`-gated logger we ship — keeping detection consistent.</span>
+        <span class="c1"># Resolve rank via ``get_rank()`` — it reads the live process group, or</span>
+        <span class="c1"># falls back to the launcher env vars (`RANK` / `LOCAL_RANK` /</span>
+        <span class="c1"># `SLURM_PROCID`) that are set *before* the process group is built,</span>
+        <span class="c1"># which is exactly the situation here. (Do NOT use</span>
+        <span class="c1"># ``getattr(rank_zero_only, &quot;rank&quot;, 0)``: our in-house ``rank_zero_only``</span>
+        <span class="c1"># is a plain decorator with no ``.rank`` attribute — unlike Lightning&#39;s</span>
+        <span class="c1"># — so that getattr silently returned 0 on EVERY rank, making all ranks</span>
+        <span class="c1"># believe they were rank-0. They then skipped the handoff and each</span>
+        <span class="c1"># created its own run_dir, racing on ``.slurm_index`` and breaking</span>
+        <span class="c1"># requeue resume. See test_nonzero_rank_does_not_write_slurm_index.)</span>
         <span class="n">launch_key</span> <span class="o">=</span> <span class="n">_ddp_launch_key</span><span class="p">()</span>
-        <span class="n">rank</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">rank_zero_only</span><span class="p">,</span> <span class="s2">&quot;rank&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="n">get_rank</span><span class="p">()</span>
         <span class="n">is_rank_zero</span> <span class="o">=</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;  ddp: launch_key=</span><span class="si">{</span><span class="n">launch_key</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(single-process)&#39;</span><span class="si">}</span><span class="s2"> &quot;</span>
@@ -1383,10 +1389,29 @@
         <span class="p">(</span><span class="n">run_dir</span> <span class="o">/</span> <span class="n">_RUN_META_FILENAME</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">meta</span><span class="p">))</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  wrote run_meta.json with run_id=</span><span class="si">{</span><span class="n">run_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Record SLURM-key → run_dir so a future preempt-and-requeue</span>
-        <span class="c1"># cycle finds us. No-op outside SLURM.</span>
-        <span class="n">index_msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_slurm_index</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM index = </span><span class="si">{</span><span class="n">index_msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Record SLURM-key → run_dir so a future preempt-and-requeue cycle</span>
+        <span class="c1"># finds us. No-op outside SLURM.</span>
+        <span class="c1">#</span>
+        <span class="c1"># ONLY rank-0 writes the index. In the happy path the rank-0 handoff</span>
+        <span class="c1"># makes non-zero ranks adopt rank-0&#39;s dir and return early (above), so</span>
+        <span class="c1"># they never reach here. But if the handoff times out, every non-zero</span>
+        <span class="c1"># rank falls through to this fresh branch with its OWN uuid&#39;d run_dir</span>
+        <span class="c1"># and — without this guard — races to overwrite the shared index</span>
+        <span class="c1"># (last-writer-wins), leaving it pointing at some non-rank-0 dir.</span>
+        <span class="c1"># Meanwhile Lightning broadcasts rank-0&#39;s checkpoint path to all ranks,</span>
+        <span class="c1"># so the distributed ``last.ckpt`` shards always land in rank-0&#39;s dir.</span>
+        <span class="c1"># If the index then points elsewhere, requeue resolves an empty dir and</span>
+        <span class="c1"># fails with &quot;no last.ckpt&quot;. Gating to rank-0 keeps index + checkpoint</span>
+        <span class="c1"># on the same (rank-0) dir. Non-rank-0 fresh dirs become harmless</span>
+        <span class="c1"># orphans.</span>
+        <span class="k">if</span> <span class="n">is_rank_zero</span><span class="p">:</span>
+            <span class="n">index_msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_slurm_index</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SLURM index = </span><span class="si">{</span><span class="n">index_msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;  rank-0 handoff missed — this non-zero rank resolved its own &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;run_dir (</span><span class="si">{</span><span class="n">run_dir</span><span class="si">}</span><span class="s2">); NOT writing .slurm_index (rank-0 owns it).&quot;</span>
+            <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span> <span class="o">=</span> <span class="n">run_dir</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span> <span class="o">=</span> <span class="n">run_id</span>
@@ -1725,16 +1750,25 @@
         <span class="c1"># spt.set(requeue_checkpoint=False) to save time/disk.</span>
         <span class="n">cfg</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">requeue_checkpoint</span><span class="p">:</span>
+            <span class="c1"># ``every_n_train_steps`` (when &gt; 0) also saves ``last.ckpt``</span>
+            <span class="c1"># mid-epoch, so a heavily-preempted (spot) run whose epoch never</span>
+            <span class="c1"># finishes before preemption still has a checkpoint to resume from.</span>
+            <span class="c1"># 0 keeps the epoch-end-only behavior.</span>
+            <span class="n">every_n_steps</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">requeue_checkpoint_every_n_steps</span> <span class="ow">or</span> <span class="kc">None</span>
             <span class="n">requeue_saver</span> <span class="o">=</span> <span class="n">ModelCheckpoint</span><span class="p">(</span>
                 <span class="n">dirpath</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">save_dir</span><span class="p">),</span>
                 <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;last&quot;</span><span class="p">,</span>
                 <span class="n">save_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">save_on_train_epoch_end</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">every_n_train_steps</span><span class="o">=</span><span class="n">every_n_steps</span><span class="p">,</span>
                 <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="n">enable_version_counter</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">requeue_saver</span><span class="p">)</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Added requeue checkpoint (filename=&#39;last&#39;)&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;  Added requeue checkpoint (filename=&#39;last&#39;, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;every_n_train_steps=</span><span class="si">{</span><span class="n">every_n_steps</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
         <span class="k">elif</span> <span class="s2">&quot;SLURM_JOB_ID&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                 <span class="s2">&quot;! Requeue checkpoint disabled &quot;</span>

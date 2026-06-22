@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.losses.joint_embedding &#8212; stable-pretraining 0.1.dev1+g65c0742cb documentation</title>
+    <title>stable_pretraining.losses.joint_embedding &#8212; stable-pretraining 0.1.dev1+g95b315356 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=893100e1"></script>
+    <script src="../../../../_static/documentation_options.js?v=c0bf119a"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g65c0742cb documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g95b315356 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -390,7 +390,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">all_gather</span><span class="p">,</span> <span class="n">all_reduce</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">all_gather</span><span class="p">,</span> <span class="n">all_reduce</span><span class="p">,</span> <span class="n">get_rank</span><span class="p">,</span> <span class="n">get_world_size</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">off_diagonal</span><span class="p">,</span> <span class="n">VCRegLoss</span>
 
 
@@ -500,8 +500,15 @@
         <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">(</span><span class="n">z_i</span><span class="p">)</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalize</span><span class="p">(</span>
             <span class="n">z_j</span>
         <span class="p">)</span>  <span class="c1"># normalize along the batch dimension</span>
-        <span class="n">c</span> <span class="o">=</span> <span class="n">c</span> <span class="o">/</span> <span class="n">z_i</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-        <span class="n">all_reduce</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="c1"># Normalize by the GLOBAL batch size, then sum the per-rank partial</span>
+        <span class="c1"># cross-correlation matrices. In a single process get_world_size() == 1</span>
+        <span class="c1"># and all_reduce is a no-op, so this is identical to the previous</span>
+        <span class="c1"># ``c / z_i.size(0)``; under DDP it recovers the true global</span>
+        <span class="c1"># cross-correlation (matching the reference Barlow Twins</span>
+        <span class="c1"># implementation), whereas the old ``all_reduce(c)`` discarded its</span>
+        <span class="c1"># result and was a silent no-op.</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">c</span> <span class="o">/</span> <span class="p">(</span><span class="n">z_i</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="n">get_world_size</span><span class="p">())</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">all_reduce</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
 
         <span class="n">on_diag</span> <span class="o">=</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">diagonal</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
         <span class="n">off_diag</span> <span class="o">=</span> <span class="n">off_diagonal</span><span class="p">(</span><span class="n">c</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
@@ -631,8 +638,13 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
         <span class="n">logit_scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="k">if</span> <span class="n">logit_scale</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">logit_scale</span>
 
-        <span class="n">anchors</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">all_gather</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">anchors</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)),</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="n">candidates</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">all_gather</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">candidates</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># ``_compute`` is a pure local ``anchors @ candidates.T`` cross-entropy.</span>
+        <span class="c1"># Cross-GPU gathering of ``candidates`` (and the matching rank-offset of</span>
+        <span class="c1"># ``targets`` / ``mask``) is the caller&#39;s responsibility — see</span>
+        <span class="c1"># ``NTXEntLoss.forward`` / ``CLIPLoss.forward`` — so anchors stay local</span>
+        <span class="c1"># while candidates may span all ranks.</span>
+        <span class="n">anchors</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">anchors</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">candidates</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">candidates</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 
         <span class="n">logits</span> <span class="o">=</span> <span class="p">(</span><span class="n">anchors</span> <span class="o">@</span> <span class="n">candidates</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="o">/</span> <span class="n">logit_scale</span>
 
@@ -690,6 +702,14 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z_i</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">z_j</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the NT-Xent loss.</span>
 
+<span class="sd">        Under DDP the negatives span **all** ranks: the local anchors</span>
+<span class="sd">        (``[z_i; z_j]``) are scored against the candidates gathered from every</span>
+<span class="sd">        process, with ``targets`` / the self-mask offset by ``rank`` so each</span>
+<span class="sd">        anchor&#39;s positive (its other view) and self-exclusion point at the right</span>
+<span class="sd">        rows of the global candidate set. In a single process this reduces</span>
+<span class="sd">        exactly to the classic SimCLR formulation (``rank == 0``,</span>
+<span class="sd">        ``world_size == 1``, gather is a no-op).</span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            z_i (torch.Tensor): Latent representation of the first augmented view of the batch.</span>
 <span class="sd">            z_j (torch.Tensor): Latent representation of the second augmented view of the batch.</span>
@@ -697,18 +717,26 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            float: The computed contrastive loss.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">anchors</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">z_i</span><span class="p">,</span> <span class="n">z_j</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="n">candidates</span> <span class="o">=</span> <span class="n">anchors</span>
+        <span class="n">anchors</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">z_i</span><span class="p">,</span> <span class="n">z_j</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># local: [2N, D]</span>
+        <span class="c1"># Gather every rank&#39;s anchors as candidates (autograd-aware), so each</span>
+        <span class="c1"># local anchor is contrasted against the GLOBAL set of negatives.</span>
+        <span class="n">candidates</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">all_gather</span><span class="p">(</span><span class="n">anchors</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># global: [2N * W, D]</span>
 
-        <span class="n">N</span> <span class="o">=</span> <span class="n">z_i</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-        <span class="n">targets</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
-            <span class="p">[</span>
-                <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">z_i</span><span class="o">.</span><span class="n">device</span><span class="p">),</span>
-                <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">z_i</span><span class="o">.</span><span class="n">device</span><span class="p">),</span>
-            <span class="p">]</span>
-        <span class="p">)</span>
-        <span class="c1"># prevent self-matching by masking diagonal</span>
-        <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">z_i</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">two_n</span> <span class="o">=</span> <span class="n">anchors</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="n">get_rank</span><span class="p">()</span> <span class="o">*</span> <span class="n">two_n</span>  <span class="c1"># where this rank&#39;s block sits in `candidates`</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">z_i</span><span class="o">.</span><span class="n">device</span>
+
+        <span class="c1"># Positive of local anchor a is its other view; in the global candidate</span>
+        <span class="c1"># block for this rank that is index ``offset + (a + N) % 2N``.</span>
+        <span class="n">local_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">two_n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">z_i</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="n">offset</span> <span class="o">+</span> <span class="p">(</span><span class="n">local_idx</span> <span class="o">+</span> <span class="n">n</span><span class="p">)</span> <span class="o">%</span> <span class="n">two_n</span>
+
+        <span class="c1"># Exclude only the anchor&#39;s own copy (global index ``offset + a``) — not</span>
+        <span class="c1"># its positive. ``masked_fill`` with this boolean mask sends those logits</span>
+        <span class="c1"># to ``-inf``.</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">two_n</span><span class="p">,</span> <span class="n">candidates</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">mask</span><span class="p">[</span><span class="n">local_idx</span><span class="p">,</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">local_idx</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute</span><span class="p">(</span><span class="n">anchors</span><span class="p">,</span> <span class="n">candidates</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span></div>
 </div>

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g65c0742cb documentation</title>
+    <title>stable_pretraining.module &#8212; stable-pretraining 0.1.dev1+g95b315356 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=893100e1"></script>
+    <script src="../../../_static/documentation_options.js?v=c0bf119a"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g65c0742cb documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g95b315356 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -764,35 +764,6 @@
             <span class="k">yield</span> <span class="n">param</span></div>
 
 
-<div class="viewcode-block" id="Module.rescale_loss_for_grad_acc">
-<a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.rescale_loss_for_grad_acc">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">rescale_loss_for_grad_acc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loss</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scale loss down by the gradient accumulation factor before ``manual_backward``.</span>
-
-<span class="sd">        When ``Trainer(accumulate_grad_batches=N)`` is set, gradients from N consecutive</span>
-<span class="sd">        steps are summed before an optimizer step. Dividing the loss by N ensures the</span>
-<span class="sd">        accumulated gradient is equivalent in magnitude to the gradient from a single</span>
-<span class="sd">        full batch, preventing the effective learning rate from growing with N.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            loss: The raw loss tensor returned by ``forward``.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            torch.Tensor: ``loss / accumulate_grad_batches``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">accum</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
-            <span class="nb">int</span><span class="p">(</span>
-                <span class="nb">getattr</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span>
-                    <span class="s2">&quot;accumulate_grad_batches_&quot;</span><span class="p">,</span>
-                    <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="s2">&quot;accumulate_grad_batches&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-                <span class="p">)</span>
-            <span class="p">),</span>
-            <span class="mi">1</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">loss</span> <span class="o">/</span> <span class="n">accum</span></div>
-
-
 <div class="viewcode-block" id="Module.after_manual_backward">
 <a class="viewcode-back" href="../../../api/gen_modules/stable_pretraining.module.Module/#stable_pretraining.module.Module.after_manual_backward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">after_manual_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -960,8 +931,25 @@
         <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">opt</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">optimizers</span><span class="p">):</span>
             <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_index_to_name</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
             <span class="c1"># Honor per-optimizer frequency if available</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">batch_idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_frequencies</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_frequencies</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">batch_idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">freq</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">continue</span>
+
+            <span class="c1"># Gradient accumulation: ``manual_backward`` was called every</span>
+            <span class="c1"># micro-batch with no loss rescaling, so this optimizer&#39;s params</span>
+            <span class="c1"># hold the SUM of ``freq`` mean-reduction gradients. Average them</span>
+            <span class="c1"># by ``1/freq`` so the step matches a single full-(effective-)batch</span>
+            <span class="c1"># update — i.e. (batch=B/freq, freq) == (batch=B, freq=1) with</span>
+            <span class="c1"># seeded data. Done per-optimizer, BEFORE clipping, so optimizers</span>
+            <span class="c1"># with different frequencies each average over their own window.</span>
+            <span class="c1"># No-op when ``freq == 1`` (the common, non-accumulating case).</span>
+            <span class="k">if</span> <span class="n">freq</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">inner</span> <span class="o">=</span> <span class="n">opt</span><span class="o">.</span><span class="n">optimizer</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span> <span class="n">LightningOptimizer</span><span class="p">)</span> <span class="k">else</span> <span class="n">opt</span>
+                <span class="n">inv</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">freq</span>
+                <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">inner</span><span class="o">.</span><span class="n">param_groups</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">group</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]:</span>
+                        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="n">inv</span><span class="p">)</span>
 
             <span class="n">clip_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_gradient_clip_val</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
             <span class="n">clip_algo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_gradient_clip_algorithm</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
@@ -1508,7 +1496,15 @@
                 <span class="sa">f</span><span class="s2">&quot;with </span><span class="si">{</span><span class="n">sched_name</span><span class="si">}</span><span class="s2"> scheduler.&quot;</span>
             <span class="p">)</span>
 
-            <span class="c1"># Track names and frequencies aligned to optimizer order</span>
+            <span class="c1"># Track names and frequencies aligned to optimizer order. The</span>
+            <span class="c1"># index→name mapping is essential: ``training_step`` looks up the</span>
+            <span class="c1"># per-optimizer frequency (and clip settings) by</span>
+            <span class="c1"># ``_optimizer_index_to_name[idx]``. Without it, ``on_train_start``</span>
+            <span class="c1"># falls back to positional ``default_{i}`` names with frequency 1,</span>
+            <span class="c1"># silently ignoring each optimizer&#39;s configured ``frequency`` (so</span>
+            <span class="c1"># gradient accumulation never engaged for named/multi-optimizer</span>
+            <span class="c1"># configs).</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_index_to_name</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">optimizers</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer_frequencies</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;frequency&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="n">optimizers</span><span class="p">,</span> <span class="n">schedulers</span></div>

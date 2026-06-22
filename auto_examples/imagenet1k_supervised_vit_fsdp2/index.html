@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>&lt;no title&gt; &#8212; stable-pretraining 0.1.dev1+g65c0742cb documentation</title>
+    <title>&lt;no title&gt; &#8212; stable-pretraining 0.1.dev1+g95b315356 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=893100e1"></script>
+    <script src="../../_static/documentation_options.js?v=c0bf119a"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -128,7 +128,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g65c0742cb documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g95b315356 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -517,7 +517,9 @@ reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.</
         <span class="bp">self</span><span class="o">.</span><span class="n">top5</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">build_loaders</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">,</span> <span class="n">use_randaug</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cpu_norm</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_loaders</span><span class="p">(</span>
+    <span class="n">batch_size</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">,</span> <span class="n">use_randaug</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cpu_norm</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">randaug_m</span><span class="o">=</span><span class="mi">9</span>
+<span class="p">):</span>
     <span class="c1"># CPU does the bare minimum (decode + square resize) so the GPU aug pipeline</span>
     <span class="c1"># is the bottleneck-free fast path. Train images stay un-normalized [0,1]</span>
     <span class="c1"># floats for the kornia GPU ops; val is fully prepared on CPU.</span>
@@ -551,7 +553,15 @@ reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.</
         <span class="n">GPURandomHorizontalFlip</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="mf">0.5</span><span class="p">),</span>
     <span class="p">]</span>
     <span class="k">if</span> <span class="n">use_randaug</span><span class="p">:</span>
-        <span class="n">aug</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">GPURandAugment</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mi">9</span><span class="p">))</span>
+        <span class="c1"># WARNING: kornia 0.8.3 auto.RandAugment is BROKEN — its `auto_contrast`</span>
+        <span class="c1"># and `posterize` ops go fully black at any magnitude, and `brightness`/</span>
+        <span class="c1"># `contrast` have an inverted magnitude map. RandAugment randomly draws</span>
+        <span class="c1"># these, so a fraction of every batch is corrupted (black/blown) at ANY</span>
+        <span class="c1"># `m` — verified by per-op probing + visualizing the augmented tensors.</span>
+        <span class="c1"># No `m` is safe; this is why the full recipe never learned. The fix is</span>
+        <span class="c1"># to use torchvision&#39;s RandAugment instead (correct across magnitudes).</span>
+        <span class="c1"># `--randaug-m` is retained only for the debug record.</span>
+        <span class="n">aug</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">GPURandAugment</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">randaug_m</span><span class="p">))</span>
     <span class="n">aug</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">GPUNormalize</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="n">_MEAN</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="n">_STD</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">use_randaug</span><span class="p">:</span>
         <span class="n">aug</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">GPURandomErasing</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="mf">0.25</span><span class="p">))</span>
@@ -587,10 +597,23 @@ reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.</
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--batch-size&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;per-GPU batch&quot;</span><span class="p">)</span>
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--lr&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--weight-decay&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
-    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--drop-path&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.4</span><span class="p">)</span>  <span class="c1"># DeiT-III ViT-L</span>
+    <span class="c1"># Stochastic depth. DeiT-III ViT-L uses 0.4, but that is tuned for an</span>
+    <span class="c1"># 800-epoch schedule and badly suppresses a *from-scratch* model early</span>
+    <span class="c1"># (it can&#39;t get a foothold — verified: train loss stays at ln(1000) for</span>
+    <span class="c1"># epochs). 0.1 (AugReg ViT-L) lets it learn from epoch 0; raise toward 0.3</span>
+    <span class="c1"># for very long runs.</span>
+    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--drop-path&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+    <span class="c1"># Mixup/CutMix application probability. Always-on (1.0) soft targets are</span>
+    <span class="c1"># also too harsh from scratch; 0.5 (stochastic, half the batches see clean</span>
+    <span class="c1"># hard labels) gives the model a foothold while keeping the regularizer.</span>
+    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--mixup-prob&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--label-smoothing&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--num-workers&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--no-randaug&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;debug: drop RandAugment&quot;</span><span class="p">)</span>
+    <span class="c1"># kornia RandAugment magnitude. kornia 0.8.3 runs ~3x hotter than</span>
+    <span class="c1"># torchvision at the same value, so 3 (≈ torchvision&#39;s 9) is the sane</span>
+    <span class="c1"># default for the kornia GPU op; 9 corrupts images.</span>
+    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--randaug-m&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--no-mixup&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;debug: drop Mixup/CutMix&quot;</span><span class="p">)</span>
     <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">&quot;--cpu-norm&quot;</span><span class="p">,</span>
@@ -603,17 +626,30 @@ reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.</
         <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">&quot;debug: Lightning overfit_batches&quot;</span><span class="p">,</span>
     <span class="p">)</span>
+    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--ckpt-every-n-steps&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;save requeue last.ckpt every N steps (spot-preemption safety; &quot;</span>
+        <span class="s2">&quot;an epoch is too coarse if preemption strikes before it finishes)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">args</span> <span class="o">=</span> <span class="n">ap</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
 
     <span class="c1"># Speed knobs (TF32 + autotuned cuDNN); bf16 comes from the Trainer.</span>
     <a href="https://docs.pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision" title="torch.set_float32_matmul_precision" class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-function"><span class="n">torch</span><span class="o">.</span><span class="n">set_float32_matmul_precision</span></a><span class="p">(</span><span class="s2">&quot;high&quot;</span><span class="p">)</span>
     <a href="https://docs.pytorch.org/docs/stable/backends.html#torch.backends.cudnn.benchmark" title="torch.backends.cudnn.benchmark" class="sphx-glr-backref-module-torch-backends-cudnn sphx-glr-backref-type-py-attribute"><span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">benchmark</span></a> <span class="o">=</span> <span class="kc">True</span>
 
+    <span class="c1"># Spot partitions preempt often — a 10-min epoch may never finish, leaving</span>
+    <span class="c1"># no checkpoint to resume from (the next requeue then fails). Save the</span>
+    <span class="c1"># requeue last.ckpt every N steps so an in-flight checkpoint always exists.</span>
+    <span class="n">spt</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">requeue_checkpoint_every_n_steps</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ckpt_every_n_steps</span><span class="p">)</span>
+
     <span class="n">train_loader</span><span class="p">,</span> <span class="n">val_loader</span> <span class="o">=</span> <span class="n">build_loaders</span><span class="p">(</span>
         <span class="n">args</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span>
         <span class="n">args</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span>
         <span class="n">use_randaug</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">no_randaug</span><span class="p">,</span>
         <span class="n">cpu_norm</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">cpu_norm</span><span class="p">,</span>
+        <span class="n">randaug_m</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">randaug_m</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataModule</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="n">train_loader</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="n">val_loader</span><span class="p">)</span>
 
@@ -624,6 +660,7 @@ reach 82% (it needs JFT-scale pretraining). Use ViT-L for the accuracy target.</
         <span class="n">NUM_CLASSES</span><span class="p">,</span>
         <span class="n">mixup_alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
         <span class="n">cutmix_alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">prob</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">mixup_prob</span><span class="p">,</span>
         <span class="n">label_smoothing</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">label_smoothing</span><span class="p">,</span>
     <span class="p">)</span>
 

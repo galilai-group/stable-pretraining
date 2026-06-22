@@ -173,23 +173,6 @@ trials.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="A reference recipe for from-scratch supervised ViT classification that targets the &quot;typical&quot; ~82%+ top-1 (ViT-L; ViT-e is a scale stress-test, see note below), built to run efficiently and shard cleanly:">
-
-.. only:: html
-
-  .. image:: /auto_examples/images/thumb/sphx_glr_imagenet1k_supervised_vit_fsdp2_thumb.png
-    :alt:
-
-  :doc:`/auto_examples/imagenet1k_supervised_vit_fsdp2`
-
-.. raw:: html
-
-      <div class="sphx-glr-thumbnail-title">Supervised ImageNet-1k ViT training — SOTA (DeiT/AugReg) recipe, FSDP2, GPU-fast.</div>
-    </div>
-
-
-.. raw:: html
-
     <div class="sphx-glr-thumbcontainer" tooltip="Train probes attached to multiple layers of a frozen backbone to monitor representation quality across depth.">
 
 .. only:: html
@@ -202,6 +185,23 @@ trials.
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Multi-layer Probe for Vision Models</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A reference recipe for from-scratch supervised ViT classification that targets the &quot;typical&quot; ~82%+ top-1 (ViT-L; ViT-e is a scale stress-test, see note below), built to run efficiently and shard cleanly:">
+
+.. only:: html
+
+  .. image:: /auto_examples/images/thumb/sphx_glr_imagenet1k_supervised_vit_fsdp2_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/imagenet1k_supervised_vit_fsdp2`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Supervised ImageNet-1k ViT training — SOTA (DeiT/AugReg) recipe, FSDP2, GPU-fast.</div>
     </div>
 
 
@@ -221,8 +221,8 @@ trials.
    /auto_examples/wandb_figures
    /auto_examples/supervised_learning
    /auto_examples/jax_simclr_imagenette
-   /auto_examples/imagenet1k_supervised_vit_fsdp2
    /auto_examples/multi_layer_probe
+   /auto_examples/imagenet1k_supervised_vit_fsdp2
 
 
 .. only:: html

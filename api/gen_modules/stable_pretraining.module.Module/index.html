@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Module &#8212; stable-pretraining 0.1.dev1+g65c0742cb documentation</title>
+    <title>Module &#8212; stable-pretraining 0.1.dev1+g95b315356 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=893100e1"></script>
+    <script src="../../../_static/documentation_options.js?v=c0bf119a"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -130,7 +130,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g65c0742cb documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g95b315356 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -434,7 +434,6 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.on_train_start"><code class="docutils literal notranslate"><span class="pre">Module.on_train_start()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.parameters"><code class="docutils literal notranslate"><span class="pre">Module.parameters()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.predict_step"><code class="docutils literal notranslate"><span class="pre">Module.predict_step()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.rescale_loss_for_grad_acc"><code class="docutils literal notranslate"><span class="pre">Module.rescale_loss_for_grad_acc()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.setup"><code class="docutils literal notranslate"><span class="pre">Module.setup()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.test_step"><code class="docutils literal notranslate"><span class="pre">Module.test_step()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.training_step"><code class="docutils literal notranslate"><span class="pre">Module.training_step()</span></code></a></li>
@@ -751,27 +750,6 @@ computation and return only inference outputs (e.g., embeddings). Used by
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="stable_pretraining.module.Module.rescale_loss_for_grad_acc">
-<span class="sig-name descname"><span class="pre">rescale_loss_for_grad_acc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loss</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module.rescale_loss_for_grad_acc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module.rescale_loss_for_grad_acc" title="Link to this definition">#</a></dt>
-<dd><p>Scale loss down by the gradient accumulation factor before <code class="docutils literal notranslate"><span class="pre">manual_backward</span></code>.</p>
-<p>When <code class="docutils literal notranslate"><span class="pre">Trainer(accumulate_grad_batches=N)</span></code> is set, gradients from N consecutive
-steps are summed before an optimizer step. Dividing the loss by N ensures the
-accumulated gradient is equivalent in magnitude to the gradient from a single
-full batch, preventing the effective learning rate from growing with N.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>loss</strong> – The raw loss tensor returned by <code class="docutils literal notranslate"><span class="pre">forward</span></code>.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">loss</span> <span class="pre">/</span> <span class="pre">accumulate_grad_batches</span></code>.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.12)">torch.Tensor</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="stable_pretraining.module.Module.setup">
 <span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../../_modules/stable_pretraining/module/#Module.setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.module.Module.setup" title="Link to this definition">#</a></dt>
 <dd><p>Lightning setup hook — reject the legacy FSDP1 strategy.</p>
@@ -929,7 +907,6 @@ callback via <code class="docutils literal notranslate"><span class="pre">on_val
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.on_train_start"><code class="docutils literal notranslate"><span class="pre">Module.on_train_start()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.parameters"><code class="docutils literal notranslate"><span class="pre">Module.parameters()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.predict_step"><code class="docutils literal notranslate"><span class="pre">Module.predict_step()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.rescale_loss_for_grad_acc"><code class="docutils literal notranslate"><span class="pre">Module.rescale_loss_for_grad_acc()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.setup"><code class="docutils literal notranslate"><span class="pre">Module.setup()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.test_step"><code class="docutils literal notranslate"><span class="pre">Module.test_step()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stable_pretraining.module.Module.training_step"><code class="docutils literal notranslate"><span class="pre">Module.training_step()</span></code></a></li>
