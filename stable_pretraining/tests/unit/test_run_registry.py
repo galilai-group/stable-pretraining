@@ -713,24 +713,21 @@ class TestRegistrySummaryFile:
         loss = self._read_summary(tmp_path)["metrics"]["loss"]
         assert loss["last"] == 0.7 and loss["count"] == 1
 
-    def test_summary_rank_zero_only(self, tmp_path):
+    def test_summary_rank_zero_only(self, tmp_path, monkeypatch):
         """``log_metrics`` + ``save`` are gated by ``@rank_zero_only``.
 
         On rank>0 the wrapper turns them into no-ops, so neither the
-        in-memory stats nor the on-disk file are written.
+        in-memory stats nor the on-disk file are written. ``RegistryLogger``
+        uses spt's in-house ``rank_zero_only``, which resolves the rank from the
+        distributed group / launcher environment (``RANK`` etc.) rather than a
+        cached attribute — so we simulate a non-zero rank the way a real
+        launcher (torchrun / SLURM) does, by setting ``RANK=1``.
         """
-        from lightning.pytorch.utilities import rank_zero as _rz
-
-        # rank is cached at import time; set explicitly for the test.
-        original = _rz.rank_zero_only.rank
-        _rz.rank_zero_only.rank = 1
-        try:
-            logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
-            logger.log_hyperparams({})
-            logger.log_metrics({"loss": 0.1}, step=0)
-            logger.save()
-        finally:
-            _rz.rank_zero_only.rank = original
+        monkeypatch.setenv("RANK", "1")
+        logger = RegistryLogger(run_dir=tmp_path, run_id="r1")
+        logger.log_hyperparams({})
+        logger.log_metrics({"loss": 0.1}, step=0)
+        logger.save()
         assert not (tmp_path / "summary.json").exists()
         assert logger._metric_stats == {}
 
