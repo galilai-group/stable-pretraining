@@ -1,26 +1,22 @@
-# your_module.py
-
+import json
 import os
-import sys
 import platform
+import shutil
 import subprocess
-from pathlib import Path
-from typing import Optional, Dict, Any
-from datetime import datetime
+import sys
+import tempfile
 import threading
 import time
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 import lightning as pl
 from lightning.pytorch.callbacks import Callback
 from loguru import logger
 
 from ..utils.distributed import rank_zero_only
-
 from .utils import log_header
-
-import tempfile
-import shutil
-import json
 
 
 class EnvironmentDumpCallback(Callback):

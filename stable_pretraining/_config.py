@@ -83,6 +83,11 @@ class _GlobalConfig:
         )
         self._cache_dir: Optional[str] = os.environ.get("SPT_CACHE_DIR", _default_cache)
         self._requeue_checkpoint: bool = True
+        # Save the requeue ``last.ckpt`` every N training steps in addition to
+        # epoch-end. 0 = epoch-end only. On heavily-preempted (e.g. spot)
+        # partitions a long epoch may never finish before preemption, leaving
+        # no checkpoint to resume from; a step cadence guarantees one exists.
+        self._requeue_checkpoint_every_n_steps: int = 0
         self._exclude_bias_norm: bool = False
 
     # -- verbose ---------------------------------------------------------------
@@ -262,6 +267,23 @@ class _GlobalConfig:
             )
         self._requeue_checkpoint = value
 
+    # -- requeue_checkpoint_every_n_steps --------------------------------------
+
+    @property
+    def requeue_checkpoint_every_n_steps(self) -> int:
+        return self._requeue_checkpoint_every_n_steps
+
+    @requeue_checkpoint_every_n_steps.setter
+    def requeue_checkpoint_every_n_steps(self, value: int) -> None:
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise TypeError(
+                "requeue_checkpoint_every_n_steps must be an int, got "
+                f"{type(value).__name__}"
+            )
+        if value < 0:
+            raise ValueError("requeue_checkpoint_every_n_steps must be >= 0")
+        self._requeue_checkpoint_every_n_steps = value
+
     # -- exclude_bias_norm -----------------------------------------------------
 
     @property
@@ -293,6 +315,7 @@ class _GlobalConfig:
             f"  default_loggers={self._default_loggers!r},\n"
             f"  cache_dir={self._cache_dir!r},\n"
             f"  requeue_checkpoint={self._requeue_checkpoint!r},\n"
+            f"  requeue_checkpoint_every_n_steps={self._requeue_checkpoint_every_n_steps!r},\n"
             f"  exclude_bias_norm={self._exclude_bias_norm!r},\n"
             f")"
         )
@@ -313,6 +336,7 @@ def set(
     default_loggers: Optional[Dict[str, bool]] = None,
     cache_dir: Optional[str] = None,
     requeue_checkpoint: Optional[bool] = None,
+    requeue_checkpoint_every_n_steps: Optional[int] = None,
     exclude_bias_norm: Optional[bool] = None,
 ) -> None:
     """Configure library-wide settings for stable_pretraining.
@@ -373,6 +397,14 @@ def set(
             preemption is not a concern.  Only applies when ``cache_dir``
             is set.
 
+        requeue_checkpoint_every_n_steps: Also save the requeue
+            ``last.ckpt`` every N training steps (in addition to
+            epoch-end).  ``0`` (default) keeps epoch-end-only saving.  Set
+            this on heavily-preempted partitions (e.g. SLURM ``spot``)
+            where a long epoch may never finish before preemption — without
+            a mid-epoch checkpoint the next requeue has nothing to resume
+            from and fails.  Only applies when ``requeue_checkpoint`` is on.
+
         exclude_bias_norm: Global default for excluding bias and
             normalization-layer parameters from weight decay (#368).
             When ``True``, every optimizer built via
@@ -419,6 +451,9 @@ def set(
 
     if requeue_checkpoint is not None:
         cfg.requeue_checkpoint = requeue_checkpoint
+
+    if requeue_checkpoint_every_n_steps is not None:
+        cfg.requeue_checkpoint_every_n_steps = requeue_checkpoint_every_n_steps
 
     if exclude_bias_norm is not None:
         cfg.exclude_bias_norm = exclude_bias_norm

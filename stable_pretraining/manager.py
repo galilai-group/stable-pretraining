@@ -17,7 +17,7 @@ import submitit
 from lightning.pytorch.callbacks import Callback, ModelCheckpoint
 from loguru import logger as logging
 
-from .utils.distributed import rank_zero_only, seed_everything
+from .utils.distributed import get_rank, rank_zero_only, seed_everything
 from omegaconf import DictConfig, OmegaConf
 
 from . import WANDB_AVAILABLE
@@ -794,12 +794,18 @@ class Manager(submitit.helpers.Checkpointable):
         # last-writer-wins), rank-0 picks the dir and publishes it to a shared
         # handoff file; non-zero ranks block on that file and adopt it.
         #
-        # Lightning's `rank_zero_only.rank` is the source of truth: it's
-        # initialised at import time from the same env vars (`RANK`,
-        # `SLURM_PROCID`, ...) that DDP launchers set, and reused by every
-        # `@rank_zero_only`-gated logger we ship — keeping detection consistent.
+        # Resolve rank via ``get_rank()`` — it reads the live process group, or
+        # falls back to the launcher env vars (`RANK` / `LOCAL_RANK` /
+        # `SLURM_PROCID`) that are set *before* the process group is built,
+        # which is exactly the situation here. (Do NOT use
+        # ``getattr(rank_zero_only, "rank", 0)``: our in-house ``rank_zero_only``
+        # is a plain decorator with no ``.rank`` attribute — unlike Lightning's
+        # — so that getattr silently returned 0 on EVERY rank, making all ranks
+        # believe they were rank-0. They then skipped the handoff and each
+        # created its own run_dir, racing on ``.slurm_index`` and breaking
+        # requeue resume. See test_nonzero_rank_does_not_write_slurm_index.)
         launch_key = _ddp_launch_key()
-        rank = int(getattr(rank_zero_only, "rank", 0) or 0)
+        rank = get_rank()
         is_rank_zero = rank == 0
         logging.info(
             f"  ddp: launch_key={launch_key or '(single-process)'} "
@@ -1001,10 +1007,29 @@ class Manager(submitit.helpers.Checkpointable):
         (run_dir / _RUN_META_FILENAME).write_text(json.dumps(meta))
         logging.info(f"  wrote run_meta.json with run_id={run_id}")
 
-        # Record SLURM-key → run_dir so a future preempt-and-requeue
-        # cycle finds us. No-op outside SLURM.
-        index_msg = self._write_slurm_index(cache_dir, run_dir)
-        logging.info(f"  SLURM index = {index_msg}")
+        # Record SLURM-key → run_dir so a future preempt-and-requeue cycle
+        # finds us. No-op outside SLURM.
+        #
+        # ONLY rank-0 writes the index. In the happy path the rank-0 handoff
+        # makes non-zero ranks adopt rank-0's dir and return early (above), so
+        # they never reach here. But if the handoff times out, every non-zero
+        # rank falls through to this fresh branch with its OWN uuid'd run_dir
+        # and — without this guard — races to overwrite the shared index
+        # (last-writer-wins), leaving it pointing at some non-rank-0 dir.
+        # Meanwhile Lightning broadcasts rank-0's checkpoint path to all ranks,
+        # so the distributed ``last.ckpt`` shards always land in rank-0's dir.
+        # If the index then points elsewhere, requeue resolves an empty dir and
+        # fails with "no last.ckpt". Gating to rank-0 keeps index + checkpoint
+        # on the same (rank-0) dir. Non-rank-0 fresh dirs become harmless
+        # orphans.
+        if is_rank_zero:
+            index_msg = self._write_slurm_index(cache_dir, run_dir)
+            logging.info(f"  SLURM index = {index_msg}")
+        else:
+            logging.warning(
+                "  rank-0 handoff missed — this non-zero rank resolved its own "
+                f"run_dir ({run_dir}); NOT writing .slurm_index (rank-0 owns it)."
+            )
 
         self._run_dir = run_dir
         self._run_id = run_id
@@ -1343,16 +1368,25 @@ class Manager(submitit.helpers.Checkpointable):
         # spt.set(requeue_checkpoint=False) to save time/disk.
         cfg = get_config()
         if cfg.requeue_checkpoint:
+            # ``every_n_train_steps`` (when > 0) also saves ``last.ckpt``
+            # mid-epoch, so a heavily-preempted (spot) run whose epoch never
+            # finishes before preemption still has a checkpoint to resume from.
+            # 0 keeps the epoch-end-only behavior.
+            every_n_steps = cfg.requeue_checkpoint_every_n_steps or None
             requeue_saver = ModelCheckpoint(
                 dirpath=str(save_dir),
                 filename="last",
                 save_last=False,
                 save_on_train_epoch_end=True,
+                every_n_train_steps=every_n_steps,
                 verbose=True,
                 enable_version_counter=False,
             )
             self._trainer.callbacks.append(requeue_saver)
-            logging.info("  Added requeue checkpoint (filename='last')")
+            logging.info(
+                "  Added requeue checkpoint (filename='last', "
+                f"every_n_train_steps={every_n_steps})"
+            )
         elif "SLURM_JOB_ID" in os.environ:
             logging.warning(
                 "! Requeue checkpoint disabled "

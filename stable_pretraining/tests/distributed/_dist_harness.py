@@ -496,3 +496,165 @@ def w_ddp_vs_fsdp2_equivalence(rank, world_size):
                 f"FSDP2 param '{name}' diverged from full-batch reference: "
                 f"max|Δ|={(full - expected).abs().max().item():.3e}"
             )
+
+
+# ---------------------------------------------------------------------------
+# Collective-op workers (utils.all_gather / all_reduce correctness)
+#
+# Regression for the bug where ``utils.all_gather`` / ``utils.all_reduce``
+# discarded the functional collective's return value and just echoed the local
+# input — a silent no-op under DDP that single-GPU CI never caught.
+# ---------------------------------------------------------------------------
+
+
+def w_all_gather_values(rank, world_size):
+    """``all_gather`` returns one tensor per rank, in rank order."""
+    from stable_pretraining.utils import all_gather
+
+    out = all_gather(torch.tensor([float(rank)]))
+    assert len(out) == world_size, (len(out), world_size)
+    cat = torch.cat(out, 0)
+    expected = torch.arange(world_size, dtype=torch.float)
+    assert torch.allclose(cat, expected), (cat, expected)
+
+
+def w_all_gather_grad(rank, world_size):
+    """``all_gather`` is autograd-aware (gradients flow back to the source).
+
+    Every rank computes the same ``sum(gathered**2)`` loss, so the local input
+    appears in all ``world_size`` per-rank losses. The functional collective's
+    backward reduce-scatters (sums) those gradients across ranks, giving
+    ``d/dx_local == 2 * world_size * x_local``. The old no-op implementation
+    didn't gather, so it produced ``2 * x_local`` — this assertion catches that.
+    """
+    from stable_pretraining.utils import all_gather
+
+    x = torch.tensor([float(rank) + 1.0], requires_grad=True)
+    out = torch.cat(all_gather(x), 0)
+    out.pow(2).sum().backward()
+    assert x.grad is not None
+    expected = 2.0 * world_size * x.detach()
+    assert torch.allclose(x.grad, expected), (x.grad, expected)
+
+
+def w_all_reduce_sum(rank, world_size):
+    """``all_reduce`` returns the SUM across ranks (default op)."""
+    from stable_pretraining.utils import all_reduce
+
+    out = all_reduce(torch.tensor([float(rank)]))
+    assert out is not None
+    expected = float(sum(range(world_size)))
+    assert torch.allclose(out, torch.tensor([expected])), (out, expected)
+
+
+def w_barlow_matches_single_proc(rank, world_size):
+    """With identical data on every rank, Barlow loss == single-process loss.
+
+    Validates the global-batch normalization: each rank divides by
+    ``local_batch * world_size`` and the partial cross-correlation matrices are
+    summed, recovering exactly the single-process result.
+    """
+    from stable_pretraining.losses import BarlowTwinsLoss
+    from stable_pretraining.losses.utils import off_diagonal
+
+    torch.manual_seed(0)  # identical data on every rank
+    z_i = torch.randn(8, 16)
+    z_j = torch.randn(8, 16)
+    loss = BarlowTwinsLoss(lambd=5e-3)(z_i, z_j)
+
+    def _norm(z):
+        return (z - z.mean(0)) / (z.std(0) + 1e-5)
+
+    c = _norm(z_i).T @ _norm(z_j) / z_i.size(0)
+    ref = (torch.diagonal(c) - 1).pow(2).sum() + 5e-3 * off_diagonal(c).pow(2).sum()
+    assert torch.allclose(loss, ref, atol=1e-5), (loss.item(), ref.item())
+
+
+def w_contrastive_runs_under_ddp(rank, world_size):
+    """NTXEnt (masked) and CLIP (unmasked) contrastive losses run under DDP.
+
+    Regression: ``InfoNCELoss._compute`` builds no targets/mask itself — the
+    callers size them to the LOCAL batch. If ``_compute`` all-gathered
+    anchors/candidates, ``logits`` would grow by ``world_size`` and mismatch the
+    local targets/mask, crashing ``masked_fill`` / ``cross_entropy``. These
+    losses are intentionally local-batch objectives; each rank computes its own.
+    """
+    from stable_pretraining.losses import CLIPLoss, NTXEntLoss
+
+    torch.manual_seed(rank)  # different data per rank, like real DDP
+    z_i = torch.randn(4, 8)
+    z_j = torch.randn(4, 8)
+    ntx = NTXEntLoss(temperature=0.5)(z_i, z_j)
+    clip = CLIPLoss(temperature=0.07)(z_i, z_j)
+    assert ntx.ndim == 0 and torch.isfinite(ntx), ntx
+    assert clip.ndim == 0 and torch.isfinite(clip), clip
+
+
+def _ref_ntxent_global(z_i, z_j, temperature):
+    """Single-process NT-Xent over a (global) batch — no gather, classic form."""
+    import torch.nn.functional as F
+
+    a = F.normalize(torch.cat([z_i, z_j], 0), dim=-1)
+    logits = a @ a.T / temperature
+    two_n = a.size(0)
+    n = z_i.size(0)
+    targets = torch.cat([torch.arange(n, two_n), torch.arange(n)])
+    logits = logits.masked_fill(torch.eye(two_n, dtype=torch.bool), -torch.inf)
+    return F.cross_entropy(logits, targets)
+
+
+def w_ntxent_crossgpu_matches_global(rank, world_size):
+    """Mean of per-rank DDP NT-Xent == single-process NT-Xent on the global batch.
+
+    Each rank holds a disjoint, equal-sized slice of a shared global batch and
+    contrasts its local anchors against the candidates gathered from all ranks.
+    Because the slices are equal-sized, the mean of the per-rank cross-entropies
+    equals the single-process cross-entropy over the whole batch — proving the
+    gathered negatives + rank-offset targets/mask are wired correctly.
+    """
+    from stable_pretraining.losses import NTXEntLoss
+    from stable_pretraining.utils import all_reduce
+
+    torch.manual_seed(0)  # identical GLOBAL batch on every rank
+    n, d = 4, 16
+    z_i_global = torch.randn(n * world_size, d)
+    z_j_global = torch.randn(n * world_size, d)
+    z_i = z_i_global[rank * n : (rank + 1) * n]
+    z_j = z_j_global[rank * n : (rank + 1) * n]
+
+    local = NTXEntLoss(temperature=0.5)(z_i, z_j)
+    avg = all_reduce(local.detach().clone()) / world_size  # SUM / W == mean
+
+    ref = _ref_ntxent_global(z_i_global, z_j_global, 0.5)
+    assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+def _ref_clip_global(feats_i, feats_j, temperature):
+    """Single-process symmetric CLIP loss over a (global) batch — no gather."""
+    import torch.nn.functional as F
+
+    fi = F.normalize(feats_i, dim=-1)
+    fj = F.normalize(feats_j, dim=-1)
+    targets = torch.arange(fi.size(0))
+    loss_i = F.cross_entropy(fi @ fj.T / temperature, targets)
+    loss_j = F.cross_entropy(fj @ fi.T / temperature, targets)
+    return 0.5 * (loss_i + loss_j)
+
+
+def w_clip_crossgpu_matches_global(rank, world_size):
+    """Mean of per-rank DDP CLIP loss == single-process CLIP on the global batch."""
+    from stable_pretraining.losses import CLIPLoss
+    from stable_pretraining.utils import all_reduce
+
+    torch.manual_seed(0)  # identical GLOBAL batch on every rank
+    b, d = 4, 16
+    feats_i_global = torch.randn(b * world_size, d)
+    feats_j_global = torch.randn(b * world_size, d)
+    feats_i = feats_i_global[rank * b : (rank + 1) * b]
+    feats_j = feats_j_global[rank * b : (rank + 1) * b]
+
+    local = CLIPLoss(temperature=0.07)(feats_i, feats_j)
+    avg = all_reduce(local.detach().clone()) / world_size
+
+    ref = _ref_clip_global(feats_i_global, feats_j_global, 0.07)
+    assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)

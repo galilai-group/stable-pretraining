@@ -10,7 +10,7 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 
-from ..utils import all_gather, all_reduce
+from ..utils import all_gather, all_reduce, get_rank, get_world_size
 from .utils import off_diagonal, VCRegLoss
 
 
@@ -110,8 +110,15 @@ class BarlowTwinsLoss(torch.nn.Module):
         c = self._normalize(z_i).T @ self._normalize(
             z_j
         )  # normalize along the batch dimension
-        c = c / z_i.size(0)
-        all_reduce(c)
+        # Normalize by the GLOBAL batch size, then sum the per-rank partial
+        # cross-correlation matrices. In a single process get_world_size() == 1
+        # and all_reduce is a no-op, so this is identical to the previous
+        # ``c / z_i.size(0)``; under DDP it recovers the true global
+        # cross-correlation (matching the reference Barlow Twins
+        # implementation), whereas the old ``all_reduce(c)`` discarded its
+        # result and was a silent no-op.
+        c = c / (z_i.size(0) * get_world_size())
+        c = all_reduce(c)
 
         on_diag = (torch.diagonal(c) - 1).pow(2).sum()
         off_diag = off_diagonal(c).pow(2).sum()
@@ -239,8 +246,13 @@ class InfoNCELoss(torch.nn.Module):
     ) -> torch.Tensor:
         logit_scale = self.temperature if logit_scale is None else logit_scale
 
-        anchors = torch.cat(all_gather(F.normalize(anchors, dim=-1)), 0)
-        candidates = torch.cat(all_gather(F.normalize(candidates, dim=-1)), 0)
+        # ``_compute`` is a pure local ``anchors @ candidates.T`` cross-entropy.
+        # Cross-GPU gathering of ``candidates`` (and the matching rank-offset of
+        # ``targets`` / ``mask``) is the caller's responsibility — see
+        # ``NTXEntLoss.forward`` / ``CLIPLoss.forward`` — so anchors stay local
+        # while candidates may span all ranks.
+        anchors = F.normalize(anchors, dim=-1)
+        candidates = F.normalize(candidates, dim=-1)
 
         logits = (anchors @ candidates.T) / logit_scale
 
@@ -294,6 +306,14 @@ class NTXEntLoss(InfoNCELoss):
     def forward(self, z_i: torch.Tensor, z_j: torch.Tensor) -> torch.Tensor:
         """Compute the NT-Xent loss.
 
+        Under DDP the negatives span **all** ranks: the local anchors
+        (``[z_i; z_j]``) are scored against the candidates gathered from every
+        process, with ``targets`` / the self-mask offset by ``rank`` so each
+        anchor's positive (its other view) and self-exclusion point at the right
+        rows of the global candidate set. In a single process this reduces
+        exactly to the classic SimCLR formulation (``rank == 0``,
+        ``world_size == 1``, gather is a no-op).
+
         Args:
             z_i (torch.Tensor): Latent representation of the first augmented view of the batch.
             z_j (torch.Tensor): Latent representation of the second augmented view of the batch.
@@ -301,17 +321,25 @@ class NTXEntLoss(InfoNCELoss):
         Returns:
             float: The computed contrastive loss.
         """
-        anchors = torch.cat([z_i, z_j], dim=0)
-        candidates = anchors
+        anchors = torch.cat([z_i, z_j], dim=0)  # local: [2N, D]
+        # Gather every rank's anchors as candidates (autograd-aware), so each
+        # local anchor is contrasted against the GLOBAL set of negatives.
+        candidates = torch.cat(all_gather(anchors), dim=0)  # global: [2N * W, D]
 
-        N = z_i.size(0)
-        targets = torch.cat(
-            [
-                torch.arange(N, 2 * N, device=z_i.device),
-                torch.arange(N, device=z_i.device),
-            ]
-        )
-        # prevent self-matching by masking diagonal
-        mask = torch.eye(2 * N, dtype=torch.bool, device=z_i.device)
+        two_n = anchors.size(0)
+        offset = get_rank() * two_n  # where this rank's block sits in `candidates`
+        device = z_i.device
+
+        # Positive of local anchor a is its other view; in the global candidate
+        # block for this rank that is index ``offset + (a + N) % 2N``.
+        local_idx = torch.arange(two_n, device=device)
+        n = z_i.size(0)
+        targets = offset + (local_idx + n) % two_n
+
+        # Exclude only the anchor's own copy (global index ``offset + a``) — not
+        # its positive. ``masked_fill`` with this boolean mask sends those logits
+        # to ``-inf``.
+        mask = torch.zeros(two_n, candidates.size(0), dtype=torch.bool, device=device)
+        mask[local_idx, offset + local_idx] = True
 
         return self._compute(anchors, candidates, targets, mask=mask)

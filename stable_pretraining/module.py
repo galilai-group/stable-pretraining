@@ -367,32 +367,6 @@ class Module(pl.LightningModule):
         for _, param in self.named_parameters(with_callbacks, recurse=recurse):
             yield param
 
-    def rescale_loss_for_grad_acc(self, loss):
-        """Scale loss down by the gradient accumulation factor before ``manual_backward``.
-
-        When ``Trainer(accumulate_grad_batches=N)`` is set, gradients from N consecutive
-        steps are summed before an optimizer step. Dividing the loss by N ensures the
-        accumulated gradient is equivalent in magnitude to the gradient from a single
-        full batch, preventing the effective learning rate from growing with N.
-
-        Args:
-            loss: The raw loss tensor returned by ``forward``.
-
-        Returns:
-            torch.Tensor: ``loss / accumulate_grad_batches``.
-        """
-        accum = max(
-            int(
-                getattr(
-                    self.trainer,
-                    "accumulate_grad_batches_",
-                    getattr(self.trainer, "accumulate_grad_batches", 1),
-                )
-            ),
-            1,
-        )
-        return loss / accum
-
     def after_manual_backward(self):
         """Hook called immediately after ``manual_backward`` in ``training_step``.
 
@@ -552,8 +526,25 @@ class Module(pl.LightningModule):
         for idx, opt in enumerate(optimizers):
             name = self._optimizer_index_to_name[idx]
             # Honor per-optimizer frequency if available
-            if (batch_idx + 1) % self._optimizer_frequencies[name] != 0:
+            freq = self._optimizer_frequencies[name]
+            if (batch_idx + 1) % freq != 0:
                 continue
+
+            # Gradient accumulation: ``manual_backward`` was called every
+            # micro-batch with no loss rescaling, so this optimizer's params
+            # hold the SUM of ``freq`` mean-reduction gradients. Average them
+            # by ``1/freq`` so the step matches a single full-(effective-)batch
+            # update — i.e. (batch=B/freq, freq) == (batch=B, freq=1) with
+            # seeded data. Done per-optimizer, BEFORE clipping, so optimizers
+            # with different frequencies each average over their own window.
+            # No-op when ``freq == 1`` (the common, non-accumulating case).
+            if freq > 1:
+                inner = opt.optimizer if isinstance(opt, LightningOptimizer) else opt
+                inv = 1.0 / freq
+                for group in inner.param_groups:
+                    for p in group["params"]:
+                        if p.grad is not None:
+                            p.grad.mul_(inv)
 
             clip_val = self._optimizer_gradient_clip_val[name]
             clip_algo = self._optimizer_gradient_clip_algorithm[name]
@@ -1085,7 +1076,15 @@ class Module(pl.LightningModule):
                 f"with {sched_name} scheduler."
             )
 
-            # Track names and frequencies aligned to optimizer order
+            # Track names and frequencies aligned to optimizer order. The
+            # index→name mapping is essential: ``training_step`` looks up the
+            # per-optimizer frequency (and clip settings) by
+            # ``_optimizer_index_to_name[idx]``. Without it, ``on_train_start``
+            # falls back to positional ``default_{i}`` names with frequency 1,
+            # silently ignoring each optimizer's configured ``frequency`` (so
+            # gradient accumulation never engaged for named/multi-optimizer
+            # configs).
+            self._optimizer_index_to_name[len(optimizers) - 1] = name
             self._optimizer_frequencies[name] = int(config.get("frequency", 1))
 
         return optimizers, schedulers

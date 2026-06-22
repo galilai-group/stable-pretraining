@@ -235,34 +235,52 @@ def seed_everything(
 
 
 def all_gather(tensor, *args, **kwargs):
-    """Gather tensors from all processes.
+    """Gather tensors from all processes (autograd-aware).
+
+    Uses ``torch.distributed.nn.functional.all_gather`` so gradients flow back
+    to each rank's source tensor — the behavior SSL contrastive losses need
+    when gathering negatives across GPUs.
+
+    Note:
+        The list returned **must** be used (e.g. ``torch.cat(all_gather(x), 0)``)
+        — the gathered values are the return value, not an in-place mutation of
+        ``tensor``.
 
     Args:
-        tensor: The tensor to gather
-        *args: Additional arguments for all_gather
-        **kwargs: Additional keyword arguments for all_gather
+        tensor: The tensor to gather.
+        *args: Forwarded to the underlying collective (e.g. ``group``).
+        **kwargs: Forwarded to the underlying collective.
 
     Returns:
-        Tuple containing the gathered tensors
+        list[torch.Tensor]: One tensor per rank, in rank order. A single-element
+        ``[tensor]`` when distributed is not initialized.
     """
     if is_dist_avail_and_initialized():
-        torch.distributed.nn.functional.all_gather(tensor, *args, **kwargs)
-    return (tensor,)
+        return list(torch.distributed.nn.functional.all_gather(tensor, *args, **kwargs))
+    return [tensor]
 
 
 def all_reduce(tensor, *args, **kwargs):
-    """Reduce tensors across all processes.
+    """Reduce a tensor across all processes (autograd-aware, SUM by default).
+
+    Uses ``torch.distributed.nn.functional.all_reduce``, which returns a new
+    tensor rather than mutating in place.
+
+    Note:
+        The result **must** be used (``x = all_reduce(x)``) — the previous
+        implementation discarded the return and was a silent no-op under DDP.
 
     Args:
-        tensor: The tensor to reduce
-        *args: Additional arguments for all_reduce
-        **kwargs: Additional keyword arguments for all_reduce
+        tensor: The tensor to reduce.
+        *args: Forwarded to the underlying collective (e.g. ``op``, ``group``).
+        **kwargs: Forwarded to the underlying collective.
 
     Returns:
-        The reduced tensor
+        torch.Tensor: The reduced tensor (the input unchanged when distributed
+        is not initialized).
     """
     if is_dist_avail_and_initialized():
-        torch.distributed.nn.functional.all_reduce(tensor, *args, **kwargs)
+        return torch.distributed.nn.functional.all_reduce(tensor, *args, **kwargs)
     return tensor
 
 

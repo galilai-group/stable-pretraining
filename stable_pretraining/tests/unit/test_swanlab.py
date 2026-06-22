@@ -19,6 +19,11 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
+# These tests assert real SwanLab behavior (subclassing the upstream logger,
+# availability flag, etc.), so they require the optional ``swanlab`` extra.
+# Skip the whole module cleanly when it isn't installed rather than failing.
+pytest.importorskip("swanlab")
+
 
 def _make_mock_trainer(loggers=None, is_global_zero=True, default_root_dir="/tmp"):
     trainer = MagicMock()
