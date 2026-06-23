@@ -79,14 +79,6 @@ class TrackioCheckpoint(Callback):
             sidecar.write_text(json.dumps(resume_info))
             logging.info(f"  Wrote {sidecar.resolve()}")
 
-            from stable_pretraining._config import get_config
-
-            if get_config().cache_dir is None:
-                cwd_sidecar = Path(_TRACKIO_RESUME_FILENAME)
-                if cwd_sidecar.resolve() != sidecar.resolve():
-                    cwd_sidecar.write_text(json.dumps(resume_info))
-                    logging.info(f"  Wrote {cwd_sidecar.resolve()} (compat)")
-
     def on_load_checkpoint(
         self,
         trainer: Trainer,

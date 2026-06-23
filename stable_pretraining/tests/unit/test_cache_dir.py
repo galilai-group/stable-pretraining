@@ -68,11 +68,23 @@ class TestCacheDirConfig:
         cfg.cache_dir = str(tmp_path)
         assert cfg.cache_dir == str(tmp_path)
 
-    def test_set_to_none(self, tmp_path):
+    def test_set_to_none_via_property(self, tmp_path):
+        # The property setter still permits None — the JAX backend uses it to
+        # disable checkpointing (see jax/manager.py). Only the public spt.set()
+        # API prohibits it.
         spt_set(cache_dir=str(tmp_path))
         cfg = get_config()
         cfg.cache_dir = None
         assert cfg.cache_dir is None
+
+    def test_spt_set_none_raises(self, tmp_path):
+        # Public API must reject an explicit None: caching is mandatory so each
+        # run gets a unique, parallel-safe output dir (no CWD collisions).
+        spt_set(cache_dir=str(tmp_path))
+        with pytest.raises(ValueError, match="cache_dir cannot be None"):
+            spt_set(cache_dir=None)
+        # The failed call must not have mutated the existing value.
+        assert get_config().cache_dir == str(tmp_path)
 
     def test_rejects_empty_string(self):
         with pytest.raises(ValueError, match="must not be empty"):
@@ -85,6 +97,18 @@ class TestCacheDirConfig:
     def test_rejects_non_string(self):
         with pytest.raises(TypeError, match="must be a str"):
             get_config().cache_dir = 123
+
+    def test_rejects_relative_path(self):
+        with pytest.raises(ValueError, match="must be an absolute path"):
+            spt_set(cache_dir="runs")
+        with pytest.raises(ValueError, match="must be an absolute path"):
+            get_config().cache_dir = "./out"
+
+    def test_accepts_tilde_path(self):
+        # '~/...' expands to an absolute path, so it is accepted and stored
+        # verbatim (expansion happens later in _resolve_run_dir).
+        spt_set(cache_dir="~/spt_cache_test")
+        assert get_config().cache_dir == "~/spt_cache_test"
 
     def test_reset_restores_default_cache_dir(self, tmp_path, monkeypatch):
         monkeypatch.delenv("SPT_CACHE_DIR", raising=False)

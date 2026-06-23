@@ -1636,6 +1636,22 @@ class Manager(submitit.helpers.Checkpointable):
         if wandb_logger is None:
             return
         log_header("Wandb")
+
+        # Anchor wandb's local files (the ``wandb/`` run tree) to the unique
+        # run_dir *before* the experiment is created — accessing
+        # ``.experiment`` below triggers ``wandb.init(**_wandb_init)``.
+        # Lightning's WandbLogger defaults ``dir``/``save_dir`` to CWD, which
+        # is NOT covered by ``default_root_dir`` (unlike CSV/TensorBoard
+        # loggers). Without this, parallel jobs sharing a CWD all dump their
+        # ``wandb/`` trees into the same place instead of each job's run_dir.
+        run_dir = getattr(self, "_run_dir", None)
+        already_running = WANDB_AVAILABLE and wandb.run is not None
+        if run_dir is not None and not already_running:
+            run_dir_str = str(run_dir)
+            wandb_logger._wandb_init["dir"] = run_dir_str
+            wandb_logger._save_dir = run_dir_str
+            logging.info(f"  Anchored wandb dir to {run_dir_str}")
+
         exp = wandb_logger.experiment
 
         if exp.offline:

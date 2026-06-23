@@ -34,6 +34,11 @@ _VALID_LOG_LEVELS = (
     "CRITICAL",
 )
 
+# Sentinel distinguishing "argument omitted" from an explicit ``None`` in
+# :func:`set`.  ``cache_dir=None`` must raise (caching is mandatory for
+# parallel-safe run isolation), while omitting it is a no-op.
+_UNSET = object()
+
 _CLEANUP_KEYS = (
     "checkpoints",
     "logs",
@@ -251,6 +256,21 @@ class _GlobalConfig:
                 )
             if not value.strip():
                 raise ValueError("cache_dir must not be empty")
+            # Forbid relative paths: the run_dir is resolved with ``.resolve()``
+            # (manager) against the *current* CWD, which Hydra's ``job.chdir``
+            # silently changes — a relative cache_dir would then land in a
+            # different (and CWD-dependent) place per job. We expanduser first
+            # so ``~/...`` (which expands to an absolute path) is accepted and
+            # stored verbatim for portability; only genuinely relative paths
+            # like ``runs`` or ``./out`` are rejected.
+            if not os.path.isabs(os.path.expanduser(value)):
+                raise ValueError(
+                    f"cache_dir must be an absolute path, got {value!r}. "
+                    "A relative path is resolved against the current working "
+                    "directory, which Hydra's job.chdir changes — making the "
+                    "run directory non-deterministic across jobs. Pass an "
+                    "absolute path (or a '~/...' path)."
+                )
         self._cache_dir = value
 
     # -- requeue_checkpoint ----------------------------------------------------
@@ -334,7 +354,7 @@ def set(
     log_rank: Optional[Union[int, Literal["all"]]] = None,
     default_callbacks: Optional[Dict[str, bool]] = None,
     default_loggers: Optional[Dict[str, bool]] = None,
-    cache_dir: Optional[str] = None,
+    cache_dir: Union[str, object] = _UNSET,
     requeue_checkpoint: Optional[bool] = None,
     requeue_checkpoint_every_n_steps: Optional[int] = None,
     exclude_bias_norm: Optional[bool] = None,
@@ -382,8 +402,9 @@ def set(
             ensuring no path collisions across parallel sweep jobs.
             Defaults to ``~/.cache/stable-pretraining``.  Can be
             overridden via the ``SPT_CACHE_DIR`` environment variable.
-            Set to ``None`` to disable and preserve the standard
-            Lightning / Hydra directory behavior.
+            ``None`` is **not** allowed — a cache directory is mandatory
+            so every run gets a unique, parallel-safe output directory.
+            Passing ``cache_dir=None`` raises ``ValueError``.
 
             .. note::
                 SLURM ``.out`` / ``.err`` files are created by the
@@ -446,7 +467,16 @@ def set(
     if default_loggers is not None:
         cfg.default_loggers = default_loggers
 
-    if cache_dir is not None:
+    if cache_dir is not _UNSET:
+        if cache_dir is None:
+            raise ValueError(
+                "cache_dir cannot be None — a cache directory is mandatory so "
+                "that every run gets a unique, parallel-safe output directory "
+                "(without it, concurrent jobs collide on files such as "
+                "wandb_resume.json in the working directory). Pass a path, set "
+                "the SPT_CACHE_DIR environment variable, or leave it unset to "
+                "use the default (~/.cache/stable-pretraining)."
+            )
         cfg.cache_dir = cache_dir
 
     if requeue_checkpoint is not None:
