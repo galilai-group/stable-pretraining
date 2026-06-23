@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+gf84c7c26d documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+gd15ec96d0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=740e0d19"></script>
+    <script src="../../../_static/documentation_options.js?v=bee59b4d"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gf84c7c26d documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gd15ec96d0 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -2020,6 +2020,22 @@
         <span class="k">if</span> <span class="n">wandb_logger</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="n">log_header</span><span class="p">(</span><span class="s2">&quot;Wandb&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Anchor wandb&#39;s local files (the ``wandb/`` run tree) to the unique</span>
+        <span class="c1"># run_dir *before* the experiment is created — accessing</span>
+        <span class="c1"># ``.experiment`` below triggers ``wandb.init(**_wandb_init)``.</span>
+        <span class="c1"># Lightning&#39;s WandbLogger defaults ``dir``/``save_dir`` to CWD, which</span>
+        <span class="c1"># is NOT covered by ``default_root_dir`` (unlike CSV/TensorBoard</span>
+        <span class="c1"># loggers). Without this, parallel jobs sharing a CWD all dump their</span>
+        <span class="c1"># ``wandb/`` trees into the same place instead of each job&#39;s run_dir.</span>
+        <span class="n">run_dir</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_run_dir&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">already_running</span> <span class="o">=</span> <span class="n">WANDB_AVAILABLE</span> <span class="ow">and</span> <span class="n">wandb</span><span class="o">.</span><span class="n">run</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">run_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">already_running</span><span class="p">:</span>
+            <span class="n">run_dir_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span>
+            <span class="n">wandb_logger</span><span class="o">.</span><span class="n">_wandb_init</span><span class="p">[</span><span class="s2">&quot;dir&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">run_dir_str</span>
+            <span class="n">wandb_logger</span><span class="o">.</span><span class="n">_save_dir</span> <span class="o">=</span> <span class="n">run_dir_str</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Anchored wandb dir to </span><span class="si">{</span><span class="n">run_dir_str</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
         <span class="n">exp</span> <span class="o">=</span> <span class="n">wandb_logger</span><span class="o">.</span><span class="n">experiment</span>
 
         <span class="k">if</span> <span class="n">exp</span><span class="o">.</span><span class="n">offline</span><span class="p">:</span>

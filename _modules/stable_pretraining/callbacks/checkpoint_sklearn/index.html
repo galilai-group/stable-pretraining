@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.checkpoint_sklearn &#8212; stable-pretraining 0.1.dev1+gf84c7c26d documentation</title>
+    <title>stable_pretraining.callbacks.checkpoint_sklearn &#8212; stable-pretraining 0.1.dev1+gd15ec96d0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=740e0d19"></script>
+    <script src="../../../../_static/documentation_options.js?v=bee59b4d"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -129,7 +129,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gf84c7c26d documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gd15ec96d0 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -684,15 +684,6 @@
             <span class="n">sidecar</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="n">sidecar</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">resume_info</span><span class="p">))</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Wrote </span><span class="si">{</span><span class="n">sidecar</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="c1"># Also write to CWD if it differs (backward compat),</span>
-            <span class="c1"># but skip when cache_dir is active to avoid polluting CWD.</span>
-            <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span>
-
-            <span class="k">if</span> <span class="n">get_config</span><span class="p">()</span><span class="o">.</span><span class="n">cache_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">cwd_sidecar</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">_WANDB_RESUME_FILENAME</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">cwd_sidecar</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">!=</span> <span class="n">sidecar</span><span class="o">.</span><span class="n">resolve</span><span class="p">():</span>
-                    <span class="n">cwd_sidecar</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">resume_info</span><span class="p">))</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Wrote </span><span class="si">{</span><span class="n">cwd_sidecar</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="si">}</span><span class="s2"> (compat)&quot;</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">on_load_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">pl_module</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">):</span>
         <span class="k">if</span> <span class="s2">&quot;wandb&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">checkpoint</span><span class="p">:</span>
