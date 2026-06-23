@@ -247,6 +247,34 @@ Barlow Twins
         _target_: stable_pretraining.losses.BarlowTwinsLoss
         lambda_: 0.005
 
+SigLIP
+~~~~~~
+
+.. autofunction:: siglip_forward
+
+**Required Module Attributes:**
+
+- ``vision_model``: Image encoder returning ``image_embeds`` or ``pooler_output``
+- ``text_model``: Text encoder returning ``text_embeds`` or ``pooler_output``
+- ``siglip_loss``: SigLIP loss function
+
+**Expected Batch Keys:**
+
+- ``image``: Image tensor passed to the vision model
+- ``tokenized_prompt``: Token ids passed to the text model
+- ``attention_mask``: Optional text attention mask
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.siglip_forward
+      vision_model: ...
+      text_model: ...
+      siglip_loss:
+        _target_: stable_pretraining.losses.SigLIPLoss
+
 Supervised
 ~~~~~~~~~~
 

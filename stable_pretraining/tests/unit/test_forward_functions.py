@@ -1,5 +1,7 @@
 """Unit tests for all forward functions using benchmark transforms."""
 
+import types
+
 import pytest
 import torch
 import torch.nn as nn
@@ -438,4 +440,66 @@ class TestForwardFunctionsWithBenchmarkTransforms:
 
         assert "embedding" in result
         assert "logits" in result
+        assert "loss" in result
+
+    def test_siglip_forward(self):
+        """Test siglip_forward with paired image-text batch."""
+        torch.manual_seed(0)
+        batch = {
+            "image": torch.randn(2, 3, 224, 224),
+            "tokenized_prompt": torch.ones(2, 8, dtype=torch.long),
+            "attention_mask": torch.ones(2, 8, dtype=torch.long),
+        }
+        image_embeds = torch.randn(2, 16)
+        text_embeds = torch.randn(2, 16)
+
+        module = Mock()
+        module.vision_model = Mock(
+            return_value=types.SimpleNamespace(image_embeds=image_embeds)
+        )
+        module.text_model = Mock(
+            return_value=types.SimpleNamespace(text_embeds=text_embeds)
+        )
+        module.siglip_loss = Mock(return_value=torch.tensor(0.5))
+        module.training = True
+        module.log = Mock()
+
+        result = forward_module.siglip_forward(module, batch, "train")
+
+        module.vision_model.assert_called_once_with(pixel_values=batch["image"])
+        module.text_model.assert_called_once_with(
+            input_ids=batch["tokenized_prompt"],
+            attention_mask=batch["attention_mask"],
+        )
+        module.siglip_loss.assert_called_once()
+        assert "image_embeds" in result
+        assert "text_embeds" in result
+        assert "loss" in result
+        assert result["image_embeds"].shape == image_embeds.shape
+        assert result["text_embeds"].shape == text_embeds.shape
+
+    def test_siglip_forward_accepts_pooler_outputs(self):
+        """Test siglip_forward with Hugging Face SigLIP-style pooler outputs."""
+        batch = {
+            "image": torch.randn(2, 3, 224, 224),
+            "tokenized_prompt": torch.ones(2, 8, dtype=torch.long),
+        }
+        image_embeds = torch.randn(2, 16)
+        text_embeds = torch.randn(2, 16)
+
+        module = Mock()
+        module.vision_model = Mock(
+            return_value=types.SimpleNamespace(pooler_output=image_embeds)
+        )
+        module.text_model = Mock(
+            return_value=types.SimpleNamespace(pooler_output=text_embeds)
+        )
+        module.siglip_loss = Mock(return_value=torch.tensor(0.5))
+        module.training = True
+        module.log = Mock()
+
+        result = forward_module.siglip_forward(module, batch, "train")
+
+        assert "image_embeds" in result
+        assert "text_embeds" in result
         assert "loss" in result

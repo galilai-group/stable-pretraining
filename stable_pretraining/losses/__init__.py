@@ -20,7 +20,7 @@ from .joint_embedding import (
 )
 
 # Multimodal losses
-from .multimodal import CLIPLoss
+from .multimodal import CLIPLoss, SigLIPLoss
 
 # Reconstruction losses
 from .reconstruction import mae, MAELoss
@@ -45,6 +45,7 @@ __all__ = [
     "NTXEntLoss",
     "SwAVLoss",
     "CLIPLoss",
+    "SigLIPLoss",
     # Reconstruction
     "mae",
     "MAELoss",
