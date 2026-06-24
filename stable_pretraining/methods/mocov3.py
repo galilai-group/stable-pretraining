@@ -79,6 +79,9 @@ class MoCov3(Module):
     :param ema_decay_end: Final EMA (default 1.0).
     :param low_resolution: Adapt first conv for low-res input.
     :param pretrained: Load pretrained timm weights.
+    :param embed_dim: Backbone output dimension. Inferred automatically for timm
+        models; must be provided explicitly for custom encoders that do not expose
+        an ``.embed_dim`` attribute.
     """
 
     def __init__(
@@ -91,6 +94,7 @@ class MoCov3(Module):
         ema_decay_end: float = 1.0,
         low_resolution: bool = False,
         pretrained: bool = False,
+        embed_dim: Optional[int] = None,
     ):
         super().__init__()
 
@@ -101,11 +105,18 @@ class MoCov3(Module):
                 low_resolution=low_resolution,
                 pretrained=pretrained,
             )
+            embed_dim = base.embed_dim
         else:
             base = encoder_name
-
-        with torch.no_grad():
-            embed_dim = base(torch.zeros(1, 3, 224, 224)).shape[-1]
+            if embed_dim is None:
+                if hasattr(encoder_name, "embed_dim"):
+                    embed_dim = encoder_name.embed_dim
+                else:
+                    raise ValueError(
+                        "embed_dim must be provided when the encoder does not expose "
+                        "an .embed_dim attribute. timm models expose this automatically; "
+                        "for custom encoders, pass embed_dim explicitly."
+                    )
         self.embed_dim = embed_dim
         self.temperature = temperature
 

@@ -31,7 +31,7 @@ class TestMAEImagenet10LoadModule:
     """Run MAE with a pre-loaded backbone on imagenette for 3 steps.
 
     Mirrors test_mae_inet10.py but passes an nn.Module instead of a string
-    to MAE(), verifying the model_or_model_name interface.
+    to MAE(), verifying the encoder_name interface.
     """
 
     def test_mae_10_steps_with_loaded_backbone(self):
@@ -98,7 +98,7 @@ class TestMAEImagenet10LoadModule:
         backbone = load_backbone("vit_tiny_patch16_224", pretrained=False)
 
         module = MAE(
-            model_or_model_name=backbone,
+            encoder_name=backbone,
             decoder_embed_dim=192,
             decoder_depth=4,
             decoder_num_heads=3,

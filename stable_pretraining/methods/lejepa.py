@@ -160,7 +160,7 @@ class LeJEPA(Module):
     The SIGReg term is a sliced goodness-of-fit test that pushes
     projected embeddings toward an isotropic Gaussian, averaged over views.
 
-    :param encoder_name: timm model name (e.g., ``"vit_base_patch16_224"``)
+    :param encoder_name: timm model name string or pre-instantiated nn.Module
     :param projector: Optional projection head.  When ``None``, a 3-layer
         BN+ReLU MLP (``embed_dim → 2048 → 2048 → 512``) is created.
     :param n_slices: Random projection directions for the goodness-of-fit test (default: 1024)
@@ -168,6 +168,9 @@ class LeJEPA(Module):
     :param n_points: EP quadrature nodes (default: 17)
     :param lamb: SIGReg weight λ (default: 0.02)
     :param pretrained: Load pretrained timm weights
+    :param embed_dim: Output dimension of the custom encoder. Required when
+    ``encoder_name`` is an ``nn.Module``; ignored when a timm model name
+    string is passed (inferred automatically via ``backbone.embed_dim``).
 
     Example::
 
@@ -216,18 +219,21 @@ class LeJEPA(Module):
         lamb: float = 0.02,
         pretrained: bool = False,
         drop_path_rate: float = 0.1,
+        embed_dim: Optional[int] = None,
     ):
         super().__init__()
-
-        self.backbone = timm.create_model(
-            encoder_name,
-            pretrained=pretrained,
-            num_classes=0,
-            **({"dynamic_img_size": True} if "vit" in encoder_name else {}),
-            drop_path_rate=drop_path_rate,
-        )
-
-        embed_dim = self.backbone.embed_dim
+        if isinstance(encoder_name, str):
+            self.backbone = timm.create_model(
+                encoder_name,
+                pretrained=pretrained,
+                num_classes=0,
+                **({"dynamic_img_size": True} if "vit" in encoder_name else {}),
+                drop_path_rate=drop_path_rate,
+            )
+            embed_dim = self.backbone.embed_dim
+        else:
+            self.backbone = encoder_name
+            embed_dim = embed_dim
 
         if projector is None:
             projector = nn.Sequential(

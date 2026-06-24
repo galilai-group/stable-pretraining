@@ -72,6 +72,9 @@ class WMSE(Module):
     :param eps: Cholesky regularisation (default ``1e-3``).
     :param low_resolution: Adapt first conv for low-res input.
     :param pretrained: Load pretrained timm weights.
+    :param embed_dim: Backbone output dimension. Inferred automatically for timm
+        models; must be provided explicitly for custom encoders that do not expose
+        an ``.embed_dim`` attribute.
     """
 
     def __init__(
@@ -81,6 +84,7 @@ class WMSE(Module):
         eps: float = 1e-3,
         low_resolution: bool = False,
         pretrained: bool = False,
+        embed_dim: Optional[int] = None,
     ):
         super().__init__()
         if isinstance(encoder_name, str):
@@ -90,11 +94,18 @@ class WMSE(Module):
                 low_resolution=low_resolution,
                 pretrained=pretrained,
             )
+            embed_dim = self.backbone.embed_dim
         else:
             self.backbone = encoder_name
-
-        with torch.no_grad():
-            embed_dim = self.backbone(torch.zeros(1, 3, 224, 224)).shape[-1]
+            if embed_dim is None:
+                if hasattr(encoder_name, "embed_dim"):
+                    embed_dim = encoder_name.embed_dim
+                else:
+                    raise ValueError(
+                        "embed_dim must be provided when the encoder does not expose "
+                        "an .embed_dim attribute. timm models expose this automatically; "
+                        "for custom encoders, pass embed_dim explicitly."
+                    )
         self.embed_dim = embed_dim
 
         proj_hidden, proj_out = projector_dims
