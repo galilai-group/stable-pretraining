@@ -70,7 +70,10 @@ from .__about__ import (  # noqa: F401, E402
 
 # OmegaConf resolver: register at import time so YAML configs can use ${eval:…}
 # without requiring a heavy attribute access first.
-OmegaConf.register_new_resolver("eval", eval)
+# Registered only if not present, to avoid a duplicate-registration ValueError
+# when the host application already defined its own 'eval' resolver.
+if not OmegaConf.has_resolver(eval):
+    OmegaConf.register_new_resolver("eval", eval)
 
 
 # ---------------------------------------------------------------------------
