@@ -12,7 +12,11 @@ dependencies = [
     # torch>=2.4 / lightning>=2.4 required for FSDP2 (torch fully_shard +
     # Lightning's ModelParallelStrategy); see stable_pretraining.utils.fsdp2.
     "torch>=2.4",
-    "torchvision",
+    # torchvision>=0.21 (paired with torch 2.6) made ``Transform.make_params``
+    # and ``Transform.transform`` the public hooks (``_get_params`` /
+    # ``_transform`` before). ``stable_pretraining.data.transforms`` calls
+    # both, so older torchvision raises AttributeError at call time.
+    "torchvision>=0.21",
     "torchmetrics",
     "lightning>=2.4",
     "hydra-core",

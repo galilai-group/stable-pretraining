@@ -154,6 +154,15 @@ Unreleased
   changes are persisted via ``PATCH /api/run-meta`` with optimistic updates and
   revert on failure.
 
+**Dependencies**
+
+- ``torchvision>=0.21`` is now required (previously unbounded).
+  ``stable_pretraining.data.transforms`` calls the public
+  ``Transform.make_params`` / ``Transform.transform`` hooks that torchvision
+  introduced in 0.21 (paired with torch 2.6); on older torchvision they are
+  still named ``_get_params`` / ``_transform`` and every ``spt`` transform
+  raised ``AttributeError`` when called.
+
 Version 0.1
 -----------
 
