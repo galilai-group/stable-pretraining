@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Plotting from WandB Runs &#8212; stable-pretraining 0.1.dev1+g9aa93f8b6 documentation</title>
+    <title>Plotting from WandB Runs &#8212; stable-pretraining 0.1.dev1+gce1ae6ee5 documentation</title>
   
   
   
@@ -27,47 +27,54 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=4418a689" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
-    <script src="../../_static/documentation_options.js?v=e15806cd"></script>
+    <script src="../../_static/documentation_options.js?v=01e129ac"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
     <script src="../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'auto_examples/wandb_figures';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
   </head>
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
-
+  <body data-default-mode="">
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -93,7 +100,47 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
     </header>
   
 
@@ -128,7 +175,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9aa93f8b6 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gce1ae6ee5 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -394,11 +441,18 @@
 
 
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div>
 
 
 <button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
@@ -440,130 +494,129 @@ to download the full example code.</p>
 create plots from it.</p>
 <p>To use, set the <code class="docutils literal notranslate"><span class="pre">entity</span></code> variable to your WandB entity and <code class="docutils literal notranslate"><span class="pre">project</span></code>
 to the specific project you want to read runs from.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span>
-
-<span class="n">entity</span> <span class="o">=</span> <span class="s2">&quot;[YOUR ENTITY HERE]&quot;</span>
-<span class="n">project</span> <span class="o">=</span> <span class="s2">&quot;[YOUR PROJECT HERE]&quot;</span>
-
-
-<span class="c1"># want to retrieve finished runs from wandb</span>
-<span class="n">configs</span><span class="p">,</span> <span class="n">dfs</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">wandb_project</span><span class="p">(</span>
-    <span class="n">entity</span><span class="o">=</span><span class="n">entity</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="n">project</span><span class="p">,</span> <span class="n">filters</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;finished&quot;</span><span class="p">}</span>
-<span class="p">)</span>
-
-<span class="c1"># Here you would define wanted conditions that you can use to narrow down the WandB runs, if you want to access all your runs</span>
-<span class="c1"># in the project then you would not define anything here and would remove the first if statement in the for loop</span>
-<span class="c1"># access all runs with the wanted dataset and model backbone</span>
-<span class="n">wanted_dataset</span> <span class="o">=</span> <span class="s2">&quot;imdb&quot;</span>
-<span class="n">wanted_backbone</span> <span class="o">=</span> <span class="s2">&quot;Snowflake/snowflake-arctic-embed-xs&quot;</span>
-
-
-<span class="c1"># This section allows for the users to define the information they want to separate the runs into to later be plotted</span>
-<span class="c1"># for this example, we are dividing the data based on rank and location. We are the going to plot the spurious_proportion on the</span>
-<span class="c1"># x-axis and balanced_accuracy on the y-axis</span>
-
-<span class="c1"># Dictionary to store results</span>
-<span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="n">rank</span><span class="p">:</span> <span class="p">{</span>
-        <span class="n">loc</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;spurious_proportion&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;balanced_accuracy&quot;</span><span class="p">:</span> <span class="p">[]}</span>
-        <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;random&quot;</span><span class="p">,</span> <span class="s2">&quot;end&quot;</span><span class="p">,</span> <span class="s2">&quot;beginning&quot;</span><span class="p">]</span>
-    <span class="p">}</span>
-    <span class="k">for</span> <span class="n">rank</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">32</span><span class="p">]</span>
-<span class="p">}</span>
-
-<span class="c1"># Iterate through runs and gather information from WandB</span>
-<span class="k">for</span> <span class="n">run_id</span><span class="p">,</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">dfs</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processing runs&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;run&quot;</span><span class="p">):</span>
-    <span class="c1"># Get the dataset, backbone, and run name from the WandB runs, this allows us to focus on the runs for specific conditions</span>
-    <span class="c1"># we want to plot (ex we only want to plot runs for a specific dataset and backbone)</span>
-    <span class="n">dataset</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-    <span class="n">backbone</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;backbone&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-    <span class="n">run_name</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-
-    <span class="c1"># make sure the ones we are using met the conditions for what we want to graph</span>
-    <span class="k">if</span> <span class="p">(</span>
-        <span class="n">wanted_dataset</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-        <span class="ow">and</span> <span class="n">wanted_backbone</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">backbone</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-    <span class="p">):</span>
-        <span class="c1"># Extract spurious correlation proportion, location, and lora_rank used</span>
-        <span class="n">spurious_proportion</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;spurious_proportion&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">spurious_location</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;spurious_location&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">lora_rank</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;lora_rank&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">use_spurious</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;use_spurious&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="n">using_list</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;use_list_dataset&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-
-        <span class="c1"># This if statement allows us to exclude runs we dont want to plot, you can change it based on your needs</span>
-        <span class="c1"># only access if it contains everything wanted</span>
-        <span class="k">if</span> <span class="p">(</span>
-            <span class="n">spurious_proportion</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="ow">and</span> <span class="n">spurious_location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="ow">and</span> <span class="n">spurious_proportion</span> <span class="o">&gt;=</span> <span class="mi">0</span>
-            <span class="ow">and</span> <span class="n">lora_rank</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="ow">and</span> <span class="n">use_spurious</span>
-            <span class="ow">and</span> <span class="n">using_list</span> <span class="ow">is</span> <span class="kc">None</span>
-        <span class="p">):</span>
-            <span class="c1"># Extract balanced accuracy from the run</span>
-            <span class="n">new_df</span><span class="p">,</span> <span class="n">config</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">wandb</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">project</span><span class="p">,</span> <span class="n">run_id</span><span class="p">)</span>
-            <span class="c1"># drop the ones that are NAN</span>
-            <span class="n">balanced_acc</span> <span class="o">=</span> <span class="n">new_df</span><span class="p">[</span><span class="s2">&quot;eval/NonSpurious_balanced_accuracy&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
-
-            <span class="c1"># Add the last one to be plotted</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">balanced_acc</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-                <span class="n">balanced_acc</span> <span class="o">=</span> <span class="n">balanced_acc</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># Get the final valid accuracy</span>
-                <span class="n">results</span><span class="p">[</span><span class="n">lora_rank</span><span class="p">][</span><span class="n">spurious_location</span><span class="p">][</span><span class="s2">&quot;spurious_proportion&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="n">spurious_proportion</span>
-                <span class="p">)</span>
-                <span class="n">results</span><span class="p">[</span><span class="n">lora_rank</span><span class="p">][</span><span class="n">spurious_location</span><span class="p">][</span><span class="s2">&quot;balanced_accuracy&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="n">balanced_acc</span>
-                <span class="p">)</span>
-
-
-<span class="c1"># Functions used to simplify the plotting process, making it more extensible</span>
-<span class="c1"># Sort values for plotting</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">sort_and_unpack</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;spurious_proportion&quot;</span><span class="p">]:</span>
-        <span class="n">sorted_data</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
-            <span class="nb">zip</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;spurious_proportion&quot;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;balanced_accuracy&quot;</span><span class="p">])</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">sorted_data</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">[],</span> <span class="p">[]</span>
-
-
-<span class="c1"># Create figure</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">14</span><span class="p">))</span>
-<span class="n">styles</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="mi">32</span><span class="p">:</span> <span class="s2">&quot;:&quot;</span><span class="p">}</span>
-<span class="n">markers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;random&quot;</span><span class="p">:</span> <span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="s2">&quot;end&quot;</span><span class="p">:</span> <span class="s2">&quot;d&quot;</span><span class="p">,</span> <span class="s2">&quot;beginning&quot;</span><span class="p">:</span> <span class="s2">&quot;x&quot;</span><span class="p">}</span>
-
-<span class="c1"># Plot the data</span>
-<span class="k">for</span> <span class="n">rank</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
-    <span class="k">for</span> <span class="n">location</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="n">rank</span><span class="p">]:</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">sort_and_unpack</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="n">rank</span><span class="p">][</span><span class="n">location</span><span class="p">])</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
-            <span class="n">x</span><span class="p">,</span>
-            <span class="n">y</span><span class="p">,</span>
-            <span class="n">linestyle</span><span class="o">=</span><span class="n">styles</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span>
-            <span class="n">marker</span><span class="o">=</span><span class="n">markers</span><span class="p">[</span><span class="n">location</span><span class="p">],</span>
-            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span><span class="si">}</span><span class="s2"> (LoRA Rank </span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
-        <span class="p">)</span>
-
-<span class="c1"># Label the plot and axis, you can change these to whatever you want/need</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Spurious Correlation Proportion&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Balanced Accuracy on Clean Test Set&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;Balanced Accuracy vs Spurious Correlation using </span><span class="si">{</span><span class="n">wanted_backbone</span><span class="si">}</span><span class="s2"> on </span><span class="si">{</span><span class="n">wanted_dataset</span><span class="si">}</span><span class="s2">, Spurious Type: Date, From List: </span><span class="si">{</span><span class="n">using_list</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-    <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
-
-<span class="c1"># Save the figure locally, you can name it whatever you want for your needs</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span>
-    <span class="s2">&quot;balanced_accuracy_vs_spurious_correlation.png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span>
-<span class="p">)</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span><span class="w">
+</span><span class="w">
+</span><span class="n">entity</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s2">[YOUR ENTITY HERE]</span><span class="s2">&quot;</span><span class="w">
+</span><span class="n">project</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s2">[YOUR PROJECT HERE]</span><span class="s2">&quot;</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># want to retrieve finished runs from wandb</span><span class="w">
+</span><span class="n">configs</span><span class="p">,</span> <span class="n">dfs</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">wandb_project</span><span class="p">(</span><span class="w">
+</span>    <span class="n">entity</span><span class="o">=</span><span class="n">entity</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="n">project</span><span class="p">,</span> <span class="n">filters</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;</span><span class="s2">state</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">finished</span><span class="s2">&quot;</span><span class="p">}</span><span class="w">
+</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Here you would define wanted conditions that you can use to narrow down the WandB runs, if you want to access all your runs</span><span class="w">
+</span><span class="c1"># in the project then you would not define anything here and would remove the first if statement in the for loop</span><span class="w">
+</span><span class="c1"># access all runs with the wanted dataset and model backbone</span><span class="w">
+</span><span class="n">wanted_dataset</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s2">imdb</span><span class="s2">&quot;</span><span class="w">
+</span><span class="n">wanted_backbone</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s2">Snowflake/snowflake-arctic-embed-xs</span><span class="s2">&quot;</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># This section allows for the users to define the information they want to separate the runs into to later be plotted</span><span class="w">
+</span><span class="c1"># for this example, we are dividing the data based on rank and location. We are the going to plot the spurious_proportion on the</span><span class="w">
+</span><span class="c1"># x-axis and balanced_accuracy on the y-axis</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Dictionary to store results</span><span class="w">
+</span><span class="n">results</span> <span class="o">=</span> <span class="p">{</span><span class="w">
+</span>    <span class="n">rank</span><span class="p">:</span> <span class="p">{</span><span class="w">
+</span>        <span class="n">loc</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;</span><span class="s2">spurious_proportion</span><span class="s2">&quot;</span><span class="p">:</span> <span class="p">[</span><span class="p">]</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">balanced_accuracy</span><span class="s2">&quot;</span><span class="p">:</span> <span class="p">[</span><span class="p">]</span><span class="p">}</span><span class="w">
+</span>        <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;</span><span class="s2">random</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">end</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">beginning</span><span class="s2">&quot;</span><span class="p">]</span><span class="w">
+</span>    <span class="p">}</span><span class="w">
+</span>    <span class="k">for</span> <span class="n">rank</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">32</span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Iterate through runs and gather information from WandB</span><span class="w">
+</span><span class="k">for</span> <span class="n">run_id</span><span class="p">,</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">dfs</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">Processing runs</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">run</span><span class="s2">&quot;</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="c1"># Get the dataset, backbone, and run name from the WandB runs, this allows us to focus on the runs for specific conditions</span><span class="w">
+</span>    <span class="c1"># we want to plot (ex we only want to plot runs for a specific dataset and backbone)</span><span class="w">
+</span>    <span class="n">dataset</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">dataset</span><span class="s2">&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span><span class="w">
+</span>    <span class="n">backbone</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">backbone</span><span class="s2">&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span><span class="w">
+</span>    <span class="n">run_name</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">run_name</span><span class="s2">&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="c1"># make sure the ones we are using met the conditions for what we want to graph</span><span class="w">
+</span>    <span class="k">if</span> <span class="p">(</span><span class="w">
+</span>        <span class="n">wanted_dataset</span><span class="o">.</span><span class="n">lower</span><span class="p">(</span><span class="p">)</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">lower</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>        <span class="ow">and</span> <span class="n">wanted_backbone</span><span class="o">.</span><span class="n">lower</span><span class="p">(</span><span class="p">)</span> <span class="ow">in</span> <span class="n">backbone</span><span class="o">.</span><span class="n">lower</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>    <span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="c1"># Extract spurious correlation proportion, location, and lora_rank used</span><span class="w">
+</span>        <span class="n">spurious_proportion</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">spurious_proportion</span><span class="s2">&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span><span class="w">
+</span>        <span class="n">spurious_location</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">spurious_location</span><span class="s2">&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span><span class="w">
+</span>        <span class="n">lora_rank</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">lora_rank</span><span class="s2">&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span><span class="w">
+</span>        <span class="n">use_spurious</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">use_spurious</span><span class="s2">&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span><span class="w">
+</span>        <span class="n">using_list</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">use_list_dataset</span><span class="s2">&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>        <span class="c1"># This if statement allows us to exclude runs we dont want to plot, you can change it based on your needs</span><span class="w">
+</span>        <span class="c1"># only access if it contains everything wanted</span><span class="w">
+</span>        <span class="k">if</span> <span class="p">(</span><span class="w">
+</span>            <span class="n">spurious_proportion</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="w">
+</span>            <span class="ow">and</span> <span class="n">spurious_location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="w">
+</span>            <span class="ow">and</span> <span class="n">spurious_proportion</span> <span class="o">&gt;</span><span class="o">=</span> <span class="mi">0</span><span class="w">
+</span>            <span class="ow">and</span> <span class="n">lora_rank</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="w">
+</span>            <span class="ow">and</span> <span class="n">use_spurious</span><span class="w">
+</span>            <span class="ow">and</span> <span class="n">using_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="w">
+</span>        <span class="p">)</span><span class="p">:</span><span class="w">
+</span>            <span class="c1"># Extract balanced accuracy from the run</span><span class="w">
+</span>            <span class="n">new_df</span><span class="p">,</span> <span class="n">config</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">wandb</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">project</span><span class="p">,</span> <span class="n">run_id</span><span class="p">)</span><span class="w">
+</span>            <span class="c1"># drop the ones that are NAN</span><span class="w">
+</span>            <span class="n">balanced_acc</span> <span class="o">=</span> <span class="n">new_df</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">eval/NonSpurious_balanced_accuracy</span><span class="s2">&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>            <span class="c1"># Add the last one to be plotted</span><span class="w">
+</span>            <span class="k">if</span> <span class="ow">not</span> <span class="n">balanced_acc</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span><span class="w">
+</span>                <span class="n">balanced_acc</span> <span class="o">=</span> <span class="n">balanced_acc</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># Get the final valid accuracy</span><span class="w">
+</span>                <span class="n">results</span><span class="p">[</span><span class="n">lora_rank</span><span class="p">]</span><span class="p">[</span><span class="n">spurious_location</span><span class="p">]</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">spurious_proportion</span><span class="s2">&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="w">
+</span>                    <span class="n">spurious_proportion</span><span class="w">
+</span>                <span class="p">)</span><span class="w">
+</span>                <span class="n">results</span><span class="p">[</span><span class="n">lora_rank</span><span class="p">]</span><span class="p">[</span><span class="n">spurious_location</span><span class="p">]</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">balanced_accuracy</span><span class="s2">&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="w">
+</span>                    <span class="n">balanced_acc</span><span class="w">
+</span>                <span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Functions used to simplify the plotting process, making it more extensible</span><span class="w">
+</span><span class="c1"># Sort values for plotting</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">sort_and_unpack</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">spurious_proportion</span><span class="s2">&quot;</span><span class="p">]</span><span class="p">:</span><span class="w">
+</span>        <span class="n">sorted_data</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="w">
+</span>            <span class="nb">zip</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">spurious_proportion</span><span class="s2">&quot;</span><span class="p">]</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">balanced_accuracy</span><span class="s2">&quot;</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span>        <span class="p">)</span><span class="w">
+</span>        <span class="k">return</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">sorted_data</span><span class="p">)</span><span class="w">
+</span>    <span class="k">return</span> <span class="p">[</span><span class="p">]</span><span class="p">,</span> <span class="p">[</span><span class="p">]</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Create figure</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">14</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span><span class="n">styles</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">-</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">--</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">32</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">:</span><span class="s2">&quot;</span><span class="p">}</span><span class="w">
+</span><span class="n">markers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;</span><span class="s2">random</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">end</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">d</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">beginning</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">x</span><span class="s2">&quot;</span><span class="p">}</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Plot the data</span><span class="w">
+</span><span class="k">for</span> <span class="n">rank</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span><span class="w">
+</span>    <span class="k">for</span> <span class="n">location</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span><span class="p">:</span><span class="w">
+</span>        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">sort_and_unpack</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span><span class="p">[</span><span class="n">location</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span>        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="w">
+</span>            <span class="n">x</span><span class="p">,</span><span class="w">
+</span>            <span class="n">y</span><span class="p">,</span><span class="w">
+</span>            <span class="n">linestyle</span><span class="o">=</span><span class="n">styles</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span><span class="p">,</span><span class="w">
+</span>            <span class="n">marker</span><span class="o">=</span><span class="n">markers</span><span class="p">[</span><span class="n">location</span><span class="p">]</span><span class="p">,</span><span class="w">
+</span>            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(</span><span class="p">)</span><span class="si">}</span><span class="s2"> (LoRA Rank </span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">)</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Label the plot and axis, you can change these to whatever you want/need</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">Spurious Correlation Proportion</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">Balanced Accuracy on Clean Test Set</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="w">
+</span>    <span class="sa">f</span><span class="s2">&quot;</span><span class="s2">Balanced Accuracy vs Spurious Correlation using </span><span class="si">{</span><span class="n">wanted_backbone</span><span class="si">}</span><span class="s2"> on </span><span class="si">{</span><span class="n">wanted_dataset</span><span class="si">}</span><span class="s2">, Spurious Type: Date, From List: </span><span class="si">{</span><span class="n">using_list</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>    <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span><span class="w">
+</span><span class="p">)</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Save the figure locally, you can name it whatever you want for your needs</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="w">
+</span>    <span class="s2">&quot;</span><span class="s2">balanced_accuracy_vs_spurious_correlation.png</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">tight</span><span class="s2">&quot;</span><span class="w">
+</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-wandb-figures-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/18cb52aef2375265f5b48bcc95426294/wandb_figures.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">wandb_figures.ipynb</span></code></a></p>
@@ -639,8 +692,8 @@ By stable-pretraining team
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
   <footer class="bd-footer">
   </footer>

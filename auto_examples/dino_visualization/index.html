@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>DINO feature PCA &amp; CLS-attention visualisation &#8212; stable-pretraining 0.1.dev1+g9aa93f8b6 documentation</title>
+    <title>DINO feature PCA &amp; CLS-attention visualisation &#8212; stable-pretraining 0.1.dev1+gce1ae6ee5 documentation</title>
   
   
   
@@ -27,47 +27,54 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=4418a689" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
-    <script src="../../_static/documentation_options.js?v=e15806cd"></script>
+    <script src="../../_static/documentation_options.js?v=01e129ac"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
     <script src="../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'auto_examples/dino_visualization';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
   </head>
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
-
+  <body data-default-mode="">
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -93,7 +100,47 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
     </header>
   
 
@@ -128,7 +175,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9aa93f8b6 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gce1ae6ee5 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -394,11 +441,18 @@
 
 
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div>
 
 
 <button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
@@ -444,203 +498,201 @@ CLS self-attention maps — on a pretrained DINO ViT, using the
 drop its patch tokens and last-block attention into the batch dict; the
 callbacks do everything else (PCA, thresholding, eye-candy figure, logging).</p>
 <p>Run it on a compute node (never the login node), e.g.:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">srun</span> <span class="o">--</span><span class="n">partition</span><span class="o">=</span><span class="n">worker</span><span class="o">-</span><span class="n">cpu</span> <span class="o">--</span><span class="n">cpus</span><span class="o">-</span><span class="n">per</span><span class="o">-</span><span class="n">task</span><span class="o">=</span><span class="mi">8</span> <span class="o">--</span><span class="n">mem</span><span class="o">=</span><span class="mi">16</span><span class="n">G</span> <span class="o">--</span><span class="n">time</span><span class="o">=</span><span class="mi">00</span><span class="p">:</span><span class="mi">20</span><span class="p">:</span><span class="mi">00</span> \
-    <span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">dino_visualization</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">out</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">dino_viz</span> <span class="o">--</span><span class="n">n</span><span class="o">-</span><span class="n">images</span> <span class="mi">8</span>
-</pre></div>
-</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="n">srun</span> <span class="o">-</span><span class="o">-</span><span class="n">partition</span><span class="o">=</span><span class="n">worker</span><span class="o">-</span><span class="n">cpu</span> <span class="o">-</span><span class="o">-</span><span class="n">cpus</span><span class="o">-</span><span class="n">per</span><span class="o">-</span><span class="n">task</span><span class="o">=</span><span class="mi">8</span> <span class="o">-</span><span class="o">-</span><span class="n">mem</span><span class="o">=</span><span class="mi">16</span><span class="n">G</span> <span class="o">-</span><span class="o">-</span><span class="n">time</span><span class="o">=</span><span class="mi">00</span><span class="p">:</span><span class="mi">20</span><span class="p">:</span><span class="mi">00</span> \
+    <span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">dino_visualization</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="o">-</span><span class="n">out</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">dino_viz</span> <span class="o">-</span><span class="o">-</span><span class="n">n</span><span class="o">-</span><span class="n">images</span> <span class="mi">8</span><span class="w">
+</span></pre></div></div>
 <p>The callbacks log their figures through the trainer’s logger — they never
 write files themselves. Here a <code class="docutils literal notranslate"><span class="pre">RegistryLogger</span></code> is attached, so the two
 figures land under <code class="docutils literal notranslate"><span class="pre">{--out}/media/val_pca/</span></code> and <code class="docutils literal notranslate"><span class="pre">{--out}/media/val_cls_attn/</span></code>
 (swap in a <code class="docutils literal notranslate"><span class="pre">WandbLogger</span></code> to upload them to Weights &amp; Biases instead).</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">timm</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span><span class="nn">.</span><span class="nn">nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># ImageNet normalisation (DINO ViTs were trained with it).</span><span class="w">
+</span><span class="n">IMAGENET_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.485</span><span class="p">,</span> <span class="mf">0.456</span><span class="p">,</span> <span class="mf">0.406</span><span class="p">)</span><span class="w">
+</span><span class="n">IMAGENET_STD</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.229</span><span class="p">,</span> <span class="mf">0.224</span><span class="p">,</span> <span class="mf">0.225</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">class</span><span class="w"> </span><span class="nc">DINOBackbone</span><span class="p">(</span><a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="torch.nn.Module"><span class="n">nn</span><span class="o">.</span><span class="n">Module</span></a><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrap a timm DINO ViT and expose patch tokens + last-block attention.
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">timm</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span> <span class="k">as</span> <span class="n">logging</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span>
-
-<span class="c1"># ImageNet normalisation (DINO ViTs were trained with it).</span>
-<span class="n">IMAGENET_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.485</span><span class="p">,</span> <span class="mf">0.456</span><span class="p">,</span> <span class="mf">0.406</span><span class="p">)</span>
-<span class="n">IMAGENET_STD</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.229</span><span class="p">,</span> <span class="mf">0.224</span><span class="p">,</span> <span class="mf">0.225</span><span class="p">)</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">DINOBackbone</span><span class="p">(</span><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module" title="torch.nn.Module" class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">nn</span><span class="o">.</span><span class="n">Module</span></a><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrap a timm DINO ViT and expose patch tokens + last-block attention.</span>
-
-<span class="sd">    ``forward_features`` gives the full token sequence ``(B, T, D)`` (prefix</span>
-<span class="sd">    tokens included). The last block&#39;s attention is recomputed inside a</span>
-<span class="sd">    forward-pre-hook from that block&#39;s own ``qkv`` projection — this is</span>
-<span class="sd">    backend-agnostic (works whether timm uses fused SDPA or not) and needs no</span>
-<span class="sd">    edits to timm.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;vit_small_patch16_224.dino&quot;</span><span class="p">,</span> <span class="n">img_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">224</span>
-    <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="c1"># ``dynamic_img_size`` interpolates the positional embedding so the ViT</span>
-        <span class="c1"># accepts resolutions other than the pretrained 224 — larger inputs give</span>
-        <span class="c1"># a finer patch grid and smoother PCA / attention maps.</span>
-        <span class="n">create_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">num_classes</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">dynamic_img_size</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">img_size</span> <span class="o">!=</span> <span class="mi">224</span><span class="p">:</span>
-            <span class="n">create_kwargs</span><span class="p">[</span><span class="s2">&quot;img_size&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_size</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">vit</span> <span class="o">=</span> <span class="n">timm</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="o">**</span><span class="n">create_kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_prefix_tokens</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="p">,</span> <span class="s2">&quot;num_prefix_tokens&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_attn</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">attn</span><span class="o">.</span><span class="n">register_forward_pre_hook</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_capture_attention</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_capture_attention</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># (B, T, C) normalised tokens fed to the attention module</span>
-        <span class="n">B</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
-        <span class="n">qkv</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">module</span><span class="o">.</span><span class="n">qkv</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">module</span><span class="o">.</span><span class="n">num_heads</span><span class="p">,</span> <span class="n">C</span> <span class="o">//</span> <span class="n">module</span><span class="o">.</span><span class="n">num_heads</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">qkv</span><span class="o">.</span><span class="n">unbind</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-        <span class="c1"># q_norm/k_norm are Identity on classic DINO but present on modern timm.</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="s2">&quot;q_norm&quot;</span><span class="p">):</span>
-            <span class="n">q</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">q_norm</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="s2">&quot;k_norm&quot;</span><span class="p">):</span>
-            <span class="n">k</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">k_norm</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
-        <span class="n">attn</span> <span class="o">=</span> <span class="p">(</span><span class="n">q</span> <span class="o">@</span> <span class="n">k</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="o">*</span> <span class="n">module</span><span class="o">.</span><span class="n">scale</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_attn</span> <span class="o">=</span> <span class="n">attn</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># (B, heads, T, T)</span>
-
-    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">:</span> <a href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor" class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span></a><span class="p">):</span>
-        <span class="n">tokens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">forward_features</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>  <span class="c1"># (B, T, D)</span>
-        <span class="k">return</span> <span class="n">tokens</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attn</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">build_module</span><span class="p">(</span><span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">img_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">224</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
-    <span class="n">backbone</span> <span class="o">=</span> <span class="n">DINOBackbone</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">img_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">):</span>
-        <span class="n">tokens</span><span class="p">,</span> <span class="n">attn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backbone</span><span class="p">(</span><span class="n">batch</span><span class="p">[</span><span class="s2">&quot;image&quot;</span><span class="p">])</span>
-        <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;tokens&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tokens</span>
-        <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;attn&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">attn</span>
-        <span class="k">return</span> <span class="n">batch</span>
-
-    <span class="n">module</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">(</span><span class="n">backbone</span><span class="o">=</span><span class="n">backbone</span><span class="p">,</span> <span class="n">forward</span><span class="o">=</span><span class="n">forward</span><span class="p">,</span> <span class="n">optim</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-    <span class="c1"># Stash for the caller to configure the callbacks correctly.</span>
-    <span class="n">module</span><span class="o">.</span><span class="n">_num_prefix_tokens</span> <span class="o">=</span> <span class="n">backbone</span><span class="o">.</span><span class="n">num_prefix_tokens</span>
-    <span class="k">return</span> <span class="n">module</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">build_dataloader</span><span class="p">(</span><span class="n">n_images</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">img_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A few real photos from ImageNette (streamed — no full download).&quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dataset</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">torchvision.transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">v2</span>
-
-    <span class="n">tf</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span>
-        <span class="p">[</span>
-            <span class="n">v2</span><span class="o">.</span><span class="n">Resize</span><span class="p">(</span><span class="n">img_size</span> <span class="o">+</span> <span class="mi">32</span><span class="p">),</span>
-            <span class="n">v2</span><span class="o">.</span><span class="n">CenterCrop</span><span class="p">(</span><span class="n">img_size</span><span class="p">),</span>
-            <span class="n">v2</span><span class="o">.</span><span class="n">ToImage</span><span class="p">(),</span>
-            <span class="n">v2</span><span class="o">.</span><span class="n">ToDtype</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
-            <span class="n">v2</span><span class="o">.</span><span class="n">Normalize</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="n">IMAGENET_MEAN</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="n">IMAGENET_STD</span><span class="p">),</span>
-        <span class="p">]</span>
-    <span class="p">)</span>
-    <span class="n">ds</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span><span class="s2">&quot;frgfm/imagenette&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;validation&quot;</span><span class="p">)</span>
-    <span class="c1"># Sample spread across the split so we get varied classes, not 8 near-dupes.</span>
-    <span class="n">step</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span> <span class="o">//</span> <span class="n">n_images</span><span class="p">)</span>
-    <span class="n">idxs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="p">),</span> <span class="n">step</span><span class="p">))[:</span><span class="n">n_images</span><span class="p">]</span>
-    <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s2">&quot;image&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s2">&quot;RGB&quot;</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">idxs</span><span class="p">]</span>
-    <span class="n">x</span> <span class="o">=</span> <a href="https://docs.pytorch.org/docs/stable/generated/torch.stack.html#torch.stack" title="torch.stack" class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-function"><span class="n">torch</span><span class="o">.</span><span class="n">stack</span></a><span class="p">(</span><span class="n">images</span><span class="p">)</span>
-
-    <span class="k">class</span><span class="w"> </span><span class="nc">_DS</span><span class="p">(</span><a href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="torch.utils.data.Dataset" class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span></a><span class="p">):</span>
-        <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]}</span>
-
-    <span class="n">dl</span> <span class="o">=</span> <a href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader" class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">(</span>
-        <span class="n">_DS</span><span class="p">(),</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">n_images</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataModule</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="n">dl</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="n">dl</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="n">p</span> <span class="o">=</span> <a href="https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser" title="argparse.ArgumentParser" class="sphx-glr-backref-module-argparse sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span></a><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="vm">__doc__</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--model&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;vit_small_patch16_224.dino&quot;</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--out&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;dino_viz&quot;</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--n-images&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--img-size&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">224</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--num-workers&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--threshold&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--per-image&quot;</span><span class="p">,</span>
-        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Fit the PCA basis separately per image instead of jointly over &quot;</span>
-        <span class="s2">&quot;the batch (colours stop being comparable across images).&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--foreground-threshold&quot;</span><span class="p">,</span>
-        <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
-        <span class="n">default</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;DINOv2 fg/bg split on PCA component 1. Pass a negative value &quot;</span>
-        <span class="s2">&quot;(e.g. -1) to disable it and colour every patch (plain PCA).&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">args</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
-    <span class="c1"># Negative sentinel disables the foreground mask -&gt; colour all positions.</span>
-    <span class="n">fg_threshold</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">foreground_threshold</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">args</span><span class="o">.</span><span class="n">foreground_threshold</span>
-
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;loading pretrained DINO backbone: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">model</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">module</span> <span class="o">=</span> <span class="n">build_module</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">img_size</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">img_size</span><span class="p">)</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="n">build_dataloader</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">n_images</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">img_size</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">num_workers</span><span class="p">)</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">_num_prefix_tokens</span>
-
-    <span class="n">pca</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">PCATokenVisualizer</span><span class="p">(</span>
-        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;pca&quot;</span><span class="p">,</span>
-        <span class="n">features</span><span class="o">=</span><span class="s2">&quot;tokens&quot;</span><span class="p">,</span>
-        <span class="n">image</span><span class="o">=</span><span class="s2">&quot;image&quot;</span><span class="p">,</span>
-        <span class="n">num_prefix_tokens</span><span class="o">=</span><span class="n">prefix</span><span class="p">,</span>
-        <span class="n">per_image</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">per_image</span><span class="p">,</span>
-        <span class="n">foreground_threshold</span><span class="o">=</span><span class="n">fg_threshold</span><span class="p">,</span>
-        <span class="n">image_mean</span><span class="o">=</span><span class="n">IMAGENET_MEAN</span><span class="p">,</span>
-        <span class="n">image_std</span><span class="o">=</span><span class="n">IMAGENET_STD</span><span class="p">,</span>
-        <span class="n">max_images</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">n_images</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">attn</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">AttentionVisualizer</span><span class="p">(</span>
-        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;cls_attn&quot;</span><span class="p">,</span>
-        <span class="n">attention</span><span class="o">=</span><span class="s2">&quot;attn&quot;</span><span class="p">,</span>
-        <span class="n">image</span><span class="o">=</span><span class="s2">&quot;image&quot;</span><span class="p">,</span>
-        <span class="n">num_prefix_tokens</span><span class="o">=</span><span class="n">prefix</span><span class="p">,</span>
-        <span class="n">threshold</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">threshold</span><span class="p">,</span>
-        <span class="n">head_reduction</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span>
-        <span class="n">image_mean</span><span class="o">=</span><span class="n">IMAGENET_MEAN</span><span class="p">,</span>
-        <span class="n">image_std</span><span class="o">=</span><span class="n">IMAGENET_STD</span><span class="p">,</span>
-        <span class="n">max_images</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">n_images</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Figures flow through spt&#39;s logger — the callbacks never touch disk</span>
-    <span class="c1"># themselves. RegistryLogger writes them under ``{out}/media/`` and indexes</span>
-    <span class="c1"># them in ``media.jsonl`` (swap in a WandbLogger to upload instead).</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.registry.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegistryLogger</span>
-
-    <span class="n">logger</span> <span class="o">=</span> <span class="n">RegistryLogger</span><span class="p">(</span><span class="n">run_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">run_id</span><span class="o">=</span><span class="s2">&quot;dino_viz&quot;</span><span class="p">)</span>
-    <span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span>
-        <span class="n">accelerator</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span>
-        <span class="n">devices</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-        <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span>
-        <span class="n">enable_checkpointing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">enable_progress_bar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">pca</span><span class="p">,</span> <span class="n">attn</span><span class="p">],</span>
-    <span class="p">)</span>
-    <span class="c1"># A single validation pass fires both callbacks on the first (only) batch.</span>
-    <span class="n">trainer</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">datamodule</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;logged PCA + attention figures under: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">/media/&quot;</span><span class="p">)</span>
-
-
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="n">main</span><span class="p">()</span>
-</pre></div>
-</div>
+    ``forward_features`` gives the full token sequence ``(B, T, D)`` (prefix
+    tokens included). The last block's attention is recomputed inside a
+    forward-pre-hook from that block's own ``qkv`` projection — this is
+    backend-agnostic (works whether timm uses fused SDPA or not) and needs no
+    edits to timm.
+    &quot;&quot;&quot;</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="w">
+</span>        <span class="bp">self</span><span class="p">,</span> <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s2">vit_small_patch16_224.dino</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">img_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">224</span><span class="w">
+</span>    <span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="nb">super</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>        <span class="c1"># ``dynamic_img_size`` interpolates the positional embedding so the ViT</span><span class="w">
+</span>        <span class="c1"># accepts resolutions other than the pretrained 224 — larger inputs give</span><span class="w">
+</span>        <span class="c1"># a finer patch grid and smoother PCA / attention maps.</span><span class="w">
+</span>        <span class="n">create_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">pretrained</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">num_classes</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">dynamic_img_size</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="w">
+</span>        <span class="k">if</span> <span class="n">img_size</span> <span class="o">!=</span> <span class="mi">224</span><span class="p">:</span><span class="w">
+</span>            <span class="n">create_kwargs</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">img_size</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_size</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">vit</span> <span class="o">=</span> <span class="n">timm</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="o">*</span><span class="o">*</span><span class="n">create_kwargs</span><span class="p">)</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">num_prefix_tokens</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">num_prefix_tokens</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">_attn</span> <span class="o">=</span> <span class="kc">None</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">attn</span><span class="o">.</span><span class="n">register_forward_pre_hook</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_capture_attention</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">_capture_attention</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">x</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># (B, T, C) normalised tokens fed to the attention module</span><span class="w">
+</span>        <span class="n">B</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="w">
+</span>        <span class="n">qkv</span> <span class="o">=</span> <span class="p">(</span><span class="w">
+</span>            <span class="n">module</span><span class="o">.</span><span class="n">qkv</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w">
+</span>            <span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">module</span><span class="o">.</span><span class="n">num_heads</span><span class="p">,</span> <span class="n">C</span> <span class="o">/</span><span class="o">/</span> <span class="n">module</span><span class="o">.</span><span class="n">num_heads</span><span class="p">)</span><span class="w">
+</span>            <span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="w">
+</span>        <span class="p">)</span><span class="w">
+</span>        <span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">qkv</span><span class="o">.</span><span class="n">unbind</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w">
+</span>        <span class="c1"># q_norm/k_norm are Identity on classic DINO but present on modern timm.</span><span class="w">
+</span>        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">q_norm</span><span class="s2">&quot;</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>            <span class="n">q</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">q_norm</span><span class="p">(</span><span class="n">q</span><span class="p">)</span><span class="w">
+</span>        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">k_norm</span><span class="s2">&quot;</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>            <span class="n">k</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">k_norm</span><span class="p">(</span><span class="n">k</span><span class="p">)</span><span class="w">
+</span>        <span class="n">attn</span> <span class="o">=</span> <span class="p">(</span><span class="n">q</span> <span class="o">&#64;</span> <span class="n">k</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="p">)</span> <span class="o">*</span> <span class="n">module</span><span class="o">.</span><span class="n">scale</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">_attn</span> <span class="o">=</span> <span class="n">attn</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># (B, heads, T, T)</span><span class="w">
+</span><span class="w">
+</span>    <span class="nd">&#64;torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">:</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span></a><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">tokens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vit</span><span class="o">.</span><span class="n">forward_features</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>  <span class="c1"># (B, T, D)</span><span class="w">
+</span>        <span class="k">return</span> <span class="n">tokens</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attn</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">build_module</span><span class="p">(</span><span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">img_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">224</span><span class="p">)</span> <span class="o">-</span><span class="o">&gt;</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span><span class="w">
+</span>    <span class="n">backbone</span> <span class="o">=</span> <span class="n">DINOBackbone</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">img_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">tokens</span><span class="p">,</span> <span class="n">attn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backbone</span><span class="p">(</span><span class="n">batch</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span>        <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">tokens</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tokens</span><span class="w">
+</span>        <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">attn</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">attn</span><span class="w">
+</span>        <span class="k">return</span> <span class="n">batch</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">module</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">(</span><span class="n">backbone</span><span class="o">=</span><span class="n">backbone</span><span class="p">,</span> <span class="n">forward</span><span class="o">=</span><span class="n">forward</span><span class="p">,</span> <span class="n">optim</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span><span class="w">
+</span>    <span class="c1"># Stash for the caller to configure the callbacks correctly.</span><span class="w">
+</span>    <span class="n">module</span><span class="o">.</span><span class="n">_num_prefix_tokens</span> <span class="o">=</span> <span class="n">backbone</span><span class="o">.</span><span class="n">num_prefix_tokens</span><span class="w">
+</span>    <span class="k">return</span> <span class="n">module</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">build_dataloader</span><span class="p">(</span><span class="n">n_images</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">img_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;A few real photos from ImageNette (streamed — no full download).&quot;&quot;&quot;</span><span class="w">
+</span>    <span class="kn">from</span><span class="w"> </span><span class="nn">datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dataset</span><span class="w">
+</span>    <span class="kn">from</span><span class="w"> </span><span class="nn">torchvision</span><span class="nn">.</span><span class="nn">transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">v2</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">tf</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span><span class="w">
+</span>        <span class="p">[</span><span class="w">
+</span>            <span class="n">v2</span><span class="o">.</span><span class="n">Resize</span><span class="p">(</span><span class="n">img_size</span> <span class="o">+</span> <span class="mi">32</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>            <span class="n">v2</span><span class="o">.</span><span class="n">CenterCrop</span><span class="p">(</span><span class="n">img_size</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>            <span class="n">v2</span><span class="o">.</span><span class="n">ToImage</span><span class="p">(</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>            <span class="n">v2</span><span class="o">.</span><span class="n">ToDtype</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>            <span class="n">v2</span><span class="o">.</span><span class="n">Normalize</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="n">IMAGENET_MEAN</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="n">IMAGENET_STD</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>        <span class="p">]</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="n">ds</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">frgfm/imagenette</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">validation</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="c1"># Sample spread across the split so we get varied classes, not 8 near-dupes.</span><span class="w">
+</span>    <span class="n">step</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span> <span class="o">/</span><span class="o">/</span> <span class="n">n_images</span><span class="p">)</span><span class="w">
+</span>    <span class="n">idxs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span><span class="p">)</span><span class="p">[</span><span class="p">:</span><span class="n">n_images</span><span class="p">]</span><span class="w">
+</span>    <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">RGB</span><span class="s2">&quot;</span><span class="p">)</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">idxs</span><span class="p">]</span><span class="w">
+</span>    <span class="n">x</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-function reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.stack.html#torch.stack" title="torch.stack"><span class="n">torch</span><span class="o">.</span><span class="n">stack</span></a><span class="p">(</span><span class="n">images</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">class</span><span class="w"> </span><span class="nc">_DS</span><span class="p">(</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="torch.utils.data.Dataset"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span></a><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>            <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w">
+</span><span class="w">
+</span>        <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="p">}</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">dl</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">(</span><span class="w">
+</span>        <span class="n">_DS</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">n_images</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="k">return</span> <a class="sphx-glr-backref-module-stable_pretraining-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../api/gen_modules/stable_pretraining.data.DataModule/#stable_pretraining.data.DataModule" title="stable_pretraining.data.DataModule"><span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataModule</span></a><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="n">dl</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="n">dl</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="n">p</span> <span class="o">=</span> <a class="sphx-glr-backref-module-argparse sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser" title="argparse.ArgumentParser"><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span></a><span class="p">(</span><span class="n">description</span><span class="o">=</span><a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="vm">__doc__</span></a><span class="p">)</span><span class="w">
+</span>    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--model</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">vit_small_patch16_224.dino</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--out</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">dino_viz</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--n-images</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span><span class="w">
+</span>    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--img-size</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">224</span><span class="p">)</span><span class="w">
+</span>    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--num-workers</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span><span class="w">
+</span>    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--threshold</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span><span class="w">
+</span>    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">--per-image</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">store_true</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">Fit the PCA basis separately per image instead of jointly over </span><span class="s2">&quot;</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">the batch (colours stop being comparable across images).</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">--foreground-threshold</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span><span class="w">
+</span>        <span class="n">default</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span><span class="w">
+</span>        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">DINOv2 fg/bg split on PCA component 1. Pass a negative value </span><span class="s2">&quot;</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">(e.g. -1) to disable it and colour every patch (plain PCA).</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="n">args</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>    <span class="c1"># Negative sentinel disables the foreground mask -&gt; colour all positions.</span><span class="w">
+</span>    <span class="n">fg_threshold</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">foreground_threshold</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">args</span><span class="o">.</span><span class="n">foreground_threshold</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">loading pretrained DINO backbone: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">model</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">module</span> <span class="o">=</span> <span class="n">build_module</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">img_size</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">img_size</span><span class="p">)</span><span class="w">
+</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">build_dataloader</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">n_images</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">img_size</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">num_workers</span><span class="p">)</span><span class="w">
+</span>    <span class="n">prefix</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">_num_prefix_tokens</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">pca</span> <span class="o">=</span> <a class="sphx-glr-backref-module-stable_pretraining-callbacks sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.PCATokenVisualizer/#stable_pretraining.callbacks.PCATokenVisualizer" title="stable_pretraining.callbacks.PCATokenVisualizer"><span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">PCATokenVisualizer</span></a><span class="p">(</span><span class="w">
+</span>        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">pca</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">features</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">tokens</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">image</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">num_prefix_tokens</span><span class="o">=</span><span class="n">prefix</span><span class="p">,</span><span class="w">
+</span>        <span class="n">per_image</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">per_image</span><span class="p">,</span><span class="w">
+</span>        <span class="n">foreground_threshold</span><span class="o">=</span><span class="n">fg_threshold</span><span class="p">,</span><span class="w">
+</span>        <span class="n">image_mean</span><span class="o">=</span><span class="n">IMAGENET_MEAN</span><span class="p">,</span><span class="w">
+</span>        <span class="n">image_std</span><span class="o">=</span><span class="n">IMAGENET_STD</span><span class="p">,</span><span class="w">
+</span>        <span class="n">max_images</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">n_images</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="n">attn</span> <span class="o">=</span> <a class="sphx-glr-backref-module-stable_pretraining-callbacks sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.AttentionVisualizer/#stable_pretraining.callbacks.AttentionVisualizer" title="stable_pretraining.callbacks.AttentionVisualizer"><span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">AttentionVisualizer</span></a><span class="p">(</span><span class="w">
+</span>        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">cls_attn</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">attention</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">attn</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">image</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">num_prefix_tokens</span><span class="o">=</span><span class="n">prefix</span><span class="p">,</span><span class="w">
+</span>        <span class="n">threshold</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">threshold</span><span class="p">,</span><span class="w">
+</span>        <span class="n">head_reduction</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">all</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">image_mean</span><span class="o">=</span><span class="n">IMAGENET_MEAN</span><span class="p">,</span><span class="w">
+</span>        <span class="n">image_std</span><span class="o">=</span><span class="n">IMAGENET_STD</span><span class="p">,</span><span class="w">
+</span>        <span class="n">max_images</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">n_images</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="c1"># Figures flow through spt's logger — the callbacks never touch disk</span><span class="w">
+</span>    <span class="c1"># themselves. RegistryLogger writes them under ``{out}/media/`` and indexes</span><span class="w">
+</span>    <span class="c1"># them in ``media.jsonl`` (swap in a WandbLogger to upload instead).</span><span class="w">
+</span>    <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="nn">.</span><span class="nn">registry</span><span class="nn">.</span><span class="nn">logger</span><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-stable_pretraining sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../api/gen_modules/stable_pretraining.registry.RegistryLogger/#stable_pretraining.registry.RegistryLogger" title="stable_pretraining.RegistryLogger"><span class="n">RegistryLogger</span></a><span class="w">
+</span><span class="w">
+</span>    <span class="n">logger</span> <span class="o">=</span> <a class="sphx-glr-backref-module-stable_pretraining sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../api/gen_modules/stable_pretraining.registry.RegistryLogger/#stable_pretraining.registry.RegistryLogger" title="stable_pretraining.RegistryLogger"><span class="n">RegistryLogger</span></a><span class="p">(</span><span class="n">run_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">run_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">dino_viz</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span><span class="w">
+</span>        <span class="n">accelerator</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">auto</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">devices</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="w">
+</span>        <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span><span class="w">
+</span>        <span class="n">enable_checkpointing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="w">
+</span>        <span class="n">enable_progress_bar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="w">
+</span>        <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">pca</span><span class="p">,</span> <span class="n">attn</span><span class="p">]</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="c1"># A single validation pass fires both callbacks on the first (only) batch.</span><span class="w">
+</span>    <span class="n">trainer</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">datamodule</span><span class="o">=</span><span class="n">data</span><span class="p">)</span><span class="w">
+</span>    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">logged PCA + attention figures under: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">/media/</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">if</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="vm">__name__</span></a> <span class="o">==</span> <span class="s2">&quot;</span><span class="s2">__main__</span><span class="s2">&quot;</span><span class="p">:</span><span class="w">
+</span>    <span class="n">main</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-dino-visualization-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/687b7f4117016d35366d718c428273c0/dino_visualization.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">dino_visualization.ipynb</span></code></a></p>
@@ -716,8 +768,8 @@ By stable-pretraining team
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
   <footer class="bd-footer">
   </footer>

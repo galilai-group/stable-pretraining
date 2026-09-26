@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Multi-layer Probe for Vision Models &#8212; stable-pretraining 0.1.dev1+g9aa93f8b6 documentation</title>
+    <title>Multi-layer Probe for Vision Models &#8212; stable-pretraining 0.1.dev1+gce1ae6ee5 documentation</title>
   
   
   
@@ -27,47 +27,54 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=4418a689" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
-    <script src="../../_static/documentation_options.js?v=e15806cd"></script>
+    <script src="../../_static/documentation_options.js?v=01e129ac"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
     <script src="../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'auto_examples/multi_layer_probe';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
   </head>
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
-
+  <body data-default-mode="">
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -93,7 +100,47 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
     </header>
   
 
@@ -128,7 +175,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9aa93f8b6 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gce1ae6ee5 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -394,11 +441,18 @@
 
 
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div>
 
 
 <button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
@@ -438,295 +492,294 @@ to download the full example code.</p>
 <span id="sphx-glr-auto-examples-multi-layer-probe-py"></span><h1>Multi-layer Probe for Vision Models<a class="headerlink" href="#multi-layer-probe-for-vision-models" title="Link to this heading">#</a></h1>
 <p>Train probes attached to multiple layers of a frozen backbone to monitor
 representation quality across depth.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">hydra</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torchmetrics</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <a href="https://docs.python.org/3/library/typing.html#typing.Dict" title="typing.Dict" class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Dict</span></a><span class="p">,</span> <a href="https://docs.python.org/3/library/typing.html#typing.List" title="typing.List" class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">List</span></a><span class="p">,</span> <a href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="typing.Tuple" class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-data"><span class="n">Tuple</span></a>
-<span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.callbacks</span><span class="w"> </span><span class="kn">import</span> <a href="https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelCheckpoint.html#lightning.pytorch.callbacks.ModelCheckpoint" title="lightning.pytorch.callbacks.ModelCheckpoint" class="sphx-glr-backref-module-lightning-pytorch-callbacks sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">ModelCheckpoint</span></a>
-<span class="kn">from</span><span class="w"> </span><span class="nn">lightning.pytorch.loggers</span><span class="w"> </span><span class="kn">import</span> <a href="https://lightning.ai/docs/pytorch/stable/extensions/generated/lightning.pytorch.loggers.WandbLogger.html#lightning.pytorch.loggers.WandbLogger" title="lightning.pytorch.loggers.WandbLogger" class="sphx-glr-backref-module-lightning-pytorch-loggers sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">WandbLogger</span></a>  <span class="c1"># type: ignore</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">omegaconf</span><span class="w"> </span><span class="kn">import</span> <span class="n">DictConfig</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">AutoImageProcessor</span><span class="p">,</span>
-    <span class="n">AutoModel</span><span class="p">,</span>
-    <span class="n">AutoModelForZeroShotImageClassification</span><span class="p">,</span>
-    <span class="n">AutoProcessor</span><span class="p">,</span>
-<span class="p">)</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">transforms</span>
-
-
-<span class="c1"># -----------------------------</span>
-<span class="c1"># Model registry</span>
-<span class="c1"># -----------------------------</span>
-
-
-<span class="n">MODEL_ZOO</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;DINOv2&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;processor_cls&quot;</span><span class="p">:</span> <span class="n">AutoImageProcessor</span><span class="p">,</span>
-        <span class="s2">&quot;processor_name&quot;</span><span class="p">:</span> <span class="s2">&quot;facebook/dinov2-base&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;model_cls&quot;</span><span class="p">:</span> <span class="n">AutoModel</span><span class="p">,</span>
-        <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;facebook/dinov2-base&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;pooling&quot;</span><span class="p">:</span> <span class="s2">&quot;cls&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;probe_skip&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="p">},</span>
-    <span class="s2">&quot;DINOv3&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;processor_cls&quot;</span><span class="p">:</span> <span class="n">AutoImageProcessor</span><span class="p">,</span>
-        <span class="s2">&quot;processor_name&quot;</span><span class="p">:</span> <span class="s2">&quot;facebook/dinov3-vitb16-pretrain-lvd1689m&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;model_cls&quot;</span><span class="p">:</span> <span class="n">AutoModel</span><span class="p">,</span>
-        <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;facebook/dinov3-vitb16-pretrain-lvd1689m&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;pooling&quot;</span><span class="p">:</span> <span class="s2">&quot;cls&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;probe_skip&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="p">},</span>
-    <span class="s2">&quot;MetaCLIP&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;processor_cls&quot;</span><span class="p">:</span> <span class="n">AutoProcessor</span><span class="p">,</span>
-        <span class="s2">&quot;processor_name&quot;</span><span class="p">:</span> <span class="s2">&quot;facebook/metaclip-b16-400m&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;model_cls&quot;</span><span class="p">:</span> <span class="n">AutoModelForZeroShotImageClassification</span><span class="p">,</span>
-        <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;facebook/metaclip-b16-400m&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;pooling&quot;</span><span class="p">:</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;probe_skip&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="p">},</span>
-    <span class="s2">&quot;IJEPA-1k&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;processor_cls&quot;</span><span class="p">:</span> <span class="n">AutoImageProcessor</span><span class="p">,</span>
-        <span class="s2">&quot;processor_name&quot;</span><span class="p">:</span> <span class="s2">&quot;facebook/ijepa_vith14_1k&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;model_cls&quot;</span><span class="p">:</span> <span class="n">AutoModel</span><span class="p">,</span>
-        <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;facebook/ijepa_vith14_1k&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;pooling&quot;</span><span class="p">:</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;probe_skip&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="p">},</span>
-    <span class="s2">&quot;IJEPA-22k&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;processor_cls&quot;</span><span class="p">:</span> <span class="n">AutoImageProcessor</span><span class="p">,</span>
-        <span class="s2">&quot;processor_name&quot;</span><span class="p">:</span> <span class="s2">&quot;facebook/ijepa_vith14_22k&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;model_cls&quot;</span><span class="p">:</span> <span class="n">AutoModel</span><span class="p">,</span>
-        <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;facebook/ijepa_vith14_22k&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;pooling&quot;</span><span class="p">:</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;probe_skip&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="p">},</span>
-<span class="p">}</span>
-
-
-<span class="c1"># -----------------------------</span>
-<span class="c1"># Utilities</span>
-<span class="c1"># -----------------------------</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">build_datasets</span><span class="p">()</span> <span class="o">-&gt;</span> <a href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="typing.Tuple" class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-data"><span class="n">Tuple</span></a><span class="p">[</span><a href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="torch.utils.data.Dataset" class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span></a><span class="p">,</span> <a href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="torch.utils.data.Dataset" class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span></a><span class="p">]:</span>
-    <span class="c1"># Load the Hugging Face dataset</span>
-    <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">HFDataset</span><span class="p">(</span>
-        <span class="s2">&quot;clane9/imagenet-100&quot;</span><span class="p">,</span>
-        <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">,</span>
-        <span class="n">transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">RGB</span><span class="p">(),</span>
-    <span class="p">)</span>
-
-    <span class="n">val_dataset</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">HFDataset</span><span class="p">(</span>
-        <span class="s2">&quot;clane9/imagenet-100&quot;</span><span class="p">,</span>
-        <span class="n">split</span><span class="o">=</span><span class="s2">&quot;validation&quot;</span><span class="p">,</span>
-        <span class="n">transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">RGB</span><span class="p">(),</span>
-    <span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">train_dataset</span><span class="p">,</span> <span class="n">val_dataset</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">make_collate_fn</span><span class="p">(</span><span class="n">processor</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">collate_fn</span><span class="p">(</span><span class="n">examples</span><span class="p">):</span>
-        <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">ex</span><span class="p">[</span><span class="s2">&quot;image&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ex</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">]</span>
-        <span class="n">labels</span> <span class="o">=</span> <a href="https://docs.pytorch.org/docs/stable/generated/torch.tensor.html#torch.tensor" title="torch.tensor" class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-function"><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span></a><span class="p">([</span><span class="n">ex</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ex</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
-        <span class="n">batch</span> <span class="o">=</span> <span class="n">processor</span><span class="p">(</span><span class="n">images</span><span class="o">=</span><span class="n">images</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="s2">&quot;pt&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;images&quot;</span><span class="p">:</span> <span class="n">batch</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">labels</span><span class="p">}</span>
-
-    <span class="k">return</span> <span class="n">collate_fn</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">build_dataloaders</span><span class="p">(</span>
-    <span class="n">train_dataset</span><span class="p">,</span>
-    <span class="n">val_dataset</span><span class="p">,</span>
-    <span class="n">processor</span><span class="p">,</span>
-    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
-    <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <a href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="typing.Tuple" class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-data"><span class="n">Tuple</span></a><span class="p">[</span><a href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader" class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">,</span> <a href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader" class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">]:</span>
-    <span class="n">train_loader</span> <span class="o">=</span> <a href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader" class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">(</span>
-        <span class="n">dataset</span><span class="o">=</span><span class="n">train_dataset</span><span class="p">,</span>
-        <span class="n">sampler</span><span class="o">=</span><span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">RepeatedRandomSampler</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">),</span>
-        <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
-        <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
-        <span class="n">drop_last</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">collate_fn</span><span class="o">=</span><span class="n">make_collate_fn</span><span class="p">(</span><span class="n">processor</span><span class="p">),</span>
-    <span class="p">)</span>
-
-    <span class="n">val_loader</span> <span class="o">=</span> <a href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader" class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">(</span>
-        <span class="n">dataset</span><span class="o">=</span><span class="n">val_dataset</span><span class="p">,</span>
-        <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
-        <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
-        <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">collate_fn</span><span class="o">=</span><span class="n">make_collate_fn</span><span class="p">(</span><span class="n">processor</span><span class="p">),</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">train_loader</span><span class="p">,</span> <span class="n">val_loader</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">load_backbone</span><span class="p">(</span><span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-    <span class="n">spec</span> <span class="o">=</span> <span class="n">MODEL_ZOO</span><span class="p">[</span><span class="n">model_name</span><span class="p">]</span>
-    <span class="n">processor</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s2">&quot;processor_cls&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;processor_name&quot;</span><span class="p">])</span>  <span class="c1"># type: ignore</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s2">&quot;model_cls&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
-        <span class="n">spec</span><span class="p">[</span><span class="s2">&quot;model_name&quot;</span><span class="p">],</span> <span class="n">output_hidden_states</span><span class="o">=</span><span class="kc">True</span>
-    <span class="p">)</span>  <span class="c1"># type: ignore</span>
-
-    <span class="n">config</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">config</span> <span class="k">if</span> <span class="s2">&quot;CLIP&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">model_name</span> <span class="k">else</span> <span class="n">model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">vision_config</span>
-    <span class="n">emb_dim</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">hidden_size</span>
-    <span class="n">num_hidden_layers</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">num_hidden_layers</span>
-    <span class="n">pooling</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s2">&quot;pooling&quot;</span><span class="p">]</span>
-    <span class="n">probe_skip</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;probe_skip&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="s2">&quot;CLIP&quot;</span> <span class="ow">in</span> <span class="n">model_name</span><span class="p">:</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vision_model</span>
-
-    <span class="k">return</span> <span class="n">model</span><span class="p">,</span> <span class="n">processor</span><span class="p">,</span> <span class="n">emb_dim</span><span class="p">,</span> <span class="n">num_hidden_layers</span><span class="p">,</span> <span class="n">pooling</span><span class="p">,</span> <span class="n">probe_skip</span>
-
-
-<span class="c1"># -----------------------------</span>
-<span class="c1"># Lightning-compatible `spt.Module`</span>
-<span class="c1"># -----------------------------</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">build_module</span><span class="p">(</span>
-    <span class="n">model</span><span class="p">,</span> <span class="n">processor</span><span class="p">,</span> <span class="n">transformer_block_indices</span><span class="p">:</span> <a href="https://docs.python.org/3/library/typing.html#typing.List" title="typing.List" class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">List</span></a><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">pooling</span><span class="p">:</span> <span class="nb">str</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
-    <span class="n">device</span> <span class="o">=</span> <a href="https://docs.pytorch.org/docs/stable/tensor_attributes.html#torch.device" title="torch.device" class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">device</span></a><span class="p">(</span><span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <a href="https://docs.pytorch.org/docs/stable/generated/torch.cuda.is_available.html#torch.cuda.is_available" title="torch.cuda.is_available" class="sphx-glr-backref-module-torch-cuda sphx-glr-backref-type-py-function"><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span></a><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
-
-    <span class="c1"># Define the forward used by `spt.Module`</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <a href="https://docs.python.org/3/library/typing.html#typing.Dict" title="typing.Dict" class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Dict</span></a><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>  <span class="c1"># noqa: ARG001 (stage provided by spt)</span>
-        <span class="n">out</span><span class="p">:</span> <a href="https://docs.python.org/3/library/typing.html#typing.Dict" title="typing.Dict" class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Dict</span></a><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <a href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor" class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span></a><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="c1"># Preprocess &amp; move to device</span>
-        <span class="c1"># images = processor(batch[&quot;image&quot;], return_tensors=&quot;pt&quot;)</span>
-        <span class="n">images</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">non_blocking</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-        <span class="p">}</span>
-
-        <span class="n">outputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">**</span><span class="n">images</span><span class="p">,</span> <span class="n">output_hidden_states</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">hiddens</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">[</span><span class="s2">&quot;hidden_states&quot;</span><span class="p">]</span>  <span class="c1"># tuple: [embeddings, block1, block2, ...]</span>
-
-        <span class="c1"># Mean-pool tokens per layer -&gt; (B, D)</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">transformer_block_indices</span><span class="p">:</span>
-            <span class="n">x</span> <span class="o">=</span> <span class="n">hiddens</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span>
-
-            <span class="k">if</span> <span class="n">pooling</span> <span class="o">==</span> <span class="s2">&quot;cls&quot;</span><span class="p">:</span>
-                <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
-            <span class="k">elif</span> <span class="n">pooling</span> <span class="o">==</span> <span class="s2">&quot;mean&quot;</span><span class="p">:</span>
-                <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown pooling type: </span><span class="si">{</span><span class="n">pooling</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-            <span class="n">out</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;embedding_layer_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">out</span>
-
-    <span class="n">module</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">(</span>
-        <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>  <span class="c1"># spt.backbone.EvalOnly(model),  # freeze eval-only backbone</span>
-        <span class="n">forward</span><span class="o">=</span><span class="n">forward</span><span class="p">,</span>
-        <span class="n">processor</span><span class="o">=</span><span class="n">processor</span><span class="p">,</span>
-        <span class="n">optim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># probes have their own optimizers</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">module</span>
-
-
-<span class="c1"># -----------------------------</span>
-<span class="c1"># Probes</span>
-<span class="c1"># -----------------------------</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">build_probes</span><span class="p">(</span>
-    <span class="n">module</span><span class="p">,</span> <span class="n">emb_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">transformer_block_indices</span><span class="p">:</span> <a href="https://docs.python.org/3/library/typing.html#typing.List" title="typing.List" class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">List</span></a><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-<span class="p">):</span>
-    <span class="n">probes</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">transformer_block_indices</span><span class="p">:</span>
-        <span class="n">probes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">OnlineProbe</span><span class="p">(</span>
-                <span class="n">module</span><span class="p">,</span>
-                <span class="n">target</span><span class="o">=</span><span class="s2">&quot;label&quot;</span><span class="p">,</span>
-                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;linear_probe_block_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                <span class="nb">input</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;embedding_layer_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                <span class="n">probe</span><span class="o">=</span><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Sequential.html#torch.nn.Sequential" title="torch.nn.Sequential" class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span></a><span class="p">(</span>
-                    <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.BatchNorm1d.html#torch.nn.BatchNorm1d" title="torch.nn.BatchNorm1d" class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm1d</span></a><span class="p">(</span><span class="n">emb_dim</span><span class="p">),</span>
-                    <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html#torch.nn.Linear" title="torch.nn.Linear" class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span></a><span class="p">(</span><span class="n">emb_dim</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">),</span>
-                <span class="p">),</span>
-                <span class="n">loss</span><span class="o">=</span><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss" title="torch.nn.CrossEntropyLoss" class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span></a><span class="p">(),</span>
-                <span class="n">metrics</span><span class="o">=</span><span class="p">{</span>
-                    <span class="s2">&quot;top1&quot;</span><span class="p">:</span> <span class="n">torchmetrics</span><span class="o">.</span><span class="n">classification</span><span class="o">.</span><span class="n">MulticlassAccuracy</span><span class="p">(</span><span class="n">num_classes</span><span class="p">),</span>
-                    <span class="s2">&quot;top5&quot;</span><span class="p">:</span> <span class="n">torchmetrics</span><span class="o">.</span><span class="n">classification</span><span class="o">.</span><span class="n">MulticlassAccuracy</span><span class="p">(</span>
-                        <span class="n">num_classes</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">5</span>
-                    <span class="p">),</span>
-                <span class="p">},</span>
-                <span class="n">optimizer</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;SGD&quot;</span><span class="p">,</span> <span class="s2">&quot;lr&quot;</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">},</span>
-                <span class="n">scheduler</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;CosineAnnealingLR&quot;</span><span class="p">,</span> <span class="s2">&quot;T_max&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
-            <span class="p">)</span>
-        <span class="p">)</span>
-    <span class="k">return</span> <span class="n">probes</span>
-
-
-<span class="c1"># -----------------------------</span>
-<span class="c1"># Main</span>
-<span class="c1"># -----------------------------</span>
-
-
-<span class="nd">@hydra</span><span class="o">.</span><span class="n">main</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="s2">&quot;config_examples&quot;</span><span class="p">,</span> <span class="n">config_name</span><span class="o">=</span><span class="s2">&quot;multi_probe&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">DictConfig</span><span class="p">):</span>
-    <span class="n">pl</span><span class="o">.</span><span class="n">seed_everything</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="c1"># Backbone &amp; module</span>
-    <span class="n">model</span><span class="p">,</span> <span class="n">processor</span><span class="p">,</span> <span class="n">emb_dim</span><span class="p">,</span> <span class="n">num_layers</span><span class="p">,</span> <span class="n">pooling</span><span class="p">,</span> <span class="n">probe_skip</span> <span class="o">=</span> <span class="n">load_backbone</span><span class="p">(</span>
-        <span class="n">cfg</span><span class="o">.</span><span class="n">model</span>
-    <span class="p">)</span>
-    <span class="c1"># Most ViT-like models have 12 blocks; adapt as needed</span>
-    <span class="n">transformer_block_indices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_layers</span><span class="p">,</span> <span class="n">probe_skip</span><span class="p">))</span>
-    <span class="n">module</span> <span class="o">=</span> <span class="n">build_module</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">processor</span><span class="p">,</span> <span class="n">transformer_block_indices</span><span class="p">,</span> <span class="n">pooling</span><span class="p">)</span>
-
-    <span class="c1"># Data</span>
-    <span class="n">train_ds</span><span class="p">,</span> <span class="n">val_ds</span> <span class="o">=</span> <span class="n">build_datasets</span><span class="p">()</span>
-    <span class="n">train_loader</span><span class="p">,</span> <span class="n">val_loader</span> <span class="o">=</span> <span class="n">build_dataloaders</span><span class="p">(</span>
-        <span class="n">train_ds</span><span class="p">,</span>
-        <span class="n">val_ds</span><span class="p">,</span>
-        <span class="n">processor</span><span class="p">,</span>
-        <span class="n">batch_size</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span>
-        <span class="n">num_workers</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataModule</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="n">train_loader</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="n">val_loader</span><span class="p">)</span>
-
-    <span class="c1"># Probes</span>
-    <span class="n">probes</span> <span class="o">=</span> <span class="n">build_probes</span><span class="p">(</span>
-        <span class="n">module</span><span class="p">,</span>
-        <span class="n">emb_dim</span><span class="o">=</span><span class="n">emb_dim</span><span class="p">,</span>
-        <span class="n">num_classes</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
-        <span class="n">transformer_block_indices</span><span class="o">=</span><span class="n">transformer_block_indices</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Trainer</span>
-    <span class="n">precision</span> <span class="o">=</span> <span class="s2">&quot;16-mixed&quot;</span> <span class="k">if</span> <a href="https://docs.pytorch.org/docs/stable/generated/torch.cuda.is_available.html#torch.cuda.is_available" title="torch.cuda.is_available" class="sphx-glr-backref-module-torch-cuda sphx-glr-backref-type-py-function"><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span></a><span class="p">()</span> <span class="k">else</span> <span class="mi">32</span>
-    <span class="n">logger</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">use_wandb</span> <span class="ow">and</span> <a href="https://lightning.ai/docs/pytorch/stable/extensions/generated/lightning.pytorch.loggers.WandbLogger.html#lightning.pytorch.loggers.WandbLogger" title="lightning.pytorch.loggers.WandbLogger" class="sphx-glr-backref-module-lightning-pytorch-loggers sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">WandbLogger</span></a> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">logger</span> <span class="o">=</span> <a href="https://lightning.ai/docs/pytorch/stable/extensions/generated/lightning.pytorch.loggers.WandbLogger.html#lightning.pytorch.loggers.WandbLogger" title="lightning.pytorch.loggers.WandbLogger" class="sphx-glr-backref-module-lightning-pytorch-loggers sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">WandbLogger</span></a><span class="p">(</span><span class="n">project</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">project</span><span class="p">)</span>
-
-    <span class="n">checkpoint_callback</span> <span class="o">=</span> <a href="https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelCheckpoint.html#lightning.pytorch.callbacks.ModelCheckpoint" title="lightning.pytorch.callbacks.ModelCheckpoint" class="sphx-glr-backref-module-lightning-pytorch-callbacks sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">ModelCheckpoint</span></a><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;ckpt&quot;</span><span class="p">,</span> <span class="n">save_last</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span>
-        <span class="n">max_epochs</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">epochs</span><span class="p">,</span>
-        <span class="n">callbacks</span><span class="o">=</span><span class="n">probes</span> <span class="o">+</span> <span class="p">[</span><span class="n">checkpoint_callback</span><span class="p">],</span>
-        <span class="n">precision</span><span class="o">=</span><span class="n">precision</span><span class="p">,</span>
-        <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span>
-        <span class="n">enable_checkpointing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Run</span>
-    <span class="n">manager</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Manager</span><span class="p">(</span><span class="n">trainer</span><span class="o">=</span><span class="n">trainer</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="n">module</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
-    <span class="n">manager</span><span class="p">()</span>
-
-
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="n">main</span><span class="p">()</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">hydra</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">lightning</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">torchmetrics</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="typing.Dict"><span class="n">Dict</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="typing.List"><span class="n">List</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-data reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="typing.Tuple"><span class="n">Tuple</span></a><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">lightning</span><span class="nn">.</span><span class="nn">pytorch</span><span class="nn">.</span><span class="nn">callbacks</span><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-lightning-pytorch-callbacks sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://lightning.ai/docs/pytorch/stable/optional-api/api/lightning.pytorch.callbacks.ModelCheckpoint#lightning.pytorch.callbacks.ModelCheckpoint" title="lightning.pytorch.callbacks.ModelCheckpoint"><span class="n">ModelCheckpoint</span></a><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">lightning</span><span class="nn">.</span><span class="nn">pytorch</span><span class="nn">.</span><span class="nn">loggers</span><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-lightning-pytorch-loggers sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://lightning.ai/docs/pytorch/stable/reference/generated/lightning.pytorch.loggers.WandbLogger#lightning.pytorch.loggers.WandbLogger" title="lightning.pytorch.loggers.WandbLogger"><span class="n">WandbLogger</span></a>  <span class="c1"># type: ignore</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">omegaconf</span><span class="w"> </span><span class="kn">import</span> <span class="n">DictConfig</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="w">
+</span>    <span class="n">AutoImageProcessor</span><span class="p">,</span><span class="w">
+</span>    <span class="n">AutoModel</span><span class="p">,</span><span class="w">
+</span>    <span class="n">AutoModelForZeroShotImageClassification</span><span class="p">,</span><span class="w">
+</span>    <span class="n">AutoProcessor</span><span class="p">,</span><span class="w">
+</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="nn">.</span><span class="nn">data</span><span class="w"> </span><span class="kn">import</span> <span class="n">transforms</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># -----------------------------</span><span class="w">
+</span><span class="c1"># Model registry</span><span class="w">
+</span><span class="c1"># -----------------------------</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="n">MODEL_ZOO</span> <span class="o">=</span> <span class="p">{</span><span class="w">
+</span>    <span class="s2">&quot;</span><span class="s2">DINOv2</span><span class="s2">&quot;</span><span class="p">:</span> <span class="p">{</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">processor_cls</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">AutoImageProcessor</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">processor_name</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">facebook/dinov2-base</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">model_cls</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">AutoModel</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">model_name</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">facebook/dinov2-base</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">pooling</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">cls</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">probe_skip</span><span class="s2">&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span><span class="w">
+</span>    <span class="p">}</span><span class="p">,</span><span class="w">
+</span>    <span class="s2">&quot;</span><span class="s2">DINOv3</span><span class="s2">&quot;</span><span class="p">:</span> <span class="p">{</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">processor_cls</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">AutoImageProcessor</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">processor_name</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">facebook/dinov3-vitb16-pretrain-lvd1689m</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">model_cls</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">AutoModel</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">model_name</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">facebook/dinov3-vitb16-pretrain-lvd1689m</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">pooling</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">cls</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">probe_skip</span><span class="s2">&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span><span class="w">
+</span>    <span class="p">}</span><span class="p">,</span><span class="w">
+</span>    <span class="s2">&quot;</span><span class="s2">MetaCLIP</span><span class="s2">&quot;</span><span class="p">:</span> <span class="p">{</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">processor_cls</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">AutoProcessor</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">processor_name</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">facebook/metaclip-b16-400m</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">model_cls</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">AutoModelForZeroShotImageClassification</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">model_name</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">facebook/metaclip-b16-400m</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">pooling</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">mean</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">probe_skip</span><span class="s2">&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span><span class="w">
+</span>    <span class="p">}</span><span class="p">,</span><span class="w">
+</span>    <span class="s2">&quot;</span><span class="s2">IJEPA-1k</span><span class="s2">&quot;</span><span class="p">:</span> <span class="p">{</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">processor_cls</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">AutoImageProcessor</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">processor_name</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">facebook/ijepa_vith14_1k</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">model_cls</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">AutoModel</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">model_name</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">facebook/ijepa_vith14_1k</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">pooling</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">mean</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">probe_skip</span><span class="s2">&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span><span class="w">
+</span>    <span class="p">}</span><span class="p">,</span><span class="w">
+</span>    <span class="s2">&quot;</span><span class="s2">IJEPA-22k</span><span class="s2">&quot;</span><span class="p">:</span> <span class="p">{</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">processor_cls</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">AutoImageProcessor</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">processor_name</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">facebook/ijepa_vith14_22k</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">model_cls</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">AutoModel</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">model_name</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">facebook/ijepa_vith14_22k</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">pooling</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">mean</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">probe_skip</span><span class="s2">&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span><span class="w">
+</span>    <span class="p">}</span><span class="p">,</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># -----------------------------</span><span class="w">
+</span><span class="c1"># Utilities</span><span class="w">
+</span><span class="c1"># -----------------------------</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">build_datasets</span><span class="p">(</span><span class="p">)</span> <span class="o">-</span><span class="o">&gt;</span> <a class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-data reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="typing.Tuple"><span class="n">Tuple</span></a><span class="p">[</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="torch.utils.data.Dataset"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="torch.utils.data.Dataset"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span></a><span class="p">]</span><span class="p">:</span><span class="w">
+</span>    <span class="c1"># Load the Hugging Face dataset</span><span class="w">
+</span>    <span class="n">train_dataset</span> <span class="o">=</span> <a class="sphx-glr-backref-module-stable_pretraining-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../api/gen_modules/stable_pretraining.data.HFDataset/#stable_pretraining.data.HFDataset" title="stable_pretraining.data.HFDataset"><span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">HFDataset</span></a><span class="p">(</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">clane9/imagenet-100</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">split</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">train</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">RGB</span><span class="p">(</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">val_dataset</span> <span class="o">=</span> <a class="sphx-glr-backref-module-stable_pretraining-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../api/gen_modules/stable_pretraining.data.HFDataset/#stable_pretraining.data.HFDataset" title="stable_pretraining.data.HFDataset"><span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">HFDataset</span></a><span class="p">(</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">clane9/imagenet-100</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">split</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">validation</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">RGB</span><span class="p">(</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">return</span> <span class="n">train_dataset</span><span class="p">,</span> <span class="n">val_dataset</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">make_collate_fn</span><span class="p">(</span><span class="n">processor</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">collate_fn</span><span class="p">(</span><span class="n">examples</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">ex</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ex</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">]</span><span class="w">
+</span>        <span class="n">labels</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-function reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.tensor.html#torch.tensor" title="torch.tensor"><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span></a><span class="p">(</span><span class="p">[</span><span class="n">ex</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">label</span><span class="s2">&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ex</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">]</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span><span class="w">
+</span>        <span class="n">batch</span> <span class="o">=</span> <span class="n">processor</span><span class="p">(</span><span class="n">images</span><span class="o">=</span><span class="n">images</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">pt</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;</span><span class="s2">images</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">batch</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">label</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">labels</span><span class="p">}</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">return</span> <span class="n">collate_fn</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">build_dataloaders</span><span class="p">(</span><span class="w">
+</span>    <span class="n">train_dataset</span><span class="p">,</span><span class="w">
+</span>    <span class="n">val_dataset</span><span class="p">,</span><span class="w">
+</span>    <span class="n">processor</span><span class="p">,</span><span class="w">
+</span>    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span><span class="w">
+</span>    <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span><span class="w">
+</span><span class="p">)</span> <span class="o">-</span><span class="o">&gt;</span> <a class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-data reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="typing.Tuple"><span class="n">Tuple</span></a><span class="p">[</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">,</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">]</span><span class="p">:</span><span class="w">
+</span>    <span class="n">train_loader</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">(</span><span class="w">
+</span>        <span class="n">dataset</span><span class="o">=</span><span class="n">train_dataset</span><span class="p">,</span><span class="w">
+</span>        <span class="n">sampler</span><span class="o">=</span><a class="sphx-glr-backref-module-stable_pretraining-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../api/gen_modules/stable_pretraining.data.RepeatedRandomSampler/#stable_pretraining.data.RepeatedRandomSampler" title="stable_pretraining.data.RepeatedRandomSampler"><span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">RepeatedRandomSampler</span></a><span class="p">(</span><span class="n">train_dataset</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>        <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span><span class="w">
+</span>        <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span><span class="w">
+</span>        <span class="n">drop_last</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="w">
+</span>        <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="w">
+</span>        <span class="n">collate_fn</span><span class="o">=</span><span class="n">make_collate_fn</span><span class="p">(</span><span class="n">processor</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">val_loader</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">(</span><span class="w">
+</span>        <span class="n">dataset</span><span class="o">=</span><span class="n">val_dataset</span><span class="p">,</span><span class="w">
+</span>        <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span><span class="w">
+</span>        <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span><span class="w">
+</span>        <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="w">
+</span>        <span class="n">collate_fn</span><span class="o">=</span><span class="n">make_collate_fn</span><span class="p">(</span><span class="n">processor</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="k">return</span> <span class="n">train_loader</span><span class="p">,</span> <span class="n">val_loader</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">load_backbone</span><span class="p">(</span><span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="n">spec</span> <span class="o">=</span> <span class="n">MODEL_ZOO</span><span class="p">[</span><span class="n">model_name</span><span class="p">]</span><span class="w">
+</span>    <span class="n">processor</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">processor_cls</span><span class="s2">&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">processor_name</span><span class="s2">&quot;</span><span class="p">]</span><span class="p">)</span>  <span class="c1"># type: ignore</span><span class="w">
+</span>    <span class="n">model</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">model_cls</span><span class="s2">&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="w">
+</span>        <span class="n">spec</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">model_name</span><span class="s2">&quot;</span><span class="p">]</span><span class="p">,</span> <span class="n">output_hidden_states</span><span class="o">=</span><span class="kc">True</span><span class="w">
+</span>    <span class="p">)</span>  <span class="c1"># type: ignore</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">config</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">config</span> <span class="k">if</span> <span class="s2">&quot;</span><span class="s2">CLIP</span><span class="s2">&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">model_name</span> <span class="k">else</span> <span class="n">model</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">vision_config</span><span class="w">
+</span>    <span class="n">emb_dim</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">hidden_size</span><span class="w">
+</span>    <span class="n">num_hidden_layers</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">num_hidden_layers</span><span class="w">
+</span>    <span class="n">pooling</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">pooling</span><span class="s2">&quot;</span><span class="p">]</span><span class="w">
+</span>    <span class="n">probe_skip</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">probe_skip</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">if</span> <span class="s2">&quot;</span><span class="s2">CLIP</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">model_name</span><span class="p">:</span><span class="w">
+</span>        <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vision_model</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">return</span> <span class="n">model</span><span class="p">,</span> <span class="n">processor</span><span class="p">,</span> <span class="n">emb_dim</span><span class="p">,</span> <span class="n">num_hidden_layers</span><span class="p">,</span> <span class="n">pooling</span><span class="p">,</span> <span class="n">probe_skip</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># -----------------------------</span><span class="w">
+</span><span class="c1"># Lightning-compatible `spt.Module`</span><span class="w">
+</span><span class="c1"># -----------------------------</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">build_module</span><span class="p">(</span><span class="w">
+</span>    <span class="n">model</span><span class="p">,</span> <span class="n">processor</span><span class="p">,</span> <span class="n">transformer_block_indices</span><span class="p">:</span> <a class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="typing.List"><span class="n">List</span></a><span class="p">[</span><span class="nb">int</span><span class="p">]</span><span class="p">,</span> <span class="n">pooling</span><span class="p">:</span> <span class="nb">str</span><span class="w">
+</span><span class="p">)</span> <span class="o">-</span><span class="o">&gt;</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span><span class="w">
+</span>    <span class="n">device</span> <span class="o">=</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensor_attributes.html#torch.device" title="torch.device"><span class="n">torch</span><span class="o">.</span><span class="n">device</span></a><span class="p">(</span><span class="s2">&quot;</span><span class="s2">cuda</span><span class="s2">&quot;</span> <span class="k">if</span> <a class="sphx-glr-backref-module-torch-cuda sphx-glr-backref-type-py-function reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.cuda.is_available.html#torch.cuda.is_available" title="torch.cuda.is_available"><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span></a><span class="p">(</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="s2">cpu</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="c1"># Define the forward used by `spt.Module`</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <a class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="typing.Dict"><span class="n">Dict</span></a><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span><span class="p">:</span>  <span class="c1"># noqa: ARG001 (stage provided by spt)</span><span class="w">
+</span>        <span class="n">out</span><span class="p">:</span> <a class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="typing.Dict"><span class="n">Dict</span></a><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <a class="sphx-glr-backref-module-torch sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="torch.Tensor"><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span></a><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="w">
+</span><span class="w">
+</span>        <span class="c1"># Preprocess &amp; move to device</span><span class="w">
+</span>        <span class="c1"># images = processor(batch[&quot;image&quot;], return_tensors=&quot;pt&quot;)</span><span class="w">
+</span>        <span class="n">images</span> <span class="o">=</span> <span class="p">{</span><span class="w">
+</span>            <span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">non_blocking</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="w">
+</span>            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">images</span><span class="s2">&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>        <span class="p">}</span><span class="w">
+</span><span class="w">
+</span>        <span class="n">outputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="o">*</span><span class="n">images</span><span class="p">,</span> <span class="n">output_hidden_states</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="w">
+</span>        <span class="n">hiddens</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">hidden_states</span><span class="s2">&quot;</span><span class="p">]</span>  <span class="c1"># tuple: [embeddings, block1, block2, ...]</span><span class="w">
+</span><span class="w">
+</span>        <span class="c1"># Mean-pool tokens per layer -&gt; (B, D)</span><span class="w">
+</span>        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">transformer_block_indices</span><span class="p">:</span><span class="w">
+</span>            <span class="n">x</span> <span class="o">=</span> <span class="n">hiddens</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span><span class="w">
+</span><span class="w">
+</span>            <span class="k">if</span> <span class="n">pooling</span> <span class="o">==</span> <span class="s2">&quot;</span><span class="s2">cls</span><span class="s2">&quot;</span><span class="p">:</span><span class="w">
+</span>                <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="p">:</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="w">
+</span>            <span class="k">elif</span> <span class="n">pooling</span> <span class="o">==</span> <span class="s2">&quot;</span><span class="s2">mean</span><span class="s2">&quot;</span><span class="p">:</span><span class="w">
+</span>                <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="w">
+</span>            <span class="k">else</span><span class="p">:</span><span class="w">
+</span>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">Unknown pooling type: </span><span class="si">{</span><span class="n">pooling</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>            <span class="n">out</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">embedding_layer_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>        <span class="k">return</span> <span class="n">out</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">module</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Module</span><span class="p">(</span><span class="w">
+</span>        <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>  <span class="c1"># spt.backbone.EvalOnly(model),  # freeze eval-only backbone</span><span class="w">
+</span>        <span class="n">forward</span><span class="o">=</span><span class="n">forward</span><span class="p">,</span><span class="w">
+</span>        <span class="n">processor</span><span class="o">=</span><span class="n">processor</span><span class="p">,</span><span class="w">
+</span>        <span class="n">optim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># probes have their own optimizers</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="k">return</span> <span class="n">module</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># -----------------------------</span><span class="w">
+</span><span class="c1"># Probes</span><span class="w">
+</span><span class="c1"># -----------------------------</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">build_probes</span><span class="p">(</span><span class="w">
+</span>    <span class="n">module</span><span class="p">,</span> <span class="n">emb_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">transformer_block_indices</span><span class="p">:</span> <a class="sphx-glr-backref-module-typing sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="typing.List"><span class="n">List</span></a><span class="p">[</span><span class="nb">int</span><span class="p">]</span><span class="w">
+</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="n">probes</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
+</span>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">transformer_block_indices</span><span class="p">:</span><span class="w">
+</span>        <span class="n">probes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="w">
+</span>            <a class="sphx-glr-backref-module-stable_pretraining sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.OnlineProbe/#stable_pretraining.callbacks.OnlineProbe" title="stable_pretraining.OnlineProbe"><span class="n">spt</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">OnlineProbe</span></a><span class="p">(</span><span class="w">
+</span>                <span class="n">module</span><span class="p">,</span><span class="w">
+</span>                <span class="n">target</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">label</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">linear_probe_block_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>                <span class="nb">input</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">embedding_layer_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>                <span class="n">probe</span><span class="o">=</span><a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Sequential.html#torch.nn.Sequential" title="torch.nn.Sequential"><span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span></a><span class="p">(</span><span class="w">
+</span>                    <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.BatchNorm1d.html#torch.nn.BatchNorm1d" title="torch.nn.BatchNorm1d"><span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm1d</span></a><span class="p">(</span><span class="n">emb_dim</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>                    <a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html#torch.nn.Linear" title="torch.nn.Linear"><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span></a><span class="p">(</span><span class="n">emb_dim</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>                <span class="p">)</span><span class="p">,</span><span class="w">
+</span>                <span class="n">loss</span><span class="o">=</span><a class="sphx-glr-backref-module-torch-nn sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss" title="torch.nn.CrossEntropyLoss"><span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span></a><span class="p">(</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>                <span class="n">metrics</span><span class="o">=</span><span class="p">{</span><span class="w">
+</span>                    <span class="s2">&quot;</span><span class="s2">top1</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">torchmetrics</span><span class="o">.</span><span class="n">classification</span><span class="o">.</span><span class="n">MulticlassAccuracy</span><span class="p">(</span><span class="n">num_classes</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>                    <span class="s2">&quot;</span><span class="s2">top5</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">torchmetrics</span><span class="o">.</span><span class="n">classification</span><span class="o">.</span><span class="n">MulticlassAccuracy</span><span class="p">(</span><span class="w">
+</span>                        <span class="n">num_classes</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">5</span><span class="w">
+</span>                    <span class="p">)</span><span class="p">,</span><span class="w">
+</span>                <span class="p">}</span><span class="p">,</span><span class="w">
+</span>                <span class="n">optimizer</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;</span><span class="s2">type</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">SGD</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">lr</span><span class="s2">&quot;</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">}</span><span class="p">,</span><span class="w">
+</span>                <span class="n">scheduler</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;</span><span class="s2">type</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">CosineAnnealingLR</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">T_max</span><span class="s2">&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span><span class="p">,</span><span class="w">
+</span>            <span class="p">)</span><span class="w">
+</span>        <span class="p">)</span><span class="w">
+</span>    <span class="k">return</span> <span class="n">probes</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># -----------------------------</span><span class="w">
+</span><span class="c1"># Main</span><span class="w">
+</span><span class="c1"># -----------------------------</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="nd">&#64;hydra</span><span class="o">.</span><span class="n">main</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">config_examples</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">config_name</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">multi_probe</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">DictConfig</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="n">pl</span><span class="o">.</span><span class="n">seed_everything</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="c1"># Backbone &amp; module</span><span class="w">
+</span>    <span class="n">model</span><span class="p">,</span> <span class="n">processor</span><span class="p">,</span> <span class="n">emb_dim</span><span class="p">,</span> <span class="n">num_layers</span><span class="p">,</span> <span class="n">pooling</span><span class="p">,</span> <span class="n">probe_skip</span> <span class="o">=</span> <span class="n">load_backbone</span><span class="p">(</span><span class="w">
+</span>        <span class="n">cfg</span><span class="o">.</span><span class="n">model</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="c1"># Most ViT-like models have 12 blocks; adapt as needed</span><span class="w">
+</span>    <span class="n">transformer_block_indices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_layers</span><span class="p">,</span> <span class="n">probe_skip</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span>    <span class="n">module</span> <span class="o">=</span> <span class="n">build_module</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">processor</span><span class="p">,</span> <span class="n">transformer_block_indices</span><span class="p">,</span> <span class="n">pooling</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="c1"># Data</span><span class="w">
+</span>    <span class="n">train_ds</span><span class="p">,</span> <span class="n">val_ds</span> <span class="o">=</span> <span class="n">build_datasets</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>    <span class="n">train_loader</span><span class="p">,</span> <span class="n">val_loader</span> <span class="o">=</span> <span class="n">build_dataloaders</span><span class="p">(</span><span class="w">
+</span>        <span class="n">train_ds</span><span class="p">,</span><span class="w">
+</span>        <span class="n">val_ds</span><span class="p">,</span><span class="w">
+</span>        <span class="n">processor</span><span class="p">,</span><span class="w">
+</span>        <span class="n">batch_size</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span><span class="w">
+</span>        <span class="n">num_workers</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="n">data</span> <span class="o">=</span> <a class="sphx-glr-backref-module-stable_pretraining-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../api/gen_modules/stable_pretraining.data.DataModule/#stable_pretraining.data.DataModule" title="stable_pretraining.data.DataModule"><span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataModule</span></a><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="n">train_loader</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="n">val_loader</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="c1"># Probes</span><span class="w">
+</span>    <span class="n">probes</span> <span class="o">=</span> <span class="n">build_probes</span><span class="p">(</span><span class="w">
+</span>        <span class="n">module</span><span class="p">,</span><span class="w">
+</span>        <span class="n">emb_dim</span><span class="o">=</span><span class="n">emb_dim</span><span class="p">,</span><span class="w">
+</span>        <span class="n">num_classes</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span><span class="w">
+</span>        <span class="n">transformer_block_indices</span><span class="o">=</span><span class="n">transformer_block_indices</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="c1"># Trainer</span><span class="w">
+</span>    <span class="n">precision</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s2">16-mixed</span><span class="s2">&quot;</span> <span class="k">if</span> <a class="sphx-glr-backref-module-torch-cuda sphx-glr-backref-type-py-function reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.cuda.is_available.html#torch.cuda.is_available" title="torch.cuda.is_available"><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span></a><span class="p">(</span><span class="p">)</span> <span class="k">else</span> <span class="mi">32</span><span class="w">
+</span>    <span class="n">logger</span> <span class="o">=</span> <span class="kc">None</span><span class="w">
+</span>    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">use_wandb</span> <span class="ow">and</span> <a class="sphx-glr-backref-module-lightning-pytorch-loggers sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://lightning.ai/docs/pytorch/stable/reference/generated/lightning.pytorch.loggers.WandbLogger#lightning.pytorch.loggers.WandbLogger" title="lightning.pytorch.loggers.WandbLogger"><span class="n">WandbLogger</span></a> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span><span class="w">
+</span>        <span class="n">logger</span> <span class="o">=</span> <a class="sphx-glr-backref-module-lightning-pytorch-loggers sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://lightning.ai/docs/pytorch/stable/reference/generated/lightning.pytorch.loggers.WandbLogger#lightning.pytorch.loggers.WandbLogger" title="lightning.pytorch.loggers.WandbLogger"><span class="n">WandbLogger</span></a><span class="p">(</span><span class="n">project</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">project</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">checkpoint_callback</span> <span class="o">=</span> <a class="sphx-glr-backref-module-lightning-pytorch-callbacks sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://lightning.ai/docs/pytorch/stable/optional-api/api/lightning.pytorch.callbacks.ModelCheckpoint#lightning.pytorch.callbacks.ModelCheckpoint" title="lightning.pytorch.callbacks.ModelCheckpoint"><span class="n">ModelCheckpoint</span></a><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">ckpt</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">save_last</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span><span class="w">
+</span>        <span class="n">max_epochs</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">epochs</span><span class="p">,</span><span class="w">
+</span>        <span class="n">callbacks</span><span class="o">=</span><span class="n">probes</span> <span class="o">+</span> <span class="p">[</span><span class="n">checkpoint_callback</span><span class="p">]</span><span class="p">,</span><span class="w">
+</span>        <span class="n">precision</span><span class="o">=</span><span class="n">precision</span><span class="p">,</span><span class="w">
+</span>        <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span><span class="w">
+</span>        <span class="n">enable_checkpointing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="c1"># Run</span><span class="w">
+</span>    <span class="n">manager</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">Manager</span><span class="p">(</span><span class="n">trainer</span><span class="o">=</span><span class="n">trainer</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="n">module</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span><span class="w">
+</span>    <span class="n">manager</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">if</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="vm">__name__</span></a> <span class="o">==</span> <span class="s2">&quot;</span><span class="s2">__main__</span><span class="s2">&quot;</span><span class="p">:</span><span class="w">
+</span>    <span class="n">main</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-multi-layer-probe-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/7ebeb381a535792d69a3bac42e6900d7/multi_layer_probe.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">multi_layer_probe.ipynb</span></code></a></p>
@@ -802,8 +855,8 @@ By stable-pretraining team
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
   <footer class="bd-footer">
   </footer>

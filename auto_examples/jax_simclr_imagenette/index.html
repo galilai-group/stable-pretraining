@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>&lt;no title&gt; &#8212; stable-pretraining 0.1.dev1+g9aa93f8b6 documentation</title>
+    <title>&lt;no title&gt; &#8212; stable-pretraining 0.1.dev1+gce1ae6ee5 documentation</title>
   
   
   
@@ -27,47 +27,54 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=4418a689" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
-    <script src="../../_static/documentation_options.js?v=e15806cd"></script>
+    <script src="../../_static/documentation_options.js?v=01e129ac"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
     <script src="../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'auto_examples/jax_simclr_imagenette';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
     <link rel="index" title="Index" href="../../genindex/" />
     <link rel="search" title="Search" href="../../search/" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
   </head>
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
-
+  <body data-default-mode="">
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -93,7 +100,51 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
     </header>
   
 
@@ -128,7 +179,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g9aa93f8b6 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gce1ae6ee5 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -394,11 +445,18 @@
 
 
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div>
 
 
 <button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
@@ -426,7 +484,7 @@
                 <h2> Contents </h2>
             </div>
             <nav aria-label="Page">
-                <ul class="simple visible nav section-nav flex-column">
+                <ul class="simple pst-show_toc_level nav section-nav flex-column">
 </ul>
 
             </nav>
@@ -450,245 +508,242 @@ existing torchvision pipeline and we feed <strong>NHWC numpy arrays</strong> int
 trainer. Nothing in <code class="docutils literal notranslate"><span class="pre">data/transforms.py</span></code> is reimplemented — the array
 boundary is the clean seam between the two backends.</p>
 <p>Run locally (CPU smoke, tiny synthetic data, no download):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">jax_simclr_imagenette</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">smoke</span>
-</pre></div>
-</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">jax_simclr_imagenette</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="o">-</span><span class="n">smoke</span><span class="w">
+</span></pre></div></div>
 <p>Run for real on N GPUs (data-parallel; batch is sharded across devices):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">jax_simclr_imagenette</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">epochs</span> <span class="mi">20</span> <span class="o">--</span><span class="n">batch</span><span class="o">-</span><span class="n">size</span> <span class="mi">256</span>
-</pre></div>
-</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">jax_simclr_imagenette</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="o">-</span><span class="n">epochs</span> <span class="mi">20</span> <span class="o">-</span><span class="o">-</span><span class="n">batch</span><span class="o">-</span><span class="n">size</span> <span class="mi">256</span><span class="w">
+</span></pre></div></div>
 <p>See <code class="docutils literal notranslate"><span class="pre">examples/jax_simclr_imagenette.slurm</span></code> for a 2×H200 SLURM launch.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">time</span><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">flax</span><span class="w"> </span><span class="kn">import</span> <span class="n">nnx</span><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="nn">.</span><span class="nn">jax</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spj</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># --------------------------------------------------------------------------- #</span><span class="w">
+</span><span class="c1"># Data: torchvision two-view augmentation on CPU -&gt; NHWC numpy batches.</span><span class="w">
+</span><span class="c1"># --------------------------------------------------------------------------- #</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">build_imagenette_loaders</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">,</span> <span class="n">gpu_aug</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return (train_iter_fn, val_iter_fn, num_classes) backed by frgfm/imagenette.
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">flax</span><span class="w"> </span><span class="kn">import</span> <span class="n">nnx</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining.jax</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spj</span>
-
-
-<span class="c1"># --------------------------------------------------------------------------- #</span>
-<span class="c1"># Data: torchvision two-view augmentation on CPU -&gt; NHWC numpy batches.</span>
-<span class="c1"># --------------------------------------------------------------------------- #</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">build_imagenette_loaders</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">,</span> <span class="n">gpu_aug</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return (train_iter_fn, val_iter_fn, num_classes) backed by frgfm/imagenette.</span>
-
-<span class="sd">    When ``gpu_aug`` is True the CPU pipeline does only RGB+Resize+ToTensor (cheap)</span>
-<span class="sd">    and yields a single raw image per sample; the model&#39;s on-device transform</span>
-<span class="sd">    generates the two SimCLR views. Otherwise the full two-view torchvision</span>
-<span class="sd">    augmentation runs on CPU.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">torchvision</span><span class="w"> </span><span class="kn">import</span> <span class="n">transforms</span> <span class="k">as</span> <span class="n">T</span>
-
-    <span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span>
-
-    <span class="n">norm</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">Normalize</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="p">[</span><span class="mf">0.485</span><span class="p">,</span> <span class="mf">0.456</span><span class="p">,</span> <span class="mf">0.406</span><span class="p">],</span> <span class="n">std</span><span class="o">=</span><span class="p">[</span><span class="mf">0.229</span><span class="p">,</span> <span class="mf">0.224</span><span class="p">,</span> <span class="mf">0.225</span><span class="p">])</span>
-    <span class="k">if</span> <span class="n">gpu_aug</span><span class="p">:</span>
-        <span class="c1"># Minimal CPU work — augmentation happens on the accelerator.</span>
-        <span class="n">train_aug</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">Compose</span><span class="p">([</span><span class="n">T</span><span class="o">.</span><span class="n">Resize</span><span class="p">((</span><span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">)),</span> <span class="n">T</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">()])</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">train_aug</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span>
-            <span class="p">[</span>
-                <span class="n">T</span><span class="o">.</span><span class="n">RandomResizedCrop</span><span class="p">(</span><span class="n">img_size</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)),</span>
-                <span class="n">T</span><span class="o">.</span><span class="n">RandomHorizontalFlip</span><span class="p">(),</span>
-                <span class="n">T</span><span class="o">.</span><span class="n">RandomApply</span><span class="p">([</span><span class="n">T</span><span class="o">.</span><span class="n">ColorJitter</span><span class="p">(</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)],</span> <span class="n">p</span><span class="o">=</span><span class="mf">0.8</span><span class="p">),</span>
-                <span class="n">T</span><span class="o">.</span><span class="n">RandomGrayscale</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="mf">0.2</span><span class="p">),</span>
-                <span class="n">T</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
-                <span class="n">norm</span><span class="p">,</span>
-            <span class="p">]</span>
-        <span class="p">)</span>
-    <span class="n">val_aug</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span>
-        <span class="p">[</span><span class="n">T</span><span class="o">.</span><span class="n">Resize</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">img_size</span> <span class="o">*</span> <span class="mf">1.15</span><span class="p">)),</span> <span class="n">T</span><span class="o">.</span><span class="n">CenterCrop</span><span class="p">(</span><span class="n">img_size</span><span class="p">),</span> <span class="n">T</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span> <span class="n">norm</span><span class="p">]</span>
-    <span class="p">)</span>
-
-    <span class="k">class</span><span class="w"> </span><span class="nc">HFView</span><span class="p">(</span><a href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="torch.utils.data.Dataset" class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span></a><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Wrap the HF imagenette split; emit one or two augmented views per sample.&quot;&quot;&quot;</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">split</span><span class="p">,</span> <span class="n">aug</span><span class="p">,</span> <span class="n">two_view</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">HFDataset</span><span class="p">(</span>
-                <span class="s2">&quot;frgfm/imagenette&quot;</span><span class="p">,</span>
-                <span class="n">split</span><span class="o">=</span><span class="n">split</span><span class="p">,</span>
-                <span class="n">revision</span><span class="o">=</span><span class="s2">&quot;refs/convert/parquet&quot;</span><span class="p">,</span>
-                <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">aug</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">two_view</span> <span class="o">=</span> <span class="n">aug</span><span class="p">,</span> <span class="n">two_view</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">)</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
-            <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-            <span class="n">img</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;image&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s2">&quot;RGB&quot;</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">])</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">two_view</span><span class="p">:</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">aug</span><span class="p">(</span><span class="n">img</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">aug</span><span class="p">(</span><span class="n">img</span><span class="p">),</span> <span class="n">label</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">aug</span><span class="p">(</span><span class="n">img</span><span class="p">),</span> <span class="n">label</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_loader</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">shuffle</span><span class="p">):</span>
-        <span class="k">return</span> <a href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader" class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">(</span>
-            <span class="n">ds</span><span class="p">,</span>
-            <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
-            <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span>
-            <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
-            <span class="n">drop_last</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span>
-            <span class="n">persistent_workers</span><span class="o">=</span><span class="n">num_workers</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="c1"># gpu_aug -&gt; single-view train loader (model makes the two views on device).</span>
-    <span class="n">train_dl</span> <span class="o">=</span> <span class="n">_loader</span><span class="p">(</span><span class="n">HFView</span><span class="p">(</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="n">train_aug</span><span class="p">,</span> <span class="n">two_view</span><span class="o">=</span><span class="ow">not</span> <span class="n">gpu_aug</span><span class="p">),</span> <span class="kc">True</span><span class="p">)</span>
-    <span class="n">val_dl</span> <span class="o">=</span> <span class="n">_loader</span><span class="p">(</span><span class="n">HFView</span><span class="p">(</span><span class="s2">&quot;validation&quot;</span><span class="p">,</span> <span class="n">val_aug</span><span class="p">,</span> <span class="n">two_view</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="kc">False</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">nhwc</span><span class="p">(</span><span class="n">t</span><span class="p">):</span>  <span class="c1"># torch [B,C,H,W] -&gt; numpy [B,H,W,C]</span>
-        <span class="k">return</span> <a href="https://numpy.org/doc/stable/reference/generated/numpy.ascontiguousarray.html#numpy.ascontiguousarray" title="numpy.ascontiguousarray" class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function"><span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span></a><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">train_iter_cpu</span><span class="p">():</span>
-        <span class="k">for</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">train_dl</span><span class="p">:</span>
-            <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-            <span class="k">yield</span> <span class="p">{</span>
-                <span class="s2">&quot;views&quot;</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="n">nhwc</span><span class="p">(</span><span class="n">v1</span><span class="p">),</span> <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">y</span><span class="p">},</span>
-                    <span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="n">nhwc</span><span class="p">(</span><span class="n">v2</span><span class="p">),</span> <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">y</span><span class="p">},</span>
-                <span class="p">]</span>
-            <span class="p">}</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">train_iter_gpu</span><span class="p">():</span>
-        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">train_dl</span><span class="p">:</span>
-            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="n">nhwc</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()}</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">val_iter</span><span class="p">():</span>
-        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">val_dl</span><span class="p">:</span>
-            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="n">nhwc</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()}</span>
-
-    <span class="k">return</span> <span class="p">(</span><span class="n">train_iter_gpu</span> <span class="k">if</span> <span class="n">gpu_aug</span> <span class="k">else</span> <span class="n">train_iter_cpu</span><span class="p">),</span> <span class="n">val_iter</span><span class="p">,</span> <span class="mi">10</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">build_synthetic_loaders</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tiny in-memory NHWC data for a no-download CPU smoke test.&quot;&quot;&quot;</span>
-    <span class="n">rng</span> <span class="o">=</span> <a href="https://numpy.org/doc/stable/reference/random/legacy.html#numpy.random.RandomState" title="numpy.random.RandomState" class="sphx-glr-backref-module-numpy-random sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span></a><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">mk</span><span class="p">():</span>
-        <span class="k">return</span> <span class="n">rng</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">two_view</span><span class="p">():</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;views&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="n">mk</span><span class="p">(),</span> <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">y</span><span class="p">},</span> <span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="n">mk</span><span class="p">(),</span> <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">y</span><span class="p">}]}</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">single</span><span class="p">():</span>
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">),</span>
-            <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">),</span>
-        <span class="p">}</span>
-
-    <span class="n">train</span> <span class="o">=</span> <span class="p">[</span><span class="n">two_view</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
-    <span class="n">val</span> <span class="o">=</span> <span class="p">[</span><span class="n">single</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
-    <span class="k">return</span> <span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">iter</span><span class="p">(</span><span class="n">train</span><span class="p">)),</span> <span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">iter</span><span class="p">(</span><span class="n">val</span><span class="p">)),</span> <span class="mi">10</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Throughput</span><span class="p">(</span><span class="n">spj</span><span class="o">.</span><span class="n">Callback</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Log images/sec and loss every ``every`` steps (debug instrumentation).&quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">every</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">every</span> <span class="o">=</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">every</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_t0</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last</span> <span class="o">=</span> <span class="mi">0</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">on_train_epoch_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">module</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_t0</span> <span class="o">=</span> <a href="https://docs.python.org/3/library/time.html#time.perf_counter" title="time.perf_counter" class="sphx-glr-backref-module-time sphx-glr-backref-type-py-function"><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span></a><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">on_train_batch_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">every</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">dt</span> <span class="o">=</span> <a href="https://docs.python.org/3/library/time.html#time.perf_counter" title="time.perf_counter" class="sphx-glr-backref-module-time sphx-glr-backref-type-py-function"><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span></a><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_t0</span>
-            <span class="n">n</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last</span>
-            <span class="n">ips</span> <span class="o">=</span> <span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span> <span class="k">if</span> <span class="n">dt</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
-            <span class="n">loss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">outputs</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">])</span>
-            <span class="nb">print</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;  epoch </span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">current_epoch</span><span class="si">}</span><span class="s2"> step </span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="si">}</span><span class="s2"> &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;loss </span><span class="si">{</span><span class="n">loss</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">  </span><span class="si">{</span><span class="n">ips</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2"> img/s&quot;</span><span class="p">,</span>
-                <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_t0</span> <span class="o">=</span> <a href="https://docs.python.org/3/library/time.html#time.perf_counter" title="time.perf_counter" class="sphx-glr-backref-module-time sphx-glr-backref-type-py-function"><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span></a><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_last</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="n">ap</span> <span class="o">=</span> <a href="https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser" title="argparse.ArgumentParser" class="sphx-glr-backref-module-argparse sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span></a><span class="p">()</span>
-    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--epochs&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
-    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--batch-size&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
-    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--img-size&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
-    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--num-workers&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
-    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--lr&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
-    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--temperature&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
-    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--low-resolution&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">)</span>
-    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--gpu-aug&quot;</span><span class="p">,</span>
-        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;augment on the accelerator (jnp) instead of CPU torchvision&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--smoke&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;tiny synthetic CPU run&quot;</span><span class="p">)</span>
-    <span class="n">args</span> <span class="o">=</span> <span class="n">ap</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
-
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;JAX devices: </span><span class="si">{</span><span class="n">jax</span><span class="o">.</span><span class="n">devices</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">smoke</span><span class="p">:</span>
-        <span class="n">train_iter</span><span class="p">,</span> <span class="n">val_iter</span><span class="p">,</span> <span class="n">num_classes</span> <span class="o">=</span> <span class="n">build_synthetic_loaders</span><span class="p">(</span>
-            <span class="n">args</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">img_size</span>
-        <span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">train_iter</span><span class="p">,</span> <span class="n">val_iter</span><span class="p">,</span> <span class="n">num_classes</span> <span class="o">=</span> <span class="n">build_imagenette_loaders</span><span class="p">(</span>
-            <span class="n">args</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">img_size</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span> <span class="n">gpu_aug</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">gpu_aug</span>
-        <span class="p">)</span>
-
-    <span class="c1"># On-device augmentation: the model turns each raw image into two views.</span>
-    <span class="n">transform</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">augment</span><span class="o">.</span><span class="n">two_view_transform</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">img_size</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">gpu_aug</span> <span class="k">else</span> <span class="kc">None</span>
-
-    <span class="n">rngs</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">backbone</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">backbone</span><span class="o">.</span><span class="n">resnet18</span><span class="p">(</span><span class="n">rngs</span><span class="o">=</span><span class="n">rngs</span><span class="p">,</span> <span class="n">low_resolution</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">low_resolution</span><span class="p">)</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">SimCLR</span><span class="p">(</span>
-        <span class="n">backbone</span><span class="o">=</span><span class="n">backbone</span><span class="p">,</span>
-        <span class="n">embed_dim</span><span class="o">=</span><span class="n">backbone</span><span class="o">.</span><span class="n">embed_dim</span><span class="p">,</span>
-        <span class="n">rngs</span><span class="o">=</span><span class="n">rngs</span><span class="p">,</span>
-        <span class="n">projector_dims</span><span class="o">=</span><span class="p">(</span><span class="mi">2048</span><span class="p">,</span> <span class="mi">2048</span><span class="p">,</span> <span class="mi">256</span><span class="p">),</span>
-        <span class="n">temperature</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span>
-        <span class="n">optim</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;lars&quot;</span><span class="p">,</span> <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">lr</span><span class="p">},</span>
-        <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">probe</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">OnlineProbe</span><span class="p">(</span>
-        <span class="s2">&quot;linear_probe&quot;</span><span class="p">,</span> <span class="n">probe</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">backbone</span><span class="o">.</span><span class="n">embed_dim</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">,</span> <span class="n">rngs</span><span class="o">=</span><span class="n">rngs</span><span class="p">)</span>
-    <span class="p">)</span>
-    <span class="n">trainer</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span>
-        <span class="n">max_epochs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">epochs</span><span class="p">,</span>
-        <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">probe</span><span class="p">,</span> <span class="n">spj</span><span class="o">.</span><span class="n">RankMe</span><span class="p">(),</span> <span class="n">Throughput</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">batch_size</span><span class="p">)],</span>
-        <span class="n">data_parallel</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">device_count</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="c1"># train_iter/val_iter are generator factories — re-create each epoch.</span>
-    <span class="n">trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
-        <span class="n">model</span><span class="p">,</span>
-        <span class="n">_Reiterable</span><span class="p">(</span><span class="n">train_iter</span><span class="p">),</span>
-        <span class="n">_Reiterable</span><span class="p">(</span><span class="n">val_iter</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">smoke</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;DONE  loss=</span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">callback_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fit/loss&#39;</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">  &quot;</span>
-        <span class="sa">f</span><span class="s2">&quot;probe_acc=</span><span class="si">{</span><span class="n">probe</span><span class="o">.</span><span class="n">accuracy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="p">)</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">_Reiterable</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Adapt a generator-factory into a re-iterable object the Trainer can loop.&quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">factory</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_factory</span> <span class="o">=</span> <span class="n">factory</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_factory</span><span class="p">())</span>
-
-
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="n">main</span><span class="p">()</span>
-</pre></div>
-</div>
+    When ``gpu_aug`` is True the CPU pipeline does only RGB+Resize+ToTensor (cheap)
+    and yields a single raw image per sample; the model's on-device transform
+    generates the two SimCLR views. Otherwise the full two-view torchvision
+    augmentation runs on CPU.
+    &quot;&quot;&quot;</span><span class="w">
+</span>    <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span><span class="w">
+</span>    <span class="kn">from</span><span class="w"> </span><span class="nn">torchvision</span><span class="w"> </span><span class="kn">import</span> <span class="n">transforms</span> <span class="k">as</span> <span class="n">T</span><span class="w">
+</span><span class="w">
+</span>    <span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">norm</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">Normalize</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="p">[</span><span class="mf">0.485</span><span class="p">,</span> <span class="mf">0.456</span><span class="p">,</span> <span class="mf">0.406</span><span class="p">]</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="p">[</span><span class="mf">0.229</span><span class="p">,</span> <span class="mf">0.224</span><span class="p">,</span> <span class="mf">0.225</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span>    <span class="k">if</span> <span class="n">gpu_aug</span><span class="p">:</span><span class="w">
+</span>        <span class="c1"># Minimal CPU work — augmentation happens on the accelerator.</span><span class="w">
+</span>        <span class="n">train_aug</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span><span class="p">[</span><span class="n">T</span><span class="o">.</span><span class="n">Resize</span><span class="p">(</span><span class="p">(</span><span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">)</span><span class="p">)</span><span class="p">,</span> <span class="n">T</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(</span><span class="p">)</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span>    <span class="k">else</span><span class="p">:</span><span class="w">
+</span>        <span class="n">train_aug</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span><span class="w">
+</span>            <span class="p">[</span><span class="w">
+</span>                <span class="n">T</span><span class="o">.</span><span class="n">RandomResizedCrop</span><span class="p">(</span><span class="n">img_size</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>                <span class="n">T</span><span class="o">.</span><span class="n">RandomHorizontalFlip</span><span class="p">(</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>                <span class="n">T</span><span class="o">.</span><span class="n">RandomApply</span><span class="p">(</span><span class="p">[</span><span class="n">T</span><span class="o">.</span><span class="n">ColorJitter</span><span class="p">(</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span><span class="p">]</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>                <span class="n">T</span><span class="o">.</span><span class="n">RandomGrayscale</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>                <span class="n">T</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>                <span class="n">norm</span><span class="p">,</span><span class="w">
+</span>            <span class="p">]</span><span class="w">
+</span>        <span class="p">)</span><span class="w">
+</span>    <span class="n">val_aug</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span><span class="w">
+</span>        <span class="p">[</span><span class="n">T</span><span class="o">.</span><span class="n">Resize</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">img_size</span> <span class="o">*</span> <span class="mf">1.15</span><span class="p">)</span><span class="p">)</span><span class="p">,</span> <span class="n">T</span><span class="o">.</span><span class="n">CenterCrop</span><span class="p">(</span><span class="n">img_size</span><span class="p">)</span><span class="p">,</span> <span class="n">T</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">norm</span><span class="p">]</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">class</span><span class="w"> </span><span class="nc">HFView</span><span class="p">(</span><a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset" title="torch.utils.data.Dataset"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span></a><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="sd">&quot;&quot;&quot;Wrap the HF imagenette split; emit one or two augmented views per sample.&quot;&quot;&quot;</span><span class="w">
+</span><span class="w">
+</span>        <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">split</span><span class="p">,</span> <span class="n">aug</span><span class="p">,</span> <span class="n">two_view</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>            <span class="bp">self</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <a class="sphx-glr-backref-module-stable_pretraining-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../api/gen_modules/stable_pretraining.data.HFDataset/#stable_pretraining.data.HFDataset" title="stable_pretraining.data.HFDataset"><span class="n">spt</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">HFDataset</span></a><span class="p">(</span><span class="w">
+</span>                <span class="s2">&quot;</span><span class="s2">frgfm/imagenette</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>                <span class="n">split</span><span class="o">=</span><span class="n">split</span><span class="p">,</span><span class="w">
+</span>                <span class="n">revision</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">refs/convert/parquet</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>                <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="w">
+</span>            <span class="p">)</span><span class="w">
+</span>            <span class="bp">self</span><span class="o">.</span><span class="n">aug</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">two_view</span> <span class="o">=</span> <span class="n">aug</span><span class="p">,</span> <span class="n">two_view</span><span class="w">
+</span><span class="w">
+</span>        <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>        <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>            <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w">
+</span>            <span class="n">img</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">RGB</span><span class="s2">&quot;</span><span class="p">)</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">label</span><span class="s2">&quot;</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span>            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">two_view</span><span class="p">:</span><span class="w">
+</span>                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">aug</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">aug</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="p">,</span> <span class="n">label</span><span class="w">
+</span>            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">aug</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="p">,</span> <span class="n">label</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">_loader</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">shuffle</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <a class="sphx-glr-backref-module-torch-utils-data sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader" title="torch.utils.data.DataLoader"><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span></a><span class="p">(</span><span class="w">
+</span>            <span class="n">ds</span><span class="p">,</span><span class="w">
+</span>            <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span><span class="w">
+</span>            <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span><span class="w">
+</span>            <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span><span class="w">
+</span>            <span class="n">drop_last</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span><span class="w">
+</span>            <span class="n">persistent_workers</span><span class="o">=</span><span class="n">num_workers</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span><span class="w">
+</span>        <span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="c1"># gpu_aug -&gt; single-view train loader (model makes the two views on device).</span><span class="w">
+</span>    <span class="n">train_dl</span> <span class="o">=</span> <span class="n">_loader</span><span class="p">(</span><span class="n">HFView</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">train</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">train_aug</span><span class="p">,</span> <span class="n">two_view</span><span class="o">=</span><span class="ow">not</span> <span class="n">gpu_aug</span><span class="p">)</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span><span class="w">
+</span>    <span class="n">val_dl</span> <span class="o">=</span> <span class="n">_loader</span><span class="p">(</span><span class="n">HFView</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">validation</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">val_aug</span><span class="p">,</span> <span class="n">two_view</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">nhwc</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="p">:</span>  <span class="c1"># torch [B,C,H,W] -&gt; numpy [B,H,W,C]</span><span class="w">
+</span>        <span class="k">return</span> <a class="sphx-glr-backref-module-numpy sphx-glr-backref-type-py-function reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ascontiguousarray.html#numpy.ascontiguousarray" title="numpy.ascontiguousarray"><span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span></a><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">train_iter_cpu</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">for</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">train_dl</span><span class="p">:</span><span class="w">
+</span>            <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">numpy</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>            <span class="k">yield</span> <span class="p">{</span><span class="w">
+</span>                <span class="s2">&quot;</span><span class="s2">views</span><span class="s2">&quot;</span><span class="p">:</span> <span class="p">[</span><span class="w">
+</span>                    <span class="p">{</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">nhwc</span><span class="p">(</span><span class="n">v1</span><span class="p">)</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">label</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">y</span><span class="p">}</span><span class="p">,</span><span class="w">
+</span>                    <span class="p">{</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">nhwc</span><span class="p">(</span><span class="n">v2</span><span class="p">)</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">label</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">y</span><span class="p">}</span><span class="p">,</span><span class="w">
+</span>                <span class="p">]</span><span class="w">
+</span>            <span class="p">}</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">train_iter_gpu</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">train_dl</span><span class="p">:</span><span class="w">
+</span>            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">nhwc</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">label</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">y</span><span class="o">.</span><span class="n">numpy</span><span class="p">(</span><span class="p">)</span><span class="p">}</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">val_iter</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">val_dl</span><span class="p">:</span><span class="w">
+</span>            <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">nhwc</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">label</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">y</span><span class="o">.</span><span class="n">numpy</span><span class="p">(</span><span class="p">)</span><span class="p">}</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">return</span> <span class="p">(</span><span class="n">train_iter_gpu</span> <span class="k">if</span> <span class="n">gpu_aug</span> <span class="k">else</span> <span class="n">train_iter_cpu</span><span class="p">)</span><span class="p">,</span> <span class="n">val_iter</span><span class="p">,</span> <span class="mi">10</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">build_synthetic_loaders</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Tiny in-memory NHWC data for a no-download CPU smoke test.&quot;&quot;&quot;</span><span class="w">
+</span>    <span class="n">rng</span> <span class="o">=</span> <a class="sphx-glr-backref-module-numpy-random sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://numpy.org/doc/stable/reference/random/legacy.html#numpy.random.RandomState" title="numpy.random.RandomState"><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span></a><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">mk</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <span class="n">rng</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">float32</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">two_view</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">y</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span><span class="w">
+</span>        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;</span><span class="s2">views</span><span class="s2">&quot;</span><span class="p">:</span> <span class="p">[</span><span class="p">{</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">mk</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">label</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">y</span><span class="p">}</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">mk</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">label</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">y</span><span class="p">}</span><span class="p">]</span><span class="p">}</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">single</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <span class="p">{</span><span class="w">
+</span>            <span class="s2">&quot;</span><span class="s2">image</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">float32</span><span class="s2">&quot;</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>            <span class="s2">&quot;</span><span class="s2">label</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>        <span class="p">}</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">train</span> <span class="o">=</span> <span class="p">[</span><span class="n">two_view</span><span class="p">(</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span><span class="p">]</span><span class="w">
+</span>    <span class="n">val</span> <span class="o">=</span> <span class="p">[</span><span class="n">single</span><span class="p">(</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="p">]</span><span class="w">
+</span>    <span class="k">return</span> <span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">iter</span><span class="p">(</span><span class="n">train</span><span class="p">)</span><span class="p">)</span><span class="p">,</span> <span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">iter</span><span class="p">(</span><span class="n">val</span><span class="p">)</span><span class="p">)</span><span class="p">,</span> <span class="mi">10</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">class</span><span class="w"> </span><span class="nc">Throughput</span><span class="p">(</span><span class="n">spj</span><span class="o">.</span><span class="n">Callback</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Log images/sec and loss every ``every`` steps (debug instrumentation).&quot;&quot;&quot;</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">every</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">every</span> <span class="o">=</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">every</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">_t0</span> <span class="o">=</span> <span class="kc">None</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">_last</span> <span class="o">=</span> <span class="mi">0</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">on_train_epoch_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">module</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">_t0</span> <span class="o">=</span> <a class="sphx-glr-backref-module-time sphx-glr-backref-type-py-function reference external" href="https://docs.python.org/3/library/time.html#time.perf_counter" title="time.perf_counter"><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span></a><span class="p">(</span><span class="p">)</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">_last</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="nf">on_train_batch_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trainer</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">every</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span><span class="w">
+</span>            <span class="n">dt</span> <span class="o">=</span> <a class="sphx-glr-backref-module-time sphx-glr-backref-type-py-function reference external" href="https://docs.python.org/3/library/time.html#time.perf_counter" title="time.perf_counter"><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span></a><span class="p">(</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_t0</span><span class="w">
+</span>            <span class="n">n</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last</span><span class="w">
+</span>            <span class="n">ips</span> <span class="o">=</span> <span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span> <span class="k">if</span> <span class="n">dt</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span><span class="w">
+</span>            <span class="n">loss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">outputs</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">loss</span><span class="s2">&quot;</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span>            <span class="nb">print</span><span class="p">(</span><span class="w">
+</span>                <span class="sa">f</span><span class="s2">&quot;</span><span class="s2">  epoch </span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">current_epoch</span><span class="si">}</span><span class="s2"> step </span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="si">}</span><span class="s2"> </span><span class="s2">&quot;</span><span class="w">
+</span>                <span class="sa">f</span><span class="s2">&quot;</span><span class="s2">loss </span><span class="si">{</span><span class="n">loss</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">  </span><span class="si">{</span><span class="n">ips</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2"> img/s</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>                <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="w">
+</span>            <span class="p">)</span><span class="w">
+</span>            <span class="bp">self</span><span class="o">.</span><span class="n">_t0</span> <span class="o">=</span> <a class="sphx-glr-backref-module-time sphx-glr-backref-type-py-function reference external" href="https://docs.python.org/3/library/time.html#time.perf_counter" title="time.perf_counter"><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span></a><span class="p">(</span><span class="p">)</span><span class="w">
+</span>            <span class="bp">self</span><span class="o">.</span><span class="n">_last</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">global_step</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="n">ap</span> <span class="o">=</span> <a class="sphx-glr-backref-module-argparse sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser" title="argparse.ArgumentParser"><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span></a><span class="p">(</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--epochs</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--batch-size</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--img-size</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--num-workers</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--lr</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--temperature</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--low-resolution</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">store_true</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">--gpu-aug</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">store_true</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">augment on the accelerator (jnp) instead of CPU torchvision</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="n">ap</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">--smoke</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">store_true</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">tiny synthetic CPU run</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">args</span> <span class="o">=</span> <span class="n">ap</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="s2">JAX devices: </span><span class="si">{</span><span class="n">jax</span><span class="o">.</span><span class="n">devices</span><span class="p">(</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">smoke</span><span class="p">:</span><span class="w">
+</span>        <span class="n">train_iter</span><span class="p">,</span> <span class="n">val_iter</span><span class="p">,</span> <span class="n">num_classes</span> <span class="o">=</span> <span class="n">build_synthetic_loaders</span><span class="p">(</span><span class="w">
+</span>            <span class="n">args</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">img_size</span><span class="w">
+</span>        <span class="p">)</span><span class="w">
+</span>    <span class="k">else</span><span class="p">:</span><span class="w">
+</span>        <span class="n">train_iter</span><span class="p">,</span> <span class="n">val_iter</span><span class="p">,</span> <span class="n">num_classes</span> <span class="o">=</span> <span class="n">build_imagenette_loaders</span><span class="p">(</span><span class="w">
+</span>            <span class="n">args</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">img_size</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span> <span class="n">gpu_aug</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">gpu_aug</span><span class="w">
+</span>        <span class="p">)</span><span class="w">
+</span><span class="w">
+</span>    <span class="c1"># On-device augmentation: the model turns each raw image into two views.</span><span class="w">
+</span>    <span class="n">transform</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">augment</span><span class="o">.</span><span class="n">two_view_transform</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">img_size</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">gpu_aug</span> <span class="k">else</span> <span class="kc">None</span><span class="w">
+</span><span class="w">
+</span>    <span class="n">rngs</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w">
+</span>    <span class="n">backbone</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">backbone</span><span class="o">.</span><span class="n">resnet18</span><span class="p">(</span><span class="n">rngs</span><span class="o">=</span><span class="n">rngs</span><span class="p">,</span> <span class="n">low_resolution</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">low_resolution</span><span class="p">)</span><span class="w">
+</span>    <span class="n">model</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">SimCLR</span><span class="p">(</span><span class="w">
+</span>        <span class="n">backbone</span><span class="o">=</span><span class="n">backbone</span><span class="p">,</span><span class="w">
+</span>        <span class="n">embed_dim</span><span class="o">=</span><span class="n">backbone</span><span class="o">.</span><span class="n">embed_dim</span><span class="p">,</span><span class="w">
+</span>        <span class="n">rngs</span><span class="o">=</span><span class="n">rngs</span><span class="p">,</span><span class="w">
+</span>        <span class="n">projector_dims</span><span class="o">=</span><span class="p">(</span><span class="mi">2048</span><span class="p">,</span> <span class="mi">2048</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>        <span class="n">temperature</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span><span class="w">
+</span>        <span class="n">optim</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;</span><span class="s2">type</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="s2">lars</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">learning_rate</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">lr</span><span class="p">}</span><span class="p">,</span><span class="w">
+</span>        <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="n">probe</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">OnlineProbe</span><span class="p">(</span><span class="w">
+</span>        <span class="s2">&quot;</span><span class="s2">linear_probe</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">probe</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">backbone</span><span class="o">.</span><span class="n">embed_dim</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">,</span> <span class="n">rngs</span><span class="o">=</span><span class="n">rngs</span><span class="p">)</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="n">trainer</span> <span class="o">=</span> <span class="n">spj</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span><span class="w">
+</span>        <span class="n">max_epochs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">epochs</span><span class="p">,</span><span class="w">
+</span>        <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">probe</span><span class="p">,</span> <span class="n">spj</span><span class="o">.</span><span class="n">RankMe</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">Throughput</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">batch_size</span><span class="p">)</span><span class="p">]</span><span class="p">,</span><span class="w">
+</span>        <span class="n">data_parallel</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">device_count</span><span class="p">(</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="c1"># train_iter/val_iter are generator factories — re-create each epoch.</span><span class="w">
+</span>    <span class="n">trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="w">
+</span>        <span class="n">model</span><span class="p">,</span><span class="w">
+</span>        <span class="n">_Reiterable</span><span class="p">(</span><span class="n">train_iter</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>        <span class="n">_Reiterable</span><span class="p">(</span><span class="n">val_iter</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">smoke</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span>    <span class="nb">print</span><span class="p">(</span><span class="w">
+</span>        <span class="sa">f</span><span class="s2">&quot;</span><span class="s2">DONE  loss=</span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">callback_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'</span><span class="s1">fit/loss</span><span class="s1">'</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">  </span><span class="s2">&quot;</span><span class="w">
+</span>        <span class="sa">f</span><span class="s2">&quot;</span><span class="s2">probe_acc=</span><span class="si">{</span><span class="n">probe</span><span class="o">.</span><span class="n">accuracy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>        <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">class</span><span class="w"> </span><span class="nc">_Reiterable</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Adapt a generator-factory into a re-iterable object the Trainer can loop.&quot;&quot;&quot;</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">factory</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="bp">self</span><span class="o">.</span><span class="n">_factory</span> <span class="o">=</span> <span class="n">factory</span><span class="w">
+</span><span class="w">
+</span>    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_factory</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="k">if</span> <a class="sphx-glr-backref-module-builtins sphx-glr-backref-type-py-class sphx-glr-backref-instance reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="str"><span class="vm">__name__</span></a> <span class="o">==</span> <span class="s2">&quot;</span><span class="s2">__main__</span><span class="s2">&quot;</span><span class="p">:</span><span class="w">
+</span>    <span class="n">main</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-jax-simclr-imagenette-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/33f6c51ba50690d6e366a41630869995/jax_simclr_imagenette.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">jax_simclr_imagenette.ipynb</span></code></a></p>
@@ -730,7 +785,7 @@ boundary is the clean seam between the two backends.</p>
     <i class="fa-solid fa-list"></i> Contents
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="simple visible nav section-nav flex-column">
+    <ul class="simple pst-show_toc_level nav section-nav flex-column">
 </ul>
 
   </nav></div>
@@ -780,8 +835,8 @@ By stable-pretraining team
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
   <footer class="bd-footer">
   </footer>
