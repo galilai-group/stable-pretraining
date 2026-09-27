@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.callbacks.probe &#8212; stable-pretraining 0.1.dev1+gaf163bd9a documentation</title>
+    <title>stable_pretraining.callbacks.probe &#8212; stable-pretraining 0.1.dev1+g45a9a54d2 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
-    <script src="../../../../_static/documentation_options.js?v=b7c142e0"></script>
+    <script src="../../../../_static/documentation_options.js?v=8d542b9b"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -176,7 +176,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gaf163bd9a documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g45a9a54d2 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -581,6 +581,11 @@
 
         <span class="k">def</span><span class="w"> </span><span class="nf">new_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="o">=</span><span class="n">fn</span><span class="p">):</span>
             <span class="n">outputs</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">stage</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"OnlineProbe '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' (stage=</span><span class="si">{</span><span class="n">stage</span><span class="si">!r}</span><span class="s2">) requires "</span>
+                    <span class="sa">f</span><span class="s2">"forward to return a dict, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">outputs</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span>
+                <span class="p">)</span>
             <span class="k">if</span> <span class="p">(</span>
                 <span class="n">callback</span><span class="o">.</span><span class="n">input</span> <span class="ow">is</span> <span class="kc">None</span>
                 <span class="ow">or</span> <span class="n">callback</span><span class="o">.</span><span class="n">target</span> <span class="ow">is</span> <span class="kc">None</span>
@@ -592,19 +597,45 @@
                 <span class="k">return</span> <span class="n">callback</span><span class="o">.</span><span class="n">module</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">x</span> <span class="o">=</span> <span class="n">get_data_from_batch_or_outputs</span><span class="p">(</span>
-                    <span class="n">callback</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">caller_name</span><span class="o">=</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span>
+                    <span class="n">callback</span><span class="o">.</span><span class="n">input</span><span class="p">,</span>
+                    <span class="n">batch</span><span class="p">,</span>
+                    <span class="n">outputs</span><span class="p">,</span>
+                    <span class="n">caller_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"OnlineProbe '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' (stage=</span><span class="si">{</span><span class="n">stage</span><span class="si">!r}</span><span class="s2">)"</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="n">y</span> <span class="o">=</span> <span class="n">get_data_from_batch_or_outputs</span><span class="p">(</span>
-                    <span class="n">callback</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">caller_name</span><span class="o">=</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span>
+                    <span class="n">callback</span><span class="o">.</span><span class="n">target</span><span class="p">,</span>
+                    <span class="n">batch</span><span class="p">,</span>
+                    <span class="n">outputs</span><span class="p">,</span>
+                    <span class="n">caller_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"OnlineProbe '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' (stage=</span><span class="si">{</span><span class="n">stage</span><span class="si">!r}</span><span class="s2">)"</span><span class="p">,</span>
                 <span class="p">)</span>
 
                 <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">y</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">"Callback </span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> missing </span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2"> or </span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">target</span><span class="si">}</span><span class="s2">"</span>
+                        <span class="sa">f</span><span class="s2">"OnlineProbe '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' (stage=</span><span class="si">{</span><span class="n">stage</span><span class="si">!r}</span><span class="s2">) requires "</span>
+                        <span class="sa">f</span><span class="s2">"non-None values for '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2">' and '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">target</span><span class="si">}</span><span class="s2">'"</span>
                     <span class="p">)</span>
 
-                <span class="n">preds</span> <span class="o">=</span> <span class="n">callback</span><span class="o">.</span><span class="n">module</span><span class="p">(</span><span class="n">detach_tensors</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">preds</span> <span class="o">=</span> <span class="n">callback</span><span class="o">.</span><span class="n">module</span><span class="p">(</span><span class="n">detach_tensors</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">RuntimeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"OnlineProbe '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' (stage=</span><span class="si">{</span><span class="n">stage</span><span class="si">!r}</span><span class="s2">) failed "</span>
+                        <span class="sa">f</span><span class="s2">"on input '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2">' with shape "</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="nb">type</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span>
+                    <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
                 <span class="n">y</span> <span class="o">=</span> <span class="n">detach_tensors</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="n">preds</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                    <span class="ow">and</span> <span class="n">y</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                    <span class="ow">and</span> <span class="n">preds</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"OnlineProbe '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' (stage=</span><span class="si">{</span><span class="n">stage</span><span class="si">!r}</span><span class="s2">) batch size mismatch: "</span>
+                        <span class="sa">f</span><span class="s2">"predictions from '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2">' have shape </span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">preds</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="si">}</span><span class="s2">; "</span>
+                        <span class="sa">f</span><span class="s2">"target '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">target</span><span class="si">}</span><span class="s2">' has shape </span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+                    <span class="p">)</span>
 
             <span class="n">prediction_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_preds"</span>
             <span class="k">assert</span> <span class="n">prediction_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">batch</span>
@@ -613,7 +644,16 @@
             <span class="n">scalar_logs</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="n">metric_logs</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="k">if</span> <span class="n">stage</span> <span class="o">==</span> <span class="s2">"fit"</span><span class="p">:</span>
-                <span class="n">loss</span> <span class="o">=</span> <span class="n">callback</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">loss</span> <span class="o">=</span> <span class="n">callback</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">RuntimeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"OnlineProbe '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' (stage=</span><span class="si">{</span><span class="n">stage</span><span class="si">!r}</span><span class="s2">) loss failed: "</span>
+                        <span class="sa">f</span><span class="s2">"input '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2">' produced predictions with shape "</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">preds</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="nb">type</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">; "</span>
+                        <span class="sa">f</span><span class="s2">"target '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">target</span><span class="si">}</span><span class="s2">' has shape "</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="nb">type</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span>
+                    <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
                 <span class="k">assert</span> <span class="sa">f</span><span class="s2">"train/</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_loss"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">scalar_logs</span>
                 <span class="k">if</span> <span class="s2">"loss"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">:</span>
                     <span class="n">outputs</span><span class="p">[</span><span class="s2">"loss"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
@@ -628,7 +668,16 @@
             <span class="k">elif</span> <span class="n">stage</span> <span class="o">==</span> <span class="s2">"validate"</span><span class="p">:</span>
                 <span class="n">my_metrics</span> <span class="o">=</span> <span class="n">pl_module</span><span class="o">.</span><span class="n">callbacks_metrics</span><span class="p">[</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="p">][</span><span class="s2">"_val"</span><span class="p">]</span>
                 <span class="k">for</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">my_metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                    <span class="n">metric</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">metric</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="p">(</span><span class="ne">RuntimeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">"OnlineProbe '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' (stage=</span><span class="si">{</span><span class="n">stage</span><span class="si">!r}</span><span class="s2">) metric "</span>
+                            <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="n">metric_name</span><span class="si">}</span><span class="s2">' failed: predictions from '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2">' "</span>
+                            <span class="sa">f</span><span class="s2">"have shape </span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">preds</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="nb">type</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">; "</span>
+                            <span class="sa">f</span><span class="s2">"target '</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">target</span><span class="si">}</span><span class="s2">' has shape "</span>
+                            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="nb">type</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span>
+                        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
                     <span class="n">metric_logs</span><span class="p">[</span><span class="sa">f</span><span class="s2">"eval/</span><span class="si">{</span><span class="n">callback</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">metric_name</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric</span>
 
             <span class="c1"># Raw scalars (loss): sync across GPUs</span>
