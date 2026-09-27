@@ -1,0 +1,706 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Use stable-pretraining with a coding agent &#8212; stable-pretraining 0.1.dev1+g09bb64031 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=4418a689" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+
+    <script src="../../_static/documentation_options.js?v=cb4fee59"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <script src="../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'guides/agents';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../genindex/" />
+    <link rel="search" title="Search" href="../../search/" />
+    <link rel="next" title="Cache directory &amp; run layout" href="../../cache_dir/" />
+    <link rel="prev" title="Jet: invertible images, tokens, and exact logdet" href="../jet/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search/"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g09bb64031 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../">stable-pretraining</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/">Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing/">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bibliography/">Bibliography</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/">Run your first SSL experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../custom_images/">Train SimCLR on your images</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../online_evaluation/">Add an online probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resume/">Resume training with full state</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../jet/">Jet: invertible images, tokens, and exact logdet</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Use stable-pretraining with a coding agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cache_dir/">Cache directory &amp; run layout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli/">CLI reference</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/backbone/">stable_pretraining.backbone</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.backbone.MLP/">MLP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.backbone.Resnet9/">Resnet9</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.backbone.ConvMixer/">ConvMixer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.backbone.Jet/">Jet</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.backbone.from_timm/">from_timm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.backbone.from_torchvision/">from_torchvision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.backbone.set_embedding_dim/">set_embedding_dim</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.backbone.TeacherStudentWrapper/">TeacherStudentWrapper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.backbone.EvalOnly/">EvalOnly</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/data/">stable_pretraining.data</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.DataModule/">DataModule</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.Collator/">Collator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.Dataset/">Dataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.FromTorchDataset/">FromTorchDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.HFDataset/">HFDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.Subset/">Subset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.GMM/">GMM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.MinariStepsDataset/">MinariStepsDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.MinariEpisodeDataset/">MinariEpisodeDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.swiss_roll/">swiss_roll</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.generate_perlin_noise_2d/">generate_perlin_noise_2d</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.perlin_noise_3d/">perlin_noise_3d</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.Categorical/">Categorical</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.ExponentialMixtureNoiseModel/">ExponentialMixtureNoiseModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.ExponentialNormalNoiseModel/">ExponentialNormalNoiseModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.RepeatedRandomSampler/">RepeatedRandomSampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.SupervisedBatchSampler/">SupervisedBatchSampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.RandomBatchSampler/">RandomBatchSampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.fold_views/">fold_views</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.random_split/">random_split</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.download/">download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.bulk_download/">bulk_download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.transforms/">stable_pretraining.data.transforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.dataset_stats/">stable_pretraining.data.dataset_stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.data.synthetic_data/">stable_pretraining.data.synthetic_data</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/forward/">stable_pretraining.forward</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/losses/">stable_pretraining.losses</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.losses.NTXEntLoss/">NTXEntLoss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.losses.NegativeCosineSimilarity/">NegativeCosineSimilarity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.losses.VICRegLoss/">VICRegLoss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.losses.BarlowTwinsLoss/">BarlowTwinsLoss</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/manager/">stable_pretraining.manager</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.manager.Manager/">Manager</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/methods/">stable_pretraining.methods</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.SimCLR/">SimCLR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.BYOL/">BYOL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.NNCLR/">NNCLR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.MoCov2/">MoCov2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.MoCov3/">MoCov3</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.SimSiam/">SimSiam</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.PIRL/">PIRL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.TiCO/">TiCO</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.VICReg/">VICReg</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.VICRegL/">VICRegL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.BarlowTwins/">BarlowTwins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.WMSE/">WMSE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.DINO/">DINO</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.DINOv2/">DINOv2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.DINOv3/">DINOv3</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.iBOT/">iBOT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.SwAV/">SwAV</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.MSN/">MSN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.Data2Vec/">Data2Vec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.MAE/">MAE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.BEiT/">BEiT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.CMAE/">CMAE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.MaskFeat/">MaskFeat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.SimMIM/">SimMIM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.MIMRefiner/">MIMRefiner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.iGPT/">iGPT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.IJEPA/">IJEPA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.LeJEPA/">LeJEPA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.VISReg/">VISReg</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.SALT/">SALT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.methods.NEPA/">NEPA</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/module/">stable_pretraining.module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.module.Module/">Module</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/monitors/">stable_pretraining.callbacks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.OnlineProbe/">OnlineProbe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.OnlineKNN/">OnlineKNN</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.OnlineWriter/">OnlineWriter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.RankMe/">RankMe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.LiDAR/">LiDAR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.EarlyStopping/">EarlyStopping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.TrainerInfo/">TrainerInfo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.LoggingCallback/">LoggingCallback</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.ModuleSummary/">ModuleSummary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.SklearnCheckpoint/">SklearnCheckpoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.ImageRetrieval/">ImageRetrieval</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.PCATokenVisualizer/">PCATokenVisualizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.AttentionVisualizer/">AttentionVisualizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.OnlineImageDecoder/">OnlineImageDecoder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.callbacks.ReconViz/">ReconViz</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/optim/">stable_pretraining.optim</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.optim.LARS/">LARS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.optim.CosineDecayer/">CosineDecayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.optim.LinearWarmup/">LinearWarmup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.optim.LinearWarmupCosineAnnealing/">LinearWarmupCosineAnnealing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.optim.LinearWarmupCyclicAnnealing/">LinearWarmupCyclicAnnealing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.optim.LinearWarmupThreeStepsAnnealing/">LinearWarmupThreeStepsAnnealing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/registry/">stable_pretraining.registry</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.registry.RegistryLogger/">RegistryLogger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.registry.Registry/">Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.registry.RunRecord/">RunRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.registry.open_registry/">open_registry</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../api/web/">stable_pretraining.web</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.web.serve/">serve</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api/gen_modules/stable_pretraining.web.scan.RunScanner/">RunScanner</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../../_sources/guides/agents.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Use stable-pretraining with a coding agent</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#optional-skill-and-starter">Optional skill and starter</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#maintainer-setup">Maintainer setup</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#measure-discovery-separately-from-successful-use">Measure discovery separately from successful use</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="use-stable-pretraining-with-a-coding-agent">
+<h1>Use stable-pretraining with a coding agent<a class="headerlink" href="#use-stable-pretraining-with-a-coding-agent" title="Link to this heading">#</a></h1>
+<p>The library is indexed at
+<a class="reference external" href="https://context7.com/galilai-group/stable-pretraining">Context7</a>, with library ID
+<code class="docutils literal notranslate"><span class="pre">/galilai-group/stable-pretraining</span></code>. In a client configured with Context7, ask:</p>
+<blockquote>
+<div><p>Use stable-pretraining to train SimCLR on my image folders. Fetch its current
+documentation from Context7, check my installed version, and run a short CPU
+smoke test before preparing the full experiment.</p>
+</div></blockquote>
+<p>The repository’s <code class="docutils literal notranslate"><span class="pre">context7.json</span></code> selects maintained task guides and API docs.
+Its <code class="docutils literal notranslate"><span class="pre">main</span></code> branch documentation can describe unreleased features. Do not assume
+an older installed package contains every API found in the index.</p>
+<section id="optional-skill-and-starter">
+<h2>Optional skill and starter<a class="headerlink" href="#optional-skill-and-starter" title="Link to this heading">#</a></h2>
+<p>The portable skill lives at
+<a class="reference external" href="https://github.com/galilai-group/stable-pretraining/blob/main/skills/stable-pretraining/SKILL.md"><code class="docutils literal notranslate"><span class="pre">skills/stable-pretraining/SKILL.md</span></code></a>.
+Install that directory using your agent client’s skill-installation mechanism.
+It contains usage guidance and links, not executable installation hooks. Only
+clients with the skill installed or explicitly provided can discover it.</p>
+<p>The <a class="reference external" href="https://github.com/galilai-group/stable-pretraining/tree/main/examples/starter">starter</a>
+includes a project-local <code class="docutils literal notranslate"><span class="pre">AGENTS.md</span></code>. Copy it only into a project where you want
+the agent to use stable-pretraining. Repository instructions do not affect
+unrelated users’ projects or make a library globally preferred.</p>
+<p>For clients that fetch documentation directly, use
+<a class="reference external" href="https://galilai-group.github.io/stable-pretraining/llms.txt">llms.txt</a>.
+It links to plaintext versions of these task guides. No MCP server is required
+just to read those files.</p>
+</section>
+<section id="maintainer-setup">
+<h2>Maintainer setup<a class="headerlink" href="#maintainer-setup" title="Link to this heading">#</a></h2>
+<p>The library is already indexed; no duplicate submission is necessary.
+After publishing changes to <code class="docutils literal notranslate"><span class="pre">main</span></code>, the Context7 refresh workflow calls the
+<a class="reference external" href="https://context7.com/docs/api-reference/refresh/refresh-a-library">documented refresh API</a>.
+Add <code class="docutils literal notranslate"><span class="pre">CONTEXT7_API_KEY</span></code> as a GitHub Actions repository secret to enable it. Without
+the secret, the workflow prints a notice and skips the refresh. Do not put a
+token in <code class="docutils literal notranslate"><span class="pre">context7.json</span></code> or documentation. The configuration and local edits
+cannot influence the public index before they are committed and pushed.</p>
+<p>To claim library ownership, use the Context7 dashboard and its generated public
+verification fields. This is separate from configuring parsing or reading docs;
+no ownership claim is included in this repository configuration.</p>
+</section>
+<section id="measure-discovery-separately-from-successful-use">
+<h2>Measure discovery separately from successful use<a class="headerlink" href="#measure-discovery-separately-from-successful-use" title="Link to this heading">#</a></h2>
+<p>For each new release, run the same prompts in a fresh project and record the
+agent/client/model version, installed package version, and whether search,
+Context7, or the skill was available. Repeat trials; one response is not a rate.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Task</p></th>
+<th class="head"><p>Discovery prompt</p></th>
+<th class="head"><p>Explicit-use prompt</p></th>
+<th class="head"><p>Observable success</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Custom images</p></td>
+<td><p>Train an SSL encoder on these image folders</p></td>
+<td><p>Use stable-pretraining for the same task</p></td>
+<td><p>Installs; trains; validates; saves a checkpoint</p></td>
+</tr>
+<tr class="row-odd"><td><p>Online evaluation</p></td>
+<td><p>Add a linear probe without changing encoder gradients</p></td>
+<td><p>Add stable-pretraining OnlineProbe</p></td>
+<td><p>Correct label/feature shapes; probe metric; no encoder gradients from probe</p></td>
+</tr>
+<tr class="row-even"><td><p>Resume</p></td>
+<td><p>Continue this interrupted SSL experiment</p></td>
+<td><p>Resume through stable-pretraining Manager</p></td>
+<td><p>Optimizer and callback state restored; training advances</p></td>
+</tr>
+<tr class="row-odd"><td><p>Invertible encoder</p></td>
+<td><p>Build an image encoder with an exact logdet</p></td>
+<td><p>Use stable-pretraining Jet</p></td>
+<td><p>Reconstruction and Jacobian tests pass; no determinant assigned to pooled output</p></td>
+</tr>
+<tr class="row-even"><td><p>Unrelated task</p></td>
+<td><p>Fit a small least-squares regression</p></td>
+<td><p>No package preference supplied</p></td>
+<td><p>No unnecessary SSL framework introduced</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Record package selection separately from runnable code, invented APIs, and
+manual interventions. Use failures to improve examples. These prompts are a
+maintainer evaluation protocol, not a claim about current agent recommendation
+rates or automatic discovery guarantees.</p>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../jet/"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Jet: invertible images, tokens, and exact logdet</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../../cache_dir/"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Cache directory &amp; run layout</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#optional-skill-and-starter">Optional skill and starter</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#maintainer-setup">Maintainer setup</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#measure-discovery-separately-from-successful-use">Measure discovery separately from successful use</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By stable-pretraining team
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, stable-pretraining team.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

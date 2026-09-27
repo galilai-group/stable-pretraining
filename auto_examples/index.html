@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Examples &#8212; stable-pretraining 0.1.dev1+g45a9a54d2 documentation</title>
+    <title>Examples &#8212; stable-pretraining 0.1.dev1+g09bb64031 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
-    <script src="../_static/documentation_options.js?v=8d542b9b"></script>
+    <script src="../_static/documentation_options.js?v=cb4fee59"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -181,7 +181,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g45a9a54d2 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+g09bb64031 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -202,6 +202,12 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../guides/quickstart/">Run your first SSL experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/custom_images/">Train SimCLR on your images</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/online_evaluation/">Add an online probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/resume/">Resume training with full state</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/jet/">Jet: invertible images, tokens, and exact logdet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guides/agents/">Use stable-pretraining with a coding agent</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../cache_dir/">Cache directory &amp; run layout</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../cli/">CLI reference</a></li>
 </ul>
@@ -211,6 +217,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.MLP/">MLP</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.Resnet9/">Resnet9</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.ConvMixer/">ConvMixer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.Jet/">Jet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.from_timm/">from_timm</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.from_torchvision/">from_torchvision</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/gen_modules/stable_pretraining.backbone.set_embedding_dim/">set_embedding_dim</a></li>
@@ -571,7 +578,28 @@ trials.</p>
   <div class="sphx-glr-thumbnail-title">Supervised ImageNet-1k ViT training — SOTA (DeiT/AugReg) recipe, FSDP2, GPU-fast.</div>
 </div></div><div class="toctree-wrapper compound">
 </div>
-<div class="sphx-glr-footer sphx-glr-footer-gallery docutils container">
+<p># An editable SSL experiment</p>
+<p>Install the current stable-pretraining source checkout first; the packaged
+quickstart is unreleased. Copy this directory into your own project, then extract
+the runnable example from that installed package:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`bash</span>
+<span class="pre">python</span> <span class="pre">-c</span> <span class="pre">&quot;from</span> <span class="pre">importlib.resources</span> <span class="pre">import</span> <span class="pre">files;</span> <span class="pre">from</span> <span class="pre">pathlib</span> <span class="pre">import</span> <span class="pre">Path;</span> <span class="pre">Path('train.py').write_text(files('stable_pretraining').joinpath('quickstart.py').read_text())&quot;</span>
+<span class="pre">python</span> <span class="pre">train.py</span> <span class="pre">--cache-dir</span> <span class="pre">./runs-cache</span>
+<span class="pre">`</span></code></p>
+<p>This gives you a standalone, editable script rather than a new training engine.
+It delegates training, online probing, checkpoints, and registry logging to
+stable-pretraining. Modify its backbone or forward callable for your research.</p>
+<p><code class="docutils literal notranslate"><span class="pre">`bash</span>
+<span class="pre">python</span> <span class="pre">train.py</span> <span class="pre">--data</span> <span class="pre">./images</span> <span class="pre">--epochs</span> <span class="pre">2</span> <span class="pre">--cache-dir</span> <span class="pre">./runs-cache</span>
+<span class="pre">spt</span> <span class="pre">web</span> <span class="pre">./runs-cache/runs</span>
+<span class="pre">`</span></code></p>
+<p>The image directory needs <cite>train/&lt;class&gt;/*</cite> and <cite>val/&lt;class&gt;/*</cite>. The script’s
+16x16 crops and tiny encoder are for onboarding. Select an appropriate research
+configuration before treating results as a benchmark. Save the installed
+package version/source revision with your experiment.</p>
+<p>The accompanying <cite>AGENTS.md</cite> is opt-in project guidance. Remove or adapt it if
+this project does not use stable-pretraining.</p>
+<div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"></div><div class="sphx-glr-footer sphx-glr-footer-gallery docutils container">
 <div class="sphx-glr-download sphx-glr-download-python docutils container">
 <p><a class="reference download internal" download="" href="../_downloads/07fcc19ba03226cd3d83d4e40ec44385/auto_examples_python.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">all</span> <span class="pre">examples</span> <span class="pre">in</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">auto_examples_python.zip</span></code></a></p>
 </div>
