@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Releases &#8212; stable-pretraining 0.1.dev1+g09bb64031 documentation</title>
+    <title>Releases &#8212; stable-pretraining 0.1.dev1+gab836bf69 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
-    <script src="../_static/documentation_options.js?v=cb4fee59"></script>
+    <script src="../_static/documentation_options.js?v=6f67d992"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -181,7 +181,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+g09bb64031 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+gab836bf69 documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -648,6 +648,15 @@ modal. Clicking <strong>star</strong> on a pill removes the tag; a dashed <code 
 with autocomplete (populated from tags on other runs) adds new ones. All
 changes are persisted via <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/api/run-meta</span></code> with optimistic updates and
 revert on failure.</p></li>
+</ul>
+<p><strong>Dependencies</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">torchvision&gt;=0.21</span></code> is now required (previously unbounded).
+<code class="docutils literal notranslate"><span class="pre">stable_pretraining.data.transforms</span></code> calls the public
+<code class="docutils literal notranslate"><span class="pre">Transform.make_params</span></code> / <code class="docutils literal notranslate"><span class="pre">Transform.transform</span></code> hooks that torchvision
+introduced in 0.21 (paired with torch 2.6); on older torchvision they are
+still named <code class="docutils literal notranslate"><span class="pre">_get_params</span></code> / <code class="docutils literal notranslate"><span class="pre">_transform</span></code> and every <code class="docutils literal notranslate"><span class="pre">spt</span></code> transform
+raised <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> when called.</p></li>
 </ul>
 </section>
 <section id="version-0-1">
