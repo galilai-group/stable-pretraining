@@ -1160,7 +1160,9 @@
       root.prepend(combinedSection);
     }
 
-    for (const name of metrics) updateChart(name);
+    for (const name of metrics) {
+      try { updateChart(name); } catch (e) { console.error('chart', name, e); }
+    }
     for (const tag of mediaTags.keys()) updateMediaPanel(tag);
     updateScatterSection(root);
   }
@@ -2068,7 +2070,18 @@
       },
       scales: {
         x: { time: false },
-        y: { distr: state.logY ? 3 : 1 },
+        y: {
+          distr: state.logY ? 3 : 1,
+          // uPlot loops forever when a linear scale collapses to min == max
+          // (leeoniya/uPlot#1084); widen near-constant series first.
+          range: state.logY ? undefined : (u, min, max) => {
+            if (min != null && max != null && max - min <= Math.abs(max) * 1e-6) {
+              const pad = Math.max(Math.abs(max) * 1e-3, 1e-9);
+              return [min - pad, max + pad];
+            }
+            return uPlot.rangeNum(min, max, 0.1, true);
+          },
+        },
       },
       axes: [
         { stroke: muted, grid: { stroke: grid, width: 1 }, ticks: { stroke: grid } },
