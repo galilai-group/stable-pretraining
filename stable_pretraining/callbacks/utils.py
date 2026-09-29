@@ -278,6 +278,14 @@ def log_header(name: str, width: int = _HEADER_WIDTH) -> None:
 # the producer hook finishes for every callback before any consumer hook
 # runs. Don't list those here.
 ORDER_SENSITIVE_CALLBACKS: Dict[str, str] = {
+    "_RequeueCheckpoint": (
+        "saves training state in on_train_batch_end — place AFTER callbacks "
+        "that update parameters or callback state in that hook"
+    ),
+    "ReconViz": (
+        "reads predictions in on_validation_batch_end — place AFTER "
+        "OnlineImageDecoder or other callbacks that write predictions in that hook"
+    ),
     "TeacherStudentCallback": (
         "EMA update fires in on_train_batch_end; place AFTER any callback "
         "that reads the teacher's parameters in that same hook"

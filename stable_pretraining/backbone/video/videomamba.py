@@ -15,9 +15,9 @@ Mamba S6 selective state-space scan. It is correct on CPU and GPU,
 compiles cleanly under ``torch.compile``, and is the path tested in CI.
 The reference scan is *sequential* over the token sequence (a Python
 loop over ``L``) — slow at large ``L``. For production-scale training on
-CUDA, swap :class:`MambaSSMBlock` for the fast kernel from the
-``mamba-ssm`` package (``selective_scan_cuda``); the surrounding code is
-unchanged.
+CUDA, :class:`MambaSSMBlock` automatically uses the optional ``mamba-ssm``
+selective scan kernel when installed. CPU and installations without the
+kernel use the reference scan.
 
 Token ordering
 --------------
@@ -60,6 +60,13 @@ import torch.utils.checkpoint as ckpt
 from transformers.utils import ModelOutput
 
 from ..pos_embed import get_3d_sincos_pos_embed
+
+try:
+    from mamba_ssm.ops.selective_scan_interface import (
+        selective_scan_fn as _SELECTIVE_SCAN_FN,
+    )
+except ImportError:
+    _SELECTIVE_SCAN_FN = None
 
 
 @dataclass
@@ -178,20 +185,39 @@ class MambaSSMBlock(nn.Module):
         delta = F.softplus(self.dt_proj(delta))  # (B, L, d_inner)
 
         A = -torch.exp(self.A_log.float())  # (d_inner, d_state)
-        # Discretize (zero-order hold).
-        # deltaA: (B, L, d_inner, d_state), deltaB_u: (B, L, d_inner, d_state)
-        deltaA = torch.exp(delta.unsqueeze(-1) * A)
-        deltaB_u = delta.unsqueeze(-1) * B_p.unsqueeze(2) * u.unsqueeze(-1)
 
-        # Sequential selective scan. Slow on CPU; for CUDA scale, swap in
-        # ``mamba_ssm.ops.selective_scan_fn`` — parameter layout matches.
-        state = u.new_zeros(b, self.d_inner, self.d_state)
-        ys = []
-        for i in range(seq_len):
-            state = deltaA[:, i] * state + deltaB_u[:, i]
-            # y_i = state @ C_p[:, i]
-            ys.append(torch.einsum("bdn,bn->bd", state, C_p[:, i]))
-        y = torch.stack(ys, dim=1).to(x.dtype)  # (B, L, d_inner)
+        if (
+            _SELECTIVE_SCAN_FN is not None
+            and x.is_cuda
+            and u.dtype in (torch.float32, torch.float16, torch.bfloat16)
+            and self.d_state <= 256
+        ):
+            # Fast path: mamba-ssm CUDA kernel. Avoids materializing
+            # (B, L, d_inner, d_state) for the gradient tape.
+            # selective_scan_fn requires u/delta/B/C all in the same dtype;
+            # cast everything to u's dtype (whatever autocast picked).
+            dt = u.dtype
+            y = _SELECTIVE_SCAN_FN(
+                u.transpose(1, 2).contiguous(),
+                delta.transpose(1, 2).contiguous().to(dt),
+                A,
+                B_p.transpose(1, 2).contiguous().to(dt),
+                C_p.transpose(1, 2).contiguous().to(dt),
+                delta_softplus=False,
+            )
+            y = y.transpose(1, 2).to(x.dtype)
+        else:
+            # Discretize (zero-order hold).
+            # deltaA: (B, L, d_inner, d_state), deltaB_u: (B, L, d_inner, d_state)
+            deltaA = torch.exp(delta.unsqueeze(-1) * A)
+            deltaB_u = delta.unsqueeze(-1) * B_p.unsqueeze(2) * u.unsqueeze(-1)
+
+            state = u.new_zeros(b, self.d_inner, self.d_state)
+            ys = []
+            for i in range(seq_len):
+                state = deltaA[:, i] * state + deltaB_u[:, i]
+                ys.append(torch.einsum("bdn,bn->bd", state, C_p[:, i]))
+            y = torch.stack(ys, dim=1).to(x.dtype)  # (B, L, d_inner)
 
         y = y + u * self.D
         y = y * F.silu(z)

@@ -34,7 +34,7 @@ class TestIJEPAModuleInput:
     to IJEPA(), verifying the model_or_model_name interface.
     """
 
-    def test_ijepa_3_steps_with_loaded_backbone(self):
+    def test_ijepa_3_steps_with_loaded_backbone(self, imagenette_dataset):
         """Train IJEPA (pre-loaded backbone) for 3 steps and assert loss matches."""
         pl.seed_everything(42, workers=True)
 
@@ -42,10 +42,8 @@ class TestIJEPAModuleInput:
         # IJEPA uses scale=(0.3, 1.0) and no horizontal flip
         data = spt.data.DataModule(
             train=torch.utils.data.DataLoader(
-                dataset=spt.data.HFDataset(
-                    "frgfm/imagenette",
+                dataset=imagenette_dataset(
                     split="train",
-                    revision="refs/convert/parquet",
                     transform=transforms.Compose(
                         transforms.RGB(),
                         transforms.RandomResizedCrop((224, 224), scale=(0.3, 1.0)),
@@ -58,10 +56,8 @@ class TestIJEPAModuleInput:
                 shuffle=True,
             ),
             val=torch.utils.data.DataLoader(
-                dataset=spt.data.HFDataset(
-                    "frgfm/imagenette",
+                dataset=imagenette_dataset(
                     split="validation",
-                    revision="refs/convert/parquet",
                     transform=transforms.Compose(
                         transforms.RGB(),
                         transforms.Resize((256, 256)),
@@ -149,7 +145,7 @@ class TestIJEPAModuleInput:
         print(
             f"\nIJEPA (loaded module) final loss after 3 steps: {final_loss.item():.6f}"
         )
-        expected = torch.tensor(0.515345)
+        expected = torch.tensor(0.511786)
         assert torch.isclose(final_loss.cpu(), expected, atol=1e-4), (
             f"IJEPA loss {final_loss.item():.6f} != expected {expected.item():.6f}"
         )

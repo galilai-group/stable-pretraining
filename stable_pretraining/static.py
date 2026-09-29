@@ -1,4 +1,5 @@
 from pathlib import Path
+from copy import deepcopy
 from loguru import logger as logging
 import threading
 from typing import Dict, List, Optional
@@ -45,7 +46,7 @@ class MetaStatic(type):
         cls._ensure_loaded()
         # Return a copy to prevent mutation of cached data
         value = cls._data[key]
-        return value
+        return deepcopy(value)
 
     def __setitem__(cls, key, value):
         """Enable bracket notation for setting items on the class itself."""
@@ -66,19 +67,19 @@ class MetaStatic(type):
         """Return a view of the values (as copies to prevent mutation)."""
         cls._ensure_loaded()
         # Return copies of lists to prevent mutation
-        return (list(v) for v in cls._data.values())
+        return (deepcopy(v) for v in cls._data.values())
 
     def items(cls):
         """Return a view of the items (with copied values)."""
         cls._ensure_loaded()
         # Return copies of lists to prevent mutation
-        return ((k, v) for k, v in cls._data.items())
+        return ((k, deepcopy(v)) for k, v in cls._data.items())
 
     def get(cls, key, default=None):
         """Get value with optional default."""
         cls._ensure_loaded()
         if key in cls._data:
-            return list(cls._data[key])
+            return deepcopy(cls._data[key])
         return default
 
     def clear(cls):

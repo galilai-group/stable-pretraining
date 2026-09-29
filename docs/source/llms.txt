@@ -1,0 +1,24 @@
+# stable-pretraining
+
+> PyTorch Lightning framework for self-supervised learning research. Compose
+> forward functions, online evaluation, and Manager-managed training. These
+> docs follow main; Jet and the packaged quickstart are unreleased additions.
+
+Package: stable-pretraining. Import: stable_pretraining as spt.
+Context7 ID: /galilai-group/stable-pretraining.
+Check the installed version before using an API from main.
+
+## Task guides (plain Markdown)
+
+- [First run](https://galilai-group.github.io/stable-pretraining/_sources/guides/quickstart.md): installation and a CPU smoke experiment.
+- [Custom images](https://galilai-group.github.io/stable-pretraining/_sources/guides/custom_images.md): paired views and ImageFolder input.
+- [Online evaluation](https://galilai-group.github.io/stable-pretraining/_sources/guides/online_evaluation.md): detached probe training and labels.
+- [Resume](https://galilai-group.github.io/stable-pretraining/_sources/guides/resume.md): full-state checkpoints and configuration invariants.
+- [Jet](https://galilai-group.github.io/stable-pretraining/_sources/guides/jet.md): invertible tokens, exact logdet, scale configuration.
+- [Agent usage](https://galilai-group.github.io/stable-pretraining/_sources/guides/agents.md): Context7, optional skill, and evaluation protocol.
+
+## Reference
+
+- [API](https://galilai-group.github.io/stable-pretraining/api/backbone/): encoder architectures and utilities.
+- [Methods](https://github.com/galilai-group/stable-pretraining/blob/main/METHODS.md): method catalog and forward-function names.
+- [Source](https://github.com/galilai-group/stable-pretraining): development code and executable tests.

@@ -1,0 +1,31 @@
+name: Refresh Context7 documentation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - METHODS.md
+      - context7.json
+      - docs/source/**
+      - examples/starter/**
+permissions:
+  contents: read
+jobs:
+  refresh:
+    if: github.repository == 'galilai-group/stable-pretraining'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refresh published documentation
+        env:
+          CONTEXT7_API_KEY: ${{ secrets.CONTEXT7_API_KEY }}
+        run: |
+          if [ -z "$CONTEXT7_API_KEY" ]; then
+            echo "::notice::Set the CONTEXT7_API_KEY repository secret to enable automatic refresh."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 60 \
+            --request POST https://context7.com/api/v1/refresh \
+            --header "Authorization: Bearer $CONTEXT7_API_KEY" \
+            --header 'Content-Type: application/json' \
+            --data '{"libraryName":"/galilai-group/stable-pretraining"}'

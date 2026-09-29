@@ -61,9 +61,9 @@ def _lerp(a, b, x):
 
 def _grad(hash, x, y):
     h = hash & 7
-    u = x if (h < 4).all() else y
-    v = y if (h < 4).all() else x
-    return (u if ((h & 1) == 0).all() else -u) + (v if ((h & 2) == 0).all() else -v)
+    u = torch.where(h < 4, x, y)
+    v = torch.where(h < 4, y, x)
+    return torch.where((h & 1) == 0, u, -u) + torch.where((h & 2) == 0, v, -v)
 
 
 def _perlin(x, y, permutation):
@@ -100,7 +100,9 @@ def generate_perlin_noise_2d(shape, res, octaves=1, persistence=0.5, lacunarity=
     grid = (
         torch.stack(
             torch.meshgrid(
-                torch.arange(0, res[0], delta[0]), torch.arange(0, res[1], delta[1])
+                torch.arange(0, res[0], delta[0]),
+                torch.arange(0, res[1], delta[1]),
+                indexing="ij",
             ),
             dim=-1,
         )
@@ -236,26 +238,37 @@ class MinariStepsDataset(Dataset):
 
     def __init__(self, dataset, num_steps=2, transform=None):
         super().__init__(transform)
+        if not isinstance(num_steps, int) or num_steps < 1:
+            raise ValueError("num_steps must be a positive integer")
         self.num_steps = num_steps
         self.dataset = dataset
 
-        episode_lengths = [len(dataset[idx]) for idx in dataset.episode_indices[:-1]]
-        self.bounds = np.cumsum([0] + episode_lengths)
-        self.bounds -= np.arange(self.dataset.total_episodes) * (num_steps - 1)
-
-        self._length = (
-            self.dataset.total_steps - (num_steps - 1) * self.dataset.total_episodes
-        )
+        # Metadata avoids reading every observation just to locate boundaries.
+        # Minari episode IDs can be noncontiguous within a dataset subset.
+        windows = [
+            max(0, metadata["total_steps"] - num_steps + 1)
+            for metadata in dataset.storage.get_episode_metadata(
+                dataset.episode_indices
+            )
+        ]
+        self.bounds = np.cumsum([0] + windows)
+        self._length = int(self.bounds[-1])
         logging.info("Minari Dataset setup")
         logging.info(f"\t- {self.dataset.total_episodes} episodes")
         logging.info(f"\t- {len(self)} steps")
 
     def nested_step(self, value, idx):
-        if type(value) is dict:
+        if isinstance(value, dict):
             return {k: self.nested_step(v, idx) for k, v in value.items()}
+        if isinstance(value, tuple):
+            return tuple(self.nested_step(v, idx) for v in value)
         return value[idx : idx + self.num_steps]
 
     def __getitem__(self, idx):
+        if idx < 0:
+            idx += len(self)
+        if not 0 <= idx < len(self):
+            raise IndexError(idx)
         ep_idx = np.searchsorted(self.bounds, idx, side="right") - 1
         frame_idx = idx - self.bounds[ep_idx]
         episode = self.dataset[ep_idx]
@@ -274,13 +287,21 @@ class MinariStepsDataset(Dataset):
 
 
 class MinariEpisodeDataset(torch.utils.data.Dataset):
-    """Dataset for Minari reinforcement learning data with episode-based access."""
+    """Flatten Minari episodes into individual training steps."""
 
     NAMES = ["observations", "actions", "rewards", "terminations", "truncations"]
 
     def __init__(self, dataset):
         self.dataset = dataset
-        self.bounds = self.dataset.episode_indices
+        self.bounds = np.cumsum(
+            [0]
+            + [
+                metadata["total_steps"]
+                for metadata in dataset.storage.get_episode_metadata(
+                    dataset.episode_indices
+                )
+            ]
+        )
         self._trainer = None
 
         logging.info("Minari Dataset setup")
@@ -291,14 +312,19 @@ class MinariEpisodeDataset(torch.utils.data.Dataset):
         self._trainer = trainer
 
     def nested_step(self, value, idx):
-        if type(value) is dict:
+        if isinstance(value, dict):
             return {k: self.nested_step(v, idx) for k, v in value.items()}
+        if isinstance(value, tuple):
+            return tuple(self.nested_step(v, idx) for v in value)
         return value[idx]
 
     def __getitem__(self, idx):
+        if idx < 0:
+            idx += len(self)
+        if not 0 <= idx < len(self):
+            raise IndexError(idx)
         ep_idx = np.searchsorted(self.bounds, idx, side="right") - 1
         frame_idx = idx - self.bounds[ep_idx]
-        print(ep_idx, frame_idx)
         episode = self.dataset[ep_idx]
         sample = {
             name: self.nested_step(getattr(episode, name), frame_idx)
@@ -314,7 +340,7 @@ class MinariEpisodeDataset(torch.utils.data.Dataset):
         return sample
 
     def __len__(self):
-        return self.dataset.total_steps
+        return int(self.bounds[-1])
 
     @property
     def column_names(self):

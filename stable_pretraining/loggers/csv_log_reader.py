@@ -54,75 +54,6 @@ def _optimize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return df_opt
 
 
-def _save_variant(df, base_path, fmt, comp):
-    """Save DataFrame in a specific format with compression and return file size.
-
-    Creates a file with naming pattern: {base_path}__{format}__{compression}.{ext}
-
-    Args:
-        df: DataFrame to save.
-        base_path: Base path/name for the output file (without extension).
-        fmt: File format. Supported values: 'parquet', 'csv', 'feather', 'pickle'.
-        comp: Compression algorithm. Valid options depend on format:
-            - parquet: 'brotli', 'gzip', 'snappy', 'zstd', 'none'
-            - csv: 'gzip', 'bz2', 'xz', 'zstd', 'zip'
-            - feather: 'zstd', 'lz4', 'uncompressed'
-            - pickle: 'infer', 'gzip', 'bz2', 'xz', 'zstd'
-
-    Returns:
-        Tuple of (filename, size_in_bytes) if successful, (None, None) if failed.
-
-    Notes:
-        - CSV files are saved without index
-        - File extensions are automatically appended based on format
-        - Failures are logged but don't raise exceptions (returns None, None)
-        - Unknown formats trigger a warning and return None, None
-
-    Examples:
-        >>> df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
-        >>> filename, size = _save_variant(df, "data/output", "parquet", "zstd")
-        >>> filename
-        'data/output__parquet__zstd.parquet'
-        >>> size > 0
-        True
-
-        >>> # CSV with gzip compression
-        >>> filename, size = _save_variant(df, "data/output", "csv", "gzip")
-        >>> filename
-        'data/output__csv__gzip.csv.gz'
-    """
-    filename = f"{base_path}__{fmt}__{comp}"
-    try:
-        if fmt == "parquet":
-            filename += ".parquet"
-            df.to_parquet(filename, compression=comp)
-        elif fmt == "csv":
-            ext = {
-                "gzip": "gz",
-                "bz2": "bz2",
-                "xz": "xz",
-                "zstd": "zst",
-                "zip": "zip",
-            }.get(comp, comp)
-            filename += f".csv.{ext}"
-            df.to_csv(filename, compression=comp, index=False)
-        elif fmt == "feather":
-            filename += ".feather"
-            df.to_feather(filename, compression=comp)
-        elif fmt == "pickle":
-            filename += ".pkl"
-            df.to_pickle(filename, compression=comp)
-        else:
-            logger.warning(f"Unknown format: {fmt}")
-            return None, None
-        size = os.path.getsize(filename)
-        logger.debug(f"Saved {filename} ({size / 1024:.2f} KB)")
-        return filename, size
-    except Exception as e:
-        logger.error(f"Failed to save {filename}: {e}")
-        return None, None
-
-
 def _get_trials():
     # Add more combinations as needed
     return [
@@ -198,8 +129,10 @@ def _get_extension(fmt: str, comp: str) -> str:
     elif fmt == "feather":
         return ".feather"
     elif fmt == "pickle":
-        # Pickle compression is in the file itself
-        return ".pkl"
+        suffix = {"gzip": ".gz", "bz2": ".bz2", "xz": ".xz", "zstd": ".zst"}.get(
+            comp, ""
+        )
+        return f".pkl{suffix}"
     elif fmt == "csv":
         # CSV needs compression-specific extensions
         comp_ext = {

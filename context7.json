@@ -1,0 +1,16 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "stable-pretraining",
+  "description": "PyTorch Lightning framework for self-supervised learning research with composable objectives, online evaluation, invertible Jet encoders, and checkpoint/resume support.",
+  "branch": "main",
+  "folders": ["docs/source/guides", "docs/source/api", "examples/starter"],
+  "excludeFolders": ["docs/source/api/gen_modules", "stable_pretraining/tests", "build", "dist"],
+  "excludeFiles": ["AGENTS.md", "CLAUDE.md", "THIRD_PARTY_NOTICES.md", "LICENSE", "CODE_OF_CONDUCT.md"],
+  "rules": [
+    "Check the installed version before using examples from main. Jet and python -m stable_pretraining.quickstart are unreleased additions; install the matching source revision to use them.",
+    "Use import stable_pretraining as spt. Compose spt.Module, spt.data.DataModule, and spt.Manager for training; reuse the existing data and callback APIs.",
+    "A Module forward callable takes (self, batch, stage), with a dict batch and runtime stages fit, validate, test. Return a dict with scalar tensor loss during training.",
+    "For full training-state resume, pass a trusted absolute checkpoint path to Manager with weights_only=False and preserve the original model, optimizer, and callback configuration.",
+    "Jet's logdet belongs to the complete invertible token output. Token pooling and projections are not invertible and do not inherit that determinant."
+  ]
+}

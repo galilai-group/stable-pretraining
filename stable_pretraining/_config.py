@@ -88,10 +88,8 @@ class _GlobalConfig:
         )
         self._cache_dir: Optional[str] = os.environ.get("SPT_CACHE_DIR", _default_cache)
         self._requeue_checkpoint: bool = True
-        # Save the requeue ``last.ckpt`` every N training steps in addition to
-        # epoch-end. 0 = epoch-end only. On heavily-preempted (e.g. spot)
-        # partitions a long epoch may never finish before preemption, leaving
-        # no checkpoint to resume from; a step cadence guarantees one exists.
+        # Long epochs can replay substantial work after preemption. Optional
+        # step saves limit this beyond the first-step and epoch-end defaults.
         self._requeue_checkpoint_every_n_steps: int = 0
         self._exclude_bias_norm: bool = False
 
@@ -412,19 +410,20 @@ def set(
                 into the run directory.
 
         requeue_checkpoint: Whether to automatically add a
-            ``ModelCheckpoint`` that saves ``last.ckpt`` every epoch for
-            SLURM requeue recovery.  ``True`` (default) ensures seamless
-            preemption handling.  Set to ``False`` to save time/disk when
+            ``ModelCheckpoint`` that saves ``last.ckpt`` after the first
+            completed training step and every epoch for SLURM requeue recovery.
+            Preemption before that first save still has no checkpoint to resume.
+            Set to ``False`` to save time/disk when
             preemption is not a concern.  Only applies when ``cache_dir``
             is set.
 
         requeue_checkpoint_every_n_steps: Also save the requeue
             ``last.ckpt`` every N training steps (in addition to
-            epoch-end).  ``0`` (default) keeps epoch-end-only saving.  Set
+            epoch-end). ``0`` (default) keeps first-step and epoch-end saves. Set
             this on heavily-preempted partitions (e.g. SLURM ``spot``)
-            where a long epoch may never finish before preemption — without
-            a mid-epoch checkpoint the next requeue has nothing to resume
-            from and fails.  Only applies when ``requeue_checkpoint`` is on.
+            to limit how much progress must be replayed during a long epoch.
+            The first completed training step is saved regardless of this
+            interval. Only applies when ``requeue_checkpoint`` is on.
 
         exclude_bias_norm: Global default for excluding bias and
             normalization-layer parameters from weight decay (#368).

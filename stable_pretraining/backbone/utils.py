@@ -1,5 +1,6 @@
 import copy
 import math
+from functools import partial
 from typing import Union, Iterable, List, Optional, Any, Dict
 
 import torch
@@ -293,10 +294,14 @@ class HiddenStateExtractor(nn.Module):
 
         logging.info(f"ReturnEmbedding: hooking {len(module_names)} modules")
 
+        modules = []
         for name in self.module_names:
             module = self._get_nested_module(name)
             if module is None:
                 raise ValueError(f"Module '{name}' not found in backbone.")
+            modules.append(module)
+        # Validate every name before installing hooks on the caller's model.
+        for name, module in zip(self.module_names, modules):
             hook = module.register_forward_hook(self._create_hook(name))
             self._hooks.append(hook)
 
@@ -311,11 +316,20 @@ class HiddenStateExtractor(nn.Module):
 
     def _create_hook(self, name: str):
         """Create a forward hook that caches the output under the given name."""
+        # Bound methods are rebound to the copied owner by deepcopy/pickle;
+        # closures would keep writing into the original extractor's cache.
+        return partial(self._capture_hidden_state, name)
 
-        def hook(module: nn.Module, input: tuple, output: torch.Tensor) -> None:
-            self._cache[name] = output
+    def _capture_hidden_state(
+        self, name: str, module: nn.Module, input: tuple, output: torch.Tensor
+    ) -> None:
+        self._cache[name] = output
 
-        return hook
+    def __getstate__(self) -> dict[str, Any]:
+        """Exclude transient activations and their autograd graphs from copies."""
+        state = super().__getstate__()
+        state["_cache"] = {}
+        return state
 
     def _get_nested_module(self, name: str) -> nn.Module | None:
         """Retrieve a nested module by dot-separated path."""
@@ -403,12 +417,7 @@ class TeacherStudentWrapper(nn.Module):
             self.register_buffer("ema_coefficient", self.base_ema_coefficient.clone())
         else:
             # Create a teacher network with the same architecture as the student.
-            if isinstance(student, HiddenStateExtractor):
-                self.teacher = HiddenStateExtractor(
-                    copy.deepcopy(student.backbone), student.module_names
-                )
-            else:
-                self.teacher = copy.deepcopy(student)
+            self.teacher = copy.deepcopy(student)
             self.teacher.requires_grad_(False)  # Teacher should not require gradients.
 
             if warm_init:  # Initialization step to match the student's parameters.
@@ -437,7 +446,7 @@ class TeacherStudentWrapper(nn.Module):
         """
         if not self.training:
             return  # We don't update in eval
-        elif self.ema_coefficient.item() == 0.0:
+        elif self.teacher is self.student:
             return  # Nothing to update when the teacher is the student.
         elif self.ema_coefficient.item() == 1.0:
             return  # No need to update when the teacher is fixed.
@@ -447,9 +456,12 @@ class TeacherStudentWrapper(nn.Module):
             (self.teacher.buffers(), self.student.buffers()),
         ]:
             for t, s in zip(teacher_group, student_group):
-                ty = t.dtype
-                t.mul_(self.ema_coefficient.to(dtype=ty))
-                t.add_((1.0 - self.ema_coefficient).to(dtype=ty) * s)
+                if t.is_floating_point() or t.is_complex():
+                    t.mul_(self.ema_coefficient.to(dtype=t.dtype))
+                    t.add_((1.0 - self.ema_coefficient).to(dtype=t.dtype) * s)
+                else:
+                    # Counters and boolean state have no fractional EMA value.
+                    t.copy_(s)
 
     @torch.no_grad
     def update_ema_coefficient(self, epoch: int, total_epochs: int):
@@ -869,9 +881,9 @@ def set_embedding_dim(
         if expected_input_shape is None:
             logging.error("Can't do that without `expected_input_shape`")
             raise ValueError("Can't do that without `expected_input_shape`")
-        test_input = torch.empty(expected_input_shape, device="meta")
-        out_shape = module.to("meta")(test_input)
-        in_features = out_shape.flatten(1).size(1)
+        test_input = torch.empty(expected_input_shape)
+        out_shape = get_output_shape(module, test_input)
+        in_features = math.prod(out_shape[1:])
         embedder = nn.Sequential(
             nn.Flatten(), nn.Linear(in_features, out_features=dim, bias=bias)
         )
@@ -884,19 +896,13 @@ def set_embedding_dim(
         )
     else:
         assert expected_output_shape is not None
-        x = torch.empty(expected_input_shape, device="meta")
-        # Save original device before moving to meta
-        original_device = next(module.parameters()).device
-        out = module.to("meta")(x)
-        if isinstance(out, tuple):
-            assert out[0].shape == expected_output_shape
-        elif hasattr(out, "logits"):
-            assert out["logits"].shape == expected_output_shape
+        out = get_output_shape(module, torch.empty(expected_input_shape))
+        if isinstance(out, tuple) and not isinstance(out, torch.Size):
+            assert out[0] == expected_output_shape
+        elif isinstance(out, dict) and "logits" in out:
+            assert out["logits"] == expected_output_shape
         else:
-            assert out.shape == expected_output_shape
-        # Move module back to original device
-        # Use to_empty() for meta tensors which have no data
-        module = module.to_empty(device=original_device)
+            assert out == expected_output_shape
     return module
 
 
@@ -1281,14 +1287,6 @@ class EfficientMaskedTimmViT(nn.Module):
         if hasattr(self.vit, "forward_head"):
             # Newer timm models with forward_head method
             return self.vit.forward_head(x)
-        elif hasattr(self.vit, "head"):
-            # Standard ViT: use cls token (first token)
-            if hasattr(self.vit, "fc_norm") and self.vit.fc_norm is not None:
-                # Some models apply additional norm before head
-                x = self.vit.fc_norm(x[:, 0])
-                return self.vit.head(x)
-            else:
-                return self.vit.head(x[:, 0])
         elif hasattr(self.vit, "head_dist"):
             # DeiT with distillation - has two heads
             x_cls = self.vit.head(x[:, 0])
@@ -1299,6 +1297,14 @@ class EfficientMaskedTimmViT(nn.Module):
             else:
                 # Average predictions during inference
                 return (x_cls + x_dist) / 2
+        elif hasattr(self.vit, "head"):
+            # Standard ViT: use cls token (first token)
+            if hasattr(self.vit, "fc_norm") and self.vit.fc_norm is not None:
+                # Some models apply additional norm before head
+                x = self.vit.fc_norm(x[:, 0])
+                return self.vit.head(x)
+            else:
+                return self.vit.head(x[:, 0])
         else:
             # No head - return raw features
             return x

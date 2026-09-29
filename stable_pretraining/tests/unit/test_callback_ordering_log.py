@@ -88,6 +88,8 @@ class TestLogCallbacksOrder:
         Lightning serializes hooks across all callbacks.
         """
         expected = {
+            "_RequeueCheckpoint",
+            "ReconViz",
             "TeacherStudentCallback",
             "OnlineProbe",
             "OnlineWriter",

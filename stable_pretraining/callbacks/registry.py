@@ -126,6 +126,25 @@ class ModuleRegistryCallback(Callback):
         self, trainer: Trainer, pl_module: LightningModule, stage: str
     ) -> None:
         """Clean up registry when done."""
+        self._cleanup()
+
+    def on_exception(
+        self,
+        trainer: Trainer,
+        pl_module: LightningModule,
+        exception: BaseException,
+    ) -> None:
+        """Release global logging state after an interrupted run.
+
+        Args:
+            trainer: Trainer whose run was interrupted.
+            pl_module: Module registered for the interrupted run.
+            exception: Exception that interrupted training or evaluation.
+        """
+        # Lightning's exception path does not call callback teardown.
+        self._cleanup()
+
+    def _cleanup(self) -> None:
         with _lock:
             dropped = _METRIC_BUFFER.pop(self.name, [])
             dropped_dict = _DICT_BUFFER.pop(self.name, [])

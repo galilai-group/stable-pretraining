@@ -55,6 +55,7 @@ from .methods.vicreg import VICReg as VICReg
 from . import backbone as backbone
 from . import callbacks as callbacks
 from . import data as data
+from . import forward as forward
 from . import loggers as loggers
 from . import losses as losses
 from . import methods as methods

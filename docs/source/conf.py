@@ -131,6 +131,8 @@ numfig_secnum_depth = 3
 
 html_theme = "sphinx_book_theme"
 html_static_path = []
+html_extra_path = ["llms.txt"]
+html_sourcelink_suffix = ""
 # html_favicon =
 # html_logo =
 # Options accepted by sphinx_book_theme. The earlier list also held a

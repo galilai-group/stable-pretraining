@@ -1,6 +1,7 @@
 """Callback for automatic TeacherStudentWrapper EMA updates."""
 
 import lightning as pl
+import torch
 from lightning.pytorch.callbacks import Callback
 from loguru import logger as logging
 
@@ -31,8 +32,10 @@ class TeacherStudentCallback(Callback):
         update_frequency: How often to update the teacher network, measured in
             optimizer steps. Default is ``1`` (every step).
         update_after_backward: If ``True``, the EMA update fires after the backward
-            pass (before the optimizer step). If ``False``, it fires after the
-            optimizer step. Default is ``False``.
+            pass on an optimizer-step boundary (before the main optimizer step).
+            Accumulation-only batches and callback-owned optimizers do not trigger
+            additional updates. If ``False``, it fires after the optimizer step.
+            Default is ``False``.
         verbose: If ``True``, log the EMA coefficient and update count each step.
             ``None`` inherits the global ``spt`` verbosity setting.
 
@@ -52,26 +55,25 @@ class TeacherStudentCallback(Callback):
         super().__init__()
         from .utils import resolve_verbose
 
+        if not isinstance(update_frequency, int) or update_frequency < 1:
+            raise ValueError("update_frequency must be a positive integer")
         self.update_frequency = update_frequency
         self.update_after_backward = update_after_backward
         self.verbose = resolve_verbose(verbose)
         self._wrapper_found = False
-        # Track optimizer-step progress and accumulation steps
         self._last_global_step = -1
-        self._backward_calls = 0
 
     def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
         """Log if TeacherStudentWrapper instances are found."""
         # Reset counters at the start of fit
-        self._last_global_step = -1
-        self._backward_calls = 0
+        self._last_global_step = trainer.global_step
         wrapper_count = self._count_teacher_student_wrappers(pl_module)
-        if wrapper_count > 0:
-            self._wrapper_found = True
+        self._wrapper_found = wrapper_count > 0
+        if self._wrapper_found:
             log_header("TeacherStudentCallback")
             logging.info(
                 f"  found {wrapper_count} TeacherStudentWrapper instance(s). "
-                f"Updates every {self.update_frequency} batch(es)."
+                f"Updates every {self.update_frequency} optimizer step(s)."
             )
         else:
             logging.warning(
@@ -91,25 +93,45 @@ class TeacherStudentCallback(Callback):
         if not self.update_after_backward:
             # Only update after an optimizer step (global_step increments on optimizer step)
             current_step = trainer.global_step
-            if current_step != self._last_global_step and self._should_update(
-                current_step
+            if (
+                current_step > self._last_global_step
+                and current_step % self.update_frequency == 0
             ):
                 self._update_all_wrappers(trainer, pl_module)
                 self._last_global_step = current_step
 
-    def on_after_backward(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    def on_before_optimizer_step(
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
+        optimizer: torch.optim.Optimizer,
     ) -> None:
-        """Update teacher models after backward pass if update_after_backward is True."""
-        if self.update_after_backward:
-            # Use an internal counter to respect update_frequency under gradient accumulation
-            self._backward_calls += 1
-            if self._should_update(self._backward_calls - 1):
-                self._update_all_wrappers(trainer, pl_module)
+        """Update before the main optimizer, after its accumulation window.
 
-    def _should_update(self, batch_idx: int) -> bool:
-        """Check if we should update on this batch."""
-        return (batch_idx + 1) % self.update_frequency == 0
+        Args:
+            trainer: Trainer owning the optimizer-step counter.
+            pl_module: Model containing the teacher/student wrappers.
+            optimizer: Optimizer about to step.
+        """
+        if not self.update_after_backward:
+            return
+        # Backward hooks also fire on accumulation-only batches. Callback-owned
+        # optimizers must not cause extra EMA updates either.
+        optimizers = trainer.optimizers
+        index = (
+            pl_module._pick_global_step_ticker(optimizers)
+            if hasattr(pl_module, "_pick_global_step_ticker")
+            else 0
+        )
+        if optimizer is not optimizers[index]:
+            return
+        next_step = trainer.global_step + 1
+        if (
+            next_step > self._last_global_step
+            and next_step % self.update_frequency == 0
+        ):
+            self._update_all_wrappers(trainer, pl_module)
+            self._last_global_step = next_step
 
     def _update_all_wrappers(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule

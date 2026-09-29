@@ -175,7 +175,13 @@ class TestDatasetIntegration:
         dataset = spt.data.MinariStepsDataset(minari_dataset, num_steps=2)
 
         assert np.all(dataset.bounds >= 0)
-        assert len(dataset.bounds) == minari_dataset.total_episodes
+        assert len(dataset.bounds) == minari_dataset.total_episodes + 1
+        assert dataset.bounds[0] == 0
+        assert dataset.bounds[-1] == len(dataset)
+        expected_windows = [
+            max(0, len(episode) - dataset.num_steps + 1) for episode in minari_dataset
+        ]
+        np.testing.assert_array_equal(np.diff(dataset.bounds), expected_windows)
         assert dataset.bounds[-1] < minari_dataset.total_steps
         assert len(dataset) < minari_dataset.total_steps
 

@@ -12,8 +12,8 @@ Example:
 import atexit
 import mimetypes
 from pathlib import Path
-from queue import Queue
-from threading import Thread
+from queue import Empty, Queue
+from threading import Thread, current_thread
 from typing import Optional, Callable
 from loguru import logger
 
@@ -149,7 +149,7 @@ class GDriveUploader:
             # Find highest version
             version = 1
             for folder in folders:
-                if "_v" in folder["name"]:
+                if folder["name"].startswith(f"{self.folder_name}_v"):
                     try:
                         ver = int(folder["name"].split("_v")[-1])
                         version = max(version, ver)
@@ -186,13 +186,16 @@ class GDriveUploader:
 
     def _upload_worker(self):
         """Background worker that processes upload queue."""
-        logger.info(f"Worker started (TID: {Thread.current_thread().ident})")
+        logger.info(f"Worker started (TID: {current_thread().ident})")
         processed = 0
 
-        while not self._stop_worker:
+        while True:
             try:
                 task = self._upload_queue.get(timeout=1)
+            except Empty:
+                continue
 
+            try:
                 if task is None:  # Shutdown signal
                     logger.info("Worker received shutdown signal")
                     break
@@ -210,12 +213,13 @@ class GDriveUploader:
                     except Exception as e:
                         logger.error(f"Callback error: {e}")
 
-                self._upload_queue.task_done()
                 logger.debug(f"Queue size: {self._upload_queue.qsize()}")
 
             except Exception as e:
                 if not self._stop_worker:
                     logger.error(f"Worker error: {e}")
+            finally:
+                self._upload_queue.task_done()
 
         logger.info(f"Worker stopped (processed {processed} uploads)")
 
@@ -300,6 +304,8 @@ class GDriveUploader:
             >>> uploader.upload_file("video.mp4")
             >>> uploader.upload_file("report.pdf", custom_name="Q4_report.pdf")
         """
+        if self._stop_worker:
+            raise RuntimeError("Uploader has been shut down")
         logger.info(f"Queuing: {file_path}")
         self._upload_queue.put((file_path, custom_name, subfolder_id))
 
@@ -323,20 +329,13 @@ class GDriveUploader:
             >>> uploader.upload_file("file2.txt")
             >>> uploader.wait_for_uploads(timeout=300)  # Wait max 5 min
         """
-        pending = self.get_queue_size()
-
-        if pending == 0:
-            logger.info("✓ No pending uploads")
-            return True
-
-        logger.info(f"Waiting for {pending} upload(s)...")
-        if timeout:
-            logger.debug(f"Timeout: {timeout}s")
-
         try:
-            self._upload_queue.join()
-            logger.success("✓ All uploads complete")
-            return True
+            # qsize excludes the upload currently being processed.
+            with self._upload_queue.all_tasks_done:
+                return self._upload_queue.all_tasks_done.wait_for(
+                    lambda: self._upload_queue.unfinished_tasks == 0,
+                    timeout=timeout,
+                )
         except Exception as e:
             logger.error(f"Wait error: {e}")
             return False
@@ -355,6 +354,8 @@ class GDriveUploader:
 
     def _cleanup(self):
         """Shutdown worker thread gracefully."""
+        if self._stop_worker:
+            return
         logger.info("Shutting down GDriveUploader...")
         self._stop_worker = True
         self._upload_queue.put(None)  # Poison pill

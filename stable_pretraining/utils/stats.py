@@ -12,7 +12,7 @@ def mean_var(
     sync: bool = True,
     same_shape_across_devices: bool = True,
 ) -> tuple[Tensor, Tensor, int]:
-    """Compute mean and std synchronized across DDP ranks.
+    """Compute mean and variance synchronized across DDP ranks.
 
     Numerically stable for bf16/fp16 by using fp32 accumulation internally.
     Supports variable batch sizes across ranks.
@@ -32,8 +32,8 @@ def mean_var(
     -------
     mean : Tensor
         Global mean across all ranks.
-    std : Tensor
-        Global standard deviation across all ranks.
+    var : Tensor
+        Global variance across all ranks.
     n_global : int
         Total sample count across all ranks.
     """
@@ -43,25 +43,26 @@ def mean_var(
         return mean, var, n_local
     elif same_shape_across_devices:
         n_global = n_local * dist.get_world_size()
+        acc_x = x.float() if x.dtype in (torch.float16, torch.bfloat16) else x
         # E[X²] = Var + Mean²  →  single all_reduce
-        mean = x.mean(dim, keepdim=keepdim)
-        ssq = x.square().mean(dim, keepdim=keepdim)
+        mean = acc_x.mean(dim, keepdim=keepdim)
+        ssq = acc_x.square().mean(dim, keepdim=keepdim)
         stats = torch.stack([mean, ssq])
         stats = functional_all_reduce(stats, op=dist.ReduceOp.AVG)
         global_mean = stats[0]
         global_var = stats[1] - global_mean.square()
         if unbiased:
-            global_var = global_var * (n_global / (n_global - 1))
-        return global_mean, global_var, n_global
+            global_var = global_var * n_global / (n_global - 1)
+        return global_mean.to(x.dtype), global_var.to(x.dtype), n_global
 
     input_dtype = x.dtype
     device = x.device
     use_fp32 = input_dtype in (torch.float16, torch.bfloat16)
-    acc_dtype = torch.float32 if use_fp32 else None
+    acc_x = x.float() if use_fp32 else x
 
     # Local statistics (fp32 accumulator via dtype arg)
-    local_mean = x.mean(dim, keepdim=True, dtype=acc_dtype)
-    local_sq_mean = x.square().mean(dim, keepdim=True, dtype=acc_dtype)
+    local_mean = acc_x.mean(dim, keepdim=True)
+    local_sq_mean = acc_x.square().mean(dim, keepdim=True)
 
     # Scale by count (single multiply, avoids accumulated sum)
     n_mean = n_local * local_mean
@@ -69,15 +70,12 @@ def mean_var(
 
     # Fused all-reduce
     stacked = torch.cat([n_mean, n_sq_mean], dim=dim)
-    if use_fp32:
-        stacked = stacked.to(input_dtype)
     stacked = functional_all_reduce(stacked, op=dist.ReduceOp.SUM)
 
     n_local_t = torch.tensor([n_local], device=device, dtype=torch.float32)
     n_global_t = functional_all_reduce(n_local_t, op=dist.ReduceOp.SUM)
 
     # Recover statistics
-    stacked = stacked.float()
     n_mean, n_sq_mean = stacked.chunk(2, dim=dim)
 
     global_mean = n_mean / n_global_t
@@ -85,10 +83,8 @@ def mean_var(
     global_var = global_sq_mean - global_mean * global_mean
 
     n_global = int(n_global_t.item())
-    if unbiased and n_global > 1:
-        global_var = global_var * (n_global / (n_global - 1))
-
-    global_var = global_var
+    if unbiased:
+        global_var = global_var * n_global / (n_global - 1)
 
     if use_fp32:
         global_mean = global_mean.to(input_dtype)

@@ -101,6 +101,24 @@ class TestIsBiasOrNormParam:
 class TestSplitParamsForWeightDecay:
     """Tests for split_params_for_weight_decay function."""
 
+    def test_explicit_names_match_exact_and_dotted_suffix_only(self):
+        names = [
+            "pos_embed",
+            "encoder.pos_embed",
+            "encoder.head.weight",
+            "encoder.other_pos_embed",
+            "encoder.head.weight_extra",
+            "head.weight",
+        ]
+        params = {name: nn.Parameter(torch.ones(2, 2)) for name in names}
+        params["frozen"] = nn.Parameter(torch.ones(2, 2), requires_grad=False)
+        groups = split_params_for_weight_decay(
+            params.items(), 0.1, exclude_names=["pos_embed", "head.weight"]
+        )
+        decay = {id(p): g["weight_decay"] for g in groups for p in g["params"]}
+        assert [decay[id(params[name])] for name in names] == [0, 0, 0, 0.1, 0.1, 0]
+        assert id(params["frozen"]) not in decay
+
     def test_basic_splitting(self):
         """Test that parameters are correctly split into groups."""
         model = SimpleModel()
@@ -182,6 +200,67 @@ class TestCreateOptimizerWithExcludeBiasNorm:
         assert opt.param_groups[0]["weight_decay"] == 0.01
         # Second group (bias/norm) should have weight_decay=0
         assert opt.param_groups[1]["weight_decay"] == 0.0
+
+    @pytest.mark.parametrize("exclude_bias_norm", [True, False])
+    @pytest.mark.parametrize("use_omegaconf", [True, False])
+    def test_explicit_no_decay_names_match_wrapped_terminal_components(
+        self, exclude_bias_norm, use_omegaconf
+    ):
+        class WrappedTokens(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.encoder = torch.nn.Module()
+                self.encoder.pos_embed = torch.nn.Parameter(torch.ones(1, 5, 4))
+                self.encoder.cls_token = torch.nn.Parameter(torch.ones(1, 1, 4))
+                self.encoder.proj = torch.nn.Linear(4, 4)
+                self.encoder.other_pos_embed = torch.nn.Parameter(torch.ones(1, 5, 4))
+
+        model = WrappedTokens()
+        config = {
+            "type": "AdamW",
+            "lr": 1e-3,
+            "weight_decay": 0.05,
+            "exclude_bias_norm": exclude_bias_norm,
+            "exclude_weight_decay_names": ("cls_token", "pos_embed"),
+        }
+        if use_omegaconf:
+            from omegaconf import OmegaConf
+
+            config = OmegaConf.create(config)
+        opt = create_optimizer(
+            model.parameters(),
+            config,
+            named_params=model.named_parameters(),
+        )
+        decay_by_id = {
+            id(parameter): group["weight_decay"]
+            for group in opt.param_groups
+            for parameter in group["params"]
+        }
+        assert decay_by_id[id(model.encoder.pos_embed)] == 0.0
+        assert decay_by_id[id(model.encoder.cls_token)] == 0.0
+        assert decay_by_id[id(model.encoder.proj.weight)] == 0.05
+        assert decay_by_id[id(model.encoder.other_pos_embed)] == 0.05
+        assert decay_by_id[id(model.encoder.proj.bias)] == (
+            0.0 if exclude_bias_norm else 0.05
+        )
+
+    @pytest.mark.parametrize("names", ["pos_embed", [""], [123]])
+    def test_invalid_exclusion_names_rejected(self, names):
+        model = SimpleModel()
+        with pytest.raises(ValueError, match="sequence of non-empty strings"):
+            create_optimizer(
+                model.parameters(),
+                {"exclude_weight_decay_names": names, "exclude_bias_norm": False},
+                named_params=model.named_parameters(),
+            )
+
+    def test_explicit_exclusions_require_named_params(self):
+        with pytest.raises(ValueError, match="named_params"):
+            create_optimizer(
+                SimpleModel().parameters(),
+                {"exclude_bias_norm": False, "exclude_weight_decay_names": ["weight"]},
+            )
 
     def test_exclude_bias_norm_without_named_params_raises(self):
         """Test that exclude_bias_norm requires named_params."""

@@ -15,6 +15,7 @@ Architectures
    MLP
    Resnet9
    ConvMixer
+   Jet
 
 Utility Functions
 -----------------

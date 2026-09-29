@@ -35,7 +35,7 @@ def load_hparams_from_ckpt(path: str) -> Any:
         if world_size == 1:
             return torch.load(
                 path, map_location=torch.device("meta"), weights_only=False
-            )
+            )["hyper_parameters"]
         obj = None
         if rank == 0:
             obj = torch.load(

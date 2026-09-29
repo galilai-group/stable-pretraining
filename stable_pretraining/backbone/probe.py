@@ -115,7 +115,7 @@ class LinearProbe(torch.nn.Module):
             pooled = x.mean(dim=1)  # (N, D)
         else:
             pooled = x.flatten(1)
-        out = self.fc(self.norm(pooled))  # (N, num_classes)
+        out = self.fc(self.norm(pooled) if self.norm is not None else pooled)
         return out
 
 

@@ -357,18 +357,20 @@ def registry_ls(
 ):
     """List runs in the registry."""
     reg = _open_registry(db, cache)
-    runs = reg.query(
-        tag=tag,
-        status=status,
-        alive=alive,
-        sort_by=sort,
-        descending=True,
-        limit=limit,
-    )
+    try:
+        runs = reg.query(
+            tag=tag,
+            status=status,
+            alive=alive,
+            sort_by=sort,
+            descending=True,
+            limit=limit,
+        )
+    finally:
+        reg.close()
 
     if not runs:
         typer.echo("No runs found.")
-        reg.close()
         raise typer.Exit()
 
     rows = []
@@ -387,7 +389,6 @@ def registry_ls(
 
     df = pd.DataFrame(rows)
     typer.echo(df.to_string(index=False))
-    reg.close()
 
 
 @registry_app.command()
@@ -398,7 +399,10 @@ def show(
 ):
     """Show details for a single run."""
     reg = _open_registry(db, cache)
-    run = reg.get(run_id)
+    try:
+        run = reg.get(run_id)
+    finally:
+        reg.close()
     if run is None:
         typer.echo(f"Run '{run_id}' not found.", err=True)
         raise typer.Exit(code=1)
@@ -420,8 +424,6 @@ def show(
         for k, v in sorted(run.hparams.items()):
             typer.echo(f"  {k}: {v}")
 
-    reg.close()
-
 
 @registry_app.command()
 def best(
@@ -434,13 +436,16 @@ def best(
 ):
     """Show top N runs ranked by a summary metric."""
     reg = _open_registry(db, cache)
-    runs = reg.query(
-        tag=tag,
-        status="completed",
-        sort_by=f"summary.{metric}",
-        descending=not ascending,
-        limit=n,
-    )
+    try:
+        runs = reg.query(
+            tag=tag,
+            status="completed",
+            sort_by=f"summary.{metric}",
+            descending=not ascending,
+            limit=n,
+        )
+    finally:
+        reg.close()
 
     if not runs:
         typer.echo("No completed runs found.")
@@ -470,7 +475,6 @@ def best(
 
     df = pd.DataFrame(rows)
     typer.echo(df.to_string(index=False))
-    reg.close()
 
 
 @registry_app.command()
@@ -485,7 +489,10 @@ def export(
 ):
     """Export runs to CSV or Parquet with flattened hparams/summary columns."""
     reg = _open_registry(db, cache)
-    df = reg.to_dataframe(tag=tag, status=status)
+    try:
+        df = reg.to_dataframe(tag=tag, status=status)
+    finally:
+        reg.close()
 
     if df.empty:
         typer.echo("No runs to export.")
@@ -498,7 +505,6 @@ def export(
         df.to_csv(output_path, index=False)
 
     typer.echo(f"Exported {len(df)} runs to {output_path}")
-    reg.close()
 
 
 @registry_app.command()

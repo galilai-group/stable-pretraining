@@ -166,7 +166,13 @@ class _Handler(BaseHTTPRequestHandler):
                 self.send_error(404, "Not Found")
                 return
 
-            length = int(self.headers.get("Content-Length", 0))
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                if length < 0:
+                    raise ValueError
+            except ValueError:
+                self._serve_json({"error": "invalid Content-Length"}, 400)
+                return
             if length > 64 * 1024:
                 self._serve_json({"error": "request body too large"}, 400)
                 return
@@ -208,7 +214,7 @@ class _Handler(BaseHTTPRequestHandler):
     def _serve_asset(self, name: str, ctype: Optional[str] = None) -> None:
         # Path traversal guard.
         target = (ASSETS_DIR / name).resolve()
-        if not str(target).startswith(str(ASSETS_DIR)):
+        if not target.is_relative_to(ASSETS_DIR):
             self.send_error(403, "Forbidden")
             return
         if not target.is_file():
@@ -349,7 +355,6 @@ def serve(
         raise NotADirectoryError(f"{directory} is not a directory")
 
     scanner = RunScanner(directory, poll_interval=poll_interval)
-    scanner.start()
 
     class Handler(_Handler):
         pass
@@ -360,6 +365,7 @@ def serve(
     print(f"[spt web] serving {directory}", flush=True)
     print(f"[spt web] http://{host}:{port}", flush=True)
     try:
+        scanner.start()
         srv.serve_forever()
     except KeyboardInterrupt:
         print("\n[spt web] shutting down", flush=True)

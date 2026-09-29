@@ -161,16 +161,21 @@ class SupervisedBatchSampler(torch.utils.data.Sampler[List[int]]):
             raise ValueError(
                 f"n_views should be a positive integer value, but got n_views={n_views}"
             )
+        if batch_size % n_views:
+            raise ValueError("batch_size must be divisible by n_views")
         self.batch_size = batch_size
         self.n_views = n_views
         if isinstance(targets_or_dataset, torch.utils.data.Dataset):
             targets = targets_or_dataset.targets
         else:
             targets = targets_or_dataset
+        targets = np.asarray(targets)
         self._length = len(targets)
 
         self.batches = {}
         unique_targets, counts = np.unique(targets, return_counts=True)
+        if len(counts) == 0 or np.any(counts < n_views):
+            raise ValueError("Every class must contain at least n_views examples")
         self.prior = counts / counts.sum()
         for label in unique_targets:
             self.batches[label.item()] = np.flatnonzero(targets == label)
@@ -193,7 +198,7 @@ class SupervisedBatchSampler(torch.utils.data.Sampler[List[int]]):
         # Can only be called if self.sampler has __len__ implemented
         # We cannot enforce this condition, so we turn off typechecking for the
         # implementation below.
-        return self._length // self.batch_size // self.n_views
+        return self._length // self.batch_size
 
 
 class RandomBatchSampler(torch.utils.data.Sampler[List[int]]):
@@ -247,4 +252,4 @@ class RandomBatchSampler(torch.utils.data.Sampler[List[int]]):
         # Can only be called if self.sampler has __len__ implemented
         # We cannot enforce this condition, so we turn off typechecking for the
         # implementation below.
-        return len(self.sampler) // self.batch_size // self.n_views
+        return self._length // self.batch_size

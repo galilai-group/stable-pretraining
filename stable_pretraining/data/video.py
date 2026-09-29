@@ -82,6 +82,7 @@ def _encode_one_video(task):
     skipped.
     """
     video_id, path_str, quality, resize = task
+    cap = None
     try:
         cap = cv2.VideoCapture(path_str)
         if not cap.isOpened():
@@ -103,7 +104,6 @@ def _encode_one_video(task):
                 bgr = cv2.resize(bgr, (out_W, out_H), interpolation=cv2.INTER_AREA)
             ok, buf = cv2.imencode(".webp", bgr, enc_params)
             if not ok:
-                cap.release()
                 return (
                     "error",
                     video_id,
@@ -111,13 +111,15 @@ def _encode_one_video(task):
                     f"webp encode failed at t={len(blobs)}",
                 )
             blobs.append(buf.tobytes())
-        cap.release()
         T = len(blobs)
         if T == 0:
             return ("error", video_id, path_str, "empty video")
         return ("ok", video_id, path_str, T, out_H, out_W, blobs)
     except Exception as e:  # decode error, codec missing, corrupt file, ...
         return ("error", video_id, path_str, f"{type(e).__name__}: {e}")
+    finally:
+        if cap is not None:
+            cap.release()
 
 
 def _batch_stream(

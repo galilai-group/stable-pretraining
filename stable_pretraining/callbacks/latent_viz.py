@@ -10,19 +10,19 @@ from typing import Dict, Literal, Optional, Union
 import numpy as np
 import torch
 from hydra.utils import instantiate
-from lightning.pytorch import LightningModule, Trainer
+from lightning.pytorch import Callback, LightningModule, Trainer
 from loguru import logger as logging
 from torch import Tensor
 
-from .registry import log as _spt_log
-
 from ..utils.distance_metrics import compute_pairwise_distances_chunked
 
-from .queue import find_or_create_queue_callback
-from .utils import TrainableCallback, log_header
+from .queue import OnlineQueue, find_or_create_queue_callback
+from .utils import log_header
+from ..optim.utils import create_optimizer
+from ..optim.lr_scheduler import create_scheduler
 
 
-class LatentViz(TrainableCallback):
+class LatentViz(Callback):
     """Online latent visualization callback with neighborhood-preserving dimensionality reduction.
 
     This callback learns a 2D projection that preserves neighborhood structure from
@@ -30,7 +30,7 @@ class LatentViz(TrainableCallback):
     and repels non-neighbors in the 2D space.
 
     The loss function is:
-        L = -∑_{ij} P_{ij} log Q_{ij} + ∑_{i,j ∈ Neg(i)} log(1 - Q_{ij})
+        L = -∑_{ij} P_{ij} log Q_{ij} - ∑_{i,j ∈ Neg(i)} log(1 - Q_{ij})
 
     where:
         - P_{ij} is the high-D neighborhood graph (based on k-NN)
@@ -38,6 +38,7 @@ class LatentViz(TrainableCallback):
         - Neg(i) is the set of negative samples for point i
 
     Args:
+        module: The spt.Module being trained.
         name: Unique identifier for this callback instance.
         input: Key in batch dict containing input features to visualize.
         target: Optional key in batch dict containing labels for coloring plots.
@@ -49,20 +50,45 @@ class LatentViz(TrainableCallback):
         queue_length: Size of the circular buffer for features.
         k_neighbors: Number of nearest neighbors for building P matrix.
         n_negatives: Number of negative samples per positive pair.
-        optimizer: Optimizer configuration. If None, uses Adam (recommended for DR tasks).
+        optimizer: Optimizer configuration. If None, uses AdamW.
         scheduler: Learning rate scheduler configuration. If None, uses ConstantLR.
         accumulate_grad_batches: Number of batches to accumulate gradients.
-        update_interval: Update projection network every N training batches (default: 10).
+        update_interval: Compute projection loss every N training batches (default: 10).
+            Uses detached features queued by previous training batches.
         warmup_epochs: Number of epochs to wait before starting projection training (default: 0).
             Allows main model to stabilize before learning 2D projections.
         distance_metric: Metric for computing distances in high-D space.
         plot_interval: Interval (in epochs) for plotting 2D visualization.
         save_dir: Optional directory to save plots. If None, saves to 'latent_viz_{name}'.
         input_dim: Expected dimensionality of input features (for queue).
+        verbose: Log attraction and repulsion separately; None uses global verbosity.
+
+    Note:
+        The callback owns its projection, optimizer, and scheduler; their state
+        (including accumulated gradients) is saved in Lightning's callback state.
+        Projection training runs in float32 on rank zero using that rank's queued,
+        detached features. Validation visualizes features gathered from all ranks.
+        It does not change the encoder loss, optimizer list, or global step.
+        With no model optimizer, use a finite max_epochs rather than max_steps.
+        Validation writes an NPZ file with ``coordinates`` and optional ``labels``;
+        it needs at least one validation batch. Queues fill during training, so
+        projection training starts only once at least two cached features exist.
+
+    Example:
+        >>> viz = spt.callbacks.LatentViz(
+        ...     module,
+        ...     name="latent",
+        ...     input="embedding",
+        ...     target="label",
+        ...     projection=torch.nn.Linear(512, 2),
+        ...     input_dim=512,
+        ... )
+        >>> trainer = pl.Trainer(callbacks=[viz])
     """
 
     def __init__(
         self,
+        module: LightningModule,
         name: str,
         input: str,
         target: Optional[str],
@@ -81,14 +107,33 @@ class LatentViz(TrainableCallback):
         plot_interval: int = 10,
         save_dir: Optional[str] = None,
         input_dim: Optional[Union[int, tuple, list]] = None,
-        verbose: bool = None,
-    ):
-        super().__init__(
-            name=name,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            accumulate_grad_batches=accumulate_grad_batches,
-        )
+        verbose: Optional[bool] = None,
+    ) -> None:
+        for key, value in {
+            "queue_length": queue_length,
+            "k_neighbors": k_neighbors,
+            "n_negatives": n_negatives,
+            "update_interval": update_interval,
+            "plot_interval": plot_interval,
+            "accumulate_grad_batches": accumulate_grad_batches,
+        }.items():
+            if not isinstance(value, int) or value < 1:
+                raise ValueError(f"{key} must be a positive integer")
+        if queue_length < 2:
+            raise ValueError("queue_length must be at least 2")
+        if warmup_epochs < 0:
+            raise ValueError("warmup_epochs must be nonnegative")
+        if distance_metric not in ("euclidean", "cosine"):
+            raise ValueError("distance_metric must be euclidean or cosine")
+        super().__init__()
+        self.name = name
+        self.accumulate_grad_batches = accumulate_grad_batches
+        self._optimizer_config = optimizer
+        self._scheduler_config = scheduler
+        self._optimizer = None
+        self._scheduler = None
+        self._restore_state = None
+        self._accumulated_batches = 0
 
         self.input = input
         self.target = target
@@ -102,9 +147,8 @@ class LatentViz(TrainableCallback):
         self.plot_interval = plot_interval
         self.save_dir = save_dir
 
-        if input_dim is not None and isinstance(input_dim, (list, tuple)):
-            import numpy as np
-
+        self._queue_dim = tuple(input_dim) if isinstance(input_dim, list) else input_dim
+        if isinstance(input_dim, (list, tuple)):
             input_dim = int(np.prod(input_dim))
         self.input_dim = input_dim
 
@@ -113,9 +157,17 @@ class LatentViz(TrainableCallback):
         self._projection_config = projection
         self.verbose = resolve_verbose(verbose)
 
-        # Will be initialized in setup
         self._input_queue = None
         self._target_queue = None
+        # Construct factories without consuming the encoder's random stream.
+        with torch.random.fork_rng(devices=[]):
+            self.module = self.configure_model(module)
+        if {id(p) for p in self.module.parameters()} & {
+            id(p) for p in module.parameters()
+        }:
+            raise ValueError(
+                "LatentViz projection must not share parameters with the model"
+            )
 
         log_header("LatentViz")
         logging.info(f"  name: {name}")
@@ -130,8 +182,15 @@ class LatentViz(TrainableCallback):
         logging.info(f"  warmup_epochs: {warmup_epochs}")
         logging.info(f"  accumulate_grad_batches: {accumulate_grad_batches}")
 
-    def _initialize_module(self, pl_module: LightningModule) -> torch.nn.Module:
-        """Initialize the projection module from configuration."""
+    def configure_model(self, pl_module: LightningModule) -> torch.nn.Module:
+        """Build the independently owned projection.
+
+        Args:
+            pl_module: The training module (kept for API compatibility).
+
+        Returns:
+            The configured projection network.
+        """
         if isinstance(self._projection_config, torch.nn.Module):
             projection_module = self._projection_config
         elif callable(self._projection_config):
@@ -141,135 +200,189 @@ class LatentViz(TrainableCallback):
 
         return projection_module
 
-    def setup_optimizer(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        """Initialize optimizer - default to AdamW for dimensionality reduction tasks."""
-        if self._optimizer_config is None:
-            # Use AdamW by default for LatentViz (better weight decay handling)
-            logging.info("  using default AdamW optimizer for dimensionality reduction")
-            self.optimizer = torch.optim.AdamW(
-                self.module.parameters(),
-                lr=1e-3,  # Good default for AdamW
-                weight_decay=1e-2,  # Higher weight decay works well with AdamW
-                betas=(0.9, 0.999),  # Standard Adam betas
-            )
-        else:
-            # Use explicitly provided optimizer config
-            from stable_pretraining.optim.utils import create_optimizer
+    def setup_optimizer(self, pl_module: LightningModule) -> torch.optim.Optimizer:
+        """Create the projection optimizer.
 
-            # ``named_params`` enables the global ``exclude_bias_norm`` (#368).
-            self.optimizer = create_optimizer(
-                self.module.parameters(),
-                self._optimizer_config,
-                named_params=self.module.named_parameters(),
+        Args:
+            pl_module: The training module (kept for API compatibility).
+
+        Returns:
+            AdamW by default, or the explicitly configured optimizer.
+        """
+        if self._optimizer_config is None:
+            return torch.optim.AdamW(
+                self.module.parameters(), lr=1e-3, weight_decay=1e-2
             )
+        return create_optimizer(
+            self.module.parameters(),
+            self._optimizer_config,
+            named_params=self.module.named_parameters(),
+        )
 
     def setup(self, trainer: Trainer, pl_module: LightningModule, stage: str) -> None:
-        """Setup module, optimizer, scheduler, and queues."""
-        super().setup(trainer, pl_module, stage)
+        """Acquire shared queues for detached features and optional labels.
 
+        Args:
+            trainer: The active trainer.
+            pl_module: The training module.
+            stage: The Lightning lifecycle stage.
+        """
         if stage != "fit":
             return
 
-        # Find or create queues (same as knn.py)
         self._input_queue = find_or_create_queue_callback(
             trainer,
             self.input,
             self.queue_length,
-            self.input_dim,
+            self._queue_dim,
             torch.float32 if self.input_dim is not None else None,
             gather_distributed=True,
             create_if_missing=True,
         )
         logging.info(f"  input queue: {self.input}")
 
-        # Only create target queue if target is specified
         if self.target is not None:
             self._target_queue = find_or_create_queue_callback(
                 trainer,
                 self.target,
                 self.queue_length,
-                None,  # No specific dimension for targets
+                None,
                 torch.long,
                 gather_distributed=True,
                 create_if_missing=True,
             )
             logging.info(f"  target queue: {self.target}")
 
-    def on_train_batch_end(
-        self,
-        trainer: Trainer,
-        pl_module: LightningModule,
-        outputs: Dict,
-        batch: Dict,
-        batch_idx: int,
-    ) -> None:
-        """Perform projection network training step."""
-        # Skip training during warmup period
-        if trainer.current_epoch < self.warmup_epochs:
-            if batch_idx == 0:  # Log once per epoch
-                logging.info(
-                    f"  warmup period, skipping projection training "
-                    f"(epoch {trainer.current_epoch + 1}/{self.warmup_epochs})"
-                )
+    @property
+    def state_key(self) -> str:
+        """Identify independent visualization instances in checkpoints."""
+        return f"{type(self).__name__}[name={self.name}]"
+
+    def on_fit_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
+        """Initialize independent float32 training and restore callback state.
+
+        Args:
+            trainer: The active trainer.
+            pl_module: The training module, whose device is now available.
+        """
+        if not trainer.is_global_zero:
             return
-
-        # Only update every N batches to reduce computational overhead
-        if batch_idx % self.update_interval != 0:
-            return
-
-        # Get cached features directly from the shared queue
-        # Access the raw queue from the class-level registry
-        from .queue import OnlineQueue
-
-        shared_queue = OnlineQueue._shared_queues.get(self.input)
-        if shared_queue is None:
-            return
-
-        cached_features = shared_queue.get()
-        if cached_features is None or len(cached_features) == 0:
-            return
-
-        self.module.train()
-
-        with torch.enable_grad():
-            # Detach features to prevent gradients flowing to main model
-            x = cached_features.detach()
-
-            proj_dtype = next(self.module.parameters()).dtype
-            if x.dtype != proj_dtype:
-                x = x.to(proj_dtype)
-
-            z_2d = self.module(x)
-            loss = self._compute_loss(x, z_2d)
-            loss = loss / self.accumulate_grad_batches
-            loss.backward()
-
-        loss_value = loss.item() * self.accumulate_grad_batches
-        pl_module.log(
-            f"train/{self.name}_loss",
-            loss_value,
-            on_step=True,
-            on_epoch=True,
-            prog_bar=True,
-            sync_dist=True,
+        self.module.to(device=pl_module.device, dtype=torch.float32)
+        self._optimizer = self.setup_optimizer(pl_module)
+        self._scheduler = (
+            torch.optim.lr_scheduler.ConstantLR(self._optimizer, factor=1.0)
+            if self._scheduler_config is None
+            else create_scheduler(
+                self._optimizer, self._scheduler_config, module=pl_module
+            )
         )
-        if self.verbose:
-            _spt_log(
-                f"train/{self.name}_attraction_loss",
-                self._last_attraction_loss,
-                on_step=True,
-                on_epoch=True,
-                sync_dist=True,
-            )
-            _spt_log(
-                f"train/{self.name}_repulsion_loss",
-                self._last_repulsion_loss,
-                on_step=True,
-                on_epoch=True,
-                sync_dist=True,
-            )
+        if self._restore_state is not None:
+            state = self._restore_state
+            self._accumulated_batches = state["accumulated_batches"]
+            if state["optimizer"] is not None:
+                self._optimizer.load_state_dict(state["optimizer"])
+                self._scheduler.load_state_dict(state["scheduler"])
+            for name, parameter in self.module.named_parameters():
+                grad = state["gradients"].get(name)
+                parameter.grad = None if grad is None else grad.to(parameter).clone()
+            self._restore_state = None
 
-        self.optimizer_step(batch_idx, trainer)
+    def state_dict(self) -> dict:
+        """Return projection training state, including unfinished accumulation.
+
+        Returns:
+            State stored under this callback's unique checkpoint key.
+        """
+        if self._restore_state is not None:
+            return self._restore_state
+        return {
+            "projection": self.module.state_dict(),
+            "accumulated_batches": self._accumulated_batches,
+            "optimizer": self._optimizer.state_dict()
+            if self._optimizer is not None
+            else None,
+            "scheduler": self._scheduler.state_dict()
+            if self._scheduler is not None
+            else None,
+            "gradients": {
+                name: p.grad.detach().clone()
+                for name, p in self.module.named_parameters()
+                if p.grad is not None
+            },
+        }
+
+    def load_state_dict(self, state_dict: dict) -> None:
+        """Restore weights now and defer optimizer restoration until device setup.
+
+        Args:
+            state_dict: State previously returned by this callback.
+        """
+        self.module.load_state_dict(state_dict["projection"])
+        self._restore_state = state_dict
+
+    def on_train_batch_start(
+        self, trainer: Trainer, pl_module: LightningModule, batch: Dict, batch_idx: int
+    ) -> None:
+        """Train on previous batches independently of queue callback ordering.
+
+        Args:
+            trainer: The active trainer.
+            pl_module: The encoder module, used only for logging.
+            batch: The current training batch.
+            batch_idx: Index used for update and accumulation intervals.
+        """
+        if not trainer.is_global_zero or trainer.current_epoch < self.warmup_epochs:
+            return
+        self._accumulated_batches += 1
+        queue = (
+            OnlineQueue._shared_queues.get(self.input)
+            if batch_idx % self.update_interval == 0
+            else None
+        )
+        features = queue.get() if queue is not None else None
+        if features is not None and len(features) >= 2:
+            features = features[-self.queue_length :].detach()
+            features = features.reshape(len(features), -1)
+            features = features.to(next(self.module.parameters()))
+            devices = [features.device.index] if features.is_cuda else []
+            # Neither negative sampling nor projection dropout may change the
+            # encoder's RNG stream. This optimizer never uses Lightning's scaler.
+            with (
+                torch.random.fork_rng(devices=devices),
+                torch.enable_grad(),
+                torch.autocast(device_type=features.device.type, enabled=False),
+            ):
+                self.module.train()
+                # Custom projections may modify their inputs in place.
+                loss = self._compute_loss(features, self.module(features.clone()))
+                (loss / self.accumulate_grad_batches).backward()
+            pl_module.log(
+                f"train/{self.name}_loss",
+                loss.detach(),
+                on_step=True,
+                on_epoch=True,
+                sync_dist=False,
+                rank_zero_only=True,
+                batch_size=len(features),
+            )
+            if self.verbose:
+                for component in ("attraction", "repulsion"):
+                    pl_module.log(
+                        f"train/{self.name}_{component}_loss",
+                        getattr(self, f"_last_{component}_loss"),
+                        on_step=True,
+                        on_epoch=True,
+                        sync_dist=False,
+                        rank_zero_only=True,
+                        batch_size=len(features),
+                    )
+        # Epoch boundaries and checkpoint resumes must not reset a partial window.
+        if self._accumulated_batches >= self.accumulate_grad_batches:
+            self._accumulated_batches = 0
+            if any(p.grad is not None for p in self.module.parameters()):
+                self._optimizer.step()
+                self._scheduler.step()
+                self._optimizer.zero_grad(set_to_none=True)
 
     def _compute_loss(
         self,
@@ -278,110 +391,104 @@ class LatentViz(TrainableCallback):
     ) -> Tensor:
         """Compute the neighborhood-preserving loss.
 
-        Loss = -∑_{ij} P_{ij} log Q_{ij} + ∑_{i,j ∈ Neg(i)} log(1 - Q_{ij})
+        Loss = -∑_{ij} P_{ij} log Q_{ij} - ∑_{i,j ∈ Neg(i)} log(1 - Q_{ij})
 
         Args:
             x_high: High-dimensional features [N, D]
             z_2d: 2D projections [N, 2]
         """
         n_samples = x_high.size(0)
-        device = x_high.device
-
+        if n_samples < 2:
+            self._last_attraction_loss = self._last_repulsion_loss = 0.0
+            return z_2d.sum() * 0
+        # cdist does not support half/bfloat16 on CPU; fp32 also avoids
+        # underflow in log probabilities under mixed precision.
+        if x_high.dtype in (torch.float16, torch.bfloat16):
+            x_high = x_high.float()
+        if z_2d.dtype in (torch.float16, torch.bfloat16):
+            z_2d = z_2d.float()
         chunk_size = 256 if n_samples > 1000 else -1
-        high_d_distances = compute_pairwise_distances_chunked(
+        distances = compute_pairwise_distances_chunked(
             x_high, x_high, metric=self.distance_metric, chunk_size=chunk_size
         )
-
-        k_actual = min(self.k_neighbors, n_samples - 1)  # Exclude self
-        high_d_distances.fill_diagonal_(float("inf"))  # Exclude self
-        _, nn_indices = high_d_distances.topk(k=k_actual, dim=1, largest=False)
-
-        # Compute 2D similarities (Q matrix) using Student-t kernel - chunked for memory efficiency
-        # Student-t kernel: q_ij = (1 + ||z_i - z_j||^2)^(-1)
-        z_distances_sq = compute_pairwise_distances_chunked(
+        distances.fill_diagonal_(float("inf"))
+        k = min(self.k_neighbors, n_samples - 1)
+        neighbors = distances.topk(k=k, dim=1, largest=False).indices
+        squared_distances = compute_pairwise_distances_chunked(
             z_2d, z_2d, metric="squared_euclidean", chunk_size=chunk_size
         )
-        q_matrix = 1.0 / (1.0 + z_distances_sq)
+        q = 1.0 / (2.0 + squared_distances)
+        attraction = -q.gather(1, neighbors).clamp_min(1e-10).log().mean()
+        repulsion = z_2d.sum() * 0
+        if k < n_samples - 1:
+            # Positive pairs and self-pairs must never also be repelled.
+            candidates = torch.ones_like(distances)
+            candidates.fill_diagonal_(0)
+            candidates.scatter_(1, neighbors, 0)
+            negatives = torch.multinomial(
+                candidates, self.n_negatives * k, replacement=True
+            )
+            repulsion = -torch.log1p(-q.gather(1, negatives)).mean()
+        self._last_attraction_loss = attraction.item()
+        self._last_repulsion_loss = repulsion.item()
+        return attraction + repulsion
 
-        # Set diagonal to 0 (no self-similarity)
-        mask = torch.ones_like(q_matrix).detach()
-        mask.fill_diagonal_(0)
-        q_matrix = q_matrix * mask
-
-        # Normalize Q to [0, 1] range
-        q_matrix = q_matrix / (q_matrix + 1)
-
-        # Compute attraction loss for positive pairs (neighbors) - vectorized
-        row_indices = (
-            torch.arange(n_samples, device=device).unsqueeze(1).expand(-1, k_actual)
-        )
-        q_neighbors = q_matrix[row_indices, nn_indices]
-        attraction_loss = -(q_neighbors + 1e-10).log().mean()
-
-        # Compute repulsion loss for negative pairs - uniform sampling
-        n_negatives_per_point = self.n_negatives * k_actual
-        neg_indices = torch.randint(
-            0, n_samples, (n_samples, n_negatives_per_point), device=device
-        )
-        row_indices_neg = (
-            torch.arange(n_samples, device=device)
-            .unsqueeze(1)
-            .expand(-1, n_negatives_per_point)
-        )
-        q_negatives = q_matrix[row_indices_neg, neg_indices]
-        repulsion_loss = -((1 - q_negatives).clamp(min=1e-10).log()).mean()
-
-        total_loss = attraction_loss + repulsion_loss
-
-        # Store components for verbose logging
-        self._last_attraction_loss = attraction_loss.item()
-        self._last_repulsion_loss = repulsion_loss.item()
-
-        return total_loss
-
-    def on_validation_epoch_end(
-        self, trainer: Trainer, pl_module: LightningModule
+    def on_validation_batch_end(
+        self,
+        trainer: Trainer,
+        pl_module: LightningModule,
+        outputs: Dict,
+        batch: Dict,
+        batch_idx: int,
+        dataloader_idx: int = 0,
     ) -> None:
-        """Plot 2D visualization at specified intervals."""
-        # Skip visualization during warmup period
-        if trainer.current_epoch < self.warmup_epochs:
-            logging.info(
-                f"  warmup period, skipping visualization "
-                f"(epoch {trainer.current_epoch + 1}/{self.warmup_epochs})"
-            )
+        """Save the queued projection once per eligible validation epoch.
+
+        Args:
+            trainer: The active trainer.
+            pl_module: The training module.
+            outputs: Validation outputs.
+            batch: The validation batch.
+            batch_idx: Index within the validation loader.
+            dataloader_idx: Index of the validation loader.
+        """
+        # Queue snapshots exist between epoch-start and epoch-end hooks,
+        # regardless of whether their callbacks precede or follow this one.
+        if (
+            trainer.global_rank != 0
+            or trainer.sanity_checking
+            or batch_idx != 0
+            or dataloader_idx != 0
+            or trainer.current_epoch < self.warmup_epochs
+            or trainer.current_epoch % self.plot_interval != 0
+            or self._input_queue is None
+        ):
             return
-
-        # Plot visualization at intervals
-        if trainer.current_epoch % self.plot_interval != 0:
+        features = self._input_queue.data
+        if features is None or features.numel() == 0:
             return
-
-        # Get cached features
-        cached_features = self._input_queue.data
-        if cached_features is None or cached_features.numel() == 0:
-            return
-
-        # Get cached labels if available
-        cached_labels = None
-        if self._target_queue is not None:
-            cached_labels = self._target_queue.data
-            if cached_labels is not None and cached_labels.numel() == 0:
-                cached_labels = None
-
-        # Project to 2D
+        labels = self._target_queue.data if self._target_queue is not None else None
+        if labels is not None and labels.numel() == 0:
+            labels = None
+        was_training = self.module.training
         self.module.eval()
-        with torch.no_grad():
-            # Ensure correct dtype
-            proj_dtype = next(self.module.parameters()).dtype
-            if cached_features.dtype != proj_dtype:
-                cached_features = cached_features.to(proj_dtype)
-
-            z_2d = self.module(cached_features)
-
-        # Create visualization (only rank 0 writes files / logs to wandb)
-        if trainer.global_rank == 0:
+        try:
+            with (
+                torch.no_grad(),
+                torch.autocast(
+                    device_type=next(self.module.parameters()).device.type,
+                    enabled=False,
+                ),
+            ):
+                features = features.reshape(len(features), -1)
+                coordinates = self.module(
+                    features.to(next(self.module.parameters()), copy=True)
+                )
             self._plot_2d_embeddings(
-                z_2d, cached_labels, trainer.current_epoch, trainer
+                coordinates, labels, trainer.current_epoch, trainer
             )
+        finally:
+            self.module.train(was_training)
 
     def _plot_2d_embeddings(
         self, z_2d: Tensor, labels: Optional[Tensor], epoch: int, trainer: Trainer
@@ -390,7 +497,11 @@ class LatentViz(TrainableCallback):
         import os
 
         # Save coordinates to NPZ file
-        z_2d_np = z_2d.cpu().numpy()
+        z_2d = z_2d.detach().cpu()
+        # NumPy has no bfloat16 dtype, including for true-bfloat16 training.
+        if z_2d.dtype == torch.bfloat16:
+            z_2d = z_2d.float()
+        z_2d_np = z_2d.numpy()
         labels_np = labels.cpu().numpy() if labels is not None else None
         if self.save_dir is not None:
             save_dir = self.save_dir
@@ -424,6 +535,6 @@ class LatentViz(TrainableCallback):
         )
 
     @property
-    def projection_module(self):
+    def projection_module(self) -> torch.nn.Module:
         """Alias for self.module for backward compatibility."""
         return self.module

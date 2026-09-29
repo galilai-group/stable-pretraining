@@ -2,7 +2,7 @@
 
 import inspect
 from functools import partial
-from typing import Iterable, List, Tuple, Union
+from typing import Iterable, List, Sequence, Tuple, Union
 
 import torch
 from hydra.utils import instantiate
@@ -62,6 +62,8 @@ def is_bias_or_norm_param(name: str, param: torch.nn.Parameter) -> bool:
 def split_params_for_weight_decay(
     named_params: Iterable[Tuple[str, torch.nn.Parameter]],
     weight_decay: float,
+    exclude_names: Sequence[str] = (),
+    exclude_bias_norm: bool = True,
 ) -> List[dict]:
     """Split parameters into groups with and without weight decay.
 
@@ -76,6 +78,11 @@ def split_params_for_weight_decay(
     Args:
         named_params: Iterable of (name, parameter) tuples from model.named_parameters()
         weight_decay: Weight decay value for regular parameters
+        exclude_names: Exact parameter names, or terminal name components, to
+            exclude in addition to bias/norm parameters.  For example,
+            ``("cls_token", "pos_embed")`` matches both a bare ViT and a
+            wrapped module such as ``encoder.model.pos_embed``.
+        exclude_bias_norm: Also exclude bias and normalization parameters.
 
     Returns:
         List of parameter group dicts suitable for optimizer initialization:
@@ -89,6 +96,10 @@ def split_params_for_weight_decay(
         ... )
         >>> optimizer = torch.optim.AdamW(param_groups, lr=1e-3)
     """
+    if isinstance(exclude_names, str) or any(
+        not isinstance(name, str) or not name for name in exclude_names
+    ):
+        raise ValueError("exclude_names must be a sequence of non-empty strings")
     regular_params = []
     bias_norm_params = []
 
@@ -96,7 +107,13 @@ def split_params_for_weight_decay(
         if not param.requires_grad:
             continue
 
-        if is_bias_or_norm_param(name, param):
+        explicitly_excluded = any(
+            name == excluded or name.endswith(f".{excluded}")
+            for excluded in exclude_names
+        )
+        if explicitly_excluded or (
+            exclude_bias_norm and is_bias_or_norm_param(name, param)
+        ):
             bias_norm_params.append(param)
         else:
             regular_params.append(param)
@@ -127,14 +144,17 @@ def create_optimizer(
 
     Args:
         params: Parameters to optimize (e.g., model.parameters()). Used unless
-            exclude_bias_norm is True and named_params is provided.
+            weight-decay exclusions are requested and named_params is provided.
         optimizer_config: Can be:
             - str: optimizer name from torch.optim or stable_pretraining.optim (e.g., "AdamW", "LARS")
             - dict: {"type": "AdamW", "lr": 1e-3, "exclude_bias_norm": True, ...}
             - partial: pre-configured optimizer factory
             - class: optimizer class (e.g., torch.optim.AdamW)
+            Dict configs also accept ``exclude_weight_decay_names``, a sequence
+            of exact names or dotted suffixes to exclude independently of
+            ``exclude_bias_norm``.
         named_params: Optional iterable of (name, parameter) tuples. Required when
-            exclude_bias_norm=True to identify bias and normalization parameters.
+            exclude_bias_norm=True or exclude_weight_decay_names is non-empty.
 
     Returns:
         Configured optimizer instance
@@ -194,10 +214,12 @@ def create_optimizer(
             config_copy = optimizer_config.copy()
         opt_type = config_copy.pop("type", "AdamW")
         exclude_bias_norm = config_copy.pop("exclude_bias_norm", _NOT_SET)
+        exclude_weight_decay_names = config_copy.pop("exclude_weight_decay_names", ())
         kwargs = config_copy
     else:
         opt_type = optimizer_config
         exclude_bias_norm = _NOT_SET
+        exclude_weight_decay_names = ()
         kwargs = {}
 
     # Fall back to the global default if the call-site didn't set it (#368).
@@ -225,16 +247,22 @@ def create_optimizer(
         opt_class = opt_type
 
     # Handle exclude_bias_norm: split params into groups with/without weight decay
-    if exclude_bias_norm:
+    if exclude_bias_norm or exclude_weight_decay_names:
         if named_params is None:
             raise ValueError(
-                "exclude_bias_norm=True requires named_params to be provided. "
+                "Weight-decay exclusions (exclude_bias_norm=True or "
+                "exclude_weight_decay_names) require named_params to be provided. "
                 "Pass named_params=model.named_parameters() to create_optimizer."
             )
         weight_decay = kwargs.pop("weight_decay", 0.0)
         # Convert named_params to list to avoid consuming the iterator
         named_params_list = list(named_params)
-        param_groups = split_params_for_weight_decay(named_params_list, weight_decay)
+        param_groups = split_params_for_weight_decay(
+            named_params_list,
+            weight_decay,
+            exclude_names=exclude_weight_decay_names,
+            exclude_bias_norm=exclude_bias_norm,
+        )
 
         if not param_groups:
             raise ValueError(
@@ -242,7 +270,7 @@ def create_optimizer(
             )
 
         logging.info(
-            f"Creating {opt_class.__name__} with exclude_bias_norm=True: "
+            f"Creating {opt_class.__name__} with weight-decay exclusions: "
             f"{sum(len(g['params']) for g in param_groups)} params in {len(param_groups)} groups"
         )
         params = param_groups

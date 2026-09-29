@@ -45,11 +45,14 @@ class ReconViz(Callback):
     decoder's ``name`` and ReconViz reads its ``f"{name}_preds"`` output, stitches
     each reconstruction next to its target, and logs the result.
 
-    On ``on_validation_batch_end`` (only ``batch_idx == 0``) the first ``N`` rows
+    On ``on_validation_batch_end`` (first batch of the first loader) the first ``N`` rows
     of predictions and their matching targets are cached (detached, float, CPU).
     On ``on_validation_epoch_end`` the cache is denormalised, clamped to
     ``[0, 1]``, stitched (``target | separator | recon``) and emitted, then
     cleared.
+
+    Register this callback after ``OnlineImageDecoder`` (or the callback that
+    writes predictions) because both use ``on_validation_batch_end``.
 
     Args:
         specs: List of ``(preds_key_or_name, target_key, caption)`` tuples. The
@@ -131,6 +134,10 @@ class ReconViz(Callback):
         self.n_items = int(n_items)
         self.seq_len = None if seq_len is None else int(seq_len)
         self.fps = int(fps)
+        for name in ("n_items", "fps", "seq_len"):
+            value = getattr(self, name)
+            if value is not None and value <= 0:
+                raise ValueError(f"ReconViz: {name} must be positive; got {value}.")
         self.verbose = resolve_verbose(verbose)
 
         # {preds_name: {"preds": Tensor, "target": Tensor, "caption": str}}
@@ -175,7 +182,7 @@ class ReconViz(Callback):
     def _as_broadcastable(v) -> Optional[torch.Tensor]:
         if v is None:
             return None
-        t = torch.as_tensor(v, dtype=torch.float32)
+        t = torch.as_tensor(v, dtype=torch.float32).detach().cpu().clone()
         if t.dim() == 1:  # (C,) -> (C, 1, 1)
             t = t.view(-1, 1, 1)
         return t
@@ -241,7 +248,12 @@ class ReconViz(Callback):
     def on_validation_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0
     ) -> None:
-        if batch_idx != 0 or getattr(trainer, "sanity_checking", False):
+        if (
+            batch_idx != 0
+            or dataloader_idx != 0
+            or trainer.global_rank != 0
+            or getattr(trainer, "sanity_checking", False)
+        ):
             return
 
         n_rows = self._rows_to_cache()
@@ -258,9 +270,22 @@ class ReconViz(Callback):
                 self._warn_missing(target_key)
                 continue
 
+            if (
+                not isinstance(preds, torch.Tensor)
+                or not isinstance(target, torch.Tensor)
+                or preds.ndim != 4
+                or preds.shape != target.shape
+                or any(size == 0 for size in preds.shape)
+            ):
+                logging.warning(
+                    f"ReconViz[{preds_name}]: expected matching non-empty BCHW "
+                    "prediction and target tensors; skipping."
+                )
+                continue
+
             self._cache[preds_name] = {
-                "preds": preds[:n_rows].detach().float().cpu(),
-                "target": target[:n_rows].detach().float().cpu(),
+                "preds": preds[:n_rows].detach().float().cpu().clone(),
+                "target": target[:n_rows].detach().float().cpu().clone(),
                 "caption": caption if caption is not None else preds_name,
             }
 
@@ -278,12 +303,6 @@ class ReconViz(Callback):
             for preds_name, entry in self._cache.items():
                 preds = self._denormalize(entry["preds"])
                 target = self._denormalize(entry["target"])
-                if preds.shape != target.shape:
-                    logging.warning(
-                        f"ReconViz[{preds_name}]: preds {tuple(preds.shape)} and "
-                        f"target {tuple(target.shape)} shapes disagree; skipping."
-                    )
-                    continue
                 tag = f"val/{preds_name}"
                 caption = f"{entry['caption']} (epoch {trainer.current_epoch})"
                 if self.mode == "grid":
@@ -361,7 +380,11 @@ class ReconViz(Callback):
             return
         frames = self._build_video_frames(target, preds, n_traj)
 
-        import imageio  # optional dep, imported lazily on the video path
+        try:
+            import imageio
+        except ImportError:
+            logging.warning(f"ReconViz[{tag}]: imageio is unavailable; skipping video.")
+            return
 
         fd, path = tempfile.mkstemp(suffix=".mp4")
         os.close(fd)
@@ -382,6 +405,7 @@ class ReconViz(Callback):
                     )
         except Exception as e:  # encoding failed (e.g. no ffmpeg)
             logging.warning(f"ReconViz[{tag}]: video encoding failed: {e}")
+            return
         finally:
             try:
                 os.remove(path)

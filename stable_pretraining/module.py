@@ -435,7 +435,9 @@ class Module(pl.LightningModule):
             return None
         # Lazily move to the model's device so users don't have to .cuda() it.
         if isinstance(gt, torch.nn.Module):
-            ref = next(gt.parameters(), None) or next(gt.buffers(), None)
+            ref = next(gt.parameters(), None)
+            if ref is None:
+                ref = next(gt.buffers(), None)
             if ref is None or ref.device != self.device:
                 gt.to(self.device)
         return gt
@@ -481,6 +483,10 @@ class Module(pl.LightningModule):
             raise ValueError(msg)
         batch["batch_idx"] = batch_idx
         state = self(batch, stage="fit")
+        if not isinstance(state, dict):
+            raise ValueError(
+                f"forward(batch, stage='fit') must return a dict, got {type(state).__name__}"
+            )
 
         # Resolve optimizers and schedulers (can be single or list)
         optimizers = self.optimizers()
@@ -505,6 +511,19 @@ class Module(pl.LightningModule):
             )
         elif len(optimizers) == 1 and len(schedulers) == 0:
             schedulers = [None]
+
+        loss = state.get("loss")
+        if not isinstance(loss, torch.Tensor) or loss.numel() != 1:
+            description = (
+                f"Tensor with shape {tuple(loss.shape)}"
+                if isinstance(loss, torch.Tensor)
+                else type(loss).__name__
+            )
+            raise ValueError(
+                "forward(batch, stage='fit') must return a dict containing a "
+                f"scalar Tensor 'loss' when optimizers are configured; got {description}. "
+                f"Available output keys: {list(state)}"
+            )
 
         # Compute gradients once for the joint loss
         self.manual_backward(state["loss"])
@@ -975,6 +994,11 @@ class Module(pl.LightningModule):
             logging.info("  Using user's partial optimizer.")
             self.optim = dict(optimizer=self.optim)
 
+        if not isinstance(self.optim, (dict, DictConfig)):
+            raise ValueError(
+                "Optimizer must be either a partial function or a dict of optimizer configs"
+            )
+
         # Single optimizer case
         optimizer_cfg = self.optim.get("optimizer")
         if isinstance(optimizer_cfg, (str, dict, DictConfig)) or hasattr(
@@ -1008,11 +1032,6 @@ class Module(pl.LightningModule):
             return [opt], [scheduler_dict]
 
         # Multiple optimizers case - check once
-        if not isinstance(self.optim, (dict, DictConfig)):
-            raise ValueError(
-                "Optimizer must be either a partial function or a dict of optimizer configs"
-            )
-
         # Verify all values are dicts
         optim_items = list(self.optim.items())
         if not all(isinstance(v, (dict, DictConfig)) for _, v in optim_items):

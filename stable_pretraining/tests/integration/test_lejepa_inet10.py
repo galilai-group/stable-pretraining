@@ -19,7 +19,7 @@ from stable_pretraining.methods.lejepa import LeJEPA
 class TestLeJEPAImagenet10:
     """Run LeJEPA (vit_tiny) on imagenette for 3 steps and check determinism."""
 
-    def test_lejepa_10_steps(self):
+    def test_lejepa_10_steps(self, imagenette_dataset):
         """Train LeJEPA for 3 steps and assert loss matches expected value."""
         pl.seed_everything(42, workers=True)
 
@@ -52,10 +52,8 @@ class TestLeJEPAImagenet10:
 
         data = spt.data.DataModule(
             train=torch.utils.data.DataLoader(
-                dataset=spt.data.HFDataset(
-                    "frgfm/imagenette",
+                dataset=imagenette_dataset(
                     split="train",
-                    revision="refs/convert/parquet",
                     transform=train_transform,
                 ),
                 batch_size=16,
@@ -64,10 +62,8 @@ class TestLeJEPAImagenet10:
                 shuffle=True,
             ),
             val=torch.utils.data.DataLoader(
-                dataset=spt.data.HFDataset(
-                    "frgfm/imagenette",
+                dataset=imagenette_dataset(
                     split="validation",
-                    revision="refs/convert/parquet",
                     transform=transforms.Compose(
                         transforms.RGB(),
                         transforms.Resize((256, 256)),
@@ -157,7 +153,7 @@ class TestLeJEPAImagenet10:
         final_loss = trainer.callback_metrics.get("fit/loss_step")
         assert final_loss is not None, "No loss logged"
         print(f"\nLeJEPA final loss after 3 steps: {final_loss.item():.6f}")
-        expected = torch.tensor(0.433364)
+        expected = torch.tensor(0.455671)
         assert torch.isclose(final_loss.cpu(), expected, atol=1e-4), (
             f"LeJEPA loss {final_loss.item():.6f} != expected {expected.item():.6f}"
         )

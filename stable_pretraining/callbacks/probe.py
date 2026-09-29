@@ -137,6 +137,11 @@ class OnlineProbe(TrainableCallback):
 
         def new_forward(self, batch, stage, callback=self, fn=fn):
             outputs = fn(batch, stage)
+            if not isinstance(outputs, dict):
+                raise ValueError(
+                    f"OnlineProbe '{callback.name}' (stage={stage!r}) requires "
+                    f"forward to return a dict, got {type(outputs).__name__}"
+                )
             if (
                 callback.input is None
                 or callback.target is None
@@ -148,19 +153,45 @@ class OnlineProbe(TrainableCallback):
                 return callback.module(batch, outputs, self)
             else:
                 x = get_data_from_batch_or_outputs(
-                    callback.input, batch, outputs, caller_name=callback.name
+                    callback.input,
+                    batch,
+                    outputs,
+                    caller_name=f"OnlineProbe '{callback.name}' (stage={stage!r})",
                 )
                 y = get_data_from_batch_or_outputs(
-                    callback.target, batch, outputs, caller_name=callback.name
+                    callback.target,
+                    batch,
+                    outputs,
+                    caller_name=f"OnlineProbe '{callback.name}' (stage={stage!r})",
                 )
 
                 if x is None or y is None:
                     raise ValueError(
-                        f"Callback {callback.name} missing {callback.input} or {callback.target}"
+                        f"OnlineProbe '{callback.name}' (stage={stage!r}) requires "
+                        f"non-None values for '{callback.input}' and '{callback.target}'"
                     )
 
-                preds = callback.module(detach_tensors(x))
+                try:
+                    preds = callback.module(detach_tensors(x))
+                except (RuntimeError, ValueError, TypeError) as error:
+                    raise ValueError(
+                        f"OnlineProbe '{callback.name}' (stage={stage!r}) failed "
+                        f"on input '{callback.input}' with shape "
+                        f"{tuple(x.shape) if torch.is_tensor(x) else type(x).__name__}: {error}"
+                    ) from error
                 y = detach_tensors(y)
+                if (
+                    torch.is_tensor(preds)
+                    and torch.is_tensor(y)
+                    and preds.ndim > 0
+                    and y.ndim > 0
+                    and preds.shape[0] != y.shape[0]
+                ):
+                    raise ValueError(
+                        f"OnlineProbe '{callback.name}' (stage={stage!r}) batch size mismatch: "
+                        f"predictions from '{callback.input}' have shape {tuple(preds.shape)}; "
+                        f"target '{callback.target}' has shape {tuple(y.shape)}"
+                    )
 
             prediction_key = f"{callback.name}_preds"
             assert prediction_key not in batch
@@ -169,7 +200,16 @@ class OnlineProbe(TrainableCallback):
             scalar_logs = {}
             metric_logs = {}
             if stage == "fit":
-                loss = callback.loss(preds, y)
+                try:
+                    loss = callback.loss(preds, y)
+                except (RuntimeError, ValueError, TypeError) as error:
+                    raise ValueError(
+                        f"OnlineProbe '{callback.name}' (stage={stage!r}) loss failed: "
+                        f"input '{callback.input}' produced predictions with shape "
+                        f"{tuple(preds.shape) if torch.is_tensor(preds) else type(preds).__name__}; "
+                        f"target '{callback.target}' has shape "
+                        f"{tuple(y.shape) if torch.is_tensor(y) else type(y).__name__}: {error}"
+                    ) from error
                 assert f"train/{callback.name}_loss" not in scalar_logs
                 if "loss" not in outputs:
                     outputs["loss"] = 0
@@ -184,7 +224,16 @@ class OnlineProbe(TrainableCallback):
             elif stage == "validate":
                 my_metrics = pl_module.callbacks_metrics[callback.name]["_val"]
                 for metric_name, metric in my_metrics.items():
-                    metric(preds, y)
+                    try:
+                        metric(preds, y)
+                    except (RuntimeError, ValueError, TypeError) as error:
+                        raise ValueError(
+                            f"OnlineProbe '{callback.name}' (stage={stage!r}) metric "
+                            f"'{metric_name}' failed: predictions from '{callback.input}' "
+                            f"have shape {tuple(preds.shape) if torch.is_tensor(preds) else type(preds).__name__}; "
+                            f"target '{callback.target}' has shape "
+                            f"{tuple(y.shape) if torch.is_tensor(y) else type(y).__name__}: {error}"
+                        ) from error
                     metric_logs[f"eval/{callback.name}_{metric_name}"] = metric
 
             # Raw scalars (loss): sync across GPUs

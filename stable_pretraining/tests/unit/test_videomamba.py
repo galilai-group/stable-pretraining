@@ -9,6 +9,9 @@ because the reference scan is sequential.
 
 import pytest
 import torch
+from unittest.mock import PropertyMock, patch
+
+from stable_pretraining.backbone.video import videomamba as mamba_module
 
 from stable_pretraining.backbone.video import (
     BiMambaBlock,
@@ -58,6 +61,98 @@ class TestMambaSSMBlock:
         assert x.grad is not None
         for p in m.parameters():
             assert p.grad is not None
+
+    def test_cpu_never_calls_cuda_kernel(self, monkeypatch):
+        def forbidden(*args, **kwargs):
+            pytest.fail("CUDA kernel called for a CPU tensor")
+
+        monkeypatch.setattr(mamba_module, "_SELECTIVE_SCAN_FN", forbidden)
+        m = MambaSSMBlock(d_model=8, d_state=4)
+        m(torch.randn(1, 6, 8)).sum().backward()
+        assert all(p.grad is not None for p in m.parameters())
+
+    @pytest.mark.parametrize("autocast", [False, True])
+    def test_kernel_adapter_layout_dtype_and_gradients(self, monkeypatch, autocast):
+        calls = []
+
+        def scan(u, delta, A, B, C, *, delta_softplus):
+            calls.append(True)
+            assert u.shape == delta.shape == (2, 16, 6)
+            assert B.shape == C.shape == (2, 4, 6)
+            assert u.dtype == delta.dtype == B.dtype == C.dtype
+            assert A.dtype == torch.float32
+            assert all(t.is_contiguous() for t in (u, delta, B, C))
+            assert not delta_softplus
+            state = u.new_zeros(2, 16, 4, dtype=torch.float32)
+            outputs = []
+            for t in range(u.shape[-1]):
+                dt = delta[:, :, t].float().unsqueeze(-1)
+                state = state * torch.exp(dt * A) + (
+                    dt * B[:, None, :, t].float() * u[:, :, None, t].float()
+                )
+                outputs.append((state * C[:, None, :, t].float()).sum(-1))
+            return torch.stack(outputs, -1).to(u.dtype)
+
+        torch.manual_seed(7)
+        m = MambaSSMBlock(d_model=8, d_state=4)
+        x = torch.randn(2, 6, 8, requires_grad=True)
+        monkeypatch.setattr(mamba_module, "_SELECTIVE_SCAN_FN", None)
+        with torch.autocast("cpu", dtype=torch.bfloat16, enabled=autocast):
+            expected = m(x)
+        expected.sum().backward()
+        expected_grads = [p.grad.clone() for p in [x, *m.parameters()]]
+        m.zero_grad(set_to_none=True)
+        x.grad = None
+        monkeypatch.setattr(mamba_module, "_SELECTIVE_SCAN_FN", scan)
+        # Exercise the adapter on CPU; the actual CUDA kernel has a separate test.
+        with patch.object(torch.Tensor, "is_cuda", new_callable=PropertyMock) as cuda:
+            cuda.return_value = True
+            with torch.autocast("cpu", dtype=torch.bfloat16, enabled=autocast):
+                actual = m(x)
+            actual.sum().backward()
+        assert calls == [True]
+        tol = 2e-2 if autocast else 1e-5
+        torch.testing.assert_close(actual, expected, atol=tol, rtol=tol)
+        for p, grad in zip([x, *m.parameters()], expected_grads):
+            torch.testing.assert_close(p.grad, grad, atol=tol, rtol=tol)
+
+    @pytest.mark.parametrize(
+        "dtype,d_state", [(torch.float64, 4), (torch.float32, 257)]
+    )
+    def test_unsupported_kernel_inputs_use_reference(self, monkeypatch, dtype, d_state):
+        def forbidden(*args, **kwargs):
+            pytest.fail("CUDA kernel cannot handle this dtype or state dimension")
+
+        monkeypatch.setattr(mamba_module, "_SELECTIVE_SCAN_FN", forbidden)
+        m = MambaSSMBlock(d_model=8, d_state=d_state).to(dtype)
+        x = torch.randn(1, 3, 8, dtype=dtype, requires_grad=True)
+        with patch.object(torch.Tensor, "is_cuda", new_callable=PropertyMock) as cuda:
+            cuda.return_value = True
+            m(x).sum().backward()
+        assert x.grad is not None
+
+    @pytest.mark.gpu
+    @pytest.mark.parametrize("autocast", [False, True])
+    def test_cuda_kernel_matches_reference(self, monkeypatch, autocast):
+        kernel = mamba_module._SELECTIVE_SCAN_FN
+        if kernel is None:
+            pytest.skip("mamba-ssm CUDA kernel is not installed")
+        torch.manual_seed(7)
+        m = MambaSSMBlock(d_model=8, d_state=4).cuda()
+        x = torch.randn(2, 12, 8, device="cuda", requires_grad=True)
+        results = []
+        for fn in (None, kernel):
+            monkeypatch.setattr(mamba_module, "_SELECTIVE_SCAN_FN", fn)
+            m.zero_grad(set_to_none=True)
+            x.grad = None
+            with torch.autocast("cuda", dtype=torch.float16, enabled=autocast):
+                y = m(x)
+            y.sum().backward()
+            results.append((y.detach(), [p.grad.clone() for p in [x, *m.parameters()]]))
+        tol = 2e-2 if autocast else 1e-5
+        torch.testing.assert_close(results[0][0], results[1][0], atol=tol, rtol=tol)
+        for ref, actual in zip(results[0][1], results[1][1]):
+            torch.testing.assert_close(actual, ref, atol=tol, rtol=tol)
 
 
 @pytest.mark.unit

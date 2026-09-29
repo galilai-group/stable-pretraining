@@ -222,6 +222,7 @@ class HuggingFaceCheckpointCallback(Callback):
         logger.debug(f"[hf_export] writing to temp dir {tmp_dir}")
 
         hf_submodules = self._get_hf_submodules(pl_module)
+        old_aside = save_dir / f".{subdir_name}.old.{tmp_uid}"
 
         try:
             for name, model in hf_submodules.items():
@@ -250,7 +251,6 @@ class HuggingFaceCheckpointCallback(Callback):
             # new one, then drop the old. Both renames are atomic;
             # ``ignore_errors`` handles the corner case of a concurrent
             # process having already moved/deleted the dirs.
-            old_aside = save_dir / f".{subdir_name}.old.{tmp_uid}"
             try:
                 if hf_step_dir.exists():
                     os.rename(hf_step_dir, old_aside)
@@ -269,11 +269,15 @@ class HuggingFaceCheckpointCallback(Callback):
                 shutil.rmtree(old_aside, ignore_errors=True)
             logger.debug(f"[hf_export] ✓ committed {hf_step_dir}")
         except BaseException:
-            # On any failure leave the previous good export intact and
-            # clean up our temp.
+            # A failed install must restore the last good snapshot, unless
+            # another writer has already installed its own complete export.
+            if old_aside.exists() and not hf_step_dir.exists():
+                try:
+                    os.rename(old_aside, hf_step_dir)
+                except OSError as exc:
+                    logger.warning(
+                        f"[hf_export] could not restore {hf_step_dir}; "
+                        f"previous export remains at {old_aside}: {exc}"
+                    )
             shutil.rmtree(tmp_dir, ignore_errors=True)
             raise
-
-            logger.success(
-                f"Exported HF submodule '<green>{name}</green>' at step {step} -> {model_save_path}"
-            )

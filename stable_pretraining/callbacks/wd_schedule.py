@@ -51,23 +51,22 @@ class WeightDecayUpdater(Callback):
 
     def on_fit_start(self, trainer: Trainer, pl_module: LightningModule):
         # Prefer max_steps if set
-        self.total_steps = (
-            trainer.estimated_stepping_batches * trainer.accumulate_grad_batches
-        )
+        self.total_steps = trainer.estimated_stepping_batches
         log_header("WeightDecayUpdater")
         logger.info(f"  total_steps: {self.total_steps}")
 
     def on_before_optimizer_step(
         self, trainer: Trainer, pl_module: LightningModule, optimizer
     ):
-        optis = pl_module.optimizers()
-        if self.opt_idx is not None and optimizer != optis[self.opt_idx].optimizer:
-            return
-        step = trainer.global_step // len(optis)
-        accumulate_grad_batches = trainer.accumulate_grad_batches
-        if (step + 1) % accumulate_grad_batches != 0:
-            logger.debug("  step but accumulating grad, skipping step")
-            return
+        if self.opt_idx is not None:
+            optis = pl_module.optimizers(use_pl_optimizer=False)
+            if not isinstance(optis, (list, tuple)):
+                optis = [optis]
+            if optimizer is not optis[self.opt_idx]:
+                return
+        # This hook already runs only when an optimizer steps. Module counts
+        # each training step once, regardless of callback optimizer count.
+        step = trainer.global_step
         new_weight_decay = self._compute_weight_decay(step)
         indices = (
             self.param_group_indices

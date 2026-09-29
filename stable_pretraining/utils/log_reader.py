@@ -1,8 +1,10 @@
 """Unified log reader for local and wandb logs."""
 
+import json
 import re
 from abc import ABC, abstractmethod
-from multiprocessing import Pool
+from contextlib import nullcontext
+from multiprocessing.dummy import Pool
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -10,13 +12,6 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 from tqdm import tqdm
-
-try:
-    import jsonlines
-except ModuleNotFoundError:
-    logger.warning(
-        "jsonlines module is not installed, local log reading will not work."
-    )
 
 try:
     import omegaconf
@@ -118,9 +113,15 @@ class LocalLogReader(LogReader):
 
         for log_file in logs_files:
             rank = int(log_file.stem.split("rank_")[1])
-            for obj in jsonlines.open(log_file).iter(type=dict, skip_invalid=True):
-                obj["rank"] = rank
-                values.append(obj)
+            with log_file.open() as stream:
+                for line in stream:
+                    try:
+                        obj = json.loads(line)
+                    except ValueError:
+                        continue
+                    if isinstance(obj, dict):
+                        obj["rank"] = rank
+                        values.append(obj)
 
         logger.info(f"\t=> total length of logs: {len(values)}")
         return values
@@ -139,23 +140,16 @@ class LocalLogReader(LogReader):
         if not Path(folder).is_dir():
             raise ValueError(f"The provided folder ({folder}) is not a directory!")
 
-        runs = list(Path(folder).rglob("*/hparams.yaml"))
+        runs = sorted(Path(folder).rglob("*/hparams.yaml"))
         configs = []
         values = []
 
-        if logging_redirect_tqdm:
-            with logging_redirect_tqdm():
-                args = [run.parent for run in runs]
-                with Pool(self.num_workers) as p:
-                    results = list(tqdm(p.imap(self.read, args), total=len(runs)))
-                for c, v in results:
-                    configs.append(flatten_config(c))
-                    values.append(v)
-        else:
+        with logging_redirect_tqdm() if logging_redirect_tqdm else nullcontext():
             args = [run.parent for run in runs]
             with Pool(self.num_workers) as p:
                 results = list(tqdm(p.imap(self.read, args), total=len(runs)))
-            for v in results:
+            for path, v in zip(args, results):
+                configs.append(flatten_config(self.read_config(path)))
                 values.append(v)
 
         config_df = pd.DataFrame(configs) if configs else pd.DataFrame()
@@ -237,8 +231,10 @@ class WandbLogReader(LogReader):
         if min_step < 0:
             min_step = max_step + min_step
 
-        if keys is not None and "_step" not in keys:
-            keys.append("_step")
+        if keys is not None:
+            keys = list(keys)
+            if "_step" not in keys:
+                keys.append("_step")
 
         data = []
         for row in tqdm(

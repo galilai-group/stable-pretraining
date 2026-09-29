@@ -519,6 +519,38 @@ class TestEarlyPreemptFallback:
             manager._resolve_run_dir()
         assert manager._early_preempt_fallback is False
 
+    @pytest.mark.parametrize("has_metrics", [False, True])
+    def test_indexed_empty_checkpoints_do_not_prove_zero_progress(
+        self, tmp_path, monkeypatch, has_metrics
+    ):
+        from stable_pretraining._config import set as spt_set
+        from stable_pretraining.manager import Manager
+        from stable_pretraining.tests.utils import (
+            BoringDataModule,
+            BoringModule,
+            BoringTrainer,
+        )
+
+        spt_set(cache_dir=str(tmp_path))
+        monkeypatch.setenv("SLURM_JOB_ID", "352145")
+        monkeypatch.setenv("SLURM_RESTART_COUNT", "1")
+        monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
+        run_dir = tmp_path / "runs" / "prior"
+        self._stamp_run_meta(run_dir, "352145")
+        (run_dir / "checkpoints").mkdir()
+        if has_metrics:
+            (run_dir / "metrics.csv").write_text("step,loss\n100,0.25\n")
+        Manager._write_slurm_index(tmp_path, run_dir)
+        manager = Manager(
+            trainer=BoringTrainer(enable_checkpointing=False, logger=False),
+            module=BoringModule(),
+            data=BoringDataModule(),
+        )
+        assert manager._resolve_run_dir() == run_dir
+        with pytest.raises(RuntimeError, match="no last.ckpt"):
+            manager._resolve_load_path(run_dir)
+        assert manager._early_preempt_fallback is False
+
     def test_resolve_load_path_after_early_preempt_treats_as_fresh(
         self, tmp_path, monkeypatch
     ):

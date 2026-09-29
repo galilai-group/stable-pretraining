@@ -10,7 +10,6 @@ from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader, Dataset
 
 from .sampler import RepeatedRandomSampler
-from .datasets import HFMapDataset, HFIterableDataset
 
 
 class DictFormat(Dataset):
@@ -75,7 +74,9 @@ class DataModule(pl.LightningDataModule):
             return None
         if isinstance(conf, DataLoader):
             return conf
-        elif isinstance(conf["dataset"], (HFMapDataset, HFIterableDataset)):
+        if not isinstance(conf, (dict, DictConfig)) or "dataset" not in conf:
+            raise ValueError("DataLoader config must be a dict with a dataset")
+        if isinstance(conf["dataset"], Dataset):
             logging.info(f"  {stage} already has an instantiated dataset")
         elif type(conf) is dict:
             logging.info(f"  {stage} has `dict` type and no instantiated dataset")
@@ -100,32 +101,27 @@ class DataModule(pl.LightningDataModule):
         # TODO: should we move some to prepare_data?
         if stage not in ["fit", "validate", "test", "predict"]:
             raise ValueError(f"Invalid stage {stage}")
-        d = None
-        if stage == "fit" and not isinstance(self.train, DataLoader):
-            self.train_dataset = d = hydra.utils.instantiate(
-                self.train.dataset, _convert_="object", _recursive_=True
-            )
-            self.val_dataset = hydra.utils.instantiate(
-                self.val.dataset, _convert_="object", _recursive_=True
-            )
-        elif stage == "test" and not isinstance(self.test, DataLoader):
-            self.test_dataset = d = hydra.utils.instantiate(
-                self.test.dataset, _convert_="object", _recursive_=True
-            )
-        elif stage == "validate" and not isinstance(self.val, DataLoader):
-            self.val_dataset = d = hydra.utils.instantiate(
-                self.val.dataset, _convert_="object", _recursive_=True
-            )
-        elif stage == "predict" and not isinstance(self.predict, DataLoader):
-            self.predict_dataset = d = hydra.utils.instantiate(
-                self.predict.dataset, _convert_="object", _recursive_=True
-            )
-        logging.success(f"✓ dataset for {stage} loaded")
-        if d is not None:
-            logging.info(f"  length: {len(d)}")
-            logging.info(f"  columns: {d.column_names}")
-        else:
-            logging.info("  setup was done by user")
+        keys = {
+            "fit": ("train", "val"),
+            "validate": ("val",),
+            "test": ("test",),
+            "predict": ("predict",),
+        }[stage]
+        for key in keys:
+            conf = getattr(self, key)
+            if conf is None or isinstance(conf, DataLoader):
+                continue
+            dataset = conf["dataset"]
+            if not isinstance(dataset, Dataset):
+                dataset = hydra.utils.instantiate(
+                    dataset, _convert_="object", _recursive_=True
+                )
+            setattr(self, f"{key}_dataset", dataset)
+            logging.success(f"✓ dataset for {key} loaded")
+            if hasattr(dataset, "__len__"):
+                logging.info(f"  length: {len(dataset)}")
+            if hasattr(dataset, "column_names"):
+                logging.info(f"  columns: {dataset.column_names}")
 
     def _get_loader_kwargs(self, config, dataset):
         kwargs = dict()

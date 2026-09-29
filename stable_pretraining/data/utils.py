@@ -8,6 +8,7 @@ import itertools
 import math
 import warnings
 from collections.abc import Sequence
+from numbers import Integral
 from typing import Optional, Union, cast
 
 import torch
@@ -205,6 +206,10 @@ def random_split(
         dataset (Dataset): Dataset to be split
         lengths (sequence): lengths or fractions of splits to be produced
         generator (Generator): Generator used for the random permutation.
+
+    Raises:
+        ValueError: If lengths are invalid fractions, are not non-negative
+            integers, or do not cover the dataset.
     """
     if math.isclose(sum(lengths), 1) and sum(lengths) <= 1:
         subset_lengths: list[int] = []
@@ -227,6 +232,9 @@ def random_split(
                     f"Length of split at index {i} is 0. "
                     f"This might result in an empty dataset."
                 )
+
+    if any(not isinstance(length, Integral) or length < 0 for length in lengths):
+        raise ValueError("Split lengths must be non-negative integers")
 
     # Cannot verify that dataset is Sized
     if sum(lengths) != len(dataset):  # type: ignore[arg-type]

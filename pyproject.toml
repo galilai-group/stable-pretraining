@@ -72,7 +72,17 @@ spt = "stable_pretraining.cli:app"
 stablepretraining_callbacks = "stable_pretraining.callbacks.factories:default"
 
 [tool.setuptools]
-packages = ["stable_pretraining"]
+include-package-data = false
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+
+[tool.setuptools.packages.find]
+include = ["stable_pretraining*"]
+exclude = ["stable_pretraining.tests*"]
+
+[tool.setuptools.package-data]
+"stable_pretraining" = ["py.typed", "*.pyi"]
+"stable_pretraining.backbone" = ["licenses/*"]
+"stable_pretraining.web" = ["assets/*.html", "assets/*.js", "assets/*.css"]
 
 [tool.setuptools_scm]
 tag_regex = "^v(?P<version>.+)$"
@@ -122,3 +132,13 @@ convention = "google"
 
 [tool.ruff.format]
 docstring-code-format = true
+
+[tool.coverage.run]
+source = ["stable_pretraining"]
+omit = ["*/tests/*", "*/test_*", "stable_pretraining/_version.py"]
+relative_files = true
+
+[tool.coverage.report]
+precision = 2
+# The reporting job has a fresh checkout without this installation-generated file.
+omit = ["stable_pretraining/_version.py"]

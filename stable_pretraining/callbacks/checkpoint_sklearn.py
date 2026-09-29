@@ -68,7 +68,7 @@ class SklearnCheckpoint(Callback):
         if not SKLEARN_AVAILABLE:
             return
         for name, item in checkpoint.items():
-            if isinstance(item, RegressorMixin) or isinstance(item, ClassifierMixin):
+            if _contains_sklearn_module(item):
                 setattr(pl_module, name, item)
                 logging.info(f"  Loading non PyTorch system: {name}")
 

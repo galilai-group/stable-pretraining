@@ -56,7 +56,7 @@ class Transform(v2.Transform):
         if base not in x:
             return base
         ctr = 0
-        while f"{base}_{ctr}" in base:
+        while f"{base}_{ctr}" in x:
             ctr += 1
         return f"{base}_{ctr}"
 
@@ -71,7 +71,7 @@ def to_image(
 ) -> tv_tensors.Image:
     """See :class:`~torchvision.transforms.v2.ToImage` for details."""
     if isinstance(input, np.ndarray):
-        output = torch.from_numpy(np.atleast_3d(input)).transpose(-3, -1).contiguous()
+        output = torch.from_numpy(np.atleast_3d(input)).movedim(-1, -3).contiguous()
     elif isinstance(input, PIL.Image.Image):
         output = torchvision.transforms.functional.pil_to_tensor(input)
     elif isinstance(input, torch.Tensor):
@@ -170,6 +170,7 @@ class RoutingTransform(Transform):
     """Applies a routing callable to conditionally apply a transform from many candidates."""
 
     def __init__(self, router: callable, transforms: Union[list, tuple, dict]):
+        super().__init__()
         self.router = router
         self.transforms = transforms
 
@@ -528,7 +529,7 @@ class PILGaussianBlur(Transform):
 
 
 class UniformTemporalSubsample(Transform):
-    """``nn.Module`` wrapper for ``pytorchvideo.transforms.functional.uniform_temporal_subsample``."""
+    """Select evenly spaced frames along the specified temporal dimension."""
 
     def __init__(
         self,
@@ -537,14 +538,23 @@ class UniformTemporalSubsample(Transform):
         source: str = "video",
         target: str = "video",
     ):
-        super().__init__(num_samples, temporal_dim)
+        super().__init__()
+        if num_samples < 1:
+            raise ValueError("num_samples must be positive")
+        self.num_samples = num_samples
+        self.temporal_dim = temporal_dim
         self.source = source
         self.target = target
 
-    def forward(self, x: dict) -> torch.Tensor:
-        self.nested_set(
-            x, super().forward(self, self.nested_get(x, self.source)), self.target
-        )
+    def forward(self, x: dict) -> dict:
+        video = self.nested_get(x, self.source)
+        count = video.shape[self.temporal_dim]
+        if count == 0:
+            raise ValueError("Cannot sample a video with no frames")
+        indices = torch.linspace(
+            0, count - 1, self.num_samples, device=video.device
+        ).long()
+        self.nested_set(x, video.index_select(self.temporal_dim, indices), self.target)
         return x
 
 
@@ -552,6 +562,9 @@ class RandomContiguousTemporalSampler(Transform):
     """Randomly sample contiguous frames from a video sequence."""
 
     def __init__(self, source, target, num_frames, frame_subsampling: int = 1):
+        super().__init__()
+        if num_frames < 1 or frame_subsampling < 1:
+            raise ValueError("num_frames and frame_subsampling must be positive")
         self.source = source
         self.target = target
         self.num_frames = num_frames
@@ -560,8 +573,10 @@ class RandomContiguousTemporalSampler(Transform):
     def __call__(self, x):
         metadata = self.nested_get(x, self.source).get_metadata()
         T = int(metadata["video"]["duration"][0] * metadata["video"]["fps"][0])
-        covering = self.num_frames * self.frame_subsampling
-        start = torch.randint(low=0, high=T - covering, size=(1,)).item()
+        covering = (self.num_frames - 1) * self.frame_subsampling + 1
+        if T < covering:
+            raise ValueError(f"Video has {T} frames but sampling requires {covering}")
+        start = torch.randint(low=0, high=T - covering + 1, size=(1,)).item()
         video_frames = []  # video frame buffer
 
         # Seek and return frames
@@ -778,9 +793,10 @@ class RandomResizedCrop(Transform, v2.RandomResizedCrop):
         self.target = target
 
     def __call__(self, x):
-        params = self.make_params([self.nested_get(x, self.source)])
-
         candidates = self.nested_get(x, self.source)
+        params = self.make_params(
+            list(candidates) if isinstance(candidates, (tuple, list)) else [candidates]
+        )
         if type(candidates) in [tuple, list]:
             out = [self.transform(c, params) for c in candidates]
             self.nested_set(x, out, self.target)

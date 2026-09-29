@@ -1,0 +1,38 @@
+name: Installed-wheel onboarding
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  wheel-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Build and install the distribution
+        run: |
+          python -m pip install build
+          python -m build
+          python -m pip install dist/*.whl
+      - name: Run the documented commands outside the checkout
+        working-directory: ${{ runner.temp }}
+        env:
+          CUDA_VISIBLE_DEVICES: ''
+          OMP_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+        run: |
+          python - <<'PY'
+          from importlib.resources import files
+          import stable_pretraining as spt
+          assert 'site-packages' in spt.__file__, spt.__file__
+          assert files('stable_pretraining.backbone').joinpath('licenses/JET_LICENSE').is_file()
+          assert callable(spt.forward.simclr)
+          assert spt.backbone.Jet is not None
+          PY
+          python -m stable_pretraining.quickstart --cache-dir ./simclr-smoke
+          python -m stable_pretraining.quickstart --method jet-entropy --cache-dir ./jet-smoke

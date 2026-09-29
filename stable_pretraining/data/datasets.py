@@ -309,9 +309,7 @@ class HFIterableDataset(IterableDataset):
         gpu_transform=None,
     ):
         super().__init__(transform, gpu_transform=gpu_transform)
-        dataset = dataset.map(
-            lambda sample, idx: {**sample, "sample_idx": idx}, with_indices=True
-        )
+        dataset = dataset.map(_add_sample_idx, with_indices=True)
         if rename_columns:
             for k, v in rename_columns.items():
                 dataset = dataset.rename_column(k, v)
@@ -440,3 +438,8 @@ def HFDataset(
         remove_columns,
         gpu_transform=gpu_transform,
     )
+
+
+def _add_sample_idx(sample: dict, idx: int) -> dict:
+    """Keep the streaming map picklable for spawn-mode DataLoader workers."""
+    return {**sample, "sample_idx": idx}

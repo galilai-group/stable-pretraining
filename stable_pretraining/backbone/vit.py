@@ -295,21 +295,9 @@ class MaskedEncoder(nn.Module):
                 "If you pass a non-timm module, unexpected errors may occur."
             )
             self.vit = model_or_model_name
-            if patch_size is not None:
-                self._rebuild_patch_embed(patch_size, img_size)
             # Remove classification head if present
             if hasattr(self.vit, "head") and hasattr(self.vit.head, "in_features"):
                 self.vit.head = nn.Identity()
-        # === Cache encoder properties ===
-        self.embed_dim = self.vit.embed_dim
-        self.patch_embed = self.vit.patch_embed
-        ps = self.patch_embed.patch_size
-        self.patch_size_h, self.patch_size_w = (ps, ps) if isinstance(ps, int) else ps
-        gs = self.patch_embed.grid_size
-        self.default_grid_h, self.default_grid_w = (
-            (gs, gs) if isinstance(gs, int) else gs
-        )
-
         self.has_class_token = (
             hasattr(self.vit, "cls_token") and self.vit.cls_token is not None
         )
@@ -321,6 +309,17 @@ class MaskedEncoder(nn.Module):
             1 if self.has_class_token else 0
         ) + self.num_reg_tokens
         self.no_embed_class = getattr(self.vit, "no_embed_class", False)
+        if not isinstance(model_or_model_name, str) and patch_size is not None:
+            self._rebuild_patch_embed(patch_size, img_size)
+        # === Cache encoder properties ===
+        self.embed_dim = self.vit.embed_dim
+        self.patch_embed = self.vit.patch_embed
+        ps = self.patch_embed.patch_size
+        self.patch_size_h, self.patch_size_w = (ps, ps) if isinstance(ps, int) else ps
+        gs = self.patch_embed.grid_size
+        self.default_grid_h, self.default_grid_w = (
+            (gs, gs) if isinstance(gs, int) else gs
+        )
 
     def _rebuild_patch_embed(
         self,
@@ -2122,8 +2121,14 @@ class PositionalEncoding2D(nn.Module):
         x1, x2, x3, x4 = patches.split(d_quarter, dim=-1)
 
         # Get frequencies (interpolate if needed)
-        freqs_h = self.freqs_h[:grid_h, :d_quarter]  # [H, d_quarter]
-        freqs_w = self.freqs_w[:grid_w, :d_quarter]  # [W, d_quarter]
+        freqs_h = self.freqs_h
+        freqs_w = self.freqs_w
+        if grid_h > freqs_h.shape[0]:
+            freqs_h = self._build_rope_freqs(d_quarter, grid_h).to(freqs_h)
+        if grid_w > freqs_w.shape[0]:
+            freqs_w = self._build_rope_freqs(d_quarter, grid_w).to(freqs_w)
+        freqs_h = freqs_h[:grid_h, :d_quarter]
+        freqs_w = freqs_w[:grid_w, :d_quarter]
 
         # Apply rotation to height dimension (x1, x2)
         cos_h = torch.cos(freqs_h).unsqueeze(1)  # [H, 1, d_quarter]

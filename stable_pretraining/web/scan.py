@@ -301,6 +301,8 @@ class RunScanner:
                     sidecar_data = json.loads(sidecar_path.read_text())
                 except (json.JSONDecodeError, OSError):
                     return run_id  # mark as seen so it isn't pruned, but no update
+                if not isinstance(sidecar_data, dict):
+                    return run_id
             return (
                 run_id,
                 run_dir,

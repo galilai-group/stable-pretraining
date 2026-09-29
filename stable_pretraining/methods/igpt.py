@@ -124,7 +124,8 @@ class iGPT(Module):
         # fall back to manually patching each block's Attention if not supported.
         for block in vit.blocks:
             try:
-                x = block(x, attn_mask=mask)
+                # timm/SDPA boolean masks use True for allowed attention.
+                x = block(x, attn_mask=~mask)
             except TypeError:
                 # Older timm: monkey-patch attention call.
                 x = self._block_with_mask(block, x, mask)

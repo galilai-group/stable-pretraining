@@ -3,6 +3,7 @@
 [![Documentation](https://img.shields.io/badge/Documentation-blue.svg)](https://galilai-group.github.io/stable-pretraining/)
 [![Benchmarks](https://img.shields.io/badge/Benchmarks-blue.svg)](https://github.com/galilai-group/stable-pretraining/tree/main/benchmarks)
 [![Test Status](https://github.com/galilai-group/stable-pretraining/actions/workflows/testing.yml/badge.svg)](https://github.com/galilai-group/stable-pretraining/actions/workflows/testing.yml)
+[![Coverage](https://codecov.io/gh/galilai-group/stable-pretraining/branch/main/graph/badge.svg)](https://app.codecov.io/gh/galilai-group/stable-pretraining)
 [![PyTorch](https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
 [![JAX](https://img.shields.io/badge/JAX-experimental-9cf?logo=google&logoColor=white)](#jax-backend)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
@@ -11,18 +12,21 @@
 
 
 
-**PyTorch Lightning for foundation-model research.** Dict-shaped state
-so any intermediate tensor is loggable, live evaluation probes that
-attach without touching the training loop (`OnlineProbe`, `OnlineKNN`,
-`RankMe`, `LiDAR`, …), SLURM-grade requeue + atomic checkpoints +
-queryable run registry, GPU-side batched augmentation, and 30+ ready
-recipes spanning SSL, supervised, and multi-modal pretraining
-(SimCLR, DINO/DINOv2, MAE, BYOL, VICReg, Barlow Twins, LeJEPA, CLIP, …).
-An **experimental [JAX / Flax-NNX backend](#jax-backend)** mirrors the same
-design (forward-dict, callbacks, SLURM-grade Manager) for users who prefer JAX.
+**Change the SSL objective. Keep the training, evaluation, and checkpointing.**
 
-[30-second tour ↓](#30s-tour) · [JAX backend ↓](#jax-backend) ·
-[Built-in methods ↓](#built-in-methods) · [Discord](https://discord.gg/adzpqWKM25)
+`stable-pretraining` helps researchers compare and customize self-supervised
+learning methods on PyTorch Lightning. Define a forward function returning a
+dict; attach online probes and representation diagnostics; run through
+`Manager` for checkpointing, resume, and a local experiment registry.
+
+[Get started](#quick-setup) · [Custom images](https://galilai-group.github.io/stable-pretraining/guides/custom_images/) ·
+[Online evaluation](https://galilai-group.github.io/stable-pretraining/guides/online_evaluation/) ·
+[Resume training](https://galilai-group.github.io/stable-pretraining/guides/resume/) ·
+[Jet invertible encoder](https://galilai-group.github.io/stable-pretraining/guides/jet/) ·
+[Using AI agents](https://galilai-group.github.io/stable-pretraining/guides/agents/) · [Discord](https://discord.gg/adzpqWKM25)
+
+The method catalog includes SimCLR, DINO, MAE, BYOL, VICReg, LeJEPA, and more.
+The experimental [JAX backend](#jax-backend) is opt-in.
 
 ## Table of Contents
 
@@ -58,154 +62,61 @@ To reach flexibility, scalability and stability, we rely on battle-tested third 
 <a id="quick-setup"></a>
 ## Quick setup
 
+Install a published release:
+
 ```bash
-# Clone the repository
+python -m pip install stable-pretraining
+```
+
+**Development quickstart:** the new quickstart command and Jet backbone below
+are unreleased. To try this checkout's APIs, install from its source:
+
+```bash
 git clone https://github.com/galilai-group/stable-pretraining.git
-
-# Install the framework
 cd stable-pretraining
-pip install -e .
+python -m pip install -e .
+python -m stable_pretraining.quickstart
 ```
 
-For an interactive walkthrough — data loading, Module, callbacks, training, and evaluation all in one place — open the tutorial notebook:
+This runs one CPU epoch of SimCLR with an online classifier on synthetic images.
+It needs no dataset download, GPU, or service account. Synthetic accuracy is
+only an installation check, not evidence of representation quality.
 
 ```bash
-jupyter notebook examples/simclr_cifar10_tutorial.ipynb
+spt web ./spt-quickstart/runs
 ```
+
+The viewer shows training metrics and probe accuracy. To move to real images,
+follow the [custom-image guide](https://galilai-group.github.io/stable-pretraining/guides/custom_images/).
+For an editable experiment, copy [the starter](https://github.com/galilai-group/stable-pretraining/tree/main/examples/starter).
 
 <a id="30s-tour"></a>
 ## 30-second tour
 
-The whole framework is four components that pass **dicts** to each other.
-Once you see the shape, the rest of the README is reference.
+The [quickstart source](https://github.com/galilai-group/stable-pretraining/blob/main/stable_pretraining/quickstart.py) is an executable
+example tested through the same `Module`, `DataModule`, `OnlineProbe`, and
+`Manager` interfaces used for larger runs:
 
-```mermaid
-%%{init: {'theme':'base', 'themeVariables': {
-    'fontFamily':'-apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-    'fontSize':'14px',
-    'primaryColor':'#fafafa',
-    'primaryTextColor':'#1f2937',
-    'primaryBorderColor':'#9ca3af',
-    'lineColor':'#9ca3af',
-    'edgeLabelBackground':'#ffffff'
-}}}%%
-flowchart LR
-    classDef stack fill:#f9fafb,stroke:#9ca3af,color:#111827,stroke-width:1px
-    classDef yours fill:#eef2ff,stroke:#6366f1,color:#3730a3,stroke-width:1px
-    classDef hook  fill:#f0fdf4,stroke:#22c55e,color:#14532d,stroke-width:1px
-    classDef orch  fill:#1f2937,stroke:#1f2937,color:#f9fafb,stroke-width:0px
+1. A dataset returns dictionaries; `MultiViewTransform` makes two augmented views.
+2. `Module(forward=spt.forward.simclr, ...)` computes embeddings and the loss.
+3. `OnlineProbe` trains its own classifier on detached embeddings.
+4. `Manager(...)()` runs training, validation, checkpointing, and local logging.
 
-    DM([DataModule])
-    TR([Lightning Trainer])
-    MOD([Module])
-    CB([Callbacks])
-    LOG([Loggers · Registry])
-    MGR((Manager))
+For your own objective, replace the forward callable and keep that wiring.
+The callable receives `(self, batch, stage)` and returns a dict with a scalar
+`loss` during training. Runtime stages are `fit`, `validate`, and `test`.
+Use `self.training` when the distinction is just training versus evaluation.
 
-    DM -->|batch| TR --> MOD
-    MOD -->|state| CB
-    MOD --> LOG
-    CB --> LOG
-    MGR -.- TR
+For an invertible encoder and an illustrative MSE-minus-logdet objective:
 
-    class DM yours
-    class MOD yours
-    class CB hook
-    class TR stack
-    class LOG stack
-    class MGR orch
+```bash
+python -m stable_pretraining.quickstart --method jet-entropy --cache-dir ./jet-quickstart
+spt web ./jet-quickstart/runs
 ```
 
-*Indigo* nodes are what you write (data + forward). *Green* is the
-hook surface (callbacks). *Slate* is the orchestration that runs
-underneath.
-
-A minimal end-to-end run looks like this (substitute your own loader / loss):
-
-```python
-import lightning as pl
-import stable_pretraining as spt
-
-# 1. Data flows as dicts. CPU transforms decode + resize; random
-#    augmentation can live on the GPU via `gpu_transform=` (optional).
-train_ds = spt.data.HFDataset("cifar10", split="train", transform=...)
-val_ds   = spt.data.HFDataset("cifar10", split="test",  transform=...)
-dm = spt.data.DataModule(
-    train=torch.utils.data.DataLoader(train_ds, batch_size=256, num_workers=8),
-    val=torch.utils.data.DataLoader(val_ds, batch_size=256, num_workers=8),
-)
-
-# 2. Module = backbone + a forward function that returns a state dict.
-#    `forward.simclr` (and friends) are pre-built; you can also
-#    write your own — anything returning {"loss": ..., "embedding": ...}.
-module = spt.Module(
-    backbone=spt.backbone.from_timm("resnet18", num_classes=0),
-    projector=spt.backbone.MLP(512, 512, 128),
-    forward=spt.forward.simclr,
-    simclr_loss=spt.losses.NTXEntLoss(temperature=0.5),
-)
-
-# 3. Callbacks watch the state dict and train online probes / log metrics
-#    without touching the main loop.
-trainer = pl.Trainer(max_epochs=100, precision="bf16-mixed", callbacks=[
-    spt.callbacks.OnlineProbe(module, name="probe", input="embedding", target="label",
-                              probe=nn.Linear(512, 10), loss=nn.CrossEntropyLoss()),
-    spt.callbacks.OnlineKNN(name="knn", input="embedding", target="label",
-                            queue_length=10_000, input_dim=512, k=20),
-])
-
-# 4. Manager wraps fit() with SLURM-requeue, atomic checkpoints, and
-#    the run registry. On a workstation it's just a thin call; on a
-#    cluster it adds preempt/resume + run tracking for free.
-spt.Manager(trainer=trainer, module=module, data=dm)()
-```
-
-A single sample's journey through the stack:
-
-```mermaid
-%%{init: {'theme':'base', 'themeVariables': {
-    'fontFamily':'-apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-    'fontSize':'13px',
-    'primaryColor':'#fafafa',
-    'primaryTextColor':'#1f2937',
-    'primaryBorderColor':'#9ca3af',
-    'lineColor':'#9ca3af',
-    'edgeLabelBackground':'#ffffff'
-}}}%%
-flowchart LR
-    classDef cpu fill:#f9fafb,stroke:#9ca3af,color:#111827,stroke-width:1px
-    classDef gpu fill:#eef2ff,stroke:#6366f1,color:#3730a3,stroke-width:1px
-    classDef out fill:#f0fdf4,stroke:#22c55e,color:#14532d,stroke-width:1px
-
-    SAMP([sample])
-    CPU([CPU prep])
-    H2D([H2D])
-    AUG([GPU aug])
-    FWD([forward])
-    BWD([backward])
-    LOG([loggers])
-
-    SAMP --> CPU --> H2D --> AUG --> FWD --> BWD --> LOG
-    FWD -. callbacks .-> LOG
-
-    class SAMP cpu
-    class CPU cpu
-    class H2D cpu
-    class AUG gpu
-    class FWD gpu
-    class BWD gpu
-    class LOG out
-```
-
-Read left-to-right. *Slate* runs on CPU (decode, resize, pinned H2D).
-*Indigo* runs on GPU — including the augmentation that traditionally
-lived on CPU. The dotted arrow shows callbacks tapping the same state
-dict the loss is computed from, without touching the loop.
-
-The dict-everywhere design means callbacks attach without modifying the
-training loop, GPU augmentation slots in via `dataset.gpu_transform=`
-(see [§GPU-side batched augmentation](#data)), and any intermediate
-quantity in the state dict is automatically available to loggers.
+This is an objective and integration smoke test, not a validated research recipe.
+See [Jet](https://galilai-group.github.io/stable-pretraining/guides/jet/) for the exact determinant, scale
+parameterizations, and reconstruction tests.
 
 <a id="jax-backend"></a>
 ## JAX backend (experimental)
@@ -1102,44 +1013,35 @@ The SLURM template (`examples/simclr_cifar10_slurm.yaml`) includes placeholders 
 <a id="installation"></a>
 ## Installation
 
-The library is not yet available on PyPI. You can install it from the source code, as follows.
+Published releases are available on [PyPI](https://pypi.org/project/stable-pretraining/).
+Use an isolated Python environment with a PyTorch build appropriate for your CPU
+or GPU. The onboarding CI runs on Python 3.11.
 
-1. <details><summary>conda (optional)</summary>
+```bash
+python -m pip install stable-pretraining
+```
 
-    First use your favorite environment manager and install your favorite pytorch version, we provide an example with conda
-    ```
-    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-    bash Miniconda3-latest-Linux-x86_64.sh
-    ```
-    follow installation instructions... once completed, create your environment
-    ```
-    conda create -n my_env python=3.11
-    ```
-    with your environment name (here `my_env`) and your favorite Python version (here, `3.11`). Once completed, make sure to activate your environment (`conda activate my_env`) before proceeding to the next steps!
-  </details>
+For development, from a checkout:
 
-2. Pytorch and our library (we recommend using `uv` for quicker package management):
-    ```bash
-    pip3 install uv
-    uv pip install torch torchvision torchaudio
-    uv pip install -e .  # Core dependencies only
-    ```
+```bash
+python -m pip install -e ".[dev]"
+```
 
-    For optional features (vision models, experiment tracking, cluster support, etc.):
-    ```bash
-    uv pip install -e ".[vision,tracking]"  # Example: add vision models and wandb
-    uv pip install -e ".[all]"  # Or install all optional dependencies
-    ```
-    See `pyproject.toml` for available dependency groups (`vision`, `tracking`, `cluster`, `visualization`, `datasets`, `extras`, `dev`, `doc`).
+Optional integrations match the extras in `pyproject.toml`:
 
-    If you do not want to use uv, simply remove it from the above commands.
+```bash
+python -m pip install "stable-pretraining[trackio]"
+python -m pip install "stable-pretraining[swanlab]"
+python -m pip install "stable-pretraining[jax]"
+python -m pip install "stable-pretraining[deepspeed]"
+```
 
-3. API login (optional)
-    ```
-    wandb login
-    huggingface-cli login
-    ```
-4. **LaTeX support in Matplotlib** (optional)
+The default install already includes the vision, dataset, and Lightning
+training dependencies. Log in to an external tracking service only if you
+configure that service; the local registry needs no account.
+
+**LaTeX support in Matplotlib** (optional)
+
 
     <details>
     <summary>Click to expand setup instructions</summary>

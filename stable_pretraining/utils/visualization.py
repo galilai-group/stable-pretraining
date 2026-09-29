@@ -16,18 +16,20 @@ def latex_escape(s):
     """Escape LaTeX special characters in a string."""
     if not isinstance(s, str):
         return s
-    # Order matters: backslash first!
-    s = s.replace("\\", r"\textbackslash{}")
-    s = s.replace("&", r"\&")
-    s = s.replace("%", r"\%")
-    s = s.replace("$", r"\$")
-    s = s.replace("#", r"\#")
-    s = s.replace("_", r"\_")
-    s = s.replace("{", r"\{")
-    s = s.replace("}", r"\}")
-    s = s.replace("~", r"\textasciitilde{}")
-    s = s.replace("^", r"\textasciicircum{}")
-    return s
+    replacements = {
+        "\\": r"\textbackslash{}",
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+    }
+    # Escape original characters once, leaving generated LaTeX commands intact.
+    return "".join(replacements.get(character, character) for character in s)
 
 
 def escape_labels(idx_or_cols):
@@ -90,11 +92,6 @@ def format_df_to_latex(
         styler_escape = None
     else:
         styler_escape = "latex"
-    styler = df.style.format(
-        lambda x: percent_or_plain(x, show_percent_symbol),
-        na_rep=na_rep,
-        escape=styler_escape,
-    )
 
     # Formatter: percent with 2 decimals, handle NaN, with or without %
     def percent_or_plain(x, show_symbol=show_percent_symbol):
@@ -127,7 +124,7 @@ def format_df_to_latex(
                 else ""
             )
 
-        styler = styler.applymap(bold_overall)
+        styler = styler.apply(lambda column: column.map(bold_overall))
     # else: no bolding
     latex = styler.to_latex(
         hrules=True,
@@ -137,6 +134,7 @@ def format_df_to_latex(
         position=position,
         multicol_align="c",
         environment=None,
+        convert_css=True,
     )
     return latex
 
@@ -150,7 +148,9 @@ def _make_image(x):
     Returns:
         Image array in HWC format with values in [0, 255]
     """
-    return (255 * (x - x.min()) / (x.max() - x.min())).int().permute(1, 2, 0)
+    x = x.float()
+    span = (x.max() - x.min()).clamp_min(torch.finfo(x.dtype).eps)
+    return (255 * (x - x.min()) / span).int().permute(1, 2, 0)
 
 
 def imshow_with_grid(

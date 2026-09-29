@@ -211,7 +211,7 @@ class OnlineKNN(Callback):
                 raise ValueError(f"Key '{prediction_key}' already exists in batch")
             batch[prediction_key] = predictions
 
-            self._log_metrics(pl_module, predictions, batch[self.target])
+            self._log_metrics(pl_module, predictions, target_data)
 
     @torch.no_grad()
     def _compute_knn_predictions(

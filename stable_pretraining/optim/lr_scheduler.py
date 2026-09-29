@@ -136,6 +136,9 @@ def create_scheduler(
         # It's a functools.partial (duck-typing), call with optimizer
         logging.info("\tUser provided a partial function, calling with optimizer!!")
         return scheduler_config(optimizer)
+    elif isinstance(scheduler_config, type):
+        scheduler_type = scheduler_config.__name__
+        params = {}
     elif callable(scheduler_config):
         # Get the signature of the original function
         signature = inspect.signature(scheduler_config)
@@ -173,7 +176,14 @@ def create_scheduler(
         logging.info("\tUser provided a str (name)")
         scheduler_type = scheduler_config
         params = {}
-    if hasattr(torch.optim.lr_scheduler, scheduler_type):
+    else:
+        raise TypeError(
+            "scheduler_config must be a scheduler name, dict, class, or callable; "
+            f"got {type(scheduler_config).__name__}"
+        )
+    if isinstance(scheduler_config, type):
+        fn = scheduler_config
+    elif hasattr(torch.optim.lr_scheduler, scheduler_type):
         fn = getattr(torch.optim.lr_scheduler, scheduler_type)
     elif scheduler_type in globals():
         fn = globals()[scheduler_type]

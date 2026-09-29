@@ -18,6 +18,12 @@
     :maxdepth: 1
     :caption: Guides
 
+    guides/quickstart
+    guides/custom_images
+    guides/online_evaluation
+    guides/resume
+    guides/jet
+    guides/agents
     cache_dir
     cli
 

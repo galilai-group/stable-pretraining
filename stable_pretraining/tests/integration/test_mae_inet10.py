@@ -19,17 +19,15 @@ from stable_pretraining.methods.mae import MAE
 class TestMAEImagenet10:
     """Run MAE (vit_tiny) on imagenette for 10 steps and check determinism."""
 
-    def test_mae_10_steps(self):
+    def test_mae_10_steps(self, imagenette_dataset):
         """Train MAE for 10 steps and assert loss matches expected value."""
         pl.seed_everything(42, workers=True)
 
         # Build data from frgfm/imagenette
         data = spt.data.DataModule(
             train=torch.utils.data.DataLoader(
-                dataset=spt.data.HFDataset(
-                    "frgfm/imagenette",
+                dataset=imagenette_dataset(
                     split="train",
-                    revision="refs/convert/parquet",
                     transform=transforms.Compose(
                         transforms.RGB(),
                         transforms.RandomResizedCrop((224, 224), scale=(0.2, 1.0)),
@@ -43,10 +41,8 @@ class TestMAEImagenet10:
                 shuffle=True,
             ),
             val=torch.utils.data.DataLoader(
-                dataset=spt.data.HFDataset(
-                    "frgfm/imagenette",
+                dataset=imagenette_dataset(
                     split="validation",
-                    revision="refs/convert/parquet",
                     transform=transforms.Compose(
                         transforms.RGB(),
                         transforms.Resize((256, 256)),
@@ -123,7 +119,7 @@ class TestMAEImagenet10:
         final_loss = trainer.callback_metrics.get("fit/loss_step")
         assert final_loss is not None, "No loss logged"
         print(f"\nMAE final loss after 3 steps: {final_loss.item():.6f}")
-        expected = torch.tensor(1.214716)
+        expected = torch.tensor(1.219589)
         assert torch.isclose(final_loss.cpu(), expected, atol=1e-4), (
             f"MAE loss {final_loss.item():.6f} != expected {expected.item():.6f}"
         )

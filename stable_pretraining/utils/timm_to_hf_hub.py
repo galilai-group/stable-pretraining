@@ -2,7 +2,7 @@ import os
 import torch
 import timm
 from typing import Optional, Tuple
-from huggingface_hub import HfFolder, create_repo, upload_folder
+from huggingface_hub import create_repo, get_token, upload_folder
 from transformers import (
     ViTConfig,
     ViTModel,
@@ -35,9 +35,7 @@ def push_timm_to_hf(
         "swin": (SwinConfig, SwinModel),
         "convnext": (ConvNextConfig, ConvNextModel),
     }
-    hf_token = (
-        hf_token or os.environ.get("HUGGINGFACE_HUB_TOKEN") or HfFolder.get_token()
-    )
+    hf_token = hf_token or os.environ.get("HUGGINGFACE_HUB_TOKEN") or get_token()
     if not hf_token:
         raise RuntimeError(
             "Hugging Face token not found. Pass hf_token or set HUGGINGFACE_HUB_TOKEN."
@@ -86,7 +84,9 @@ processor = AutoImageProcessor.from_pretrained("{repo_id}")"""
         )
         hf_model = model_cls(config)
         try:
-            hf_model.load_state_dict(model.state_dict(), strict=False)
+            incompatible = hf_model.load_state_dict(model.state_dict(), strict=False)
+            if incompatible.missing_keys or incompatible.unexpected_keys:
+                raise ValueError("State dict keys do not match the Transformers model")
         except Exception as e:
             print(f"State dict mapping failed: {e}")
             family = None
@@ -117,6 +117,12 @@ processor = AutoImageProcessor.from_pretrained("{repo_id}")"""
             )
             return repo_url
 
+    readme = readme.split("- Example usage:")[0].replace(
+        "- Converted: Transformers", "- Converted: PyTorch"
+    )
+    readme += "\nWeights are saved in `pytorch_model.bin` for the original TIMM architecture.\n"
+    with open(f"{local_dir}/README.md", "w") as f:
+        f.write(readme)
     torch.save(model.state_dict(), f"{local_dir}/pytorch_model.bin")
     with open(f"{local_dir}/model_type.txt", "w") as f:
         f.write(

@@ -7,6 +7,8 @@ caching, and concurrent download support.
 import multiprocessing
 import os
 import time
+import tempfile
+from contextlib import closing
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Iterable, Union
@@ -52,6 +54,9 @@ def bulk_download(
         backend (str, optional): Storage backend type. Defaults to "filesystem".
         cache_dir (str, optional): Cache directory path. Defaults to "~/.stable_pretraining/".
     """
+    urls = list(urls)
+    if not urls:
+        return
     num_workers = len(urls)
     filenames = [os.path.basename(urlparse(url).path) for url in urls]
     with rich.progress.Progress(
@@ -97,6 +102,8 @@ def bulk_download(
                                 visible=True,
                             )
                     time.sleep(0.01)
+                for future in futures:
+                    future.result()
 
 
 def download(
@@ -120,8 +127,13 @@ def download(
         _task_id: Internal task ID for bulk downloads
 
     Returns:
-        Path to the downloaded file or None if download failed
+        Path to the complete downloaded file.
+
+    Raises:
+        ValueError: If the received size differs from Content-Length.
+        Exception: If the request or filesystem operation fails.
     """
+    temp_path = None
     try:
         filename = os.path.basename(urlparse(url).path)
         dest_folder = Path(dest_folder)
@@ -129,19 +141,33 @@ def download(
         local_filename = dest_folder / filename
         lock_filename = dest_folder / f"{filename}.lock"
         # Use a file lock to prevent concurrent downloads
-        with FileLock(lock_filename):
+        with (
+            FileLock(lock_filename),
+            closing(CachedSession(cache_dir, backend=backend)) as session,
+        ):
             # Download the file
-            session = CachedSession(cache_dir, backend=backend)
             logging.info(f"Downloading: {url}")
-            response = session.head(url)
-            total_size = int(response.headers.get("content-length", 0))
-            logging.info(f"Total size: {total_size}")
-
             response = session.get(url, stream=True)
+            response.raise_for_status()
+            # iter_content decodes HTTP compression; Content-Length measures wire bytes.
+            encoding = response.headers.get("content-encoding", "identity")
+            length = (
+                response.headers.get("content-length")
+                if encoding.lower() == "identity"
+                else None
+            )
+            total_size = int(length) if length is not None else 0
+            logging.info(f"Total size: {total_size}")
             downloaded_size = 0
             # Write the file to the destination folder
             with (
-                open(local_filename, "wb") as f,
+                tempfile.NamedTemporaryFile(
+                    mode="wb",
+                    dir=dest_folder,
+                    prefix=f".{filename}.",
+                    suffix=".tmp",
+                    delete=False,
+                ) as f,
                 tqdm(
                     desc=local_filename.name,
                     total=total_size,
@@ -151,6 +177,7 @@ def download(
                     disable=not progress_bar,
                 ) as bar,
             ):
+                temp_path = Path(f.name)
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
                     downloaded_size += len(chunk)
@@ -160,11 +187,16 @@ def download(
                             "progress": downloaded_size,
                             "total": total_size,
                         }
-            if downloaded_size == total_size:
-                logging.info("Download complete and successful!")
-            else:
-                logging.error("Download incomplete or corrupted.")
+            if length is not None and downloaded_size != total_size:
+                raise ValueError(
+                    f"Download incomplete: expected {total_size} bytes, received {downloaded_size}"
+                )
+            os.replace(temp_path, local_filename)
+            logging.info("Download complete and successful!")
             return local_filename
     except Exception as e:
         logging.error(f"Error downloading {url}: {e}")
-        raise e
+        raise
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)

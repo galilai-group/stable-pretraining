@@ -15,6 +15,10 @@ Covers three layers:
    logger every validation epoch with zero model coupling.
 """
 
+import json
+import os
+import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -42,9 +46,7 @@ class _FakeVideoLogger:
 
     def log_video(self, key, videos, step=None, caption=None, fps=None):
         # snapshot the path's existence now (ReconViz deletes it afterwards)
-        exists = [
-            isinstance(v, str) and __import__("os").path.exists(v) for v in videos
-        ]
+        exists = [isinstance(v, str) and os.path.getsize(v) > 0 for v in videos]
         self.calls.append((key, videos, step, caption, fps, exists))
 
 
@@ -132,6 +134,21 @@ class TestReconVizHelpers:
         with pytest.raises(ValueError, match="specs must not be empty"):
             ReconViz([])
 
+    @pytest.mark.parametrize("name", ["n_items", "seq_len", "fps"])
+    @pytest.mark.parametrize("value", [0, -1])
+    def test_nonpositive_sizes_rejected(self, name, value):
+        kwargs = {"mode": "video", "seq_len": 2, name: value}
+        with pytest.raises(ValueError, match=f"{name} must be positive"):
+            ReconViz([("recon", "image")], **kwargs)
+
+    def test_stats_are_detached_snapshots(self):
+        mean = torch.full((3,), 0.5, requires_grad=True)
+        viz = ReconViz([("recon", "image")], pixel_mean=mean, pixel_std=[1] * 3)
+        with torch.no_grad():
+            mean.zero_()
+        assert not viz.pixel_mean.requires_grad
+        assert torch.all(viz.pixel_mean == 0.5)
+
 
 # --------------------------------------------------------------------------- #
 # 2. caching + emission in isolation
@@ -205,6 +222,40 @@ class TestReconVizEmission:
         viz.on_validation_epoch_end(_trainer([lgr]), None)
         assert lgr.calls == []
 
+    @pytest.mark.parametrize("target", [None, torch.empty(1, 3, 4, 4)])
+    def test_missing_or_mismatched_target_is_skipped(self, target):
+        lgr = _FakeImageLogger()
+        tr = _trainer([lgr])
+        viz = ReconViz([("recon", "image")])
+        batch = {} if target is None else {"image": target}
+        viz.on_validation_batch_end(
+            tr, None, {"recon_preds": torch.rand(2, 3, 8, 8)}, batch, 0
+        )
+        viz.on_validation_epoch_end(tr, None)
+        assert not lgr.calls and not viz._cache
+
+    def test_multiple_specs_continue_after_logger_failure(self):
+        def fail(**kwargs):
+            raise RuntimeError("unavailable logger")
+
+        lgr = _FakeImageLogger()
+        tr = _trainer([SimpleNamespace(log_image=fail), lgr])
+        viz = ReconViz([("a", "image"), ("b", "image")])
+        x = torch.rand(2, 3, 8, 8)
+        viz.on_validation_batch_end(tr, None, None, {"a": x, "b": x, "image": x}, 0)
+        viz.on_validation_epoch_end(tr, None)
+        assert [call[0] for call in lgr.calls] == ["val/a", "val/b"]
+        assert not viz._cache
+
+    def test_video_with_incomplete_trajectory_is_skipped(self):
+        lgr = _FakeVideoLogger()
+        tr = _trainer([lgr])
+        viz = ReconViz([("recon", "image")], mode="video", seq_len=3)
+        x = torch.rand(2, 3, 8, 8)
+        viz.on_validation_batch_end(tr, None, {"recon_preds": x}, {"image": x}, 0)
+        viz.on_validation_epoch_end(tr, None)
+        assert not lgr.calls and not viz._cache
+
     def test_grid_without_image_logger_is_noop(self):
         # a logger that only speaks video must not be used for a grid.
         vlgr = _FakeVideoLogger()
@@ -249,6 +300,62 @@ class TestReconVizEmission:
         assert caption == ["traj (epoch 2)"]
         # a real, non-empty mp4 existed at log time
         assert exists == [True]
+        assert all(not Path(path).exists() for path in videos)
+
+    def test_missing_imageio_does_not_break_validation(self, monkeypatch):
+        monkeypatch.setitem(sys.modules, "imageio", None)
+        lgr = _FakeVideoLogger()
+        viz = ReconViz([("recon", "image")], mode="video", seq_len=2)
+        x = torch.rand(2, 3, 8, 8)
+        tr = _trainer([lgr])
+        viz.on_validation_batch_end(tr, None, {"recon_preds": x}, {"image": x}, 0)
+        viz.on_validation_epoch_end(tr, None)
+        assert not lgr.calls and not viz._cache
+
+    @pytest.mark.parametrize("failure", ["encoder", "logger"])
+    def test_video_failure_cleans_temporary_file(self, monkeypatch, failure):
+        paths = []
+
+        def encode(path, frames, fps):
+            paths.append(path)
+            Path(path).write_bytes(b"partial video")
+            if failure == "encoder":
+                raise RuntimeError("encoder failed")
+
+        def log_video(**kwargs):
+            assert Path(kwargs["videos"][0]).exists()
+            raise RuntimeError("logger failed")
+
+        monkeypatch.setitem(sys.modules, "imageio", SimpleNamespace(mimsave=encode))
+        tr = _trainer([SimpleNamespace(log_video=log_video)])
+        viz = ReconViz([("recon", "image")], mode="video", seq_len=2)
+        x = torch.rand(2, 3, 8, 8)
+        viz.on_validation_batch_end(tr, None, {"recon_preds": x}, {"image": x}, 0)
+        viz.on_validation_epoch_end(tr, None)
+        assert len(paths) == 1 and not Path(paths[0]).exists()
+        assert not viz._cache
+
+    @pytest.mark.parametrize("shape", [(0, 3, 8, 8), (2, 3, 8), (2, 3, 0, 8)])
+    def test_invalid_images_skipped(self, shape):
+        lgr = _FakeImageLogger()
+        tr = _trainer([lgr])
+        viz = ReconViz([("recon", "image")])
+        x = torch.empty(shape)
+        viz.on_validation_batch_end(tr, None, {"recon_preds": x}, {"image": x}, 0)
+        viz.on_validation_epoch_end(tr, None)
+        assert not lgr.calls and not viz._cache
+
+    def test_cache_is_snapshot_and_second_loader_cannot_overwrite(self):
+        viz = ReconViz([("recon", "image")])
+        tr = _trainer([])
+        x = torch.zeros(2, 3, 8, 8)
+        viz.on_validation_batch_end(tr, None, {"recon_preds": x}, {"image": x}, 0)
+        x.fill_(1)
+        viz.on_validation_batch_end(
+            tr, None, {"recon_preds": x}, {"image": x}, 0, dataloader_idx=1
+        )
+        assert torch.count_nonzero(viz._cache["recon"]["preds"]) == 0
+        assert torch.count_nonzero(viz._cache["recon"]["target"]) == 0
 
     def test_video_caches_n_traj_times_seq_len_rows(self):
         viz = ReconViz([("recon", "image", None)], mode="video", n_items=3, seq_len=4)
@@ -447,3 +554,13 @@ class TestReconVizEndToEnd:
         # the logged image is a target | recon grid: width is 2*img_size + sep
         _, shape = next((k, s) for k, s in logged if k == "val/recon")
         assert shape[1] == 2 * img_size + ReconViz._SEPARATOR_WIDTH
+        events = [
+            json.loads(line)
+            for line in (manager._run_dir / "media.jsonl").read_text().splitlines()
+        ]
+        event = next(event for event in events if event["tag"] == "val/recon")
+        assert event["type"] == "image"
+        from PIL import Image
+
+        with Image.open(manager._run_dir / event["path"]) as image:
+            assert image.size == (shape[1], shape[0])

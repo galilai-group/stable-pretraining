@@ -14,12 +14,8 @@ on:
       - "**"
 
 jobs:
-  # Unit tests are sharded across 4 parallel jobs via pytest-split.
-  # pytest-split partitions collected tests deterministically (by file/test
-  # path hash) so every test runs in exactly one shard. With ~80 unit
-  # test files, each shard runs ~20. If we ever add `.test_durations`
-  # (recorded with `pytest --store-durations`) pytest-split will rebalance
-  # by historical wall time.
+  # Keep each unit test in one of four shards. Recording .test_durations
+  # with pytest --store-durations lets pytest-split balance historical runtimes.
   Test:
     name: Unit (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
@@ -44,17 +40,83 @@ jobs:
         run: |
           python -m pip install --user -e .[dev,trackio,swanlab]
       - name: Run Unit Tests (shard ${{ matrix.shard }}/4)
+        env:
+          COVERAGE_FILE: .coverage.${{ matrix.shard }}
         run: |
           pytest stable_pretraining/ -m unit --verbose \
             --splits 4 --group ${{ matrix.shard }} \
             --cov=stable_pretraining --cov-report=term --cov-report=xml
-      - name: Upload coverage reports to Codecov
+      - name: Upload shard coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-coverage-${{ matrix.shard }}
+          path: .coverage.${{ matrix.shard }}
+          include-hidden-files: true
+          if-no-files-found: error
+
+  Test-jax:
+    name: JAX unit tests (CPU)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install JAX test dependencies
+        run: python -m pip install -e ".[dev,jax]"
+      - name: Run JAX unit tests
+        env:
+          JAX_PLATFORMS: cpu
+          XLA_FLAGS: --xla_force_host_platform_device_count=2
+          OMP_NUM_THREADS: "2"
+          COVERAGE_FILE: .coverage.jax
+        run: |
+          python -m pytest stable_pretraining/tests/jax_backend -m unit -q \
+            --cov=stable_pretraining --cov-report=term
+      - name: Upload JAX coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-coverage-jax
+          path: .coverage.jax
+          include-hidden-files: true
+          if-no-files-found: error
+
+  Coverage:
+    name: Combined unit coverage (minimum 95%)
+    needs: [Test, Test-jax]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: python -m pip install coverage
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: unit-coverage-*
+          path: coverage-data
+          merge-multiple: true
+      - name: Require all four PyTorch shards and JAX coverage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          expected = {f".coverage.{i}" for i in range(1, 5)} | {".coverage.jax"}
+          actual = {p.name for p in Path("coverage-data").glob(".coverage.*")}
+          if actual != expected:
+              raise SystemExit(f"Expected {expected}, got {actual}")
+          PY
+      - name: Combine coverage and enforce floor
+        run: |
+          python -m coverage combine coverage-data
+          python -m coverage report --precision=2 --fail-under=95
+          python -m coverage xml
+      - name: Upload combined coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: ${{ github.repository }}
           files: ./coverage.xml
-          flags: unit-shard-${{ matrix.shard }}
+          flags: unit
           fail_ci_if_error: false
 
   Test-integration:

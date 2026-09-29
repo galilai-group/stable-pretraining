@@ -31,7 +31,7 @@ def collapse_nested_dict(
         _flat_cfg = {}
     if _base_name is None:
         _base_name = ""
-    if isinstance(cfg, list) or isinstance(cfg, tuple):
+    if isinstance(cfg, (list, tuple, omegaconf.ListConfig)):
         for i in range(len(cfg)):
             collapse_nested_dict(
                 cfg[i],
@@ -87,8 +87,10 @@ def recursive_instantiate(
                     # Special handling for Module to resolve forward function
                     if key == "module" and "forward" in cfg[key]:
                         # Resolve interpolations before converting to dict to handle root-level references
-                        module_cfg = omegaconf.OmegaConf.to_container(
-                            cfg[key], resolve=True
+                        module_cfg = (
+                            omegaconf.OmegaConf.to_container(cfg[key], resolve=True)
+                            if isinstance(cfg[key], omegaconf.DictConfig)
+                            else dict(cfg[key])
                         )
                         # Import the forward function if it's a string reference
                         if isinstance(module_cfg["forward"], str):
@@ -174,7 +176,7 @@ def instantiate_from_config(cfg: Union[dict, omegaconf.DictConfig]) -> Any:
             data=components["data"],
             seed=components.get("seed", None),
             ckpt_path=components.get("ckpt_path", None),
-            resume_weights_only=components.get("resume_weights_only", False),
+            weights_only=components.get("weights_only", True),
         )
         return manager
 

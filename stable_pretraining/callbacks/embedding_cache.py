@@ -23,15 +23,18 @@ class EmbeddingCache(pl.pytorch.Callback):
         logging.info("Setup of EmbeddingCache")
         if hasattr(pl_module, "embedding_cache"):
             raise RuntimeError("A embedding_cache is already present")
-        pl_module.embedding_cache = {}
+        modules = []
         for name in self.module_names:
             module = self._get_module_by_name(pl_module, name)
             if module is None:
                 raise ValueError(f"Module '{name}' not found in LightningModule.")
+            modules.append(module)
+        pl_module.embedding_cache = {}
+        for name, module in zip(self.module_names, modules):
             hook = module.register_forward_hook(self._make_hook(name, pl_module))
             self.hooks.append(hook)
         logging.info("\t - adding forward hook")
-        pl_module.register_forward_hook(self.forward_hook_fn)
+        self.hooks.append(pl_module.register_forward_hook(self.forward_hook_fn))
 
     def teardown(self, trainer, pl_module, stage=None):
         for hook in self.hooks:

@@ -165,7 +165,7 @@ class EpochMilestones(pl.Callback):
                     f"✓ value {final} below threshold {self.milestones[epoch]}"
                 )
 
-    def on_training_epoch_end(self, trainer, pl_module):
+    def on_train_epoch_end(self, trainer, pl_module):
         if self.after_validation:
             return
         self._check_condition(trainer)
