@@ -345,23 +345,6 @@ class RotaryPositionEmbedding1D(nn.Module):
         self.base = base
         inv_freq = 1.0 / (base ** (torch.arange(0, head_dim, 2).float() / head_dim))
         self.register_buffer("inv_freq", inv_freq)
-        self._cached_seq_len = 0
-
-    def _build_cache(
-        self,
-        seq_len: int,
-        device: torch.device,
-        dtype: torch.dtype,
-    ) -> None:
-        """Build and cache sin/cos frequencies for the given sequence length."""
-        pos = torch.arange(seq_len, device=device, dtype=dtype)
-        freqs = torch.outer(pos, self.inv_freq.to(device=device, dtype=dtype))
-        # Interleave so that apply_rotary_emb's stride-2 indexing hits one
-        # frequency per rotary pair: freqs[:, 2k] = freqs[:, 2k+1] = pos*inv_freq[k].
-        freqs = freqs.repeat_interleave(2, dim=-1)
-        self.register_buffer("cos_cached", freqs.cos(), persistent=False)
-        self.register_buffer("sin_cached", freqs.sin(), persistent=False)
-        self._cached_seq_len = seq_len
 
     def get_freqs(
         self,
@@ -371,14 +354,22 @@ class RotaryPositionEmbedding1D(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get cos/sin frequencies for the given sequence length.
 
+        Computed from ``inv_freq`` on every call (in float32, then cast), so the
+        table can never go stale after ``load_state_dict`` or ``to_empty`` and
+        traces to a plain Range/Mul/Cos/Sin subgraph for ONNX export.
+
         :param seq_len: Sequence length
         :param device: Target device
         :param dtype: Target dtype
         :return: (cos, sin) tensors of shape [seq_len, head_dim].
         """
-        if seq_len != self._cached_seq_len:
-            self._build_cache(seq_len, device, dtype)
-        return self.cos_cached[:seq_len], self.sin_cached[:seq_len]
+        pos = torch.arange(seq_len, device=device, dtype=torch.float32)
+        inv_freq = self.inv_freq.to(device=device, dtype=torch.float32)
+        freqs = pos[:, None] * inv_freq[None, :]
+        # Interleave so that apply_rotary_emb's stride-2 indexing hits one
+        # frequency per rotary pair: freqs[:, 2k] = freqs[:, 2k+1] = pos*inv_freq[k].
+        freqs = torch.stack((freqs, freqs), dim=-1).flatten(-2)
+        return freqs.cos().to(dtype), freqs.sin().to(dtype)
 
     def forward(
         self,
