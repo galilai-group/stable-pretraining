@@ -154,6 +154,19 @@ Unreleased
   changes are persisted via ``PATCH /api/run-meta`` with optimistic updates and
   revert on failure.
 
+**Time series**
+
+- ``ViT.forward_features`` accepts a ``[B, C, L]`` time series and encodes it
+  as a ``1 x L`` image: build the model with ``img_size=(1, L)`` and
+  ``patch_size=(1, P)``, and pad or crop series to ``L``. The ``ViT`` docstring
+  shows the full recipe, with ``nn.InstanceNorm1d`` in front to z-score each
+  series over time, so raw series of very different scales share one input
+  range; it exports to ONNX.
+- ``StackedMultiView`` / ``MultiView``: views keep the ``source`` key instead of
+  always being written under ``"image"``, so multi-view pipelines work on other
+  keys (e.g. ``"x"`` for series). The default ``source`` is ``"image"``, so
+  existing pipelines are unchanged.
+
 **Dependencies**
 
 - ``torchvision>=0.21`` is now required (previously unbounded).

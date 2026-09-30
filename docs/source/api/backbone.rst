@@ -16,6 +16,7 @@ Architectures
    Resnet9
    ConvMixer
    Jet
+   ViT
 
 Utility Functions
 -----------------

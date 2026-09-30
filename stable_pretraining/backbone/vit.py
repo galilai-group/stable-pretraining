@@ -2273,6 +2273,22 @@ class ViT(nn.Module):
         # Token-level features (no pooling, no head)
         model = ViT(num_classes=0, global_pool="")
         tokens = model(torch.randn(2, 3, 224, 224))  # [2, 1 + 196, 768]
+
+        # Time series [B, C, L], encoded as a 1 x L image. InstanceNorm1d
+        # z-scores each channel of each series over time (zero mean, unit
+        # variance), so raw series with very different offsets and scales
+        # (e.g. prices vs. audio) reach the ViT on a common scale.
+        model = nn.Sequential(
+            nn.InstanceNorm1d(1),
+            ViT(
+                img_size=(1, 1024),
+                patch_size=(1, 32),
+                in_chans=1,
+                class_token=False,
+                global_pool="avg",
+            ),
+        )
+        feats = model(torch.randn(2, 1, 1024))  # [2, 768]
     """
 
     def __init__(
@@ -2421,9 +2437,14 @@ class ViT(nn.Module):
     def forward_features(self, x: torch.Tensor) -> torch.Tensor:
         """Encode an image batch to a token sequence (after final norm).
 
-        :param x: ``[B, C, H, W]``
+        :param x: ``[B, C, H, W]``, or a time series ``[B, C, L]``, encoded as
+            a ``1 x L`` image (build the model with ``img_size=(1, L)`` and
+            ``patch_size=(1, P)``). ``L`` must match ``img_size``, so pad or
+            crop series to that length first.
         :return: ``[B, num_prefix + N, embed_dim]``
         """
+        if x.ndim == 3:
+            x = x.unsqueeze(2)
         B, _, H, W = x.shape
         ph, pw = self.patch_size
         grid_h, grid_w = H // ph, W // pw

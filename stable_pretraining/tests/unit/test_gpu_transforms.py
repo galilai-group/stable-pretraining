@@ -380,6 +380,17 @@ class TestStackedMultiView:
         # outputs should equal the same flipped tensor.
         assert torch.allclose(out["views"][0]["image"], out["views"][1]["image"])
 
+    def test_views_keep_source_key(self):
+        chain = gt.GPUCompose(
+            [gt.GPUNormalize(mean=[0.0], std=[1.0], source="x", target="x")],
+            compile=False,
+        )
+        x = torch.rand(4, 1, 8, 8)
+        out = gt.StackedMultiView(chain, n_views=2, source="x")({"x": x})
+        assert "x" not in out
+        for v in out["views"]:
+            assert torch.equal(v["x"], x)
+
 
 @pytest.mark.unit
 class TestMultiView:
@@ -403,6 +414,17 @@ class TestMultiView:
         assert torch.allclose(out["views"][0]["image"], torch.full_like(x, 0.5))
         assert torch.allclose(out["views"][1]["image"], torch.full_like(x, 2.0))
         assert "image" not in out
+
+    def test_views_keep_source_key(self):
+        chain = gt.GPUCompose(
+            [gt.GPUNormalize(mean=[0.0], std=[2.0], source="x", target="x")],
+            compile=False,
+        )
+        x = torch.ones(2, 1, 8, 8)
+        out = gt.MultiView([chain, chain], source="x")({"x": x})
+        assert "x" not in out
+        for v in out["views"]:
+            assert torch.allclose(v["x"], torch.full_like(x, 0.5))
 
 
 @pytest.mark.unit
