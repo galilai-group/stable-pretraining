@@ -2,7 +2,7 @@
 
 This module contains joint embedding methods that learn to embed different views
 of the same image close together in representation space. Includes both contrastive
-(NTXentLoss) and non-contrastive (BYOL, VICReg, Barlow Twins) methods.
+(NTXentLoss) and non-contrastive (BYOL, VICReg, Barlow Twins, TWIST) methods.
 """
 
 from typing import Optional
@@ -343,3 +343,140 @@ class NTXEntLoss(InfoNCELoss):
         mask[local_idx, offset + local_idx] = True
 
         return self._compute(anchors, candidates, targets, mask=mask)
+
+
+def _kl_divergence(
+    p: torch.Tensor, log_p: torch.Tensor, log_q: torch.Tensor
+) -> torch.Tensor:
+    """Batch-mean ``KL(p || q)`` from probabilities ``p`` and both log-probabilities."""
+    return (p * (log_p - log_q)).sum(dim=-1).mean()
+
+
+def _mean_entropy(p: torch.Tensor, log_p: torch.Tensor) -> torch.Tensor:
+    """Batch-mean Shannon entropy of the per-sample distributions ``p``."""
+    return -(p * log_p).sum(dim=-1).mean()
+
+
+def _entropy_of_global_mean(p: torch.Tensor) -> torch.Tensor:
+    """Shannon entropy of the class distribution averaged over the global batch."""
+    # Per-rank means are summed with the autograd-aware all_reduce and divided
+    # by the world size, so under DDP the gradient is that of the entropy of
+    # the *global* mean distribution, which is what the reference
+    # implementation optimises. In a single process all_reduce is a no-op.
+    mean = all_reduce(p.mean(dim=0)) / get_world_size()
+    # A class whose mean probability underflowed to exactly 0 contributes
+    # 0 * log(0) = 0 to the entropy, but the derivative of ``x * log(x)`` at 0
+    # is -inf, and -inf times the (zero) gradient of such a probability is
+    # NaN. Flooring the argument of the log at the smallest positive float
+    # leaves every representable probability untouched and makes the
+    # derivative finite there, so the chain rule yields the correct 0.
+    tiny = torch.finfo(mean.dtype).tiny
+    return -(mean * torch.log(mean.clamp_min(tiny))).sum()
+
+
+class TWISTLoss(torch.nn.Module):
+    """SSL objective used in TWIST :cite:`wang2021self`.
+
+    Both views of an image are classified into ``C`` latent classes by a shared
+    head that ends with a batch normalisation (no affine parameters) and a
+    softmax. Given the two class-distribution matrices ``P1, P2`` of shape
+    ``[B, C]``, the loss is::
+
+        consistency + sharpness_weight * sharpness - diversity_weight * diversity
+
+    where ``H`` is the Shannon entropy and ``KL`` the Kullback-Leibler divergence:
+
+    - **consistency**: ``mean_i [KL(P1_i || P2_i) + KL(P2_i || P1_i)] / 2``.
+      The two views of an image must receive the same class distribution.
+    - **sharpness**: ``[mean_i H(P1_i) + mean_i H(P2_i)] / 2``. Each sample's
+      distribution should be confident (minimised).
+    - **diversity**: ``[H(mean_i P1_i) + H(mean_i P2_i)] / 2``. The batch-mean
+      distribution should be close to uniform so every class is used (maximised).
+
+    ``sharpness - diversity`` is a Monte-Carlo estimate of ``-I(X; Y)``, the
+    negative mutual information between an image and its predicted class, so
+    the objective cannot collapse to a constant prediction without any
+    stop-gradient, momentum encoder, or negative pairs (paper, Sec. 3.2).
+
+    Args:
+        sharpness_weight (float, optional): Weight ``alpha`` of the sharpness
+            term. Default is 1.0 (the paper's ResNet setting; 0.4 for ViTs).
+        diversity_weight (float, optional): Weight ``beta`` of the diversity
+            term. Default is 1.0.
+
+    Note:
+        - Inputs are *logits* (pre-softmax). The paper applies a batch
+          normalisation without affine parameters right before the softmax
+          ("NBS", Sec. 3.3); that layer belongs to the projection head, not to
+          this loss.
+        - Under DDP the diversity term uses the mean distribution of the
+          **global** batch (all ranks), as in the reference implementation. In
+          a single process the collective is a no-op.
+        - Terms are computed in float32 (or the input precision if higher) and
+          without an additive epsilon on the probabilities: ``log_softmax``
+          handles vanishing probabilities exactly, and the only guard is a
+          floor at the smallest positive float inside the ``log`` of the
+          diversity term, which keeps its gradient finite when a class
+          receives no mass at all.
+        - The official code also has a sharpening temperature on the two
+          entropy terms; it is 1 (a no-op) in every released recipe and is
+          therefore not exposed.
+    """
+
+    def __init__(self, sharpness_weight: float = 1.0, diversity_weight: float = 1.0):
+        super().__init__()
+        self.sharpness_weight = sharpness_weight
+        self.diversity_weight = diversity_weight
+
+    def forward(self, z_i: torch.Tensor, z_j: torch.Tensor) -> torch.Tensor:
+        """Compute the TWIST loss.
+
+        Args:
+            z_i (torch.Tensor): Class logits of the first view, shape ``[B, C]``.
+            z_j (torch.Tensor): Class logits of the second view, shape ``[B, C]``.
+
+        Returns:
+            torch.Tensor: Scalar loss. It is bounded below by
+            ``-diversity_weight * log(C)`` and is usually negative once the
+            predictions are confident and balanced.
+        """
+        return self.terms(z_i, z_j)["loss"]
+
+    def terms(self, z_i: torch.Tensor, z_j: torch.Tensor) -> dict[str, torch.Tensor]:
+        """Compute the loss together with its three unweighted terms.
+
+        Useful for logging and ablations; ``forward`` returns ``terms(...)["loss"]``.
+
+        Args:
+            z_i (torch.Tensor): Class logits of the first view, shape ``[B, C]``.
+            z_j (torch.Tensor): Class logits of the second view, shape ``[B, C]``.
+
+        Returns:
+            dict[str, torch.Tensor]: Scalars ``"consistency"``, ``"sharpness"``
+            and ``"diversity"`` (unweighted) plus the weighted ``"loss"``.
+        """
+        # At least float32: half inputs are promoted, float64 inputs stay exact.
+        dtype = torch.promote_types(
+            torch.promote_types(z_i.dtype, z_j.dtype), torch.float32
+        )
+        log_p_i = F.log_softmax(z_i.to(dtype), dim=-1)
+        log_p_j = F.log_softmax(z_j.to(dtype), dim=-1)
+        p_i, p_j = log_p_i.exp(), log_p_j.exp()
+
+        consistency = 0.5 * (
+            _kl_divergence(p_i, log_p_i, log_p_j)
+            + _kl_divergence(p_j, log_p_j, log_p_i)
+        )
+        sharpness = 0.5 * (_mean_entropy(p_i, log_p_i) + _mean_entropy(p_j, log_p_j))
+        diversity = 0.5 * (_entropy_of_global_mean(p_i) + _entropy_of_global_mean(p_j))
+        loss = (
+            consistency
+            + self.sharpness_weight * sharpness
+            - self.diversity_weight * diversity
+        )
+        return {
+            "consistency": consistency,
+            "sharpness": sharpness,
+            "diversity": diversity,
+            "loss": loss,
+        }

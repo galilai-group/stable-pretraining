@@ -4,6 +4,17 @@ Unreleased
 
 **New method**
 
+- ``TWIST`` (Twin Class Distribution Estimation): classifies two augmented
+  views into ``C`` latent classes with a shared network ending in a batch
+  normalisation and a softmax, and trains it with a single loss made of a
+  consistency term (symmetric KL between the views), a sharpness term
+  (per-sample entropy, minimised) and a diversity term (entropy of the
+  batch-mean distribution, maximised), per Wang et al., "Self-Supervised
+  Learning by Estimating Twin Class Distributions" (2021). Ships as
+  ``spt.losses.TWISTLoss`` (DDP-correct global diversity term),
+  ``spt.forward.twist`` and ``spt.methods.TWIST`` (two-view symmetric
+  objective; no multi-crop, self-labeling or momentum encoder), with a
+  CIFAR-10 ResNet-18 benchmark under ``benchmarks/cifar10/twist-resnet18.py``.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

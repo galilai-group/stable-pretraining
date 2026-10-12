@@ -70,6 +70,7 @@ online clustering to learn representations without negative pairs.
    DINOv3
    iBOT
    SwAV
+   TWIST
    MSN
    Data2Vec
 

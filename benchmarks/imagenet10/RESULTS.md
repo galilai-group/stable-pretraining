@@ -26,24 +26,25 @@ methods are flagged with the reason they collapse.
 |  8 | **NNCLR**          | contrastive + queue            | 75.6% | 80.2% | ✓ |
 |  9 | **VICReg**         | variance / invariance / cov.   | 75.0% | 79.4% | ✓ |
 | 10 | **SimCLR**         | NT-Xent contrastive            | 73.3% | 74.9% | ✓ |
-| 11 | **VICRegL**        | VICReg + local matching        | 67.2% | 72.7% | ✓ |
-| 12 | **CMAE**           | MAE + contrastive              | 61.9% | 72.2% | ✓ |
-| 13 | **MoCo v2**        | momentum + queue               | 70.0% | 70.8% | ✓ |
-| 14 | **BYOL**           | EMA target + predictor         | 56.0% | 63.9% | ✓ |
-| 15 | **SimSiam**        | siamese + stop-grad            | 54.9% | 62.8% | ✓ |
-| 16 | **iBOT**           | DINO + masked-patch loss       | 43.3% | 57.9% | ✓ |
-| 17 | **MSN**            | masked-siamese                 | 50.6% | 57.6% | ✓ |
-| 18 | **DINOv3**         | DINOv2 + registers + KoLeo     | 35.9% | 41.4% | running (mc restart, ep 37) |
-| 19 | **DINOv2**         | DINO + iBOT + Sinkhorn         | 29.6% | 37.2% | running (mc restart, ep 37) |
-| 20 | **TiCO**           | EMA-cov contrast (LARS)        | 23.7% | 33.7% | ✓ |
-| 21 | **IJEPA**          | predictive (joint embedding)   | 33.2% | 34.0% | ✓ |
-| 22 | **Data2Vec**       | EMA contextual features        | 31.0% | 26.3% | ✓ |
-| 23 | **MaskFeat**       | masked HOG features            | 27.8% | 25.6% | ✓ |
-| 24 | **SimMIM**         | masked pixel modeling          | 30.9% | 22.5% | ✓ |
-| 25 | **W-MSE**          | whitening + MSE                | 16.9% | 15.9% | ✓ |
-| 26 | **PIRL**           | jigsaw + memory bank           | 17.4% | 15.6% | ✓ |
-| 27 | **BEiT**           | discrete-token masking         | 22.0% | 15.3% | ✓ (placeholder tokenizer) |
-| 28 | **iGPT**           | autoregressive (AIM-style)     | 18.8% | 12.8% | ✓ |
+| 11 | **TWIST**          | twin class distributions (2-view) | 72.1% | 74.2% | ✓ |
+| 12 | **VICRegL**        | VICReg + local matching        | 67.2% | 72.7% | ✓ |
+| 13 | **CMAE**           | MAE + contrastive              | 61.9% | 72.2% | ✓ |
+| 14 | **MoCo v2**        | momentum + queue               | 70.0% | 70.8% | ✓ |
+| 15 | **BYOL**           | EMA target + predictor         | 56.0% | 63.9% | ✓ |
+| 16 | **SimSiam**        | siamese + stop-grad            | 54.9% | 62.8% | ✓ |
+| 17 | **iBOT**           | DINO + masked-patch loss       | 43.3% | 57.9% | ✓ |
+| 18 | **MSN**            | masked-siamese                 | 50.6% | 57.6% | ✓ |
+| 19 | **DINOv3**         | DINOv2 + registers + KoLeo     | 35.9% | 41.4% | running (mc restart, ep 37) |
+| 20 | **DINOv2**         | DINO + iBOT + Sinkhorn         | 29.6% | 37.2% | running (mc restart, ep 37) |
+| 21 | **TiCO**           | EMA-cov contrast (LARS)        | 23.7% | 33.7% | ✓ |
+| 22 | **IJEPA**          | predictive (joint embedding)   | 33.2% | 34.0% | ✓ |
+| 23 | **Data2Vec**       | EMA contextual features        | 31.0% | 26.3% | ✓ |
+| 24 | **MaskFeat**       | masked HOG features            | 27.8% | 25.6% | ✓ |
+| 25 | **SimMIM**         | masked pixel modeling          | 30.9% | 22.5% | ✓ |
+| 26 | **W-MSE**          | whitening + MSE                | 16.9% | 15.9% | ✓ |
+| 27 | **PIRL**           | jigsaw + memory bank           | 17.4% | 15.6% | ✓ |
+| 28 | **BEiT**           | discrete-token masking         | 22.0% | 15.3% | ✓ (placeholder tokenizer) |
+| 29 | **iGPT**           | autoregressive (AIM-style)     | 18.8% | 12.8% | ✓ |
 
 ✓ = run completed at epoch 199/200. *running* = run still climbing at the
 listed epoch; the numbers shown are the best so far, will improve.
@@ -76,6 +77,7 @@ size used in this sweep. Key choices:
 | MSN | AdamW, Sinkhorn + masked siamese | 5e-4 | paper exact |
 | VICRegL | AdamW, VICReg global + local | 5e-4 | paper exact |
 | SimSiam | SGD + momentum (ResNet50 recipe) | 0.05 · bs/256 | paper exact |
+| TWIST | AdamW, two-view, sharpness weight 1 | 3e-4 | paper's ViT weight 0.4 needs its momentum encoder; collapses to uniform without it |
 
 ## Why some methods stay at ~10–30%
 
@@ -234,7 +236,7 @@ location rather than mixing in a precision change.
 |--:|---|---:|---:|---:|---:|
 | 1 | CPU torchvision (bf16-mixed) — baseline   | 749.4 | 341.6 | 27.72 | 1.00× |
 | 2 | + GPU kornia stacked (fp16-mixed)         | 298.1 | 858.8 | 11.03 | 2.51× |
-| 3 | **+ GPU kornia stacked (bf16-mixed)** ⭐  | **293.9** | **870.9** | **10.87** | **2.55×** |
+|  4 | **+ GPU kornia stacked (bf16-mixed)** ⭐  | **293.9** | **870.9** | **10.87** | **2.55×** |
 | 4 | + GPU kornia stacked + FP8 (`transformer-engine`) | 342.5 | 747.5 | 12.67 | 2.19× ↓ |
 | 5 | + FP8 + `torch.compile(model)`            | 363.3 | 704.7 | 13.44 | 2.06× ↓↓ |
 | 6 | + FP8 + bs=512                            | 333.9 | 766.6 | 12.35 | 2.24× ↓ |
@@ -289,7 +291,7 @@ Rows sorted by speedup (fastest first).
 
 | # | Config (ViT-L, bs=384) | Step (ms) | Samples/sec | Epoch (s) | Speedup |
 |--:|---|---:|---:|---:|---:|
-| 1 | **+ GPU kornia stacked + FP8 + compile(model)** ⭐ | **751.0** | **511.3** | **18.52** | **1.53×** |
+|  2 | **+ GPU kornia stacked + FP8 + compile(model)** ⭐ | **751.0** | **511.3** | **18.52** | **1.53×** |
 | 2 | + GPU kornia stacked + FP8                         |  797.6 | 481.5 | 19.67 | 1.44× |
 | 3 | + GPU kornia stacked (bf16) + compile(model)       |  798.5 | 480.9 | 19.69 | 1.44× |
 | 4 | + GPU kornia stacked (bf16-mixed)                  |  931.7 | 412.2 | 22.97 | 1.23× |

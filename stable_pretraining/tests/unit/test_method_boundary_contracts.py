@@ -28,7 +28,9 @@ def encoder(has_cls=True):
     )
 
 
-@pytest.mark.parametrize("name", ["BarlowTwins", "SimCLR", "VICReg", "WMSE", "BYOL"])
+@pytest.mark.parametrize(
+    "name", ["BarlowTwins", "SimCLR", "VICReg", "WMSE", "BYOL", "TWIST"]
+)
 def test_joint_embedding_methods_accept_existing_encoder_for_evaluation(name):
     kwargs = {"projector_dims": (16, 8)}
     if name == "BYOL":
@@ -47,6 +49,7 @@ def test_joint_embedding_methods_accept_existing_encoder_for_evaluation(name):
         ("simclr", "_build_projector"),
         ("barlow_twins", "_build_barlow_projector"),
         ("vicreg", "_build_vicreg_projector"),
+        ("twist", "_build_twist_projector"),
     ],
 )
 def test_projector_requires_an_output_dimension(name, fn):

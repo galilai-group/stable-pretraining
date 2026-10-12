@@ -11,6 +11,7 @@ Available forward functions:
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
     - ``swav`` — SwAV online clustering
+    - ``twist`` — TWIST twin class distribution estimation
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
@@ -604,6 +605,111 @@ def swav(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
             )
 
     else:
+        out["embedding"] = self.backbone(batch["image"])
+        if "label" in batch:
+            out["label"] = batch["label"]
+
+    return out
+
+
+def twist(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for TWIST (Twin Class Distribution Estimation).
+
+    TWIST classifies two augmented views of an image into ``C`` latent classes
+    with a shared network and trains it end-to-end so that the two class
+    distributions agree (consistency), each one is confident (sharpness), and
+    the classes are used evenly across the batch (diversity). No stop-gradient,
+    momentum encoder, or negative pairs are needed.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: Feature extraction network
+            - projector: Classification head ending with ``BatchNorm1d(C, affine=False)``
+            - twist_loss: TWIST loss function (``spt.losses.TWISTLoss``)
+        batch: Either a list of view dicts (from MultiViewTransform) or
+            a single dict (for validation/single-view)
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Feature representations from backbone
+            - 'loss': TWIST loss (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in the TWIST paper :cite:`wang2021self`. As in the official
+        implementation, both views go through the backbone and the projector
+        in a single concatenated pass, so every batch-normalisation layer
+        (including the final one before the softmax) sees the two views
+        jointly. The three unweighted loss terms are logged as
+        ``{stage}/twist_consistency``, ``{stage}/twist_sharpness`` and
+        ``{stage}/twist_diversity``.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import twist
+
+            backbone = spt.backbone.from_torchvision("resnet50")
+            projector = torch.nn.Sequential(
+                torch.nn.Linear(2048, 4096, bias=False),
+                torch.nn.BatchNorm1d(4096),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Linear(4096, 4096, bias=False),
+                torch.nn.BatchNorm1d(4096),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Linear(4096, 4096, bias=False),
+                torch.nn.BatchNorm1d(4096, affine=False),
+            )
+            module = spt.Module(
+                forward=twist,
+                backbone=backbone,
+                projector=projector,
+                twist_loss=spt.losses.TWISTLoss(),
+                optim={"optimizer": {"type": "LARS", "lr": 0.5}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is not None:
+        # Multi-view training - TWIST requires exactly 2 views
+        if len(views) != 2:
+            raise ValueError(
+                f"TWIST requires exactly 2 views, got {len(views)}. "
+                "For other configurations, please implement a custom forward function."
+            )
+
+        images = torch.cat([view["image"] for view in views], dim=0)
+        out["embedding"] = self.backbone(images)
+
+        # Concatenate labels for callbacks
+        if "label" in views[0]:
+            out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+        if self.training:
+            logits_1, logits_2 = self.projector(out["embedding"]).chunk(2, dim=0)
+            terms = self.twist_loss.terms(logits_1, logits_2)
+            out["loss"] = terms["loss"]
+            self.log(
+                f"{stage}/loss",
+                out["loss"],
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+            )
+            for name in ("consistency", "sharpness", "diversity"):
+                self.log(
+                    f"{stage}/twist_{name}",
+                    terms[name],
+                    on_step=True,
+                    on_epoch=True,
+                    sync_dist=True,
+                )
+    else:
+        # Single-view validation
         out["embedding"] = self.backbone(batch["image"])
         if "label" in batch:
             out["label"] = batch["label"]

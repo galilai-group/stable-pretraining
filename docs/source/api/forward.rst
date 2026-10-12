@@ -247,6 +247,50 @@ Barlow Twins
         _target_: stable_pretraining.losses.BarlowTwinsLoss
         lambda_: 0.005
 
+TWIST
+~~~~~
+
+.. autofunction:: twist
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: Classification head ending with ``BatchNorm1d(C, affine=False)``
+- ``twist_loss``: TWIST loss function
+
+**Key Features:**
+
+- Classifies both views into ``C`` latent classes with a shared network
+- Consistency, sharpness and diversity terms in a single loss
+- No negative pairs, stop-gradient or momentum encoder needed
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.twist
+      backbone: ...
+      projector:
+        _target_: torch.nn.Sequential
+        _args_:
+          - _target_: torch.nn.Linear
+            in_features: 2048
+            out_features: 4096
+          - _target_: torch.nn.BatchNorm1d
+            num_features: 4096
+          - _target_: torch.nn.ReLU
+          - _target_: torch.nn.Linear
+            in_features: 4096
+            out_features: 4096
+          - _target_: torch.nn.BatchNorm1d
+            num_features: 4096
+            affine: false
+      twist_loss:
+        _target_: stable_pretraining.losses.TWISTLoss
+        sharpness_weight: 1.0
+        diversity_weight: 1.0
+
 Supervised
 ~~~~~~~~~~
 

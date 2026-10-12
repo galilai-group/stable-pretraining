@@ -37,6 +37,7 @@ def _encoder(**kwargs):
         ("PIRL", {"projector_dim": 8, "queue_length": 8}),
         ("SimSiam", {"projector_dim": 8, "predictor_hidden_dim": 16}),
         ("TiCO", {"projector_dims": (16, 8)}),
+        ("TWIST", {"projector_dims": (16, 8)}),
         ("VICRegL", {"projector_dim": 16}),
         ("Data2Vec", {"top_k_blocks": 1}),
         ("MaskFeat", {}),
