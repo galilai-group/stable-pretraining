@@ -7,6 +7,7 @@ logic for each method and can be specified in YAML configs or Python code.
 Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
+    - ``flip`` — FLIP masked image-text contrastive learning
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
@@ -37,11 +38,94 @@ Example:
         module = Module(forward=simclr, backbone=backbone, projector=projector)
 """
 
+import math
 from typing import Any
 
 import torch
+import torch.nn.functional as F
 
 from .callbacks.queue import find_or_create_queue_callback, OnlineQueue
+
+
+def _flip_image(self, images: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    features = self.image_encoder(images).encoded.mean(dim=1)
+    return features, F.normalize(self.image_projector(features), dim=-1)
+
+
+def _flip_text(
+    self, input_ids: torch.Tensor, attention_mask: torch.Tensor | None
+) -> torch.Tensor:
+    kwargs = {} if attention_mask is None else {"attention_mask": attention_mask}
+    features = self.text_encoder(input_ids=input_ids, **kwargs)
+    if not isinstance(features, torch.Tensor) or features.ndim != 2:
+        raise ValueError(
+            "FLIP text_encoder must return pooled features of shape [B, D]"
+        )
+    return F.normalize(self.text_projector(features), dim=-1)
+
+
+def flip(self, batch: dict[str, Any], stage: str = "fit") -> dict[str, torch.Tensor]:
+    """Encode image-text pairs with FLIP and a symmetric contrastive loss.
+
+    Args:
+        self: Module with ``image_encoder`` (MaskedEncoder), ``text_encoder``
+            (returning pooled tensors), ``image_projector``, ``text_projector``,
+            a learned scalar ``logit_scale``, and ``clip_loss`` (CLIPLoss).
+        batch: Dictionary with ``image`` and/or ``input_ids``, and optional
+            ``attention_mask``. Training requires both modalities, paired by row.
+        stage: Lightning stage used for logging: ``fit``, ``validate``, ``test``,
+            or ``predict``. Masking follows module mode, not this string.
+
+    Returns:
+        Dictionary with pooled pre-projection image ``embedding``, normalized
+        projected ``image_embedding`` and/or ``text_embedding``, and ``loss``
+        when both modalities are present. Single-modality evaluation omits loss.
+
+    Note:
+        Call ``eval()`` for unmasked inference. To train on full images, set the
+        image encoder's masking ratio to zero and retain training mode. No
+        encoding path changes gradient mode. Distributed loss assumes equal
+        local batch sizes; evaluation should avoid gathering unpaired captions.
+    """
+    has_image, has_text = "image" in batch, "input_ids" in batch
+    if not (has_image or has_text):
+        raise ValueError("FLIP requires 'image' and/or 'input_ids'")
+    if self.training and not (has_image and has_text):
+        raise ValueError("FLIP training requires paired 'image' and 'input_ids'")
+    if (
+        has_image
+        and has_text
+        and batch["image"].shape[0] != batch["input_ids"].shape[0]
+    ):
+        raise ValueError("FLIP requires equal image and text batch sizes")
+
+    out = {}
+    if has_image:
+        out["embedding"], out["image_embedding"] = _flip_image(self, batch["image"])
+    if has_text:
+        out["text_embedding"] = _flip_text(
+            self, batch["input_ids"], batch.get("attention_mask")
+        )
+    if has_image and has_text:
+        # CLIPLoss's existing logit_scale argument is a temperature divisor.
+        temperature = (-self.logit_scale.clamp(0, math.log(100))).exp()
+        out["loss"] = self.clip_loss(
+            out["image_embedding"], out["text_embedding"], logit_scale=temperature
+        )
+        if (
+            self._trainer is not None
+            and self.trainer.state.stage is not None
+            and stage != "predict"
+        ):
+            self.log(
+                f"{stage}/loss",
+                out["loss"],
+                on_step=self.training,
+                on_epoch=True,
+                batch_size=batch["image"].shape[0],
+                sync_dist=True,
+            )
+    return out
 
 
 def _get_views_list(batch: dict):

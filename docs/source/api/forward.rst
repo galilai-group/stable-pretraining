@@ -49,6 +49,13 @@ Or in Python code:
 Available Forward Functions
 ---------------------------
 
+FLIP
+~~~~
+
+.. autofunction:: flip
+
+See :doc:`../flip` for the text-encoder contract, training modes, and COCO example.
+
 SimCLR
 ~~~~~~
 
