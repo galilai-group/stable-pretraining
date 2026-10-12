@@ -126,6 +126,123 @@ class BarlowTwinsLoss(torch.nn.Module):
         return loss
 
 
+class CorInfoMaxLoss(torch.nn.Module):
+    r"""SSL objective used in CorInfoMax :cite:`ozsoy2022corinfomax`.
+
+    Each branch keeps an exponential moving average (EMA) of the mean and
+    covariance of its projections. The log-determinant of each covariance
+    estimate is maximized, which spreads the embeddings over all dimensions
+    and prevents collapse (the "big-bang" term). A mean squared error pulls
+    the two views together (the "attraction" term):
+
+    .. math::
+
+        \mathcal{L} = -\frac{\log\det(R_1 + \epsilon I)
+        + \log\det(R_2 + \epsilon I)}{D} + \alpha\,\mathrm{MSE}(z_1, z_2)
+
+    The current batch enters the EMA with gradient, while the previous
+    estimate is treated as a constant. The estimates are registered as
+    buffers, so they are saved in checkpoints and restored on resume, and
+    they are only updated in training mode. Under DDP the statistics are
+    computed on the batch gathered from all processes. The log-determinants
+    are computed in float64 with autocast disabled.
+
+    Args:
+        proj_dim (int): Dimension :math:`D` of the projections.
+        sim_coeff (float, optional): Weight :math:`\alpha` of the attraction
+            term. Default is 250, the paper's CIFAR-10 value.
+        cov_coeff (float, optional): Weight of the big-bang term.
+            Default is 1.
+        cov_momentum (float, optional): Weight of the previous covariance
+            estimate in the EMA (``la_R`` in the reference code).
+            Default is 0.01.
+        mean_momentum (float, optional): Weight of the previous mean estimate
+            in the EMA (``la_mu`` in the reference code). Default is 0.01.
+        init_scale (float, optional): The covariance estimates start at
+            ``init_scale * I`` (``R_ini`` in the reference code).
+            Default is 1.
+        epsilon (float, optional): Diagonal perturbation added before the
+            log-determinant (``R_eps_weight`` in the reference code).
+            Default is 1e-8.
+        normalize (bool, optional): L2-normalize the projections first, as in
+            the paper. Default is True.
+    """
+
+    def __init__(
+        self,
+        proj_dim: int,
+        sim_coeff: float = 250.0,
+        cov_coeff: float = 1.0,
+        cov_momentum: float = 0.01,
+        mean_momentum: float = 0.01,
+        init_scale: float = 1.0,
+        epsilon: float = 1e-8,
+        normalize: bool = True,
+    ):
+        super().__init__()
+        self.proj_dim = proj_dim
+        self.sim_coeff = sim_coeff
+        self.cov_coeff = cov_coeff
+        self.cov_momentum = cov_momentum
+        self.mean_momentum = mean_momentum
+        self.epsilon = epsilon
+        self.normalize = normalize
+
+        eye = torch.eye(proj_dim, dtype=torch.float64)
+        self.register_buffer("cov_i", init_scale * eye)
+        self.register_buffer("cov_j", init_scale * eye.clone())
+        self.register_buffer("mean_i", torch.zeros(proj_dim, dtype=torch.float64))
+        self.register_buffer("mean_j", torch.zeros(proj_dim, dtype=torch.float64))
+
+    def _logdet_cov(
+        self, z: torch.Tensor, mean_buf: torch.Tensor, cov_buf: torch.Tensor
+    ) -> torch.Tensor:
+        """EMA covariance of ``z``, updating the buffers in training mode."""
+        z = z.double()
+        mean = self.mean_momentum * mean_buf.double() + (
+            1 - self.mean_momentum
+        ) * z.mean(dim=0)
+        z_c = z - mean
+        cov = self.cov_momentum * cov_buf.double() + (1 - self.cov_momentum) * (
+            z_c.T @ z_c
+        ) / z.size(0)
+        if self.training:
+            mean_buf.copy_(mean.detach())
+            cov_buf.copy_(cov.detach())
+        eye = torch.eye(self.proj_dim, dtype=cov.dtype, device=cov.device)
+        return torch.linalg.slogdet(cov + self.epsilon * eye).logabsdet
+
+    def forward(self, z_i: torch.Tensor, z_j: torch.Tensor) -> torch.Tensor:
+        """Compute the CorInfoMax loss.
+
+        Args:
+            z_i (torch.Tensor): Projections of the first view, shape ``[N, D]``.
+            z_j (torch.Tensor): Projections of the second view, shape ``[N, D]``.
+
+        Returns:
+            torch.Tensor: Scalar loss value.
+        """
+        if z_i.size(-1) != self.proj_dim:
+            raise ValueError(
+                f"CorInfoMaxLoss was built for proj_dim={self.proj_dim}, "
+                f"got projections of dimension {z_i.size(-1)}."
+            )
+        if self.normalize:
+            z_i = F.normalize(z_i, dim=-1, p=2)
+            z_j = F.normalize(z_j, dim=-1, p=2)
+
+        sim_loss = F.mse_loss(z_i, z_j)
+
+        z_i_all = torch.cat(all_gather(z_i), 0)
+        z_j_all = torch.cat(all_gather(z_j), 0)
+        with torch.autocast(device_type=z_i.device.type, enabled=False):
+            logdet_i = self._logdet_cov(z_i_all, self.mean_i, self.cov_i)
+            logdet_j = self._logdet_cov(z_j_all, self.mean_j, self.cov_j)
+        cov_loss = -(logdet_i + logdet_j) / self.proj_dim
+
+        return self.sim_coeff * sim_loss + self.cov_coeff * cov_loss.to(sim_loss.dtype)
+
+
 class SwAVLoss(torch.nn.Module):
     """Computes the SwAV loss, optionally using a feature queue.
 

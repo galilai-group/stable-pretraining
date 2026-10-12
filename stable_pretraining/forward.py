@@ -10,6 +10,7 @@ Available forward functions:
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
+    - ``corinfomax`` — CorInfoMax covariance log-determinant maximization
     - ``swav`` — SwAV online clustering
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
@@ -517,6 +518,89 @@ def barlow_twins(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
         if self.training:
             projections = [self.projector(emb) for emb in embeddings]
             out["loss"] = self.barlow_loss(projections[0], projections[1])
+            self.log(
+                f"{stage}/loss",
+                out["loss"],
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+            )
+    else:
+        # Single-view validation
+        out["embedding"] = self.backbone(batch["image"])
+        if "label" in batch:
+            out["label"] = batch["label"]
+
+    return out
+
+
+def corinfomax(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for CorInfoMax (Correlative Information Maximization).
+
+    CorInfoMax maximizes the log-determinant of running covariance estimates of
+    the projections of each view, which prevents dimensional collapse, while
+    a mean squared error term aligns the two views.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: Feature extraction network
+            - projector: Projection head (no batch norm in the paper recipe)
+            - corinfomax_loss: CorInfoMax loss holding the covariance estimates
+        batch: Either a list of view dicts (from MultiViewTransform) or
+            a single dict (for validation/single-view)
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Feature representations from backbone
+            - 'loss': CorInfoMax loss (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in the CorInfoMax paper :cite:`ozsoy2022corinfomax`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import corinfomax
+
+            backbone = spt.backbone.from_torchvision("resnet18", low_resolution=True)
+            backbone.fc = torch.nn.Identity()
+            module = spt.Module(
+                forward=corinfomax,
+                backbone=backbone,
+                projector=torch.nn.Sequential(
+                    torch.nn.Linear(512, 2048),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(2048, 64, bias=False),
+                ),
+                corinfomax_loss=spt.losses.CorInfoMaxLoss(proj_dim=64),
+                optim={"optimizer": {"type": "SGD", "lr": 0.5, "momentum": 0.9}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is not None:
+        # Multi-view training - CorInfoMax requires exactly 2 views
+        if len(views) != 2:
+            raise ValueError(
+                f"CorInfoMax requires exactly 2 views, got {len(views)}. "
+                "For other configurations, please implement a custom forward function."
+            )
+
+        embeddings = [self.backbone(view["image"]) for view in views]
+        out["embedding"] = torch.cat(embeddings, dim=0)
+
+        # Concatenate labels for callbacks
+        if "label" in views[0]:
+            out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+        if self.training:
+            projections = [self.projector(emb) for emb in embeddings]
+            out["loss"] = self.corinfomax_loss(projections[0], projections[1])
             self.log(
                 f"{stage}/loss",
                 out["loss"],

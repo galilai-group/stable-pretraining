@@ -247,6 +247,36 @@ Barlow Twins
         _target_: stable_pretraining.losses.BarlowTwinsLoss
         lambda_: 0.005
 
+CorInfoMax
+~~~~~~~~~~
+
+.. autofunction:: corinfomax
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: Projection head (no batch norm in the paper recipe)
+- ``corinfomax_loss``: CorInfoMax loss holding the running covariance estimates
+
+**Key Features:**
+
+- Maximizes the log-determinant of running covariance estimates of each view
+- Prevents dimensional collapse without negative pairs or a momentum encoder
+- Covariance estimates are buffers, so they are checkpointed with the model
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.corinfomax
+      backbone: ...
+      projector: ...
+      corinfomax_loss:
+        _target_: stable_pretraining.losses.CorInfoMaxLoss
+        proj_dim: 64
+        sim_coeff: 250.0
+
 Supervised
 ~~~~~~~~~~
 

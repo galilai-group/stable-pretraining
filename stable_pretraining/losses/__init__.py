@@ -2,7 +2,7 @@
 
 This module provides various self-supervised learning loss functions organized by category:
 - DINO losses: Self-distillation methods (DINOLoss, iBOTPatchLoss)
-- Joint embedding losses: Contrastive and non-contrastive methods (BYOL, VICReg, Barlow Twins, SimCLR)
+- Joint embedding losses: Contrastive and non-contrastive methods (BYOL, VICReg, Barlow Twins, CorInfoMax, SimCLR)
 - Reconstruction losses: Masked prediction methods (MAE)
 - Utilities: Helper functions (sinkhorn_knopp, off_diagonal, NegativeCosineSimilarity)
 """
@@ -15,6 +15,7 @@ from .joint_embedding import (
     BYOLLoss,
     VICRegLoss,
     BarlowTwinsLoss,
+    CorInfoMaxLoss,
     NTXEntLoss,
     SwAVLoss,
 )
@@ -42,6 +43,7 @@ __all__ = [
     "BYOLLoss",
     "VICRegLoss",
     "BarlowTwinsLoss",
+    "CorInfoMaxLoss",
     "NTXEntLoss",
     "SwAVLoss",
     "CLIPLoss",

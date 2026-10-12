@@ -53,6 +53,7 @@ feature dimensions rather than using explicit contrastive pairs.
    VICReg
    VICRegL
    BarlowTwins
+   CorInfoMax
    WMSE
 
 Self-Distillation and Clustering

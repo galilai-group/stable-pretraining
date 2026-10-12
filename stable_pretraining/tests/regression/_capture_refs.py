@@ -122,6 +122,16 @@ METHODS = {
         ),
         data=make_data(True),
     ),
+    "corinfomax": lambda: dict(
+        module=spt.Module(
+            backbone=make_backbone(),
+            projector=make_projector(),
+            forward=forward.corinfomax,
+            corinfomax_loss=losses.CorInfoMaxLoss(proj_dim=PROJ_DIM),
+            optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+        ),
+        data=make_data(True),
+    ),
     "supervised": lambda: dict(
         module=spt.Module(
             backbone=make_backbone(),

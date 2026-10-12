@@ -17,6 +17,15 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``CorInfoMax`` (Correlative Information Maximization): maximizes the
+  log-determinant of running estimates of each view's projection covariance
+  to prevent dimensional collapse, plus an MSE term aligning the two views,
+  per Ozsoy et al., "Self-Supervised Learning with an Information
+  Maximization Criterion" (NeurIPS 2022). Adds ``CorInfoMaxLoss`` (EMA
+  covariance estimates kept as float64 buffers, so they are checkpointed and
+  safe under mixed precision), the ``corinfomax`` forward function, and the
+  ``CorInfoMax`` method class. Registered in ``stable_pretraining.methods``,
+  ``stable_pretraining.losses`` and ``METHODS.md``.
 
 **Discoverability improvements**
 
