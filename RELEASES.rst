@@ -2,6 +2,27 @@
 Unreleased
 ----------
 
+**DAE-Net**
+
+- Integrate DAE-Net for fine-grained 3D shape co-segmentation
+  (`PR #447 <https://github.com/galilai-group/stable-pretraining/pull/447>`_),
+  following Chen et al., "DAE-Net: Deforming Auto-Encoder for fine-grained
+  shape co-segmentation" (2023).
+- Add ``backbone.DAENetBackbone``, ``losses.DAENetLoss``, ``dae_net_forward``
+  and ``DAENet`` with era scheduling, branch revival, acceptance/rollback and
+  completed-epoch checkpoint state through ``DAENetRevival``.
+- Add the full-category ShapeNet Part benchmark under ``benchmarks/dae_net/``:
+  four category recipes, portable manifest preparation, Manager training/resume,
+  local logging and semantic part scoring. Recorded benchmark results and
+  full-category learning results use single-device FP32 training.
+- Add Linux, single-node DAE-Net DDP with configurable process counts:
+  global-batch exposure sharding, globally defined loss/IoU, rank-zero revival,
+  synchronized rollback and per-rank RNG for completed-epoch recovery with
+  unchanged world size.
+  CPU/Gloo and GPU/NCCL execution checks are separate from learning results.
+- Document the method, forward input/output contract and loss components in
+  the API reference, and add the paper citation to the bibliography.
+
 **New method**
 
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing

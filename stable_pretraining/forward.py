@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``dae_net_forward`` — DAE-Net occupancy reconstruction
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -1261,3 +1262,74 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     )
 
     return out
+
+
+def dae_net_forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Compute DAE-Net predictions and reconstruction losses.
+
+    Args:
+        self: Module providing backbone, dae_net_loss, and
+            regularization_weight.
+        batch: Voxels and query points, plus occupancy targets
+            except during prediction.
+        stage: One of fit, validate, test, or predict.
+
+    Returns:
+        Network predictions during prediction. Otherwise, total loss,
+        detached loss components, and detached network diagnostics.
+
+    Raises:
+        ValueError: If stage is unsupported.
+
+    Note:
+        Module handles optimization. The caller supplies the current
+        regularization weight; the era controller manages its schedule.
+        During attached DDP training, loss is the local backward contribution;
+        loss_report and logged metrics describe the global batch. Evaluation
+        and offline calls do not enter loss collectives.
+    """
+    if stage not in {"fit", "validate", "test", "predict"}:
+        raise ValueError(f"Unsupported stage: {stage}")
+
+    output = self.backbone(batch)
+
+    if stage == "predict":
+        return output
+
+    losses = self.dae_net_loss(
+        output,
+        batch["occupancy"],
+        regularization_weight=self.regularization_weight,
+        distributed=(
+            stage == "fit"
+            and self.training
+            and getattr(self, "_trainer", None) is not None
+            and self._trainer.world_size > 1
+        ),
+    )
+
+    result = {
+        "loss": losses["loss"],
+        "occupancy_sum": output["occupancy_sum"].detach(),
+        "occupancy_max": output["occupancy_max"].detach(),
+        "existence": output["existence"].detach(),
+        "codes": output["codes"].detach(),
+    }
+
+    for name, value in losses.items():
+        if name == "loss_report":
+            result[name] = value.detach()
+        elif name not in {"loss", "global_batch_size"}:
+            result[f"loss_{name}"] = value.detach()
+
+    self.log(
+        f"{stage}/loss",
+        losses.get("loss_report", losses["loss"]).detach(),
+        on_step=stage == "fit",
+        on_epoch=True,
+        batch_size=int(losses["global_batch_size"].item())
+        if "global_batch_size" in losses
+        else batch["voxels"].shape[0],
+    )
+
+    return result

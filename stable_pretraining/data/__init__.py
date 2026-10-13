@@ -6,6 +6,12 @@ and other data-related functionality for the stable-pretraining framework.
 
 from . import dataset_stats, gpu_transforms, sampler, synthetic_data, transforms
 from .collate import Collator
+from .dae_net import (
+    DAENetDataModule,
+    DAENetDataset,
+    DAENetDistributedBatchSampler,
+    DAENetExposureSampler,
+)
 from .datasets import Dataset, FromTorchDataset, HFDataset, Subset
 from .gpu_transforms import GPUCompose, MultiView, StackedMultiView, ToDevice
 from .download import bulk_download, download
@@ -58,6 +64,7 @@ __all__ = [
     "synthetic_data",
     # Core classes
     "DataModule",
+    "DAENetDataModule",
     "Collator",
     "Dataset",
     # GPU-side transforms (ToDevice + GPUCompose + view fan-out wrappers
@@ -68,6 +75,7 @@ __all__ = [
     "StackedMultiView",
     "MultiView",
     # Real data wrappers
+    "DAENetDataset",
     "FromTorchDataset",
     "HFDataset",
     "Subset",
@@ -83,6 +91,8 @@ __all__ = [
     "ExponentialMixtureNoiseModel",
     "ExponentialNormalNoiseModel",
     # Samplers
+    "DAENetExposureSampler",
+    "DAENetDistributedBatchSampler",
     "SupervisedBatchSampler",
     "RepeatedRandomSampler",
     "RandomBatchSampler",

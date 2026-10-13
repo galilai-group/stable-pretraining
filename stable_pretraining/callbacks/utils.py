@@ -278,6 +278,10 @@ def log_header(name: str, width: int = _HEADER_WIDTH) -> None:
 # the producer hook finishes for every callback before any consumer hook
 # runs. Don't list those here.
 ORDER_SENSITIVE_CALLBACKS: Dict[str, str] = {
+    "DAENetRevival": (
+        "decides era acceptance and gathers per-rank RNG in on_train_epoch_end — "
+        "must run BEFORE checkpoint saving and AFTER callbacks that consume RNG"
+    ),
     "_RequeueCheckpoint": (
         "saves training state in on_train_batch_end — place AFTER callbacks "
         "that update parameters or callback state in that hook"

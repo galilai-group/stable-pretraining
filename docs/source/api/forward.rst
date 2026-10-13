@@ -275,6 +275,44 @@ Supervised
         in_features: 2048
         out_features: 1000
 
+DAE-Net
+~~~~~~~
+
+.. autofunction:: dae_net_forward
+
+DAE-Net :cite:p:`chen2023daenet` reconstructs 3D shapes from voxel grids and
+occupancy queries. It uses a single shape input rather than augmented image views.
+
+**Required Module Attributes:**
+
+- ``backbone``: :class:`~stable_pretraining.backbone.DAENetBackbone`
+- ``dae_net_loss``: :class:`~stable_pretraining.losses.DAENetLoss`
+- ``regularization_weight``: Current era-dependent regularization multiplier
+
+**Batch and Stage Contract:**
+
+- ``voxels``: Occupancy grids with shape ``[B, 1, 64, 64, 64]``.
+- ``points``: Query coordinates with shape ``[B, Q, 3]``.
+- ``occupancy``: Targets with shape ``[B, Q, 1]``, required except for prediction.
+- ``stage``: ``"fit"``, ``"validate"``, ``"test"`` or ``"predict"``.
+
+For loss-bearing stages, the returned dictionary contains ``loss``, detached
+loss components, and the detached diagnostics ``occupancy_sum``,
+``occupancy_max``, ``existence`` and ``codes``. Prediction returns the backbone
+output without computing a loss. Callbacks must select the relevant output
+key; this forward does not return an image-style ``embedding``.
+
+During attached DDP training, ``loss`` is the local contribution for backward;
+``loss_report`` and the detached components represent the global batch objective.
+The sparsity term uses an autograd-aware global existence mean, and decomposable
+means are weighted by global element counts so DDP parameter gradients match the
+single-process objective even with unequal rank batch sizes. Evaluation and
+offline calls do not execute loss collectives.
+
+Use :class:`~stable_pretraining.methods.DAENet` to wire the forward, optimizer
+and era controller together. Binding this forward to a bare ``Module`` does
+not automatically install revival or acceptance/rollback.
+
 Custom Forward Functions
 ------------------------
 

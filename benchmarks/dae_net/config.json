@@ -1,0 +1,18 @@
+{
+  "common": {
+    "protocol": "official_release_full_category",
+    "seed": 42,
+    "batch_size": 16,
+    "lr": 0.0002,
+    "era_length": 10,
+    "shapes_per_epoch": 12500,
+    "queries_per_shape": 8192,
+    "precision": "32-true"
+  },
+  "categories": {
+    "mug": {"synset": "03797390", "train_shapes": 184, "branch_num": 8, "sparse_weight": 0.02, "query_resolution": 64, "epochs": 160},
+    "chair": {"synset": "03001627", "train_shapes": 3746, "branch_num": 16, "sparse_weight": 0.002, "query_resolution": 32, "epochs": 320},
+    "lamp": {"synset": "03636649", "train_shapes": 1546, "branch_num": 8, "sparse_weight": 0.01, "query_resolution": 32, "epochs": 160},
+    "skateboard": {"synset": "04225987", "train_shapes": 152, "branch_num": 8, "sparse_weight": 0.001, "query_resolution": 64, "epochs": 160}
+  }
+}
