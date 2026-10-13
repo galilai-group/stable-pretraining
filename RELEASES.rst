@@ -17,6 +17,7 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``PointJEPA``: point-cloud self-supervised pretraining with a PointNet patch tokenizer, spatial masking, an EMA teacher, and a Transformer predictor, integrated with SPT training and checkpointing.
 
 **Discoverability improvements**
 

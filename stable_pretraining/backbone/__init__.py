@@ -1,4 +1,12 @@
 from .convmixer import ConvMixer
+from .point_cloud import (
+    farthest_point_indices,
+    PointJEPAMasking,
+    PointJEPAMaskOutput,
+    PointSequencer,
+    PointTokenizer,
+    PointTokenTransformer,
+)
 from .jet import Jet
 from .mlp import MLP
 from .nn_modules import (
@@ -93,7 +101,13 @@ __all__ = [
     FeaturesConcat,
     set_embedding_dim,
     ConvMixer,
+    PointTokenizer,
+    PointSequencer,
+    PointJEPAMasking,
+    PointJEPAMaskOutput,
+    PointTokenTransformer,
     vit_hf,
+    farthest_point_indices,
     MultiHeadAttentiveProbe,
     LinearProbe,
     AutoLinearClassifier,
