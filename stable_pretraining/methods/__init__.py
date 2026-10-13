@@ -23,6 +23,7 @@ from .pirl import PIRL
 from .pmsn import PMSN
 from .salt import SALT
 from .simclr import SimCLR
+from .simdinov2 import SimDINOv2
 from .simmim import SimMIM
 from .simsiam import SimSiam
 from .swav import SwAV
@@ -58,6 +59,7 @@ __all__ = [
     "PMSN",
     "SALT",
     "SimCLR",
+    "SimDINOv2",
     "SimMIM",
     "SimSiam",
     "SwAV",

@@ -104,7 +104,7 @@ def test_cls_conversion_validates_rank(name):
         module._to_cls(torch.ones(2, 3, 4, 5))
 
 
-@pytest.mark.parametrize("name", ["ibot", "dinov2"])
+@pytest.mark.parametrize("name", ["ibot", "dinov2", "simdinov2"])
 def test_patch_only_encoders_keep_all_tokens(name):
     module = importlib.import_module(f"stable_pretraining.methods.{name}")
     features = torch.randn(2, 4, 8)

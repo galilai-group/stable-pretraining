@@ -123,6 +123,7 @@ MULTICROP_METHODS = [
     ("DINO", {"n_prototypes": 256, "encoder_kwargs": {"dynamic_img_size": True}}),
     ("iBOT", {"n_cls_prototypes": 256, "n_patch_prototypes": 64, "mask_ratio": 0.3}),
     ("DINOv2", {"n_cls_prototypes": 256, "n_patch_prototypes": 64, "mask_ratio": 0.3}),
+    ("SimDINOv2", {}),
     (
         "DINOv3",
         {
@@ -143,6 +144,11 @@ def test_multicrop_method_forward_backward(method_name: str, kwargs: dict) -> No
     v1, v2 = _two_views()
     output = model(global_views=[v1, v2])
     _assert_loss_and_backward(model, output)
+    # Every multi-crop method emits teacher backbone CLS flattened over views,
+    # i.e. ``(n_global_views * B, embed_dim)``. Guards against indexing a batch
+    # dimension away or leaking the projector width instead.
+    embed_dim = model.backbone.student.embed_dim
+    assert output.embedding.shape == (2 * B, embed_dim)
 
 
 # --- methods needing a custom call signature -----------------------------

@@ -35,6 +35,7 @@ methods are flagged with the reason they collapse.
 | 17 | **MSN**            | masked-siamese                 | 50.6% | 57.6% | ✓ |
 | 18 | **DINOv3**         | DINOv2 + registers + KoLeo     | 35.9% | 41.4% | running (mc restart, ep 37) |
 | 19 | **DINOv2**         | DINO + iBOT + Sinkhorn         | 29.6% | 37.2% | running (mc restart, ep 37) |
+|  - | **SimDINOv2**      | self-distill (comp + expa)     | 30.8% | 25.2% | 5 ep (verification run) |
 | 20 | **TiCO**           | EMA-cov contrast (LARS)        | 23.7% | 33.7% | ✓ |
 | 21 | **IJEPA**          | predictive (joint embedding)   | 33.2% | 34.0% | ✓ |
 | 22 | **Data2Vec**       | EMA contextual features        | 31.0% | 26.3% | ✓ |
@@ -61,6 +62,7 @@ size used in this sweep. Key choices:
 | BYOL, Barlow Twins | AdamW for ViT-S (paper used LARS for ResNet50) | 5e-4 | LARS collapses on ViT |
 | SwAV | AdamW, multi-crop 2×224 + 4×96 | 5e-4 | paper uses 6×96; truncated |
 | DINO, DINOv2, DINOv3 | AdamW, multi-crop 2×224 + 6×96 | 5e-4 | DINOv2 / v3 use Sinkhorn |
+| SimDINOv2 | AdamW, multi-crop 2×224 + 6×96 | 5e-4 | comp + expa + masked patch (no prototypes) |
 | LeJEPA | AdamW, multi-view 8 crops, SIGReg | 4e-4 | paper exact |
 | VISReg | AdamW, multi-view 8 crops, VISReg | 1e-3 | paper exact |
 | MoCo v2 | AdamW (ViT-tuned vs. paper SGD) | 1.5e-4 | adapted for ViT |
