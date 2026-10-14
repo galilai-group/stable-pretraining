@@ -7,6 +7,7 @@ logic for each method and can be specified in YAML configs or Python code.
 Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
+    - ``mmcr`` — maximum manifold capacity representations
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
@@ -253,6 +254,75 @@ def simclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         if "label" in batch:
             out["label"] = batch["label"]
 
+    return out
+
+
+def mmcr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Compute MMCR from aligned multi-view dictionaries.
+
+    Args:
+        self: Module with ``backbone``, ``projector``, and ``mmcr_loss``.
+        batch: ``{"views": [view, ...]}``, a dict of named views (optionally
+            under ``views``), or a single ``{"image": tensor}`` for evaluation.
+            Each view contains ``image`` and optionally ``label``. Sample
+            order must agree across views; image resolutions may differ.
+        stage: Runtime stage, e.g. ``fit``, ``validate``, ``test`` or ``predict``.
+
+    Returns:
+        Dict with view-major ``embedding`` and optional ``label``. Training
+        also returns view-major raw ``projection`` and scalar ``loss``.
+
+    Raises:
+        ValueError: If training lacks two aligned views, batch sizes differ,
+            labels are only partially provided, or outputs are not matrices.
+
+    Note:
+        ``self.training`` controls loss computation. Evaluation skips the
+        projector. Projections are stacked along the view axis for MMCR,
+        while callback outputs remain concatenated in view-major order.
+    """
+    views = _get_views_list(batch)
+    if isinstance(views, dict):
+        views = list(views.values())
+    if views is None:
+        if self.training:
+            raise ValueError("MMCR training requires at least two views")
+        out = {"embedding": self.backbone(batch["image"])}
+        if "label" in batch:
+            out["label"] = batch["label"]
+        return out
+    if not views or (self.training and len(views) < 2):
+        raise ValueError(
+            "MMCR training requires at least two views; evaluation needs one"
+        )
+    batch_size = views[0]["image"].shape[0]
+    if batch_size < 1 or any(view["image"].shape[0] != batch_size for view in views):
+        raise ValueError("MMCR views must have equal nonempty batch sizes")
+    labelled = ["label" in view for view in views]
+    if any(labelled) and not all(labelled):
+        raise ValueError("Labels must be provided in all views or in none")
+    if all(labelled) and any(view["label"].shape[0] != batch_size for view in views):
+        raise ValueError("Each view needs one label per sample")
+    embeddings = [self.backbone(view["image"]) for view in views]
+    if any(emb.ndim != 2 or emb.shape[0] != batch_size for emb in embeddings):
+        raise ValueError("MMCR backbone must return [B, D] embeddings")
+    out = {"embedding": torch.cat(embeddings, dim=0)}
+    if all(labelled):
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+    if self.training:
+        projections = [self.projector(emb) for emb in embeddings]
+        if any(z.ndim != 2 or z.shape[0] != batch_size for z in projections):
+            raise ValueError("MMCR projector must return [B, D] projections")
+        out["projection"] = torch.cat(projections, dim=0)
+        out["loss"] = self.mmcr_loss(torch.stack(projections, dim=1))
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=batch_size,
+        )
     return out
 
 

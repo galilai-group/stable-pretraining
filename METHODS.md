@@ -16,6 +16,7 @@ Methods come in two forms:
 | Method | Forward fn | Method class | Loss class(es) | Key callbacks | Paper |
 |--------|-----------|--------------|----------------|---------------|-------|
 | Supervised | `supervised` | — | any | — | — |
+| MMCR | `mmcr` | `MMCR` | `MMCRLoss` | — | [Yerxa et al., 2023](https://arxiv.org/abs/2303.03307) |
 | SimCLR | `simclr` | `SimCLR` | `NTXEntLoss` | — | [Chen et al., 2020](https://arxiv.org/abs/2002.05709) |
 | BYOL | `byol` | `BYOL` | `BYOLLoss` | `TeacherStudent†` | [Grill et al., 2020](https://arxiv.org/abs/2006.07733) |
 | VICReg | `vicreg` | `VICReg` | `VICRegLoss` | — | [Bardes et al., 2022](https://arxiv.org/abs/2105.04906) |
@@ -103,6 +104,7 @@ All loss classes are importable from `stable_pretraining.losses`:
 
 | Loss | Methods that use it |
 |------|-------------------|
+| `MMCRLoss` | MMCR |
 | `NTXEntLoss` | SimCLR, NNCLR, MoCov2, MoCov3 |
 | `BYOLLoss` | BYOL |
 | `VICRegLoss` | VICReg, VICRegL |
