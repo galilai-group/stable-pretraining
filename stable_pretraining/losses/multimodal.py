@@ -7,8 +7,6 @@ particularly for image-text contrastive learning like CLIP.
 import math
 
 import torch
-import torch.distributed as dist
-import torch.distributed.nn.functional as dist_nn
 from typing import Optional
 
 from ..utils import all_gather, get_rank
@@ -65,22 +63,30 @@ class CLIPLoss(InfoNCELoss):
 
 
 class SigLIPLoss(torch.nn.Module):
-    """Sigmoid Loss for Language Image Pre-Training.
+    """Sigmoid loss for language-image pre-training (SigLIP).
 
-    Computes the pairwise SigLIP objective from
-    :cite:`zhai2023sigmoid`. Positive image-text pairs are expected on
-    the batch diagonal; all off-diagonal pairs are treated as negatives.
+    As used in SigLIP :cite:`zhai2023sigmoid`. Every image-text pair is an
+    independent binary classification: positives (matching pairs, aligned on
+    the batch diagonal) get label ``+1`` and all other pairs get ``-1``. The
+    loss is ``-sum(log sigmoid(label * logit)) / batch_size`` with
+    ``logit = exp(logit_scale) * <img, txt> + logit_bias``.
+
+    Under DDP, each rank scores its local images against the text features
+    gathered from all ranks. Because the loss is a sum over independent pairs,
+    the mean of the per-rank losses equals the single-process loss on the
+    global batch, and each pair is computed exactly once across ranks.
 
     Args:
-        init_logit_scale: Initial value for the learnable log-space scale
-            parameter. The effective multiplier is ``exp(logit_scale)``, so
-            it remains positive during training. Defaults to ``log(10)``.
-        init_logit_bias: Initial value for the learnable additive bias applied
-            to every image-text logit. Defaults to ``-10``.
-        normalize: Whether to L2-normalize image and text features before
-            computing logits. Defaults to ``True``.
-        gather_distributed: Whether to gather image and text features across
-            distributed workers before computing the loss. Defaults to ``True``.
+        init_logit_scale: Initial value of the learnable log-space scale. The
+            effective multiplier is ``exp(logit_scale)``. Defaults to
+            ``log(10)`` (paper default).
+        init_logit_bias: Initial value of the learnable logit bias. Defaults to
+            ``-10`` (paper default), which keeps the initial loss from being
+            dominated by the many negatives.
+        normalize: L2-normalize image and text features before computing
+            logits. Defaults to ``True``.
+        gather_distributed: Gather text features across ranks so every image
+            sees negatives from the global batch. Defaults to ``True``.
     """
 
     def __init__(
@@ -91,26 +97,27 @@ class SigLIPLoss(torch.nn.Module):
         gather_distributed: bool = True,
     ):
         super().__init__()
-        self.logit_scale = torch.nn.Parameter(torch.tensor(init_logit_scale))
-        self.logit_bias = torch.nn.Parameter(torch.tensor(init_logit_bias))
+        self.logit_scale = torch.nn.Parameter(torch.tensor(float(init_logit_scale)))
+        self.logit_bias = torch.nn.Parameter(torch.tensor(float(init_logit_bias)))
         self.normalize = normalize
         self.gather_distributed = gather_distributed
-
-    def _gather_features(
-        self,
-        image_features: torch.Tensor,
-        text_features: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        if self.gather_distributed and dist.is_available() and dist.is_initialized():
-            image_features = torch.cat(dist_nn.all_gather(image_features), dim=0)
-            text_features = torch.cat(dist_nn.all_gather(text_features), dim=0)
-        return image_features, text_features
 
     def forward(
         self,
         image_features: torch.Tensor,
         text_features: torch.Tensor,
     ) -> torch.Tensor:
+        """Compute the SigLIP loss.
+
+        Args:
+            image_features: Image embeddings ``[B, D]``.
+            text_features: Text embeddings ``[B, D]``, paired row-wise with
+                ``image_features``.
+
+        Returns:
+            Scalar loss: summed pairwise sigmoid loss divided by the local
+            batch size.
+        """
         if image_features.shape[0] != text_features.shape[0]:
             raise ValueError(
                 "SigLIPLoss expects paired image/text batches with the same batch size."
@@ -120,15 +127,23 @@ class SigLIPLoss(torch.nn.Module):
             image_features = torch.nn.functional.normalize(image_features, dim=-1)
             text_features = torch.nn.functional.normalize(text_features, dim=-1)
 
-        image_features, text_features = self._gather_features(
-            image_features, text_features
+        batch = image_features.size(0)
+        if self.gather_distributed:
+            # The positive for local image i sits at this rank's offset into
+            # the gathered text block. In a single process the gather is a
+            # no-op and the offset is 0.
+            candidates = torch.cat(all_gather(text_features), dim=0)
+            offset = get_rank() * batch
+        else:
+            candidates = text_features
+            offset = 0
+
+        logits = (
+            self.logit_scale.exp() * (image_features @ candidates.T) + self.logit_bias
         )
 
-        scale = self.logit_scale.exp()
-        logits = scale * (image_features @ text_features.T) + self.logit_bias
-
         labels = -torch.ones_like(logits)
-        labels.fill_diagonal_(1)
+        rows = torch.arange(batch, device=logits.device)
+        labels[rows, offset + rows] = 1.0
 
-        loss = -torch.nn.functional.logsigmoid(labels * logits).sum(dim=-1).mean()
-        return loss
+        return -torch.nn.functional.logsigmoid(labels * logits).sum() / batch

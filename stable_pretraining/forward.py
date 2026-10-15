@@ -1263,61 +1263,62 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     return out
 
 
-def _get_embedding_output(outputs, primary_key: str, fallback_key: str):
-    embedding = getattr(outputs, primary_key, None)
-    if embedding is None:
-        embedding = getattr(outputs, fallback_key, None)
-    if embedding is None:
-        raise ValueError(
-            f"Expected model output to expose '{primary_key}' or '{fallback_key}'."
-        )
-    return embedding
+def _pooled_embedding(outputs, key: str) -> torch.Tensor:
+    """Extract a [B, D] embedding from a tensor or a Hugging Face model output."""
+    if isinstance(outputs, torch.Tensor):
+        return outputs
+    for name in (key, "pooler_output"):
+        value = getattr(outputs, name, None)
+        if value is not None:
+            return value
+    raise ValueError(
+        f"Expected model output to be a tensor or expose '{key}' or 'pooler_output'."
+    )
 
 
-def siglip_forward(self, batch, stage):
+def siglip(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for SigLIP image-text pretraining.
 
-    SigLIP learns aligned image-text representations with an independent
-    sigmoid loss over every image-text pair in the batch. Matching pairs are
-    expected to be aligned along the batch diagonal.
+    SigLIP :cite:`zhai2023sigmoid` learns aligned image-text representations
+    with an independent sigmoid loss over every image-text pair in the batch.
+    Matching pairs are expected to be aligned along the batch diagonal.
 
     Args:
         self: Module instance with ``vision_model``, ``text_model``, and
-            ``siglip_loss`` attributes. ``vision_model`` must return
-            ``image_embeds`` or ``pooler_output``; ``text_model`` must return
-            ``text_embeds`` or ``pooler_output``.
+            ``siglip_loss`` attributes. Each encoder must return a ``[B, D]``
+            tensor or an output exposing ``image_embeds`` / ``text_embeds`` or
+            ``pooler_output``.
         batch: Paired image-text batch dictionary. Must contain ``image`` and
             ``tokenized_prompt``. May contain ``attention_mask``.
-        stage: Training stage ('train', 'val', or 'test')
+        stage: Training stage ('fit', 'validate', 'test', or 'predict').
 
     Returns:
-        Dictionary containing normalized ``image_embeds`` and ``text_embeds``.
-        During training, also contains ``loss``.
+        Dictionary with L2-normalized ``image_embeds`` and ``text_embeds`` and
+        the SigLIP ``loss`` (in every stage except predict).
+
+    Note:
+        Under DDP, :class:`~stable_pretraining.losses.SigLIPLoss` gathers text
+        features from all ranks, so every rank must run this forward on
+        equally sized batches.
     """
     out = {}
 
-    vision_outputs = self.vision_model(pixel_values=batch["image"])
-    image_embeds = _get_embedding_output(
-        vision_outputs, "image_embeds", "pooler_output"
+    image_embeds = _pooled_embedding(self.vision_model(batch["image"]), "image_embeds")
+    out["image_embeds"] = torch.nn.functional.normalize(image_embeds, dim=-1)
+
+    mask = batch.get("attention_mask")
+    kwargs = {} if mask is None else {"attention_mask": mask}
+    text_embeds = _pooled_embedding(
+        self.text_model(batch["tokenized_prompt"], **kwargs), "text_embeds"
     )
-    image_embeds = torch.nn.functional.normalize(image_embeds, dim=-1)
+    out["text_embeds"] = torch.nn.functional.normalize(text_embeds, dim=-1)
 
-    text_outputs = self.text_model(
-        input_ids=batch["tokenized_prompt"],
-        attention_mask=batch.get("attention_mask"),
-    )
-    text_embeds = _get_embedding_output(text_outputs, "text_embeds", "pooler_output")
-    text_embeds = torch.nn.functional.normalize(text_embeds, dim=-1)
-
-    out["image_embeds"] = image_embeds
-    out["text_embeds"] = text_embeds
-
-    if self.training:
-        out["loss"] = self.siglip_loss(image_embeds, text_embeds)
+    if stage != "predict":
+        out["loss"] = self.siglip_loss(out["image_embeds"], out["text_embeds"])
         self.log(
             f"{stage}/loss",
             out["loss"],
-            on_step=True,
+            on_step=self.training,
             on_epoch=True,
             sync_dist=True,
             prog_bar=True,

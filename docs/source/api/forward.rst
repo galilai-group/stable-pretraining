@@ -250,7 +250,7 @@ Barlow Twins
 SigLIP
 ~~~~~~
 
-.. autofunction:: siglip_forward
+.. autofunction:: siglip
 
 **Required Module Attributes:**
 
@@ -269,7 +269,7 @@ SigLIP
 .. code-block:: yaml
 
     module:
-      forward: stable_pretraining.forward.siglip_forward
+      forward: stable_pretraining.forward.siglip
       vision_model: ...
       text_model: ...
       siglip_loss:
