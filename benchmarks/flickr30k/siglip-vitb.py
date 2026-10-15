@@ -11,8 +11,11 @@ Modes:
   random caption of five per image per step), starting from its learned
   logit scale/bias.
 - ``scratch``: same towers, random init, paper logit init (log 10, -10) and
-  big_vision optimizer defaults (lr 1e-3, wd 1e-4, beta2 0.95). Flickr30k is
+  big_vision optimizer settings (wd 1e-4, beta2 0.95). Flickr30k is
   far too small for real pretraining; this mode is a learning sanity check.
+  big_vision's lr 1e-3 assumes ~32k batches: at batch 512 it collapses to
+  constant embeddings, so the default here is 3e-4. All training modes clip
+  gradients to norm 1.0 (big_vision default).
 
 Example::
 
@@ -49,6 +52,7 @@ parser.add_argument("--global_batch", type=int, default=512)
 parser.add_argument("--num_epochs", type=int, default=None)
 parser.add_argument("--num_workers", type=int, default=8)
 parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--grad_clip", type=float, default=1.0)
 parser.add_argument("--output_dir", type=str, default="outputs/siglip-flickr30k")
 parser.add_argument("--max_train_samples", type=int, default=None)
 parser.add_argument("--max_test_samples", type=int, default=None)
@@ -57,7 +61,7 @@ args = parser.parse_args()
 DEFAULTS = {  # mode: (lr, weight_decay, epochs)
     "zeroshot": (0.0, 0.0, 0),
     "finetune": (1e-5, 1e-4, 5),
-    "scratch": (1e-3, 1e-4, 30),
+    "scratch": (3e-4, 1e-4, 30),
 }
 lr = args.lr if args.lr is not None else DEFAULTS[args.mode][0]
 weight_decay = (
@@ -176,6 +180,7 @@ def write_results(metrics, model):
         "num_epochs": num_epochs,
         "global_batch": args.global_batch,
         "num_devices": args.num_devices,
+        "grad_clip": args.grad_clip,
         "seed": args.seed,
         "final_logit_scale": round(model.siglip_loss.logit_scale.exp().item(), 3),
         "final_logit_bias": round(model.siglip_loss.logit_bias.item(), 3),
@@ -272,6 +277,7 @@ trainer = pl.Trainer(
     accelerator="gpu",
     strategy="ddp" if args.num_devices > 1 else "auto",
     log_every_n_steps=10,
+    gradient_clip_val=args.grad_clip,
 )
 manager = spt.Manager(trainer=trainer, module=module, data=data, seed=args.seed)
 manager()
