@@ -202,7 +202,15 @@ class BestValidationWeights(pl.Callback):
             }
 
 
-def write_results(metrics, model, best=None):
+def logit_params(model):
+    loss = model.siglip_loss
+    return {
+        "final_logit_scale": round(loss.logit_scale.exp().item(), 3),
+        "final_logit_bias": round(loss.logit_bias.item(), 3),
+    }
+
+
+def write_results(metrics, logits, best=None):
     output_dir.mkdir(parents=True, exist_ok=True)
     try:
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
@@ -221,8 +229,7 @@ def write_results(metrics, model, best=None):
         "grad_clip": args.grad_clip,
         "min_crop_scale": min_crop_scale,
         "seed": args.seed,
-        "final_logit_scale": round(model.siglip_loss.logit_scale.exp().item(), 3),
-        "final_logit_bias": round(model.siglip_loss.logit_bias.item(), 3),
+        **logits,
         "test": metrics,
     }
     if best is not None:
@@ -240,7 +247,7 @@ device = torch.device(
 
 if args.mode == "zeroshot":
     model = SigLIP(model_name=MODEL_NAME, pretrained=True)
-    write_results(retrieval_metrics(model, test_dataset, device), model)
+    write_results(retrieval_metrics(model, test_dataset, device), logit_params(model))
     raise SystemExit(0)
 
 
@@ -327,10 +334,11 @@ manager()
 
 if trainer.is_global_zero:
     last_metrics = retrieval_metrics(module, test_dataset, device)
+    last_logits = logit_params(module)
     module.load_state_dict(best_weights.weights)
     best = {
         "best_val_epoch": best_weights.best_epoch,
         "best_val_loss": round(best_weights.best_loss, 4),
         "test_best_val": retrieval_metrics(module, test_dataset, device),
     }
-    write_results(last_metrics, module, best)
+    write_results(last_metrics, last_logits, best)
