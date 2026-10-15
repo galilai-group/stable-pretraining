@@ -10,13 +10,18 @@ Modes:
 - ``finetune``: fine-tune that checkpoint on the 29k training images (one
   random caption of five per image per step), starting from its learned
   logit scale/bias.
-- ``scratch``: same towers, random init, paper logit init (log 10, -10) and
-  big_vision optimizer settings (wd 1e-4, beta2 0.95). Flickr30k is
-  far too small for real pretraining; this mode is a learning sanity check.
-  big_vision's lr 1e-3 assumes ~32k batches: at batch 512 it collapses to
-  constant embeddings. Of the rates tried (1e-3, 3e-4, 1e-4), 1e-4 gave the
-  best retrieval, so it is the default. All training modes clip gradients
-  to norm 1.0 (big_vision default).
+- ``scratch``: same towers, random init, paper logit init (log 10, -10),
+  AdamW with beta2 0.95 and weight decay 0.2 (OpenCLIP's CLIP default).
+  Flickr30k is far too small for real pretraining; this mode is a learning
+  sanity check. The paper's lr 1e-3 assumes ~32k batches: at batch 512 it
+  collapses to constant embeddings. Of the rates tried (1e-3, 3e-4, 1e-4),
+  1e-4 gave the best retrieval. Without augmentation the model overfits
+  after ~12 epochs, so training uses random resized crops (no flips:
+  captions mention left and right) and a longer 100-epoch schedule.
+
+All training modes clip gradients to norm 1.0 and warm up for the first 10%
+of steps. Retrieval is reported for the last epoch and for the epoch with the
+lowest validation loss (Karpathy val split, first caption per image).
 
 Example::
 
@@ -54,21 +59,25 @@ parser.add_argument("--num_epochs", type=int, default=None)
 parser.add_argument("--num_workers", type=int, default=8)
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--grad_clip", type=float, default=1.0)
+parser.add_argument("--min_crop_scale", type=float, default=None)
 parser.add_argument("--output_dir", type=str, default="outputs/siglip-flickr30k")
 parser.add_argument("--max_train_samples", type=int, default=None)
 parser.add_argument("--max_test_samples", type=int, default=None)
 args = parser.parse_args()
 
-DEFAULTS = {  # mode: (lr, weight_decay, epochs)
-    "zeroshot": (0.0, 0.0, 0),
-    "finetune": (1e-5, 1e-4, 5),
-    "scratch": (1e-4, 1e-4, 30),
+DEFAULTS = {  # mode: (lr, weight_decay, epochs, min_crop_scale)
+    "zeroshot": (0.0, 0.0, 0, 1.0),
+    "finetune": (1e-5, 1e-4, 5, 0.9),
+    "scratch": (1e-4, 0.2, 100, 0.5),
 }
 lr = args.lr if args.lr is not None else DEFAULTS[args.mode][0]
 weight_decay = (
     args.weight_decay if args.weight_decay is not None else DEFAULTS[args.mode][1]
 )
 num_epochs = args.num_epochs if args.num_epochs is not None else DEFAULTS[args.mode][2]
+min_crop_scale = (
+    args.min_crop_scale if args.min_crop_scale is not None else DEFAULTS[args.mode][3]
+)
 output_dir = Path(args.output_dir) / args.mode
 pl.seed_everything(args.seed, workers=True)
 
@@ -97,9 +106,15 @@ def first_caption_tokens(sample: dict) -> torch.Tensor:
     return tokenize(sample["original_alt_text"][0]).squeeze(0)
 
 
-def image_transform(*extra):
+def image_transform(*extra, train=False):
+    if train and min_crop_scale < 1.0:
+        resize = spt.data.transforms.RandomResizedCrop(
+            (224, 224), scale=(min_crop_scale, 1.0)
+        )
+    else:
+        resize = spt.data.transforms.Resize((224, 224))
     return spt.data.transforms.Compose(
-        spt.data.transforms.Resize((224, 224)),
+        resize,
         spt.data.transforms.RGB(),
         spt.data.transforms.ToImage(
             mean=image_processor.image_mean, std=image_processor.image_std
@@ -165,7 +180,29 @@ def retrieval_metrics(model, dataset, device, batch_size=250):
     return metrics
 
 
-def write_results(metrics, model):
+class BestValidationWeights(pl.Callback):
+    """Keep a CPU copy of the weights from the epoch with the lowest val loss."""
+
+    def __init__(self, monitor="validate/loss"):
+        self.monitor = monitor
+        self.best_loss = float("inf")
+        self.best_epoch = None
+        self.weights = None
+
+    def on_validation_end(self, trainer, pl_module):
+        loss = trainer.callback_metrics.get(self.monitor)
+        if trainer.sanity_checking or loss is None or loss >= self.best_loss:
+            return
+        self.best_loss = loss.item()
+        self.best_epoch = trainer.current_epoch
+        if trainer.is_global_zero:
+            self.weights = {
+                k: v.detach().to("cpu", copy=True)
+                for k, v in pl_module.state_dict().items()
+            }
+
+
+def write_results(metrics, model, best=None):
     output_dir.mkdir(parents=True, exist_ok=True)
     try:
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
@@ -182,11 +219,14 @@ def write_results(metrics, model):
         "global_batch": args.global_batch,
         "num_devices": args.num_devices,
         "grad_clip": args.grad_clip,
+        "min_crop_scale": min_crop_scale,
         "seed": args.seed,
         "final_logit_scale": round(model.siglip_loss.logit_scale.exp().item(), 3),
         "final_logit_bias": round(model.siglip_loss.logit_bias.item(), 3),
         "test": metrics,
     }
+    if best is not None:
+        result.update(best)
     path = output_dir / "results.json"
     path.write_text(json.dumps(result, indent=2))
     print(json.dumps(result, indent=2))
@@ -208,7 +248,8 @@ batch_size = args.global_batch // args.num_devices
 train_dataset = load_split(
     "train",
     image_transform(
-        spt.data.transforms.Lambda(random_caption_tokens, target="tokenized_prompt")
+        spt.data.transforms.Lambda(random_caption_tokens, target="tokenized_prompt"),
+        train=True,
     ),
     args.max_train_samples,
 )
@@ -267,10 +308,11 @@ module.optim = {
     "interval": "step",
 }
 
+best_weights = BestValidationWeights()
 trainer = pl.Trainer(
     max_epochs=num_epochs,
     num_sanity_val_steps=0,
-    callbacks=[LearningRateMonitor(logging_interval="step")],
+    callbacks=[LearningRateMonitor(logging_interval="step"), best_weights],
     precision="bf16-mixed",
     logger=CSVLogger(str(output_dir), name="logs"),
     enable_checkpointing=False,
@@ -284,4 +326,11 @@ manager = spt.Manager(trainer=trainer, module=module, data=data, seed=args.seed)
 manager()
 
 if trainer.is_global_zero:
-    write_results(retrieval_metrics(module, test_dataset, device), module)
+    last_metrics = retrieval_metrics(module, test_dataset, device)
+    module.load_state_dict(best_weights.weights)
+    best = {
+        "best_val_epoch": best_weights.best_epoch,
+        "best_val_loss": round(best_weights.best_loss, 4),
+        "test_best_val": retrieval_metrics(module, test_dataset, device),
+    }
+    write_results(last_metrics, module, best)
