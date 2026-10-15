@@ -14,8 +14,9 @@ Modes:
   big_vision optimizer settings (wd 1e-4, beta2 0.95). Flickr30k is
   far too small for real pretraining; this mode is a learning sanity check.
   big_vision's lr 1e-3 assumes ~32k batches: at batch 512 it collapses to
-  constant embeddings, so the default here is 3e-4. All training modes clip
-  gradients to norm 1.0 (big_vision default).
+  constant embeddings. Of the rates tried (1e-3, 3e-4, 1e-4), 1e-4 gave the
+  best retrieval, so it is the default. All training modes clip gradients
+  to norm 1.0 (big_vision default).
 
 Example::
 
@@ -61,7 +62,7 @@ args = parser.parse_args()
 DEFAULTS = {  # mode: (lr, weight_decay, epochs)
     "zeroshot": (0.0, 0.0, 0),
     "finetune": (1e-5, 1e-4, 5),
-    "scratch": (3e-4, 1e-4, 30),
+    "scratch": (1e-4, 1e-4, 30),
 }
 lr = args.lr if args.lr is not None else DEFAULTS[args.mode][0]
 weight_decay = (
