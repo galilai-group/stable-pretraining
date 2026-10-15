@@ -4,6 +4,14 @@ Unreleased
 
 **New method**
 
+- ``CorInfoMax``: combines agreement between augmented views with running
+  covariance log-determinants to discourage dimensional collapse, per Ozsoy
+  et al., "Self-Supervised Learning with an Information Maximization Criterion"
+  (NeurIPS 2022). Includes the ``spt.CorInfoMax`` method, composable
+  ``corinfomax`` forward function, and ``CorInfoMaxLoss`` with checkpointed
+  running statistics. Adds a CIFAR-10 pretraining and frozen linear evaluation
+  recipe in ``examples/corinfomax_cifar10.py``, focused unit tests, and API
+  documentation.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

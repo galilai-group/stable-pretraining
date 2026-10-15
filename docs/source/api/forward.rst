@@ -218,6 +218,58 @@ VICReg
         var_weight: 25.0
         cov_weight: 1.0
 
+CorInfoMax
+~~~~~~~~~~
+
+.. autofunction:: corinfomax
+
+**Required Module Attributes:**
+
+- ``backbone``: Encoder returning feature vectors shaped ``[N, embed_dim]``
+- ``projector``: Projection head with output width matching ``projection_dim``
+- ``corinfomax_loss``: :class:`~stable_pretraining.losses.CorInfoMaxLoss`
+
+**Batch and Evaluation Contract:**
+
+Training uses ``stage="fit"`` with the module in training mode and exactly two
+view dictionaries, each containing an ``image`` tensor. Views can be provided
+under ``views`` as a sequence or mapping, or as direct named view dictionaries.
+If labels are supplied, both views must contain them.
+
+The output contains view-major ``embedding`` and optional ``label`` tensors;
+training also returns scalar ``loss`` and raw ``projection`` tensors. Each view
+passes through the encoder separately to preserve its BatchNorm statistics.
+The loss normalizes projections by default and stores detached running means
+and covariances as checkpoint buffers.
+
+Evaluation accepts a single ``image`` dictionary or two views and bypasses the
+projector and loss, preserving their running statistics. Supported stages are
+``fit``, ``validate``, ``test``, and ``predict``.
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      _target_: stable_pretraining.Module
+      forward: stable_pretraining.forward.corinfomax
+      backbone: ...
+      projector: ...  # Must output 64-dimensional vectors.
+      corinfomax_loss:
+        _target_: stable_pretraining.losses.CorInfoMaxLoss
+        projection_dim: 64
+        sim_coeff: 250.0
+        cov_coeff: 1.0
+        mean_momentum: 0.01
+        covariance_momentum: 0.01
+        initial_covariance: 1.0
+        epsilon: 1.0e-8
+        normalize: true
+
+For a pre-wired method class, use
+:class:`~stable_pretraining.methods.CorInfoMax`. The complete CIFAR-10 recipe
+is in ``examples/corinfomax_cifar10.py``.
+
 Barlow Twins
 ~~~~~~~~~~~~
 

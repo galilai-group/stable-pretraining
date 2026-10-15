@@ -9,6 +9,7 @@ Available forward functions:
     - ``simclr`` — SimCLR contrastive learning
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
+    - ``corinfomax`` — agreement and running-covariance log-determinants
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
     - ``swav`` — SwAV online clustering
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
@@ -452,6 +453,86 @@ def vicreg(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         if "label" in batch:
             out["label"] = batch["label"]
 
+    return out
+
+
+def corinfomax(self: Any, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Compute CorInfoMax on two views, or return evaluation embeddings.
+
+    Args:
+        self: Bound Module with ``backbone``, ``projector``, and
+            ``corinfomax_loss`` (a CorInfoMaxLoss instance).
+        batch: Single ``image`` dictionary, two view dictionaries under
+            ``views`` (sequence or mapping), or direct named view dictionaries.
+        stage: Runtime stage: ``fit``, ``validate``, ``test``, or ``predict``.
+
+    Returns:
+        Dictionary with local view-major ``embedding`` and optional ``label``.
+        Training also returns scalar ``loss`` and raw ``projection``.
+
+    Note:
+        Views pass through the encoder separately to preserve per-view BatchNorm
+        statistics. Normalization and running state belong to the loss module.
+        Evaluation bypasses both projector and loss, leaving loss history intact.
+    """
+    if stage not in ("fit", "validate", "test", "predict"):
+        raise ValueError(f"Unsupported CorInfoMax stage: {stage!r}")
+    if not isinstance(batch, dict):
+        raise TypeError("CorInfoMax expects a batch dictionary")
+    training = self.training and stage == "fit"
+    if "views" in batch:
+        views = batch["views"]
+        if isinstance(views, dict):
+            views = list(views.values())
+    elif "image" in batch:
+        if training:
+            raise ValueError("CorInfoMax training requires exactly two views")
+        views = [batch]
+    else:
+        # Module injects batch_idx alongside direct named views.
+        views = [value for value in batch.values() if isinstance(value, dict)]
+    if not isinstance(views, (tuple, list)) or len(views) not in (1, 2):
+        raise ValueError("Expected one evaluation view or two paired views")
+    if len(views) != 2 and (training or "image" not in batch):
+        raise ValueError("CorInfoMax multi-view batches require exactly two views")
+    for view in views:
+        if not isinstance(view, dict) or not torch.is_tensor(view.get("image")):
+            raise ValueError("Each CorInfoMax view must contain an image tensor")
+        if view["image"].ndim < 2 or view["image"].shape[0] == 0:
+            raise ValueError("CorInfoMax views must have a nonempty batch dimension")
+    n = views[0]["image"].shape[0]
+    if any(view["image"].shape[0] != n for view in views):
+        raise ValueError("Paired views must have equal batch sizes")
+    labelled = ["label" in view for view in views]
+    if any(labelled) and not all(labelled):
+        raise ValueError("Labels must be present in all views or none")
+    out = {}
+    if all(labelled):
+        for view in views:
+            label = view["label"]
+            if not torch.is_tensor(label) or label.ndim == 0 or label.shape[0] != n:
+                raise ValueError("Each label tensor must match its view's batch size")
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+    embeddings = [self.backbone(view["image"]) for view in views]
+    if any(
+        not torch.is_tensor(embedding) or embedding.ndim != 2 or embedding.shape[0] != n
+        for embedding in embeddings
+    ):
+        raise ValueError("CorInfoMax backbones must return [N, embed_dim] tensors")
+    out["embedding"] = torch.cat(embeddings, dim=0)
+    if training:
+        projections = [self.projector(embedding) for embedding in embeddings]
+        out["loss"] = self.corinfomax_loss(*projections)
+        out["projection"] = torch.cat(projections, dim=0)
+        if getattr(self, "_trainer", None) is not None:
+            self.log(
+                f"{stage}/loss",
+                out["loss"],
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+                batch_size=n,
+            )
     return out
 
 
