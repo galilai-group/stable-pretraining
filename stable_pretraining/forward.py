@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``siglip`` — SigLIP image-text pretraining with a pairwise sigmoid loss
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -1263,7 +1264,7 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     return out
 
 
-def _pooled_embedding(outputs, key: str) -> torch.Tensor:
+def _pooled_embedding(outputs: Any, key: str) -> torch.Tensor:
     """Extract a [B, D] embedding from a tensor or a Hugging Face model output."""
     if isinstance(outputs, torch.Tensor):
         return outputs
@@ -1293,8 +1294,10 @@ def siglip(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         stage: Training stage ('fit', 'validate', 'test', or 'predict').
 
     Returns:
-        Dictionary with L2-normalized ``image_embeds`` and ``text_embeds`` and
-        the SigLIP ``loss`` (in every stage except predict).
+        Dictionary with ``embedding`` (pooled image features before
+        normalization, for probes and k-NN callbacks), L2-normalized
+        ``image_embeds`` and ``text_embeds``, and the SigLIP ``loss`` (in every
+        stage except predict).
 
     Note:
         Under DDP, :class:`~stable_pretraining.losses.SigLIPLoss` gathers text
@@ -1304,6 +1307,7 @@ def siglip(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     out = {}
 
     image_embeds = _pooled_embedding(self.vision_model(batch["image"]), "image_embeds")
+    out["embedding"] = image_embeds
     out["image_embeds"] = torch.nn.functional.normalize(image_embeds, dim=-1)
 
     mask = batch.get("attention_mask")

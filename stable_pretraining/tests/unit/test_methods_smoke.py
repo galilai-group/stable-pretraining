@@ -257,6 +257,26 @@ def test_visreg_forward_backward():
     _assert_loss_and_backward(model, output)
 
 
+def test_siglip_forward_backward():
+    """SigLIP with tiny custom towers; the HF towers are covered in test_siglip.py."""
+
+    class _TinyText(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.emb = torch.nn.EmbeddingBag(50, 16)
+
+        def forward(self, input_ids, attention_mask=None):
+            return self.emb(input_ids)
+
+    vision = torch.nn.Sequential(torch.nn.Flatten(), torch.nn.Linear(C * H * W, 16))
+    model = M.SigLIP(vision_encoder=vision, text_encoder=_TinyText())
+    model.train()
+    v1, _ = _two_views()
+    ids = torch.randint(0, 50, (B, 8), generator=torch.Generator().manual_seed(1))
+    output = model(images=v1, input_ids=ids)
+    _assert_loss_and_backward(model, output)
+
+
 def test_mim_refiner_forward_backward():
     """MIM-Refiner takes a pre-built encoder; just pass a fresh timm ViT."""
     import timm

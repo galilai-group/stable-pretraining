@@ -472,6 +472,7 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         )
         module.siglip_loss.assert_called_once()
         assert result["loss"] == 0.5
+        assert torch.equal(result["embedding"], image_embeds)
         assert result["image_embeds"].shape == image_embeds.shape
         assert result["text_embeds"].shape == text_embeds.shape
         assert torch.allclose(result["image_embeds"].norm(dim=-1), torch.ones(2))

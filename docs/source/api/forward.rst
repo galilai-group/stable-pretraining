@@ -274,6 +274,7 @@ SigLIP
       text_model: ...
       siglip_loss:
         _target_: stable_pretraining.losses.SigLIPLoss
+        normalize: false  # the forward function already normalizes
 
 Supervised
 ~~~~~~~~~~

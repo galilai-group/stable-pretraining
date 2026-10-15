@@ -125,6 +125,11 @@ class SigLIP(Module):
 
         if (vision_encoder is None) != (text_encoder is None):
             raise ValueError("Pass both vision_encoder and text_encoder, or neither.")
+        if pretrained and vision_encoder is not None:
+            raise ValueError(
+                "pretrained=True loads Hugging Face towers; it cannot be combined "
+                "with custom vision_encoder/text_encoder."
+            )
 
         if vision_encoder is not None:
             self.vision_model = vision_encoder

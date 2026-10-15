@@ -688,7 +688,10 @@ def w_siglip_crossgpu_matches_global(rank, world_size):
     avg = all_reduce(local.detach().clone()) / world_size
 
     ref = _ref_siglip_global(
-        img_global, txt_global, loss_fn.logit_scale.detach(), loss_fn.logit_bias
+        img_global,
+        txt_global,
+        loss_fn.logit_scale.detach(),
+        loss_fn.logit_bias.detach(),
     )
     assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
 

@@ -108,6 +108,11 @@ class TestSigLIP:
         with pytest.raises(ValueError, match="both"):
             SigLIP(vision_encoder=nn.Identity())
 
+    def test_pretrained_rejects_custom_encoders(self):
+        """pretrained=True cannot be combined with custom encoders."""
+        with pytest.raises(ValueError, match="pretrained"):
+            _tiny_custom_model(pretrained=True)
+
     def test_single_modality_returns_embeddings_without_loss(self):
         """Embedding one modality returns zero loss and leaves the other None."""
         model = _tiny_custom_model().eval()

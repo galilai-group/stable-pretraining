@@ -1,3 +1,5 @@
+"""Unit tests for SigLIPLoss."""
+
 import math
 
 import pytest
@@ -89,3 +91,15 @@ class TestSigLIPLoss:
 
         with pytest.raises(ValueError, match="same batch size"):
             loss_fn(image_features=feats_i, text_features=feats_j)
+
+    def test_rank_env_without_process_group_uses_local_positives(self, monkeypatch):
+        """A launcher rank variable without a process group must not shift positives."""
+        torch.manual_seed(0)
+        feats_i = torch.randn(4, 8)
+        feats_j = torch.randn(4, 8)
+        expected = SigLIPLoss(gather_distributed=False)(feats_i, feats_j)
+
+        monkeypatch.setenv("LOCAL_RANK", "1")
+        loss = SigLIPLoss()(feats_i, feats_j)
+
+        assert torch.allclose(loss, expected)

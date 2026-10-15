@@ -87,6 +87,11 @@ class SigLIPLoss(torch.nn.Module):
             logits. Defaults to ``True``.
         gather_distributed: Gather text features across ranks so every image
             sees negatives from the global batch. Defaults to ``True``.
+
+    Note:
+        With ``gather_distributed=True`` under DDP, every rank must pass the
+        same batch size, because the text features are gathered with
+        ``all_gather``.
     """
 
     def __init__(
@@ -130,10 +135,11 @@ class SigLIPLoss(torch.nn.Module):
         batch = image_features.size(0)
         if self.gather_distributed:
             # The positive for local image i sits at this rank's offset into
-            # the gathered text block. In a single process the gather is a
-            # no-op and the offset is 0.
-            candidates = torch.cat(all_gather(text_features), dim=0)
-            offset = get_rank() * batch
+            # the gathered text block. Without a process group the gather
+            # returns only the local features, so the offset is 0.
+            gathered = all_gather(text_features)
+            candidates = torch.cat(gathered, dim=0)
+            offset = get_rank() * batch if len(gathered) > 1 else 0
         else:
             candidates = text_features
             offset = 0
