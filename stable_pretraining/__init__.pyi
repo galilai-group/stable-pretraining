@@ -41,6 +41,7 @@ from .registry import RegistryLogger as RegistryLogger
 from .registry import open_registry as open_registry
 
 # Method classes (most-used; full catalog: stable_pretraining.methods)
+from .methods.align_uniform import AlignUniform as AlignUniform
 from .methods.barlow_twins import BarlowTwins as BarlowTwins
 from .methods.byol import BYOL as BYOL
 from .methods.dino import DINO as DINO

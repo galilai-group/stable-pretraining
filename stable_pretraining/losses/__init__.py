@@ -11,6 +11,7 @@ This module provides various self-supervised learning loss functions organized b
 from .dino import DINOv1Loss, DINOv2Loss, iBOTPatchLoss
 
 # Joint embedding losses
+from .align_uniform import AlignUniformLoss
 from .joint_embedding import (
     BYOLLoss,
     VICRegLoss,
@@ -39,6 +40,7 @@ __all__ = [
     "DINOv2Loss",
     "iBOTPatchLoss",
     # Joint embedding
+    "AlignUniformLoss",
     "BYOLLoss",
     "VICRegLoss",
     "BarlowTwinsLoss",

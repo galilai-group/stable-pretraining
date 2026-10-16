@@ -4,6 +4,10 @@ Unreleased
 
 **New method**
 
+- ``AlignUniform``: two-view self-supervised learning that directly optimizes
+  positive-pair alignment and embedding uniformity on L2-normalized
+  projections, per Wang and Isola (ICML 2020). Includes a CIFAR-10 ResNet-18
+  benchmark using the same training setup as SimCLR.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

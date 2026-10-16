@@ -6,6 +6,7 @@ logic for each method and can be specified in YAML configs or Python code.
 
 Available forward functions:
     - ``supervised`` — standard supervised training
+    - ``align_uniform`` — alignment and uniformity self-supervised learning
     - ``simclr`` — SimCLR contrastive learning
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
@@ -451,6 +452,77 @@ def vicreg(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         out["embedding"] = self.backbone(batch["image"])
         if "label" in batch:
             out["label"] = batch["label"]
+
+    return out
+
+
+def align_uniform(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for Alignment and Uniformity self-supervised learning.
+
+    The two-view objective minimizes the distance between positive pairs and
+    spreads all normalized projected embeddings over the unit hypersphere.
+
+    Args:
+        self: Module instance with ``backbone``, ``projector``, and
+            ``align_uniform_loss`` attributes.
+        batch: A two-view batch from ``MultiViewTransform`` or a single-view
+            dictionary for evaluation.
+        stage: Training stage (``"train"``, ``"val"``, or ``"test"``).
+
+    Returns:
+        A dictionary containing the backbone ``embedding`` and, during
+        training, ``loss``, ``alignment``, and ``uniformity``. Labels are
+        included when present in the input.
+
+    Note:
+        Introduced by Wang and Isola, "Understanding Contrastive Representation
+        Learning through Alignment and Uniformity on the Hypersphere" (ICML 2020).
+    """
+    out = {}
+    views = _get_views_list(batch)
+    if views is None:
+        out["embedding"] = self.backbone(batch["image"])
+        if "label" in batch:
+            out["label"] = batch["label"]
+        return out
+
+    if len(views) != 2:
+        raise ValueError(f"AlignUniform requires exactly 2 views, got {len(views)}")
+
+    embeddings = [self.backbone(view["image"]) for view in views]
+    out["embedding"] = torch.cat(embeddings, dim=0)
+    if "label" in views[0]:
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+    if self.training:
+        projections = [self.projector(embedding) for embedding in embeddings]
+        loss, alignment, uniformity = self.align_uniform_loss.loss_and_terms(
+            *projections
+        )
+        out["loss"] = loss
+        out["alignment"] = alignment
+        out["uniformity"] = uniformity
+        self.log(
+            f"{stage}/loss",
+            loss,
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        self.log(
+            f"{stage}/alignment",
+            alignment,
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        self.log(
+            f"{stage}/uniformity",
+            uniformity,
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+        )
 
     return out
 

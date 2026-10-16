@@ -247,6 +247,37 @@ Barlow Twins
         _target_: stable_pretraining.losses.BarlowTwinsLoss
         lambda_: 0.005
 
+Alignment and Uniformity
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autofunction:: align_uniform
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: Projection head
+- ``align_uniform_loss``: Alignment and uniformity loss function
+
+**Key Features:**
+
+- Replaces the contrastive loss with two terms on L2-normalized embeddings
+- Alignment pulls positive pairs together
+- Uniformity spreads samples over the unit hypersphere
+- Exactly two views are required
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.align_uniform
+      backbone: ...
+      projector: ...
+      align_uniform_loss:
+        _target_: stable_pretraining.losses.AlignUniformLoss
+        alpha: 2.0
+        t: 2.0
+
 Supervised
 ~~~~~~~~~~
 

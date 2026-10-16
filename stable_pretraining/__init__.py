@@ -178,6 +178,7 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "RegistryLogger": ("stable_pretraining.registry", "RegistryLogger"),
     "open_registry": ("stable_pretraining.registry", "open_registry"),
     # Method classes (most-used; full catalog in stable_pretraining.methods)
+    "AlignUniform": ("stable_pretraining.methods.align_uniform", "AlignUniform"),
     "BarlowTwins": ("stable_pretraining.methods.barlow_twins", "BarlowTwins"),
     "BYOL": ("stable_pretraining.methods.byol", "BYOL"),
     "CrossMAE": ("stable_pretraining.methods.cross_mae", "CrossMAE"),
@@ -481,6 +482,7 @@ __all__ = [
     "Module",
     "TeacherStudentWrapper",
     # Method classes (most-used; full catalog: stable_pretraining.methods)
+    "AlignUniform",
     "BarlowTwins",
     "BYOL",
     "CrossMAE",
