@@ -29,7 +29,8 @@ image).
 Example::
 
     python benchmarks/flickr30k/siglip-vitb.py --mode zeroshot --num_devices 1
-    srun python benchmarks/flickr30k/siglip-vitb.py --mode finetune --num_devices 2
+    srun --gres=gpu:2 --ntasks-per-node=2 --cpus-per-task=6 --mem=128G \
+      python benchmarks/flickr30k/siglip-vitb.py --mode finetune --num_devices 2
 """
 
 import argparse

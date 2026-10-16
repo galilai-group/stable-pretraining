@@ -5,8 +5,8 @@ evaluates `stable_pretraining.methods.SigLIP` on Flickr30k
 (`AnyModal/flickr30k`, Karpathy splits: 29,000 train / 1,014 val /
 1,000 test images, 5 captions per image).
 
-All runs use the benchmark script as it is in this PR (commit `f0f3cbee`
-on the PR branch), seed 0, 2× NVIDIA L40S, DDP, bf16-mixed, and global
+All runs use the benchmark script in this PR (each run's `results.json`
+records the exact git SHA), seed 0, 2× NVIDIA L40S, DDP, bf16-mixed, and global
 batch 512 (256 per GPU), so `SigLIPLoss` gathers text features across both
 GPUs. Training goes through the library's `siglip` forward function.
 
@@ -55,8 +55,10 @@ Wall time: fine-tune 3.8 min, scratch 57 min.
 Shared settings:
 
 - AdamW with betas (0.9, 0.95), linear warmup then cosine decay.
-- Weight decay applies to weight matrices only. Biases, norm parameters,
-  and the logit scale and bias are excluded (`exclude_bias_norm=True`).
+- Weight decay applies to parameters with two or more dimensions (weight
+  matrices, the patch-embedding convolution, and the pooling-head probe).
+  Biases, norm parameters, and the logit scale and bias are excluded
+  (`exclude_bias_norm=True`).
 - Training images get random resized crops. There are no flips, because
   captions mention left and right. Each step uses one random caption of the
   five per image.
@@ -107,5 +109,7 @@ srun --gres=gpu:2 --ntasks-per-node=2 --cpus-per-task=6 --mem=128G \
 Each run writes `<output_dir>/<mode>/results.json` with the git SHA, the
 hyperparameters, the last-epoch logit scale and bias, and retrieval metrics
 for the last epoch (`test`) and the lowest-val-loss epoch (`test_best_val`).
+`best_val_epoch` is 0-indexed, so the epoch-26 scratch row above is stored
+as 25.
 The first run downloads the dataset (~4.3 GB) and the checkpoint (~0.8 GB)
 to the Hugging Face cache. Tokenization needs `sentencepiece`.
