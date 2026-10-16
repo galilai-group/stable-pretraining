@@ -5,9 +5,10 @@ evaluates `stable_pretraining.methods.SigLIP` on Flickr30k
 (`AnyModal/flickr30k`, Karpathy splits: 29,000 train / 1,014 val /
 1,000 test images, 5 captions per image).
 
-All runs: commit `3767bd2f`, seed 0, 2× NVIDIA L40S, DDP, bf16-mixed,
-global batch 512 (256 per GPU), so `SigLIPLoss` gathers text features
-across both GPUs.
+All runs use the benchmark script as it is in this PR (commit `f0f3cbee`
+on the PR branch), seed 0, 2× NVIDIA L40S, DDP, bf16-mixed, and global
+batch 512 (256 per GPU), so `SigLIPLoss` gathers text features across both
+GPUs. Training goes through the library's `siglip` forward function.
 
 ## Retrieval on the 1k test split (1,000 images, 5,000 captions)
 
@@ -15,18 +16,21 @@ Image→text (i2t) counts a hit if any of the image's 5 captions is in the
 top K. Text→image (t2i) ranks the 1,000 images for each of the 5,000
 captions. rsum is the sum of all six recalls (max 600).
 
-| Mode | Init | Epochs | i2t R@1 | i2t R@5 | i2t R@10 | t2i R@1 | t2i R@5 | t2i R@10 | rsum |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| zeroshot | `google/siglip-base-patch16-224` | 0 | 88.6 | 98.0 | 99.2 | 74.6 | 92.4 | 95.5 | 548.2 |
-| finetune | `google/siglip-base-patch16-224` | 5 | **93.8** | **99.4** | **99.6** | **82.5** | **96.1** | **98.2** | **569.6** |
-| scratch | random | 100 (best val: 26) | 5.5 | 18.0 | 25.9 | 4.3 | 15.3 | 22.5 | 91.5 |
+| Mode | Init | Checkpoint | i2t R@1 | i2t R@5 | i2t R@10 | t2i R@1 | t2i R@5 | t2i R@10 | rsum |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| zeroshot | `google/siglip-base-patch16-224` | released | 88.6 | 98.0 | 99.2 | 74.6 | 92.4 | 95.5 | 548.2 |
+| finetune | `google/siglip-base-patch16-224` | epoch 5 of 5 | **93.7** | **99.4** | **99.7** | **82.4** | **96.3** | **98.2** | **569.7** |
+| scratch | random | epoch 100 of 100 | 5.3 | 16.3 | 24.9 | 5.2 | 14.3 | 21.3 | 87.2 |
+| scratch | random | epoch 26 (lowest val loss) | 4.6 | 16.4 | 23.0 | 4.1 | 14.2 | 21.3 | 83.6 |
 
-Each training run is evaluated twice: at the last epoch and at the epoch
-with the lowest validation loss (val split, first caption per image). The
-table reports the best-val checkpoint. For fine-tuning both are the same
-epoch. The scratch run scores rsum 84.5 at its last epoch.
+The script evaluates each training run twice: at the last epoch and at the
+epoch with the lowest validation loss (all 1,014 val images, first caption
+per image). For fine-tuning these are the same epoch. For the scratch run
+both are shown. Its validation loss bottoms out at epoch 26 and then rises,
+while test retrieval still improves slightly, so validation loss is only a
+rough guide to retrieval once the model starts to overfit.
 
-Wall time: fine-tune 4.5 min, scratch 65 min.
+Wall time: fine-tune 3.8 min, scratch 57 min.
 
 ## What each mode shows
 
@@ -48,17 +52,22 @@ Wall time: fine-tune 4.5 min, scratch 65 min.
 | finetune | 1e-5 | 1e-4 | 10% | 0.9–1.0 | 1.0 |
 | scratch | 1e-4 | 0.2 | 10% | 0.5–1.0 | 1.0 |
 
-Shared: AdamW with betas (0.9, 0.95), linear warmup then cosine decay,
-random resized crops for training (no flips, because captions mention left
-and right), and one random caption of the five per image per step. Images
-are resized to 224×224 and normalized with the checkpoint's image mean and
-std. Text is tokenized with `padding="max_length"` and no attention mask,
-which matches how the SigLIP text tower was trained.
+Shared settings:
+
+- AdamW with betas (0.9, 0.95), linear warmup then cosine decay.
+- Weight decay applies to weight matrices only. Biases, norm parameters,
+  and the logit scale and bias are excluded (`exclude_bias_norm=True`).
+- Training images get random resized crops. There are no flips, because
+  captions mention left and right. Each step uses one random caption of the
+  five per image.
+- Images are resized to 224×224 and normalized with the checkpoint's image
+  mean and std.
+- Text is tokenized with `padding="max_length"` and no attention mask,
+  which matches how the SigLIP text tower was trained.
 
 ## How the scratch recipe was chosen
 
-Earlier scratch runs used 30 epochs, no augmentation, and weight decay 1e-4
-(commit `b17ef53c`):
+Earlier scratch runs used 30 epochs, no augmentation, and weight decay 1e-4:
 
 | lr | rsum | Outcome |
 |---:|---:|---|
@@ -68,10 +77,11 @@ Earlier scratch runs used 30 epochs, no augmentation, and weight decay 1e-4
 
 The paper's lr of 1e-3 assumes batches of ~32k. At batch 512 it collapses.
 With lr 1e-4 the model overfit early, so the final recipe adds random
-resized crops, raises weight decay to 0.2 (OpenCLIP's CLIP default; PyTorch's
-AdamW scales decay by the learning rate, so 1e-4 had almost no effect), and
-trains for 100 epochs. That moved the best validation epoch from ~12 to 26
-and doubled rsum (46.1 → 91.5). Validation loss still rises after epoch ~30.
+resized crops, raises weight decay to 0.2 (with AdamW the decay is
+multiplied by the learning rate, so 1e-4 had almost no effect), and trains
+for 100 epochs. This moved the lowest validation loss from epoch ~12 to
+epoch 26 and nearly doubled rsum (46.1 → 83.6–87.2). These are single-seed
+runs, so differences of a few rsum points are within noise.
 
 ## Why SigLIP is not in the ImageNet-10 table
 
@@ -95,7 +105,7 @@ srun --gres=gpu:2 --ntasks-per-node=2 --cpus-per-task=6 --mem=128G \
 ```
 
 Each run writes `<output_dir>/<mode>/results.json` with the git SHA, the
-hyperparameters, the final logit scale and bias, and both last-epoch and
-best-val retrieval metrics. The first run downloads the dataset (~4.3 GB)
-and the checkpoint (~0.8 GB) to the Hugging Face cache. Tokenization needs
-`sentencepiece`.
+hyperparameters, the last-epoch logit scale and bias, and retrieval metrics
+for the last epoch (`test`) and the lowest-val-loss epoch (`test_best_val`).
+The first run downloads the dataset (~4.3 GB) and the checkpoint (~0.8 GB)
+to the Hugging Face cache. Tokenization needs `sentencepiece`.
