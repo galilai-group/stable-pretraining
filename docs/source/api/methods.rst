@@ -95,6 +95,17 @@ input, either in pixel space or in a latent feature space.
    VISReg
    SALT
 
+Language-Image Pretraining
+--------------------------
+
+Methods that align image and text representations from paired data.
+
+.. autosummary::
+   :toctree: gen_modules/
+   :template: myclass_template.rst
+
+   SigLIP
+
 Other
 -----
 

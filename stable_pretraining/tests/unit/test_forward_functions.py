@@ -1,5 +1,7 @@
 """Unit tests for all forward functions using benchmark transforms."""
 
+import types
+
 import pytest
 import torch
 import torch.nn as nn
@@ -439,3 +441,80 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         assert "embedding" in result
         assert "logits" in result
         assert "loss" in result
+
+    def test_siglip(self):
+        """Test siglip forward with a paired image-text batch."""
+        torch.manual_seed(0)
+        batch = {
+            "image": torch.randn(2, 3, 224, 224),
+            "tokenized_prompt": torch.ones(2, 8, dtype=torch.long),
+            "attention_mask": torch.ones(2, 8, dtype=torch.long),
+        }
+        image_embeds = torch.randn(2, 16)
+        text_embeds = torch.randn(2, 16)
+
+        module = Mock()
+        module.vision_model = Mock(
+            return_value=types.SimpleNamespace(image_embeds=image_embeds)
+        )
+        module.text_model = Mock(
+            return_value=types.SimpleNamespace(text_embeds=text_embeds)
+        )
+        module.siglip_loss = Mock(return_value=torch.tensor(0.5))
+        module.training = True
+        module.log = Mock()
+
+        result = forward_module.siglip(module, batch, "fit")
+
+        module.vision_model.assert_called_once_with(batch["image"])
+        module.text_model.assert_called_once_with(
+            batch["tokenized_prompt"], attention_mask=batch["attention_mask"]
+        )
+        module.siglip_loss.assert_called_once()
+        assert result["loss"] == 0.5
+        assert torch.equal(result["embedding"], image_embeds)
+        assert result["image_embeds"].shape == image_embeds.shape
+        assert result["text_embeds"].shape == text_embeds.shape
+        assert torch.allclose(result["image_embeds"].norm(dim=-1), torch.ones(2))
+        assert torch.allclose(result["text_embeds"].norm(dim=-1), torch.ones(2))
+
+    def test_siglip_accepts_pooler_outputs_and_tensors(self):
+        """Encoders may return HF pooler outputs or plain tensors; no mask is optional."""
+        batch = {
+            "image": torch.randn(2, 3, 224, 224),
+            "tokenized_prompt": torch.ones(2, 8, dtype=torch.long),
+        }
+
+        module = Mock()
+        module.vision_model = Mock(
+            return_value=types.SimpleNamespace(pooler_output=torch.randn(2, 16))
+        )
+        module.text_model = Mock(return_value=torch.randn(2, 16))
+        module.siglip_loss = Mock(return_value=torch.tensor(0.5))
+        module.training = True
+        module.log = Mock()
+
+        result = forward_module.siglip(module, batch, "fit")
+
+        module.text_model.assert_called_once_with(batch["tokenized_prompt"])
+        assert "loss" in result
+
+    def test_siglip_logs_validation_loss(self):
+        """Validation computes and logs the loss; predict skips it."""
+        batch = {
+            "image": torch.randn(2, 3, 224, 224),
+            "tokenized_prompt": torch.ones(2, 8, dtype=torch.long),
+        }
+        module = Mock()
+        module.vision_model = Mock(return_value=torch.randn(2, 16))
+        module.text_model = Mock(return_value=torch.randn(2, 16))
+        module.siglip_loss = Mock(return_value=torch.tensor(0.5))
+        module.training = False
+        module.log = Mock()
+
+        result = forward_module.siglip(module, batch, "validate")
+        assert "loss" in result
+        assert module.log.call_args.args[0] == "validate/loss"
+
+        result = forward_module.siglip(module, batch, "predict")
+        assert "loss" not in result

@@ -658,3 +658,95 @@ def w_clip_crossgpu_matches_global(rank, world_size):
 
     ref = _ref_clip_global(feats_i_global, feats_j_global, 0.07)
     assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+def _ref_siglip_global(img, txt, logit_scale, logit_bias):
+    """Single-process SigLIP loss over a (global) batch — no gather."""
+    import torch.nn.functional as F
+
+    img = F.normalize(img, dim=-1)
+    txt = F.normalize(txt, dim=-1)
+    logits = logit_scale.exp() * img @ txt.T + logit_bias
+    labels = 2 * torch.eye(img.size(0)) - 1
+    return -F.logsigmoid(labels * logits).sum() / img.size(0)
+
+
+def w_siglip_crossgpu_matches_global(rank, world_size):
+    """Mean of per-rank DDP SigLIP loss == single-process SigLIP on the global batch."""
+    from stable_pretraining.losses import SigLIPLoss
+    from stable_pretraining.utils import all_reduce
+
+    torch.manual_seed(0)  # identical GLOBAL batch on every rank
+    b, d = 4, 16
+    img_global = torch.randn(b * world_size, d)
+    txt_global = torch.randn(b * world_size, d)
+    img = img_global[rank * b : (rank + 1) * b]
+    txt = txt_global[rank * b : (rank + 1) * b]
+
+    loss_fn = SigLIPLoss(init_logit_scale=1.0, init_logit_bias=-2.0)
+    local = loss_fn(img, txt)
+    avg = all_reduce(local.detach().clone()) / world_size
+
+    ref = _ref_siglip_global(
+        img_global,
+        txt_global,
+        loss_fn.logit_scale.detach(),
+        loss_fn.logit_bias.detach(),
+    )
+    assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+class _SigLIPTinyText(nn.Module):
+    def __init__(self, vocab: int = 50, dim: int = 16):
+        super().__init__()
+        self.emb = nn.EmbeddingBag(vocab, dim)
+
+    def forward(self, input_ids, attention_mask=None):
+        return self.emb(input_ids)
+
+
+def w_siglip_ddp_grads_match_single_process(rank, world_size):
+    """DDP-wrapped SigLIP gradients == single-process gradients on the global batch.
+
+    Every rank builds the same model (same seed) and a reference copy. The DDP
+    copy trains on this rank's slice of the global batch; the reference runs
+    the whole global batch in one process. After backward, DDP's averaged
+    gradients must equal the reference gradients for every parameter —
+    including the logit scale/bias — which checks the gathered negatives, the
+    rank-offset positives, and the gradient flow back through ``all_gather``.
+    """
+    import copy
+
+    from torch.nn.parallel import DistributedDataParallel as DDP
+
+    from stable_pretraining.methods import SigLIP
+
+    torch.manual_seed(0)  # identical init and GLOBAL batch on every rank
+    b, img_size = 4, 8
+    model = SigLIP(
+        vision_encoder=nn.Sequential(nn.Flatten(), nn.Linear(3 * img_size**2, 16)),
+        text_encoder=_SigLIPTinyText(),
+        init_logit_scale=1.0,
+        init_logit_bias=-2.0,
+    )
+    reference = copy.deepcopy(model)
+    images = torch.randn(b * world_size, 3, img_size, img_size)
+    input_ids = torch.randint(0, 50, (b * world_size, 6))
+
+    ddp = DDP(model)
+    sl = slice(rank * b, (rank + 1) * b)
+    ddp(images=images[sl], input_ids=input_ids[sl]).loss.backward()
+
+    # Single process: distributed is initialized, so disable the gather for
+    # the reference and run it on the full global batch.
+    reference.siglip_loss.gather_distributed = False
+    reference(images=images, input_ids=input_ids).loss.backward()
+
+    for (name, p), (_, p_ref) in zip(
+        model.named_parameters(), reference.named_parameters()
+    ):
+        assert p.grad is not None, name
+        assert torch.allclose(p.grad, p_ref.grad, atol=1e-5, rtol=1e-4), (
+            name,
+            (p.grad - p_ref.grad).abs().max(),
+        )
