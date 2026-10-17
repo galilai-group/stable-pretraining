@@ -51,6 +51,7 @@ feature dimensions rather than using explicit contrastive pairs.
    :template: myclass_template.rst
 
    VICReg
+   FroSSL
    VICRegL
    BarlowTwins
    WMSE

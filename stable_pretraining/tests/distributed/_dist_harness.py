@@ -1,4 +1,4 @@
-"""Reusable harness + worker bodies for FSDP2 distributed tests.
+"""Reusable harness + worker bodies for distributed tests.
 
 Worker functions live in this importable module (not in the ``test_*.py`` file)
 so that ``torch.multiprocessing``'s *spawn* start method can pickle them by
@@ -588,6 +588,51 @@ def w_contrastive_runs_under_ddp(rank, world_size):
     clip = CLIPLoss(temperature=0.07)(z_i, z_j)
     assert ntx.ndim == 0 and torch.isfinite(ntx), ntx
     assert clip.ndim == 0 and torch.isfinite(clip), clip
+
+
+def w_frossl_ddp_step(rank, world_size):
+    """FroSSL trains on rank-local views with synchronized DDP parameters."""
+    import stable_pretraining as spt
+
+    torch.manual_seed(17)
+    model = spt.FroSSL(
+        backbone=nn.Linear(3, 4),
+        projector=nn.Linear(4, 3),
+        optim={"optimizer": {"type": "SGD", "lr": 0.1}},
+        invariance_weight=1.4,
+    )
+    # Lightning logging requires a Trainer; this worker exercises PyTorch DDP.
+    model.log = lambda *args, **kwargs: None
+    initial = [parameter.detach().clone() for parameter in model.parameters()]
+    ddp = torch.nn.parallel.DistributedDataParallel(model)
+    optimizer = torch.optim.SGD(ddp.parameters(), lr=0.1)
+
+    for step in range(2):
+        generator = torch.Generator().manual_seed(31 + 10 * rank + step)
+        images = torch.randn(4, 3, generator=generator)
+        batch = {
+            "views": [
+                {"image": images + 0.1 * torch.randn(4, 3, generator=generator)},
+                {"image": images + 0.1 * torch.randn(4, 3, generator=generator)},
+            ]
+        }
+        optimizer.zero_grad()
+        output = ddp(batch, "fit")
+        assert output["embedding"].shape == (8, 4)
+        assert output["loss"].ndim == 0 and torch.isfinite(output["loss"])
+        output["loss"].backward()
+        assert all(
+            parameter.grad is not None and torch.isfinite(parameter.grad).all()
+            for parameter in model.parameters()
+        )
+        optimizer.step()
+
+    for parameter, before in zip(model.parameters(), initial, strict=True):
+        assert not torch.equal(parameter.detach(), before)
+        gathered = [torch.empty_like(parameter) for _ in range(world_size)]
+        dist.all_gather(gathered, parameter.detach())
+        for other in gathered[1:]:
+            torch.testing.assert_close(other, gathered[0])
 
 
 def _ref_ntxent_global(z_i, z_j, temperature):
