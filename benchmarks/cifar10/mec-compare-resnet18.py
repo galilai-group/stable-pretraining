@@ -161,6 +161,8 @@ def build_method(args):
         raise ValueError(f"unknown method {args.method}")
     if args.base_lr is not None:
         optimizer["lr"] = args.base_lr * scale
+    if args.weight_decay is not None:
+        optimizer["weight_decay"] = args.weight_decay
     module.optim = {
         "optimizer": optimizer,
         "scheduler": {"type": "LinearWarmupCosineAnnealing"},
@@ -253,6 +255,8 @@ def run_name(args):
         name += f"-bs{args.batch_size}"
     if args.base_lr is not None:
         name += f"-lr{args.base_lr}"
+    if args.weight_decay is not None:
+        name += f"-wd{args.weight_decay}"
     return f"{name}-ep{args.epochs}"
 
 
@@ -266,6 +270,9 @@ def main():
     parser.add_argument("--warmup-epochs", type=int, default=10)
     parser.add_argument(
         "--base-lr", type=float, default=None, help="override the paper lr (per 256)"
+    )
+    parser.add_argument(
+        "--weight-decay", type=float, default=None, help="override the paper value"
     )
     parser.add_argument(
         "--symmetric-c", action="store_true", help="experimental: use (C + Cᵀ) / 2"
