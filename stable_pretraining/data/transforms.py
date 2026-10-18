@@ -1309,6 +1309,87 @@ class RandomMask(Transform):
         return x
 
 
+def _rgb_to_lab(image: torch.Tensor) -> torch.Tensor:
+    """Convert a float RGB tensor in [0, 1] to CIE Lab space.
+
+    Args:
+        image: Tensor of shape ``(..., 3, H, W)`` with values in ``[0, 1]``
+            (sRGB, D65 white point).
+
+    Returns:
+        Tensor of the same shape with channel 0 = L (``[0, 100]``) and
+        channels 1, 2 = a, b (roughly ``[-128, 127]``).
+    """
+    r, g, b = image[..., 0:1, :, :], image[..., 1:2, :, :], image[..., 2:3, :, :]
+
+    def _linearize(c):
+        return torch.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055).pow(2.4))
+
+    r, g, b = _linearize(r), _linearize(g), _linearize(b)
+    x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047
+    y = 0.2126729 * r + 0.7151522 * g + 0.0721750 * b
+    z = (0.0193339 * r + 0.1191920 * g + 0.9503041 * b) / 1.08883
+
+    delta = 6.0 / 29.0
+
+    def _f(t):
+        return torch.where(
+            t > delta**3,
+            t.clamp(min=1e-8).pow(1.0 / 3.0),
+            t / (3 * delta**2) + 4.0 / 29.0,
+        )
+
+    fx, fy, fz = _f(x), _f(y), _f(z)
+    light = 116.0 * fy - 16.0
+    a = 500.0 * (fx - fy)
+    b_chan = 200.0 * (fy - fz)
+    return torch.cat([light, a, b_chan], dim=-3)
+
+
+class RGBToLabViews(Transform):
+    """Split an RGB image into CMC's luminance (L) and chrominance (ab) views.
+
+    Converts the image at ``source`` to CIE Lab space and emits it as two
+    views sharing the same spatial content: a single-channel L view and a
+    two-channel ab view, each roughly normalized to ``[-1, 1]``. This lets
+    CMC :cite:`tian2020contrastive` treat different color-space channels of
+    one augmented crop as the two "views" to contrast, instead of two
+    independently augmented images. Apply this as the *last* step of the
+    transform chain, after any spatial augmentation (crop/flip) — color
+    jitter should be avoided since it would corrupt the ab signal.
+
+    Used by :func:`stable_pretraining.forward.cmc`.
+
+    Args:
+        source: Key of the RGB image tensor in the sample dict (default ``"image"``).
+
+    Example:
+        ::
+
+            from stable_pretraining.data import transforms
+
+            train_transform = transforms.Compose(
+                transforms.RGB(),
+                transforms.RandomResizedCrop((32, 32), scale=(0.2, 1.0)),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.ToImage(),
+                transforms.RGBToLabViews(),
+            )
+    """
+
+    def __init__(self, source: str = "image"):
+        super().__init__()
+        self.source = source
+
+    def __call__(self, x) -> Any:
+        lab = _rgb_to_lab(self.nested_get(x, self.source))
+        l_view = x.copy()
+        l_view[self.source] = lab[0:1] / 50.0 - 1.0
+        ab_view = x.copy()
+        ab_view[self.source] = lab[1:3] / 110.0
+        return {"views": [l_view, ab_view]}
+
+
 # class RandomClassSwitch(v2.Transform):
 #     def __init__(
 #         self,

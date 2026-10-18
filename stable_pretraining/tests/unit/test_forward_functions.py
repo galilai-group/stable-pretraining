@@ -108,6 +108,15 @@ def _val_transform():
     )
 
 
+def _cmc_transforms():
+    return transforms.Compose(
+        transforms.RGB(),
+        transforms.RandomResizedCrop((32, 32), scale=(0.5, 1.0)),
+        transforms.ToImage(),
+        transforms.RGBToLabViews(),
+    )
+
+
 @pytest.mark.unit
 class TestForwardFunctionsWithBenchmarkTransforms:
     """Test forward functions with actual benchmark transforms."""
@@ -156,6 +165,62 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         assert "embedding" in result
         assert "label" in result
         assert "loss" not in result
+
+    def test_cmc_forward_with_rgb_to_lab_transform(self):
+        """Test cmc with the RGBToLabViews transform producing L/ab views."""
+        sample = {
+            "image": _create_dummy_pil_image((32, 32)),
+            "label": torch.tensor([0]),
+        }
+
+        transform = _cmc_transforms()
+        batch = transform(sample)
+
+        module = Mock()
+        module.backbone_l = lambda x: torch.randn(2, 512)
+        module.backbone_ab = lambda x: torch.randn(2, 512)
+        module.projector_l = lambda x: torch.randn(2, 128)
+        module.projector_ab = lambda x: torch.randn(2, 128)
+        module.cmc_loss = Mock(return_value=torch.tensor(0.5))
+        module.training = True
+        module.log = Mock()
+
+        result = forward_module.cmc(module, batch, "train")
+
+        assert "embedding" in result
+        assert "loss" in result
+        assert "label" in result
+
+    def test_cmc_forward_validation(self):
+        """Test cmc in validation mode (no loss computed)."""
+        sample = {
+            "image": _create_dummy_pil_image((32, 32)),
+            "label": torch.tensor([0]),
+        }
+
+        transform = _cmc_transforms()
+        batch = transform(sample)
+
+        module = Mock()
+        module.backbone_l = lambda x: torch.randn(2, 512)
+        module.backbone_ab = lambda x: torch.randn(2, 512)
+        module.training = False
+
+        result = forward_module.cmc(module, batch, "val")
+
+        assert "embedding" in result
+        assert "label" in result
+        assert "loss" not in result
+
+    def test_cmc_forward_requires_two_views(self):
+        """CMC must raise if it doesn't receive exactly 2 (L, ab) views."""
+        module = Mock()
+        module.training = True
+
+        with pytest.raises(ValueError, match="exactly 2 views"):
+            forward_module.cmc(
+                module, {"views": [{"image": torch.randn(1, 32, 32)}]}, "train"
+            )
 
     def test_byol_forward_with_benchmark_transforms(self):
         """Test byol with SimCLR-style transforms (2 views)."""
