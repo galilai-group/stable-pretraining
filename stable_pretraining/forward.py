@@ -8,6 +8,7 @@ Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
     - ``byol`` — BYOL momentum self-distillation
+    - ``mec`` — MEC maximum entropy coding
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
     - ``swav`` — SwAV online clustering
@@ -42,6 +43,7 @@ from typing import Any
 import torch
 
 from .callbacks.queue import find_or_create_queue_callback, OnlineQueue
+from .utils import get_world_size
 
 
 def _get_views_list(batch: dict):
@@ -370,6 +372,150 @@ def byol(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
             out["label"] = batch["label"]
 
         # Just return embeddings for validation
+        with torch.no_grad():
+            target_only_features = self.backbone.forward_teacher(images)
+        out["embedding"] = target_only_features.detach()
+
+    return out
+
+
+def mec(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for MEC (Maximum Entropy Coding).
+
+    MEC uses the BYOL architecture (online network with predictor, EMA target
+    network) but replaces the alignment loss with the coding length of the
+    cross-view correlation, which both aligns views and maximizes the entropy
+    of the representation.
+
+    Args:
+        self: Module instance with required attributes:
+            - backbone: TeacherStudentWrapper for feature extraction
+            - projector: TeacherStudentWrapper for projection head
+            - predictor: Online network predictor
+            - mec_loss: MEC loss function (e.g., spt.losses.MECLoss())
+            - mec_warmup_epochs (int, optional): ``1/λ`` warm-up epochs (default 0)
+            - mec_warmup_lambda_scale (float, optional): Warm-up start (default 8.0)
+        batch: Either a list of view dicts (from MultiViewTransform) or
+            a single dict (for validation/single-view)
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Feature representations from teacher backbone (EMA target)
+            - 'loss': MEC loss between predictions and targets (during training)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in the MEC paper :cite:`liu2022self`. During the warm-up,
+        ``1/λ`` decays linearly from ``mec_warmup_lambda_scale / λ`` to
+        ``1/λ``. The reference implementation warms from 8x down to 1x over 10
+        epochs to keep the Taylor expansion convergent; set
+        ``mec_warmup_epochs=10`` to match. The warm-up here steps once per
+        epoch rather than once per iteration.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import mec
+
+            backbone = spt.TeacherStudentWrapper(
+                spt.backbone.from_torchvision("resnet50")
+            )
+            projector = spt.TeacherStudentWrapper(torch.nn.Linear(2048, 2048))
+            module = spt.Module(
+                forward=mec,
+                backbone=backbone,
+                projector=projector,
+                predictor=torch.nn.Linear(2048, 2048),
+                mec_loss=spt.losses.MECLoss(),
+                mec_warmup_epochs=10,
+                optim={"optimizer": {"type": "SGD", "lr": 0.5, "momentum": 0.9}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is not None:
+        if len(views) != 2:
+            raise ValueError(
+                f"MEC requires exactly 2 views, got {len(views)}. "
+                "For other configurations, please implement a custom forward function."
+            )
+
+        images = [view["image"] for view in views]
+
+        if "label" in views[0]:
+            out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+        if not self.training:
+            with torch.no_grad():
+                target_only_features = self.backbone.forward_teacher(
+                    torch.cat(images, dim=0)
+                )
+            return {"embedding": target_only_features.detach(), **out}
+
+        if not hasattr(self, "mec_loss"):
+            raise ValueError(
+                "mec requires 'mec_loss' to be provided (e.g., spt.losses.MECLoss()). "
+                "Pass it when constructing the Module: Module(..., mec_loss=spt.losses.MECLoss(), ...)"
+            )
+
+        online_features = [self.backbone.forward_student(img) for img in images]
+        online_proj = [self.projector.forward_student(feat) for feat in online_features]
+        online_pred = [self.predictor(proj) for proj in online_proj]
+
+        with torch.no_grad():
+            target_features = [self.backbone.forward_teacher(img) for img in images]
+            target_proj = [
+                self.projector.forward_teacher(feat) for feat in target_features
+            ]
+
+        warmup_epochs = getattr(self, "mec_warmup_epochs", 0)
+        lambda_inv_scale = 1.0
+        if self.current_epoch < warmup_epochs:
+            start_scale = getattr(self, "mec_warmup_lambda_scale", 8.0)
+            progress = self.current_epoch / warmup_epochs
+            lambda_inv_scale = start_scale + progress * (1.0 - start_scale)
+
+        loss = (
+            self.mec_loss(online_pred[0], target_proj[1], lambda_inv_scale)
+            + self.mec_loss(online_pred[1], target_proj[0], lambda_inv_scale)
+        ) / 2
+
+        # Coding length μ · tr(log(I + λC)) / m, the paper's entropy estimate;
+        # it should rise during training, unlike the λ-rescaled loss.
+        batch_size = online_pred[0].size(0) * get_world_size()
+        dim = online_pred[0].size(1)
+        lambda_inv = self.mec_loss.lambda_inv(batch_size, dim) * lambda_inv_scale
+        entropy = -loss.detach() * (batch_size + dim) / 2 / lambda_inv
+
+        out["embedding"] = torch.cat(target_features, dim=0).detach()
+        out["loss"] = loss
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            prog_bar=True,
+        )
+        self.log(
+            f"{stage}/mec_entropy",
+            entropy,
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        self.log(f"{stage}/mec_lambda_inv_scale", lambda_inv_scale, on_epoch=True)
+
+    else:
+        images = batch["image"]
+
+        if "label" in batch:
+            out["label"] = batch["label"]
+
         with torch.no_grad():
             target_only_features = self.backbone.forward_teacher(images)
         out["embedding"] = target_only_features.detach()

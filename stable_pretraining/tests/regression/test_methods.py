@@ -171,6 +171,23 @@ def build_byol():
     )
 
 
+def build_mec():
+    backbone = make_backbone()
+    projector = make_projector()
+    return dict(
+        module=spt.Module(
+            backbone=spt.backbone.TeacherStudentWrapper(backbone),
+            projector=spt.backbone.TeacherStudentWrapper(projector),
+            predictor=make_predictor(),
+            forward=forward.mec,
+            mec_loss=losses.MECLoss(),
+            mec_warmup_epochs=10,
+            optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+        ),
+        data=make_data(multi_view=True),
+    )
+
+
 def build_vicreg():
     return dict(
         module=spt.Module(
@@ -217,6 +234,7 @@ def build_supervised():
 METHOD_BUILDERS = {
     "simclr": build_simclr,
     "byol": build_byol,
+    "mec": build_mec,
     "vicreg": build_vicreg,
     "barlow_twins": build_barlow_twins,
     "supervised": build_supervised,
@@ -228,6 +246,7 @@ METHOD_BUILDERS = {
 REFERENCE_LOSSES = {
     "simclr": ("fit/loss_epoch", 1.645321011543274),
     "byol": ("fit/loss_epoch", 1.822302222251892),
+    "mec": ("fit/loss_epoch", -0.08869032561779022),
     "vicreg": ("fit/loss_epoch", 18.119741439819336),
     "barlow_twins": ("fit/loss_epoch", 1.7105509042739868),
     "supervised": ("validate/loss_step", 2.3338754177093506),

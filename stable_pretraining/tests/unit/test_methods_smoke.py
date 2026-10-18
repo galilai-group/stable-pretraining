@@ -60,6 +60,7 @@ TWO_VIEW_METHODS = [
     ("BarlowTwins", {"projector_dims": (256, 256, 256)}),
     ("BYOL", {"projector_dims": (512, 64), "predictor_dims": (512, 64)}),
     ("CMAE", {"projector_dim": 64}),
+    ("MEC", {"projector_dim": 64, "predictor_hidden_dim": 32}),
     ("MoCov2", {"projector_dims": (256, 64), "queue_length": 32}),
     ("MoCov3", {"projector_dims": (512, 512, 64), "predictor_hidden_dim": 512}),
     (

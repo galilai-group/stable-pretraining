@@ -13,6 +13,7 @@ from .ijepa import IJEPA
 from .mae import MAE
 from .lejepa import LeJEPA
 from .maskfeat import MaskFeat
+from .mec import MEC
 from .mim_refiner import MIMRefiner
 from .mocov2 import MoCov2
 from .mocov3 import MoCov3
@@ -48,6 +49,7 @@ __all__ = [
     "MAE",
     "LeJEPA",
     "MaskFeat",
+    "MEC",
     "MIMRefiner",
     "MoCov2",
     "MoCov3",

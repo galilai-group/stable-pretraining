@@ -4,6 +4,15 @@ Unreleased
 
 **New method**
 
+- ``MEC`` (Maximum Entropy Coding): BYOL-style student/EMA-teacher
+  architecture trained to maximize the coding length ``log det(I + λC)`` of
+  the cross-view correlation, estimated with a truncated Taylor series, per
+  Liu et al., "Self-Supervised Learning via Maximum Entropy Coding" (NeurIPS
+  2022). Includes ``MECLoss``, the ``mec`` forward function, and the
+  reference ``1/λ`` warm-up. ``MECLoss(symmetric=True)`` adds an optional
+  symmetrized cross-correlation that avoids a collapse of the paper's
+  objective at small scale (observed on CIFAR-10). Registered in
+  ``stable_pretraining.methods``, the top-level namespace, and ``METHODS.md``.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

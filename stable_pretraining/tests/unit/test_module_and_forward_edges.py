@@ -13,11 +13,13 @@ from stable_pretraining.backbone.utils import TeacherStudentWrapper
 pytestmark = pytest.mark.unit
 
 
-@pytest.mark.parametrize("name", ["byol", "vicreg", "barlow_twins", "swav", "nnclr"])
+@pytest.mark.parametrize(
+    "name", ["byol", "mec", "vicreg", "barlow_twins", "swav", "nnclr"]
+)
 @pytest.mark.parametrize("multiple", [False, True])
 def test_ssl_evaluation_preserves_labels_and_does_not_require_loss(name, multiple):
     backbone = nn.Linear(3, 4)
-    wrapped = TeacherStudentWrapper(backbone) if name == "byol" else backbone
+    wrapped = TeacherStudentWrapper(backbone) if name in ("byol", "mec") else backbone
     model = SimpleNamespace(backbone=wrapped, training=False)
     views = [
         {"image": torch.randn(2, 3), "label": torch.tensor([0, 1])} for _ in range(2)
@@ -32,7 +34,7 @@ def test_ssl_evaluation_preserves_labels_and_does_not_require_loss(name, multipl
     assert "loss" not in result
 
 
-@pytest.mark.parametrize("name", ["byol", "vicreg", "barlow_twins", "nnclr"])
+@pytest.mark.parametrize("name", ["byol", "mec", "vicreg", "barlow_twins", "nnclr"])
 def test_two_view_methods_reject_wrong_number_of_views(name):
     with pytest.raises(ValueError, match="exactly 2"):
         getattr(forward, name)(

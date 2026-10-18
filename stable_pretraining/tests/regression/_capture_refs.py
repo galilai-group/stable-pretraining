@@ -102,6 +102,18 @@ METHODS = {
         ),
         data=make_data(True),
     ),
+    "mec": lambda: dict(
+        module=spt.Module(
+            backbone=spt.backbone.TeacherStudentWrapper(make_backbone()),
+            projector=spt.backbone.TeacherStudentWrapper(make_projector()),
+            predictor=make_predictor(),
+            forward=forward.mec,
+            mec_loss=losses.MECLoss(),
+            mec_warmup_epochs=10,
+            optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+        ),
+        data=make_data(True),
+    ),
     "vicreg": lambda: dict(
         module=spt.Module(
             backbone=make_backbone(),
