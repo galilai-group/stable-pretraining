@@ -172,6 +172,28 @@ def test_pmsn_forward_backward():
     _assert_loss_and_backward(model, output)
 
 
+def test_cmc_forward_backward():
+    """CMC uses two differently-channeled encoders (L and ab), not TINY_VIT."""
+    model = M.CMC(encoder_name="resnet18", low_resolution=True, projector_dims=(32,))
+    model.train()
+    g = torch.Generator().manual_seed(0)
+    l_view = torch.randn(B, 1, 32, 32, generator=g)
+    ab_view = torch.randn(B, 2, 32, 32, generator=g)
+    output = model(l_view, ab_view)
+    _assert_loss_and_backward(model, output)
+
+
+def test_cmc_eval_mode_no_loss():
+    """CMC's eval branch accepts a raw RGB image and splits it internally."""
+    model = M.CMC(encoder_name="resnet18", low_resolution=True, projector_dims=(32,))
+    model.eval()
+    rgb = torch.randn(B, 3, 32, 32, generator=torch.Generator().manual_seed(0))
+    with torch.no_grad():
+        output = model(rgb)
+    assert torch.isfinite(output.loss).all()
+    assert output.embedding is not None and output.embedding.shape[0] == B
+
+
 def test_swav_forward_backward_two_view():
     """SwAV's compatibility 2-view forward (no multi-crop)."""
     model = M.SwAV(

@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``cmc`` — CMC contrastive multiview coding across color-space channels
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -252,6 +253,91 @@ def simclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         out["embedding"] = self.backbone(batch["image"])
         if "label" in batch:
             out["label"] = batch["label"]
+
+    return out
+
+
+def cmc(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for CMC (Contrastive Multiview Coding).
+
+    CMC learns representations by maximizing agreement between two "views"
+    of the same image that are different channels of CIE Lab color space —
+    the L (luminance) channel and the ab (chrominance) channels — rather
+    than between two independently augmented copies. Because the two views
+    have a different number of channels, each is processed by its own
+    encoder/projector pair.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone_l: Feature extraction network for the L (1-channel) view
+            - backbone_ab: Feature extraction network for the ab (2-channel) view
+            - projector_l: Projection head for the L embedding
+            - projector_ab: Projection head for the ab embedding
+            - cmc_loss: Bidirectional InfoNCE loss (e.g. ``spt.losses.CLIPLoss``)
+        batch: A list of exactly 2 view dicts produced by
+            ``stable_pretraining.data.transforms.RGBToLabViews`` — the L
+            view first, the ab view second.
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Concatenation of the L and ab embeddings
+            - 'loss': Bidirectional InfoNCE loss (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in the CMC paper :cite:`tian2020contrastive`.
+
+    Example:
+        ::
+
+            import stable_pretraining as spt
+            from stable_pretraining.forward import cmc
+
+            module = spt.Module(
+                forward=cmc,
+                backbone_l=spt.backbone.from_torchvision(
+                    "resnet18", low_resolution=True, in_channels=1
+                ),
+                backbone_ab=spt.backbone.from_torchvision(
+                    "resnet18", low_resolution=True, in_channels=2
+                ),
+                projector_l=torch.nn.Linear(512, 128),
+                projector_ab=torch.nn.Linear(512, 128),
+                cmc_loss=spt.losses.CLIPLoss(temperature=0.07),
+                optim={"optimizer": {"type": "LARS", "lr": 5}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is None or len(views) != 2:
+        raise ValueError(
+            "CMC requires exactly 2 views (L and ab), produced by "
+            "stable_pretraining.data.transforms.RGBToLabViews. "
+            f"Got {0 if views is None else len(views)} view(s)."
+        )
+
+    l_view, ab_view = views
+    l_features = self.backbone_l(l_view["image"])
+    ab_features = self.backbone_ab(ab_view["image"])
+    out["embedding"] = torch.cat([l_features, ab_features], dim=-1)
+
+    if "label" in l_view:
+        out["label"] = l_view["label"]
+
+    if self.training:
+        l_proj = self.projector_l(l_features)
+        ab_proj = self.projector_ab(ab_features)
+        out["loss"] = self.cmc_loss(l_proj, ab_proj)
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            prog_bar=True,
+        )
 
     return out
 
