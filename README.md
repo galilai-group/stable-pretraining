@@ -1167,6 +1167,7 @@ reproduction commands:
 | MoCo v2       | momentum + queue               | 70.0% | 70.8% |
 | BYOL          | EMA target + predictor         | 56.0% | 63.9% |
 | SimSiam       | siamese + stop-grad            | 54.9% | 62.8% |
+| IWM           | predictive + action-conditioned | 48.1% | 60.3% |
 | iBOT          | DINO + masked-patch loss       | 43.3% | 57.9% |
 | MSN           | masked-siamese                 | 50.6% | 57.6% |
 | DINOv3 *      | DINOv2 + registers + KoLeo     | 39.2% | 48.9% |

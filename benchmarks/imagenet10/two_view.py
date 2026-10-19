@@ -61,7 +61,9 @@ def val_transform():
     )
 
 
-def make_imagenette_data(batch_size: int = 256, num_workers: int = 8):
+def make_imagenette_data(
+    batch_size: int = 256, num_workers: int = 8, train_transform=None
+):
     data_dir = str(get_data_dir("imagenet10"))
     return spt.data.DataModule(
         train=torch.utils.data.DataLoader(
@@ -70,7 +72,7 @@ def make_imagenette_data(batch_size: int = 256, num_workers: int = 8):
                 split="train",
                 revision="refs/convert/parquet",
                 cache_dir=data_dir,
-                transform=two_view_train_transform(),
+                transform=train_transform or two_view_train_transform(),
             ),
             batch_size=batch_size,
             num_workers=num_workers,

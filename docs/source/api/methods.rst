@@ -91,6 +91,7 @@ input, either in pixel space or in a latent feature space.
    MIMRefiner
    iGPT
    IJEPA
+   IWM
    LeJEPA
    VISReg
    SALT
