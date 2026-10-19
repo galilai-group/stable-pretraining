@@ -103,3 +103,4 @@ Other
    :template: myclass_template.rst
 
    NEPA
+   LeHami

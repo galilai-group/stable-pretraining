@@ -10,6 +10,15 @@ Unreleased
   ``"uniform"``, or a custom tensor), per Assran et al., "The Hidden Uniform
   Cluster Prior in Self-Supervised Learning" (ICLR 2023). Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``.
+- ``LeHami`` (Yalovetzky, Balestriero & LeCun, 2026): a JEPA world model whose
+  predictor is an action-conditioned separable Hamiltonian ``K(p) + V(q, u)``
+  integrated with an exactly symplectic leapfrog step, so rollouts preserve
+  latent phase-space volume. Positions come from the encoder and momenta from
+  Savitzky-Golay stencils on the latent trajectory; training unrolls the flow
+  on its own predictions with SIGReg on the latents. Also exposes the reusable
+  ``SeparableHamiltonianFlow`` and the ``centered_momentum`` /
+  ``causal_momentum`` stencils. Registered in ``stable_pretraining.methods``
+  and ``METHODS.md``.
 - ``VISReg``: multi-view invariance combined with a sliced-Wasserstein
   goodness-of-fit regulariser (center + scale + sliced inverse-CDF/quantile
   terms) that pushes embeddings toward an isotropic standard Gaussian — a
