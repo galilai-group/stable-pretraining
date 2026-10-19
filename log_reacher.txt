@@ -1,0 +1,61 @@
+Using device: cuda
+Random policy: mean return over 50 steps = -42.2 (+/- 3.0), buffer = 500
+
+--- Starting Episode 1/15 ---
+Episode 1 Completed | Return: -13.29 | random baseline -42.2 | final distance 0.156 m | 11s
+
+--- Starting Episode 2/15 ---
+  held-out one-step RMSE/std: mean 1.04 | joint vel 1.11 | fingertip-target 1.19
+Episode 2 Completed | Return: -11.20 | random baseline -42.2 | final distance 0.182 m | 8s
+
+--- Starting Episode 3/15 ---
+  held-out one-step RMSE/std: mean 0.98 | joint vel 0.98 | fingertip-target 1.30
+Episode 3 Completed | Return: -7.73 | random baseline -42.2 | final distance 0.068 m | 8s
+
+--- Starting Episode 4/15 ---
+  held-out one-step RMSE/std: mean 0.63 | joint vel 0.72 | fingertip-target 1.01
+Episode 4 Completed | Return: -6.04 | random baseline -42.2 | final distance 0.057 m | 8s
+
+--- Starting Episode 5/15 ---
+  held-out one-step RMSE/std: mean 0.39 | joint vel 0.60 | fingertip-target 0.44
+Episode 5 Completed | Return: -9.21 | random baseline -42.2 | final distance 0.120 m | 8s
+
+--- Starting Episode 6/15 ---
+  held-out one-step RMSE/std: mean 0.27 | joint vel 0.38 | fingertip-target 0.30
+Episode 6 Completed | Return: -6.18 | random baseline -42.2 | final distance 0.053 m | 8s
+
+--- Starting Episode 7/15 ---
+  held-out one-step RMSE/std: mean 0.33 | joint vel 0.54 | fingertip-target 0.38
+Episode 7 Completed | Return: -3.59 | random baseline -42.2 | final distance 0.043 m | 8s
+
+--- Starting Episode 8/15 ---
+  held-out one-step RMSE/std: mean 0.31 | joint vel 0.12 | fingertip-target 0.87
+Episode 8 Completed | Return: -3.49 | random baseline -42.2 | final distance 0.056 m | 8s
+
+--- Starting Episode 9/15 ---
+  held-out one-step RMSE/std: mean 0.20 | joint vel 0.11 | fingertip-target 0.50
+Episode 9 Completed | Return: -5.22 | random baseline -42.2 | final distance 0.078 m | 8s
+
+--- Starting Episode 10/15 ---
+  held-out one-step RMSE/std: mean 0.20 | joint vel 0.37 | fingertip-target 0.24
+Episode 10 Completed | Return: -10.71 | random baseline -42.2 | final distance 0.169 m | 8s
+
+--- Starting Episode 11/15 ---
+  held-out one-step RMSE/std: mean 0.24 | joint vel 0.50 | fingertip-target 0.31
+Episode 11 Completed | Return: -5.47 | random baseline -42.2 | final distance 0.058 m | 8s
+
+--- Starting Episode 12/15 ---
+  held-out one-step RMSE/std: mean 0.13 | joint vel 0.12 | fingertip-target 0.28
+Episode 12 Completed | Return: -6.57 | random baseline -42.2 | final distance 0.056 m | 9s
+
+--- Starting Episode 13/15 ---
+  held-out one-step RMSE/std: mean 0.20 | joint vel 0.39 | fingertip-target 0.25
+Episode 13 Completed | Return: -5.06 | random baseline -42.2 | final distance 0.099 m | 9s
+
+--- Starting Episode 14/15 ---
+  held-out one-step RMSE/std: mean 0.21 | joint vel 0.19 | fingertip-target 0.51
+Episode 14 Completed | Return: -4.98 | random baseline -42.2 | final distance 0.009 m | 9s
+
+--- Starting Episode 15/15 ---
+  held-out one-step RMSE/std: mean 0.06 | joint vel 0.02 | fingertip-target 0.09
+Episode 15 Completed | Return: -3.28 | random baseline -42.2 | final distance 0.012 m | 9s
