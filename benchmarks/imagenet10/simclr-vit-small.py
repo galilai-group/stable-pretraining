@@ -49,7 +49,7 @@ def main():
                 ),
                 transforms.RandomGrayscale(p=0.2),
                 transforms.PILGaussianBlur(p=0.1),
-                transforms.RandomSolarize(threshold=0.5, p=0.2),
+                transforms.RandomSolarize(threshold=128, p=0.2),
                 transforms.RandomHorizontalFlip(p=0.5),
                 transforms.ToImage(**spt.data.static.ImageNet),
             ),
