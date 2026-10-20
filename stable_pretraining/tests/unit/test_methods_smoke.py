@@ -160,6 +160,32 @@ def test_msn_forward_backward():
     _assert_loss_and_backward(model, output)
 
 
+def test_diet_forward_backward():
+    encoder = torch.nn.Sequential(
+        torch.nn.Flatten(),
+        torch.nn.Linear(C * 4 * 4, 8),
+    )
+    model = M.DIET(
+        encoder_name=encoder,
+        num_samples=8,
+        label_smoothing=0.0,
+        image_size=4,
+    )
+    model.train()
+    images = torch.randn(B, C, 4, 4)
+    output = model(
+        {"image": images, "sample_idx": torch.arange(B)},
+        stage="fit",
+    )
+    loss = output["loss"]
+    assert loss.ndim == 0
+    assert torch.isfinite(loss)
+    loss.backward()
+    grads = [parameter.grad for parameter in model.parameters() if parameter.grad is not None]
+    assert grads
+    assert any(gradient.abs().sum() > 0 for gradient in grads)
+
+
 def test_pmsn_forward_backward():
     model = M.PMSN(
         encoder_name=TINY_VIT,

@@ -4,6 +4,13 @@ Unreleased
 
 **New method**
 
+- ``DIET`` (Datum Index as Target): learns a representation by predicting each
+  sample's stable dataset index under a label-smoothing cross-entropy loss,
+  following the CIFAR-100 single-view setup used in the course and examples.
+  Registered in ``stable_pretraining.methods`` and ``METHODS.md`` with a
+  runnable CIFAR-100 ResNet-18 benchmark under
+  ``benchmarks/cifar100/diet-resnet18.py`` with online linear-probe, k-NN, and
+  RankMe evaluation.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

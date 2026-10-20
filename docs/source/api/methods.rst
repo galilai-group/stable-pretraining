@@ -4,7 +4,7 @@ stable_pretraining.methods
 .. module:: stable_pretraining.methods
 .. currentmodule:: stable_pretraining.methods
 
-The methods module provides 30 ready-to-use ``LightningModule`` subclasses, one
+The methods module provides 31 ready-to-use ``LightningModule`` subclasses, one
 per SSL algorithm. Each class pre-wires the backbone, loss function, optimizer,
 and any required callbacks so you can start training with minimal boilerplate.
 
@@ -16,7 +16,7 @@ All method classes are importable from the top-level namespace::
 
 Or directly from the sub-package::
 
-    from stable_pretraining.methods import SimCLR, BYOL, DINO
+   from stable_pretraining.methods import SimCLR, BYOL, DINO, DIET
 
 See :doc:`forward` for the stateless forward-function equivalents and
 ``METHODS.md`` at the repository root for the complete method catalog.
@@ -94,6 +94,18 @@ input, either in pixel space or in a latent feature space.
    LeJEPA
    VISReg
    SALT
+
+Index Prediction
+----------------
+
+DIET learns representations by predicting the stable dataset index assigned to
+each training example, using semantic labels only for downstream probes.
+
+.. autosummary::
+   :toctree: gen_modules/
+   :template: myclass_template.rst
+
+   DIET
 
 Other
 -----
