@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``rotnet`` — RotNet image-rotation prediction
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -1260,4 +1261,182 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         prog_bar=True,
     )
 
+    return out
+
+
+ROTNET_ROTATIONS = (0, 90, 180, 270)
+
+
+def _rotate_batch(
+    images: torch.Tensor, rotations: tuple[int, ...] = ROTNET_ROTATIONS
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Stack every rotation of a batch along the batch dimension.
+
+    Args:
+        images: Square images ``[B, C, H, W]``.
+        rotations: Counter-clockwise angles in degrees, each a multiple of 90.
+
+    Returns:
+        ``(rotated, labels)``: ``rotated`` is ``[R*B, C, H, W]`` where block
+        ``r`` holds ``images`` rotated by ``rotations[r]``, and ``labels`` is
+        ``[R*B]`` with value ``r`` for that block.
+    """
+    if images.shape[-1] != images.shape[-2]:
+        raise ValueError(
+            f"RotNet needs square images, got {tuple(images.shape[-2:])}: a 90 "
+            "degree rotation would change the input shape."
+        )
+    bad = [r for r in rotations if r % 90 != 0]
+    if bad:
+        raise ValueError(f"rotations must be multiples of 90 degrees, got {bad}")
+    rotated = torch.cat(
+        [torch.rot90(images, k=(r // 90) % 4, dims=(2, 3)) for r in rotations]
+    )
+    labels = torch.arange(len(rotations), device=images.device)
+    return rotated, labels.repeat_interleave(images.shape[0])
+
+
+def _rotnet_step(
+    backbone: torch.nn.Module,
+    rotation_head: torch.nn.Module,
+    images: torch.Tensor,
+    rotations: tuple[int, ...],
+    loss_fn: Any,
+) -> dict[str, torch.Tensor]:
+    """Rotation-prediction loss shared by :func:`rotnet` and ``methods.RotNet``.
+
+    Args:
+        backbone: Feature extractor returning ``[N, C, H, W]`` or ``[N, D]``.
+        rotation_head: Maps backbone features to one logit per rotation.
+        images: Square images ``[B, C, H, W]``.
+        rotations: Angles in degrees, each a multiple of 90.
+        loss_fn: Callable on ``(logits, rotation_labels)``.
+
+    Returns:
+        Dictionary with 'loss', 'embedding' (unrotated images, pooled to
+        ``[B, D]``), 'rotation_logits' and 'rotation_accuracy'.
+    """
+    rotated, rotation_labels = _rotate_batch(images, rotations)
+    features = backbone(rotated)
+    logits = rotation_head(features)
+    loss = loss_fn(logits, rotation_labels)
+
+    batch_size = images.shape[0]
+    if 0 in rotations:
+        start = rotations.index(0) * batch_size
+        embedding = features[start : start + batch_size]
+    else:
+        # Eval mode so this probe-only pass leaves batch-norm statistics untouched.
+        was_training = backbone.training
+        backbone.eval()
+        with torch.no_grad():
+            embedding = backbone(images)
+        backbone.train(was_training)
+    if embedding.ndim == 4:
+        embedding = embedding.mean(dim=(2, 3))
+
+    with torch.no_grad():
+        accuracy = (logits.argmax(dim=1) == rotation_labels).float().mean()
+    return {
+        "loss": loss,
+        "embedding": embedding,
+        "rotation_logits": logits,
+        "rotation_accuracy": accuracy,
+    }
+
+
+def rotnet(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for RotNet (rotation-prediction pretext task).
+
+    Every image is rotated by each angle in ``self.rotations`` (default 0, 90,
+    180 and 270 degrees) and the network classifies which rotation it sees.
+    All rotations go through the backbone in one pass, so they share
+    batch-norm statistics as in the official implementation.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: Feature extractor returning ``[N, C, H, W]`` or ``[N, D]``
+            - rotation_head: Maps backbone features to one logit per rotation
+            - rotnet_loss: Rotation loss, e.g. ``nn.CrossEntropyLoss()``
+            - rotations (optional): Angles; defaults to ``(0, 90, 180, 270)``
+        batch: Input batch dictionary containing:
+            - 'image': Square images ``[B, C, H, W]``, already cropped and flipped
+            - 'label': Class labels ``[B]`` (optional, passed through for probes)
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Features of the unrotated images ``[B, D]``,
+              globally average-pooled when the backbone returns a feature map
+            - 'loss': Rotation-classification loss, in every stage so the
+              rotation accuracy can be tracked on validation data
+            - 'rotation_logits': Logits ``[R*B, R]``
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in Gidaris et al., "Unsupervised Representation Learning by
+        Predicting Image Rotations" (ICLR 2018). The loss has no cross-sample
+        terms, so under DDP each rank computes it on its local batch and only
+        gradients are averaged. Probes see only the unrotated images. If
+        ``rotations`` excludes 0, the embedding comes from an extra no-grad,
+        eval-mode pass over the unrotated images, so batch-norm statistics
+        still come only from the rotations being trained on.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import rotnet
+
+            nin = spt.backbone.NetworkInNetwork(num_blocks=4, pool=False)
+            module = spt.Module(
+                forward=rotnet,
+                backbone=torch.nn.Sequential(*nin.blocks[:2]),
+                rotation_head=torch.nn.Sequential(
+                    *nin.blocks[2:],
+                    torch.nn.AdaptiveAvgPool2d(1),
+                    torch.nn.Flatten(),
+                    torch.nn.Linear(192, 4),
+                ),
+                rotnet_loss=torch.nn.CrossEntropyLoss(),
+                optim={"optimizer": {"type": "SGD", "lr": 0.1, "momentum": 0.9}},
+            )
+    """
+    if not hasattr(self, "rotnet_loss"):
+        raise ValueError(
+            "rotnet requires 'rotnet_loss' to be provided (e.g., nn.CrossEntropyLoss()). "
+            "Pass it when constructing the Module: Module(..., rotnet_loss=nn.CrossEntropyLoss(), ...)"
+        )
+    rotations = tuple(getattr(self, "rotations", ROTNET_ROTATIONS))
+    step = _rotnet_step(
+        self.backbone,
+        self.rotation_head,
+        batch["image"],
+        rotations,
+        self.rotnet_loss,
+    )
+    out = {
+        "embedding": step["embedding"],
+        "loss": step["loss"],
+        "rotation_logits": step["rotation_logits"],
+    }
+    if "label" in batch:
+        out["label"] = batch["label"]
+
+    self.log(
+        f"{stage}/loss",
+        step["loss"],
+        on_step=True,
+        on_epoch=True,
+        sync_dist=True,
+        prog_bar=True,
+    )
+    self.log(
+        f"{stage}/rotation_accuracy",
+        step["rotation_accuracy"],
+        on_step=False,
+        on_epoch=True,
+        sync_dist=True,
+    )
     return out

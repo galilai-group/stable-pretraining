@@ -274,6 +274,21 @@ def test_mim_refiner_forward_backward():
     _assert_loss_and_backward(model, output)
 
 
+def test_rotnet_forward_backward():
+    """RotNet's paper NIN on CIFAR-sized images, plus a timm encoder."""
+    model = M.RotNet(encoder_name="nin", num_blocks=4, feature_block=2)
+    model.train()
+    output = model(torch.randn(B, 3, 32, 32))
+    _assert_loss_and_backward(model, output)
+
+    model = M.RotNet(encoder_name=TINY_VIT)
+    model.train()
+    v, _ = _two_views()
+    output = model(v)
+    _assert_loss_and_backward(model, output)
+    assert output.embedding.shape == (B, model.embed_dim)
+
+
 # --- eval-mode passthrough ----------------------------------------------
 
 

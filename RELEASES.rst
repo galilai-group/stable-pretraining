@@ -4,6 +4,13 @@ Unreleased
 
 **New method**
 
+- ``RotNet`` (Gidaris et al., "Unsupervised Representation Learning by
+  Predicting Image Rotations", ICLR 2018): classifies which of four rotations
+  was applied to each image. Adds ``forward.rotnet``, the ``RotNet`` method
+  class (which also trains directly under ``Manager`` from batch dicts), and
+  the paper's ``NetworkInNetwork`` backbone. CIFAR-10 pretraining and
+  frozen-feature evaluation scripts reproducing the official configs are under
+  ``benchmarks/cifar10/rotnet-nin.py`` and ``rotnet-nin-eval.py``.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

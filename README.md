@@ -780,6 +780,7 @@ spt.set(default_loggers={"registry": False})
 | NNCLR | `forward.nnclr` | `NTXEntLoss` | Nearest-neighbor contrastive learning |
 | DINO | `forward.dino` | `DINOv1Loss` | Self-distillation with multi-crop and centering |
 | DINOv2 | `forward.dinov2` | `DINOv2Loss`, `iBOTPatchLoss` | DINO + iBOT masked patch prediction |
+| RotNet | `forward.rotnet` | cross-entropy | Predict which of four rotations was applied to the image |
 
 The table above covers forward functions for use with `spt.Module`. For 30 full `LightningModule` implementations (BEiT, CMAE, Data2Vec, iBOT, iGPT, IJEPA, LeJEPA, MAE, MaskFeat, MIMRefiner, MoCov2, MoCov3, MSN, PIRL, SimMIM, SimSiam, TiCO, VICRegL, VISReg, WMSE, and more), see [`METHODS.md`](METHODS.md) and `stable_pretraining/methods/`.
 
