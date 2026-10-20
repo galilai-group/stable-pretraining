@@ -18,6 +18,7 @@ from .recon_viz import ReconViz
 from .hardware_monitor import HardwareMonitor
 from .rankme import RankMe
 from .teacher_student import TeacherStudentCallback
+from .sce_queue import SCEQueueCallback
 from .trainer_info import LoggingCallback, ModuleSummary, TrainerInfo, SLURMInfo
 from .utils import EarlyStopping
 from .writer import OnlineWriter
@@ -52,6 +53,7 @@ __all__ = [
     LiDAR,
     ImageRetrieval,
     TeacherStudentCallback,
+    SCEQueueCallback,
     CLIPZeroShot,
     EmbeddingCache,
     EpochMilestones,
