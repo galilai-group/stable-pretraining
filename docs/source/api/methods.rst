@@ -36,6 +36,7 @@ or by bootstrapping without explicit negatives.
    NNCLR
    MoCov2
    MoCov3
+   PCL
    SimSiam
    PIRL
    TiCO

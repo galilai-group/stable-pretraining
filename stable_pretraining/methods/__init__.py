@@ -16,6 +16,7 @@ from .maskfeat import MaskFeat
 from .mim_refiner import MIMRefiner
 from .mocov2 import MoCov2
 from .mocov3 import MoCov3
+from .pcl import PCL, PCLClusteringCallback
 from .msn import MSN
 from .nepa import NEPA
 from .nnclr import NNCLR
@@ -51,6 +52,8 @@ __all__ = [
     "MIMRefiner",
     "MoCov2",
     "MoCov3",
+    "PCL",
+    "PCLClusteringCallback",
     "MSN",
     "NEPA",
     "NNCLR",

@@ -3,7 +3,15 @@ Unreleased
 ----------
 
 **New method**
-
+- ``PCL`` (Prototypical Contrastive Learning): extends MoCo-style
+  instance contrastive learning with an EM-style training procedure.
+  Momentum-encoder representations are periodically clustered with PyTorch
+  k-means at multiple resolutions, and a concentration-scaled ProtoNCE
+  objective provides prototype-level supervision. Includes EMA
+  teacher/student encoders, a negative-key queue, clustering warm-up,
+  checkpointable clustering state, and CIFAR-10 training and k-NN
+  evaluation examples. Registered in ``stable_pretraining.methods``
+  and ``METHODS.md``. Based on Li et al., ICLR 2021.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,
