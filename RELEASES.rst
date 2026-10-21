@@ -17,6 +17,13 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``RINCE`` (Robust InfoNCE): a contrastive learning method designed
+  to improve robustness to noisy positive views. Reuses the SimCLR
+  architecture with the RINCE objective from Chuang et al.,
+  "Robust Contrastive Learning Against Noisy Views" (2022).
+  Includes loss and method classes, unit tests, and a CIFAR-10 benchmark
+  under ``benchmarks/cifar10/rince-resnet18.py``. Registered in
+  ``stable_pretraining.methods`` and ``METHODS.md``.
 
 **Discoverability improvements**
 
