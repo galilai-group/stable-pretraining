@@ -82,8 +82,10 @@ def run_distributed(fn, world_size: int = 2, backend: str = "gloo", timeout: int
     errors = []
     while not error_queue.empty():
         errors.append(error_queue.get())
+    timed_out = []
     for p in procs:
         if p.is_alive():
+            timed_out.append(p.pid)
             p.terminate()
             p.join()
 
@@ -91,6 +93,10 @@ def run_distributed(fn, world_size: int = 2, backend: str = "gloo", timeout: int
         errors.sort(key=lambda rt: rt[0])
         report = "\n\n".join(f"--- rank {r} ---\n{tb}" for r, tb in errors)
         raise AssertionError(f"distributed worker(s) failed:\n{report}")
+    assert not timed_out, f"distributed workers timed out: {timed_out}"
+    assert all(p.exitcode == 0 for p in procs), (
+        f"distributed worker exit codes: {[p.exitcode for p in procs]}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -627,6 +633,43 @@ def w_ntxent_crossgpu_matches_global(rank, world_size):
 
     ref = _ref_ntxent_global(z_i_global, z_j_global, 0.5)
     assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+def w_flatnce_gradients_match_global(rank, world_size):
+    """DDP parameter gradients equal an independent global negative-only objective."""
+    import torch.nn.functional as F
+    from torch.nn.parallel import DistributedDataParallel
+
+    from stable_pretraining.losses import FlatNCELoss
+
+    for local_batch in (1, 3):
+        torch.manual_seed(19)
+        total = local_batch * world_size
+        x1 = torch.randn(total, 5, dtype=torch.float64)
+        x2 = torch.randn(total, 5, dtype=torch.float64)
+        model = nn.Linear(5, 4, bias=False, dtype=torch.float64)
+        reference = nn.Linear(5, 4, bias=False, dtype=torch.float64)
+        reference.load_state_dict(model.state_dict())
+        ddp = DistributedDataParallel(model)
+        start = rank * local_batch
+        end = start + local_batch
+        z1, z2 = ddp(torch.cat([x1[start:end], x2[start:end]])).chunk(2)
+        loss = FlatNCELoss(temperature=0.2)(z1, z2)
+        loss.backward()
+
+        features = F.normalize(reference(torch.cat([x1, x2])), dim=-1)
+        contrasts = []
+        for i, anchor in enumerate(features):
+            positive = (i + total) % (2 * total)
+            negatives = [j for j in range(2 * total) if j not in (i, positive)]
+            scores = features[negatives] @ anchor / 0.2
+            contrasts.append(scores.logsumexp(0) - features[positive] @ anchor / 0.2)
+        torch.stack(contrasts).mean().backward()
+        assert loss.item() == 1.0
+        assert model.weight.grad.norm() > 0
+        torch.testing.assert_close(
+            model.weight.grad, reference.weight.grad, rtol=1e-10, atol=1e-10
+        )
 
 
 def _ref_clip_global(feats_i, feats_j, temperature):

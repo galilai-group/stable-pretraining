@@ -40,3 +40,8 @@ class TestCollectives:
         H.run_distributed(
             H.w_clip_crossgpu_matches_global, world_size=2, backend="gloo"
         )
+
+    def test_flatnce_cross_gpu_gradients_match_global(self):
+        H.run_distributed(
+            H.w_flatnce_gradients_match_global, world_size=2, backend="gloo"
+        )
