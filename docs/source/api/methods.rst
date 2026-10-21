@@ -32,6 +32,7 @@ or by bootstrapping without explicit negatives.
    :template: myclass_template.rst
 
    SimCLR
+   FlatNCE
    BYOL
    NNCLR
    MoCov2

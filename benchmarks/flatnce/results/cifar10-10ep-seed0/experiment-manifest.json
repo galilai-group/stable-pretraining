@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-21",
+  "base_commit": "23b986e10d49eea163894b7b7313e158b9e7400f",
+  "branch": "feature/flatnce",
+  "platform": {
+    "system": "Darwin",
+    "macos": "26.6.2",
+    "architecture": "arm64",
+    "cpu": "Apple M3",
+    "ram_bytes": 17179869184,
+    "mps_available": true
+  },
+  "versions": {
+    "python": "3.13.3",
+    "torch": "2.14.1",
+    "torchvision": "0.29.1",
+    "torchmetrics": "1.9.0",
+    "lightning": "2.6.6"
+  },
+  "dataset": {
+    "name": "CIFAR-10",
+    "archive_md5": "c58f30108f718f92721af3b95e74349a",
+    "split_seed": 0,
+    "train_images": 45000,
+    "validation_images": 5000,
+    "train_indices_sha256": "4bd7a3797bc149a05d5f7d741ab17dce69ec1c57c38cfe4ffd95b08ce12b0bcf",
+    "validation_indices_sha256": "eee764c560b9beaa628049576cd3c8e9ffbb91384a1e2b65686624e32ed011c1"
+  },
+  "runner_source_sha256": "807f9de2734e488c096db5f844aec965b9de43997d9341c75d971c6fac9f28a5",
+  "commands": {
+    "flatnce": "python -u benchmarks/flatnce/flatnce-resnet18.py --method flatnce --batch-size 128 --temperature 0.5 --epochs 10 --seed 0 --num-workers 4 --accelerator mps --precision 32-true --output-dir <run-root>/flatnce",
+    "simclr": "python -u benchmarks/flatnce/flatnce-resnet18.py --method simclr --batch-size 128 --temperature 0.5 --epochs 10 --seed 0 --num-workers 4 --accelerator mps --precision 32-true --output-dir <run-root>/simclr"
+  },
+  "checkpoint_note": "The executed runner saved last.ckpt at train end. After both matched runs completed, its callback was corrected to save resumable state at every epoch; this did not change the reported training runs.",
+  "timing_note": "Ancillary checks overlapped part of the FlatNCE run; elapsed times are not a controlled speed comparison."
+}

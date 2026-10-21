@@ -9,6 +9,7 @@ This module provides various self-supervised learning loss functions organized b
 
 # DINO self-distillation losses
 from .dino import DINOv1Loss, DINOv2Loss, iBOTPatchLoss
+from .flatnce import FlatNCELoss
 
 # Joint embedding losses
 from .joint_embedding import (
@@ -43,6 +44,7 @@ __all__ = [
     "VICRegLoss",
     "BarlowTwinsLoss",
     "NTXEntLoss",
+    "FlatNCELoss",
     "SwAVLoss",
     "CLIPLoss",
     # Reconstruction

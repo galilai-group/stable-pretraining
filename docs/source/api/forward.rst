@@ -49,6 +49,16 @@ Or in Python code:
 Available Forward Functions
 ---------------------------
 
+FlatNCE
+~~~~~~~
+
+.. autofunction:: flatnce
+
+Requires ``backbone``, ``projector``, and ``flatnce_loss`` (an instance of
+``stable_pretraining.losses.FlatNCELoss``). It shares SimCLR's two-view batch
+format and returns backbone embeddings for single-view evaluation. The scalar
+objective is always one; evaluate learning with probe or k-NN accuracy.
+
 SimCLR
 ~~~~~~
 
