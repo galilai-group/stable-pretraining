@@ -370,3 +370,18 @@ See Also
 - :doc:`losses` - Loss functions used by forward functions
 - :doc:`module` - The Module class that uses forward functions
 - :doc:`data` - Data utilities including ``fold_views``
+
+TS2Vec
+------
+
+.. autofunction:: ts2vec
+
+Instance negatives are **local to each rank**, including under DDP. Embeddings
+are not gathered across ranks; DDP averages parameter gradients. For a per-rank
+batch of B series, each timestamp anchor has 2(B - 1) instance negatives.
+Increasing the world size at a fixed per-rank batch size does not enlarge this
+pool. A per-rank batch size of one therefore has zero instance contrast, while
+temporal contrast can still contribute.
+
+Reproducible UCR comparisons and the two-process CPU DDP test command are in
+``benchmarks/ts2vec/README.md`` in the repository.

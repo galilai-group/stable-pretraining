@@ -44,6 +44,80 @@ import torch
 from .callbacks.queue import find_or_create_queue_callback, OnlineQueue
 
 
+def _ts2vec_crops(
+    x: torch.Tensor, temporal_unit: int
+) -> tuple[torch.Tensor, torch.Tensor, int]:
+    """Sample reference-style contexts sharing an aligned temporal overlap."""
+    if x.ndim != 3 or x.shape[0] == 0:
+        raise ValueError("series must have shape [B, T, C] with a nonempty batch")
+    length = x.shape[1]
+    minimum = 2 ** (temporal_unit + 1)
+    if length < minimum:
+        raise ValueError(
+            f"Training requires at least {minimum} timestamps for temporal_unit={temporal_unit}"
+        )
+    overlap = int(torch.randint(minimum, length + 1, ()).item())
+    left = int(torch.randint(length - overlap + 1, ()).item())
+    right = left + overlap
+    context_left = int(torch.randint(left + 1, ()).item())
+    context_right = int(torch.randint(right, length + 1, ()).item())
+    offset = torch.randint(
+        -context_left, length - context_right + 1, (x.shape[0],), device=x.device
+    )
+    rows = torch.arange(x.shape[0], device=x.device)[:, None]
+    first = offset[:, None] + torch.arange(context_left, right, device=x.device)
+    second = offset[:, None] + torch.arange(left, context_right, device=x.device)
+    return x[rows, first], x[rows, second], overlap
+
+
+def ts2vec(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Encode time series and contrast aligned timestamps across random contexts.
+
+    Args:
+        self: Module with ``backbone`` and ``ts2vec_loss``. Evaluation uses
+            ``averaged_backbone`` when present; attach ``TS2VecAveraging`` to
+            update it when using the composable Module interface.
+        batch: ``series`` tensor [B, T, C] and optional ``label`` tensor [B].
+        stage: Lightning stage name. Training is controlled by module mode.
+
+    Returns:
+        ``timestamp_embedding`` [B, overlap, D] during training or [B, T, D]
+        during evaluation; ``embedding`` [B, D] is its temporal maximum.
+        Training additionally returns scalar ``loss``. Labels are preserved.
+
+    Note:
+        The two views share timestamps but have different surrounding context
+        and independently sampled timestamp masks. No projector is used.
+        Instance negatives are local to each rank; no embeddings are gathered
+        across ranks. DDP synchronizes gradients only, so a larger world size
+        does not increase the negative pool for a fixed per-rank batch size.
+    """
+    x = batch["series"]
+    out = {}
+    if self.training:
+        first, second, overlap = _ts2vec_crops(x, self.ts2vec_loss.temporal_unit)
+        z1 = self.backbone(first)[:, -overlap:]
+        z2 = self.backbone(second)[:, :overlap]
+        out["loss"] = self.ts2vec_loss(z1, z2)
+        timestamps = z1
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=x.shape[0],
+        )
+    else:
+        encoder = getattr(self, "averaged_backbone", self.backbone)
+        timestamps = encoder(x)
+    out["timestamp_embedding"] = timestamps
+    out["embedding"] = timestamps.amax(dim=1)
+    if "label" in batch:
+        out["label"] = batch["label"]
+    return out
+
+
 def _get_views_list(batch: dict):
     """Convert multi-view batch to list of views."""
     if "views" in batch:

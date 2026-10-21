@@ -16,6 +16,7 @@ Architectures
    Resnet9
    ConvMixer
    Jet
+   TS2VecEncoder
 
 Utility Functions
 -----------------

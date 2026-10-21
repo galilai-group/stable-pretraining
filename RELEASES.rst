@@ -4,6 +4,10 @@ Unreleased
 
 **New method**
 
+- ``TS2Vec``: dilated time-series encoder, aligned context cropping and
+  hierarchical contrastive loss, with cumulative encoder averaging,
+  timestamp/series representations and a local UCR classification example.
+
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

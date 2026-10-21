@@ -773,6 +773,7 @@ spt.set(default_loggers={"registry": False})
 |--------|-----------|------|-------------|
 | Supervised | `forward.supervised` | any | Standard supervised training with labels |
 | SimCLR | `forward.simclr` | `NTXEntLoss` | Contrastive learning with 2 augmented views |
+| TS2Vec | `forward.ts2vec` | `TS2VecLoss` | Hierarchical contrast over aligned time-series contexts |
 | BYOL | `forward.byol` | `BYOLLoss` | Momentum-based self-distillation without negatives |
 | VICReg | `forward.vicreg` | `VICRegLoss` | Variance-invariance-covariance regularization |
 | Barlow Twins | `forward.barlow_twins` | `BarlowTwinsLoss` | Cross-correlation matrix alignment to identity |
