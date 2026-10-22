@@ -70,6 +70,7 @@ online clustering to learn representations without negative pairs.
    DINOv3
    iBOT
    SwAV
+   CPLearn
    MSN
    Data2Vec
 
@@ -103,3 +104,15 @@ Other
    :template: myclass_template.rst
 
    NEPA
+
+Components
+----------
+
+Building blocks of the method classes that are also used directly with the
+forward functions in :doc:`forward`.
+
+.. autosummary::
+   :toctree: gen_modules/
+   :template: myclass_template.rst
+
+   cplearn.CPLearnProjector

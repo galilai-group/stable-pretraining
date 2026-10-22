@@ -4,6 +4,18 @@ Unreleased
 
 **New method**
 
+- ``CPLearn`` (Collapse-Proof Non-Contrastive SSL, Sansone et al., ICML 2025):
+  a linear + batch-norm + tanh projector matched against a frozen dictionary of
+  random +/-1 codes, trained with a cross-entropy invariance term plus a
+  uniform-prior matching term. No stop-gradient, momentum encoder or predictor.
+  Adds the ``CPLearn`` method class, ``CPLearnProjector``, ``CPLearnLoss``
+  (with ``terms()`` returning the invariance and prior terms for logging) and
+  the ``forward.cplearn`` forward function. Defaults follow the official code;
+  the points where the paper is ambiguous or differs from it (epsilon, tanh vs.
+  L2 scaling, reverse-KL vs. cross-entropy prior, symmetrization, multi-GPU
+  batch mean) are exposed as options and documented in the docstrings.
+  Registered in ``stable_pretraining.methods`` and ``METHODS.md``, with a
+  CIFAR-10 ResNet-18 benchmark under ``benchmarks/cifar10/cplearn-resnet18.py``.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,
