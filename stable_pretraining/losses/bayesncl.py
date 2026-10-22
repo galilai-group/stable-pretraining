@@ -1,4 +1,4 @@
-"""Gate and regularization primitives for BayesNCL.
+"""BayesNCL loss and gate primitives.
 
 Reference: https://arxiv.org/abs/2605.28441
 """
@@ -6,6 +6,8 @@ Reference: https://arxiv.org/abs/2605.28441
 import math
 
 import torch
+
+from .joint_embedding import NTXEntLoss
 
 
 def straight_through_gate(
@@ -59,3 +61,61 @@ def bernoulli_kl(probabilities: torch.Tensor, prior_probability: float) -> torch
     kl = posterior * (posterior.log() - prior.log())
     kl = kl + (1 - posterior) * ((1 - posterior).log() - (1 - prior).log())
     return kl.sum(dim=1).mean()
+
+
+class BayesNCLLoss(torch.nn.Module):
+    """Contrastive loss with Bernoulli KL regularization for BayesNCL.
+
+    Args:
+        temperature: Finite positive temperature for the contrastive loss.
+        kl_weight: Finite nonnegative weight for the KL penalty.
+        prior_probability: Prior probability of an open gate, in [0, 1].
+
+    Note:
+        Inputs are already gated representations. Gate probabilities remain
+        differentiable and are regularized before binary thresholding. The
+        contrastive term uses one positive per anchor and global negatives
+        under distributed training, as in NTXEntLoss.
+    """
+
+    def __init__(
+        self,
+        temperature: float = 0.2,
+        kl_weight: float = 3e-5,
+        prior_probability: float = 0.8,
+    ):
+        super().__init__()
+        if not math.isfinite(temperature) or temperature <= 0:
+            raise ValueError("temperature must be finite and positive")
+        if not math.isfinite(kl_weight) or kl_weight < 0:
+            raise ValueError("kl_weight must be finite and nonnegative")
+        if not 0 <= prior_probability <= 1:
+            raise ValueError("prior_probability must be in [0, 1]")
+
+        self.contrastive_loss = NTXEntLoss(temperature=temperature)
+        self.kl_weight = kl_weight
+        self.prior_probability = prior_probability
+
+    def forward(
+        self,
+        z_i: torch.Tensor,
+        z_j: torch.Tensor,
+        probabilities_i: torch.Tensor,
+        probabilities_j: torch.Tensor,
+    ) -> torch.Tensor:
+        """Compute the two-view BayesNCL objective.
+
+        Args:
+            z_i: Gated representations of the first view, shaped [batch, features].
+            z_j: Gated representations of the second view, shaped [batch, features].
+            probabilities_i: First-view gate probabilities, shaped [batch, features].
+            probabilities_j: Second-view gate probabilities, shaped [batch, features].
+
+        Returns:
+            Scalar contrastive loss plus the weighted KL penalty, averaged
+            over both views. NTXEntLoss normalizes the gated representations.
+        """
+        contrastive = self.contrastive_loss(z_i, z_j)
+        probabilities = torch.cat([probabilities_i, probabilities_j], dim=0)
+        regularization = bernoulli_kl(probabilities, self.prior_probability)
+        return contrastive + self.kl_weight * regularization
