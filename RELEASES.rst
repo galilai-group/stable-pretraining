@@ -4,6 +4,21 @@ Unreleased
 
 **New method**
 
+- ``SpectralCL`` (Spectral Contrastive Learning): contrastive learning with the
+  spectral contrastive loss, ``-2 E[z . z+] + E[(z . z-)^2]``, per HaoChen et al.,
+  "Provable Guarantees for Self-Supervised Deep Learning with Spectral
+  Contrastive Loss" (NeurIPS 2021). It needs no temperature, momentum encoder,
+  or stop-gradient; embeddings are confined to a ball of radius ``sqrt(mu)``
+  and the loss is divided by ``mu``, as in the authors' code. It accepts both
+  tensors and the batch dicts of ``Module``, so it trains directly with
+  ``Trainer`` / ``Manager``. Registered in ``stable_pretraining.methods``,
+  exported as ``stable_pretraining.SpectralCL``, and listed in ``METHODS.md``.
+  The loss is available as ``stable_pretraining.losses.SpectralContrastiveLoss``
+  and the composable forward as ``stable_pretraining.forward.spectral``.
+  Includes stable gradients for tiny embeddings, real CPU/gloo DDP gradient
+  regression coverage in CI, and a CIFAR-10 ResNet-18 benchmark under
+  ``benchmarks/cifar10/spectral-resnet18.py`` that seeds initialization and uses
+  the same projector for the spectral and NT-Xent objectives.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

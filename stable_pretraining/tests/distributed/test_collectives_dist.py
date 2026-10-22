@@ -40,3 +40,8 @@ class TestCollectives:
         H.run_distributed(
             H.w_clip_crossgpu_matches_global, world_size=2, backend="gloo"
         )
+
+    def test_spectral_loss_ddp_gradients_match_single_process(self):
+        H.run_distributed(
+            H.w_spectral_loss_grads_match_single_process, world_size=2, backend="gloo"
+        )

@@ -11,6 +11,7 @@ are only invoked by tests gated on ``>=2`` visible CUDA devices.
 """
 
 import os
+import queue
 import socket
 import traceback
 
@@ -52,7 +53,9 @@ def _worker(rank, world_size, backend, port, fn, error_queue):
             dist.destroy_process_group()
 
 
-def run_distributed(fn, world_size: int = 2, backend: str = "gloo", timeout: int = 120):
+def run_distributed(
+    fn, world_size: int = 2, backend: str = "gloo", timeout: float = 120
+):
     """Spawn ``world_size`` procs, run ``fn(rank, world_size)`` in each, re-raise failures.
 
     Args:
@@ -62,7 +65,8 @@ def run_distributed(fn, world_size: int = 2, backend: str = "gloo", timeout: int
         timeout: Per-process join timeout in seconds.
 
     Raises:
-        AssertionError: If any rank raised, with the rank-sorted tracebacks.
+        AssertionError: If any rank raised, exited unsuccessfully, or timed out.
+            Worker exceptions include the rank-sorted tracebacks.
     """
     ctx = mp.get_context("spawn")
     error_queue = ctx.Queue()
@@ -76,17 +80,32 @@ def run_distributed(fn, world_size: int = 2, backend: str = "gloo", timeout: int
     ]
     for p in procs:
         p.start()
-    for p in procs:
+    timed_out = []
+    for rank, p in enumerate(procs):
         p.join(timeout)
+        if p.is_alive():
+            timed_out.append(rank)
 
     errors = []
-    while not error_queue.empty():
-        errors.append(error_queue.get())
+    while True:
+        try:
+            errors.append(error_queue.get_nowait())
+        except queue.Empty:
+            break
     for p in procs:
         if p.is_alive():
             p.terminate()
             p.join()
 
+    errors.extend(
+        (rank, f"Worker timed out after {timeout} seconds") for rank in timed_out
+    )
+    errors.extend(
+        (rank, f"Worker exited with code {p.exitcode}")
+        for rank, p in enumerate(procs)
+        if rank not in timed_out and p.exitcode != 0
+    )
+    error_queue.close()
     if errors:
         errors.sort(key=lambda rt: rt[0])
         report = "\n\n".join(f"--- rank {r} ---\n{tb}" for r, tb in errors)
@@ -658,3 +677,88 @@ def w_clip_crossgpu_matches_global(rank, world_size):
 
     ref = _ref_clip_global(feats_i_global, feats_j_global, 0.07)
     assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+def _ref_spectral_global(z_i, z_j, mu):
+    """Single-process spectral contrastive loss over a (global) batch — no gather."""
+    import torch.nn.functional as F
+
+    if mu is not None:
+        radius = mu**0.5
+
+        def ball(z):
+            inside = z.norm(dim=-1, keepdim=True) < radius
+            return torch.where(inside, z, F.normalize(z, dim=-1) * radius)
+
+        z_i, z_j = ball(z_i), ball(z_j)
+    n = z_i.size(0)
+    positive = (z_i * z_j).sum(-1).mean()
+    squared = (z_i @ z_j.T).pow(2)
+    negative = (squared.sum() - squared.diagonal().sum()) / (n * (n - 1))
+    loss = -2 * positive + negative
+    return loss if mu is None else loss / mu
+
+
+class _TwoViewLinear(nn.Module):
+    """One shared linear encoder applied to both views in a single forward."""
+
+    def __init__(self):
+        super().__init__()
+        self.fc = nn.Linear(10, 6)
+
+    def forward(self, x_i, x_j):
+        return self.fc(x_i), self.fc(x_j)
+
+
+def w_spectral_loss_grads_match_single_process(rank, world_size):
+    """DDP gradients of the spectral loss == single-process gradients, global batch.
+
+    Each rank feeds a disjoint slice of a shared global batch through a
+    ``DistributedDataParallel`` encoder and contrasts its local anchors against
+    the ``z'`` gathered from every rank. DDP averages the per-rank gradients,
+    which must equal the gradient of the single-process loss over the whole
+    batch: that exercises the real gather, its backward, and the rank offset
+    that masks each sample's own positive. ``mu=2`` puts some embeddings inside
+    the ball and some outside, so both branches of the projection are covered.
+    """
+    import copy
+
+    from torch.nn.parallel import DistributedDataParallel as DDP
+
+    from stable_pretraining.methods.spectral_cl import SpectralContrastiveLoss
+    from stable_pretraining.utils import all_reduce
+
+    n = 4
+    for mu in (None, 2.0):
+        torch.manual_seed(0)  # identical GLOBAL batch and init on every rank
+        scale = torch.linspace(0.2, 3.0, n * world_size).unsqueeze(1)
+        x_i = scale * torch.randn(n * world_size, 10)
+        x_j = scale.flip(0) * torch.randn(n * world_size, 10)
+        model = _TwoViewLinear()
+        reference = copy.deepcopy(model)
+
+        ref_i, ref_j = reference(x_i, x_j)
+        if mu is not None:
+            norms = torch.cat([ref_i, ref_j]).detach().norm(dim=-1)
+            assert (norms < mu**0.5).any() and (norms >= mu**0.5).any(), norms
+        ref_loss = _ref_spectral_global(ref_i, ref_j, mu)
+        ref_loss.backward()
+
+        shard = slice(rank * n, (rank + 1) * n)
+        # The gradient-averaging hooks live on the wrapper, which must stay
+        # referenced until after backward.
+        ddp = DDP(model)
+        z_i, z_j = ddp(x_i[shard], x_j[shard])
+        loss = SpectralContrastiveLoss(mu=mu)(z_i, z_j)
+        loss.backward()
+
+        avg = all_reduce(loss.detach().clone()) / world_size
+        assert torch.allclose(avg, ref_loss.detach(), atol=1e-5), (mu, avg, ref_loss)
+        for (name, p), q in zip(model.named_parameters(), reference.parameters()):
+            assert p.grad is not None, (mu, name)
+            assert torch.allclose(p.grad, q.grad, atol=1e-5, rtol=1e-4), (
+                mu,
+                name,
+                p.grad,
+                q.grad,
+            )

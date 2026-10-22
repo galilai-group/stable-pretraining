@@ -8,6 +8,7 @@ Tests in stable-pretraining are categorized to separate fast unit tests from slo
 - **Unit Tests** (`@pytest.mark.unit`): Fast, no GPU, no downloads
 - **Integration Tests** (`@pytest.mark.integration`): Full training runs
 - **Regression Tests** (`@pytest.mark.regression`): CPU training on synthetic data, registry checks, and reference losses
+- **Distributed Tests** (`@pytest.mark.distributed`): Real-process collective and DDP checks; the CPU/gloo collective suite runs in CI
 - **GPU Tests** (`@pytest.mark.gpu`): Require CUDA
 - **Slow Tests** (`@pytest.mark.slow`): Take > 1 minute
 - **Download Tests** (`@pytest.mark.download`): Download data
@@ -23,6 +24,11 @@ python -m pytest -m integration
 
 # CPU training regression tests
 python -m pytest -m regression
+
+# Real two-process CPU/gloo collectives and DDP gradients
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 python -m pytest \
+  stable_pretraining/tests/distributed/test_collectives_dist.py \
+  stable_pretraining/tests/distributed/test_harness_dist.py -m distributed --verbose
 
 # All tests
 python -m pytest
@@ -122,7 +128,12 @@ def test_simclr_training():
 
 GitHub Actions runs PyTorch unit tests in four shards and JAX unit tests in a
 separate CPU job with two host devices. Integration and regression tests have
-their own jobs. A dependent coverage job requires all four `.coverage.<shard>`
+their own jobs. A dedicated CPU/gloo job runs `test_collectives_dist.py`, including
+the SpectralCL loss and parameter-gradient comparison against a single-process
+global-batch reference. It uses real worker processes and does not require GPUs.
+The job also verifies that the process harness rejects worker exceptions, abrupt
+exits, and timeouts instead of reporting false passes.
+A dependent coverage job requires all four `.coverage.<shard>`
 artifacts plus `.coverage.jax`, combines them, and requires at least
 **95% production line coverage**. The threshold applies to the combined suite,
 not to individual shards or either backend alone. Relative coverage paths allow
