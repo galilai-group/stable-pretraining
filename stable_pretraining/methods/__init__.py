@@ -1,4 +1,5 @@
 from .barlow_twins import BarlowTwins
+from .bayesncl import BayesNCL
 from .beit import BEiT
 from .byol import BYOL
 from .cmae import CMAE
@@ -34,6 +35,7 @@ from .wmse import WMSE
 
 __all__ = [
     "BarlowTwins",
+    "BayesNCL",
     "BEiT",
     "BYOL",
     "CMAE",
