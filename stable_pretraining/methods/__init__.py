@@ -25,6 +25,7 @@ from .salt import SALT
 from .simclr import SimCLR
 from .simmim import SimMIM
 from .simsiam import SimSiam
+from .ssley import SSLEY
 from .swav import SwAV
 from .tico import TiCO
 from .vicreg import VICReg
@@ -60,6 +61,7 @@ __all__ = [
     "SimCLR",
     "SimMIM",
     "SimSiam",
+    "SSLEY",
     "SwAV",
     "TiCO",
     "VICReg",

@@ -1,0 +1,143 @@
+{
+  "method": "SSL-EY",
+  "dataset": "CIFAR-10",
+  "train_images": 50000,
+  "evaluation_images": 10000,
+  "evaluation": "detached online linear classifier; final completed epoch; no best-epoch selection",
+  "seed": 7,
+  "backbone": "ResNet-18 with CIFAR stem",
+  "batch_size": 256,
+  "source_commit": "11eac929a3cfb8fe28cefa573ef87e08fcf1eb27",
+  "environment": {
+    "python": "3.12.3",
+    "torch": "2.8.0+cu126",
+    "torchvision": "0.23.0+cu126",
+    "lightning": "2.6.6",
+    "gpu": "one NVIDIA RTX A6000"
+  },
+  "main": {
+    "validation_epochs": 1000,
+    "configured_epochs": 1000,
+    "steps": 195000,
+    "status": "complete",
+    "online_top1": 0.894599974155426,
+    "online_top5": 0.9962999820709229,
+    "mean_ssl_loss": -210.34388732910156,
+    "nonfinite_batches": 0,
+    "session_amp_skips": 82,
+    "total_recorded_amp_skips": 95,
+    "amp_scale": 32768.0,
+    "checkpoint_load": "strict passed",
+    "backbone_export": "exact match",
+    "real_image_inference": "4 CIFAR-10 images, finite outputs",
+    "projector_bn_norms": {
+      "projector.1.weight": 37.54750442504883,
+      "projector.4.weight": 20.13011360168457
+    },
+    "epoch_milestones": [
+      {
+        "epoch": 10,
+        "step": 1950,
+        "amp_skips": 13,
+        "nonfinite_batches": 0,
+        "online_top1": 0.5404999852180481,
+        "ssl_loss": -37.51045227050781
+      },
+      {
+        "epoch": 20,
+        "step": 3900,
+        "amp_skips": 13,
+        "nonfinite_batches": 0,
+        "online_top1": 0.6704999804496765,
+        "ssl_loss": -70.9588623046875
+      },
+      {
+        "epoch": 27,
+        "step": 5265,
+        "amp_skips": 13,
+        "nonfinite_batches": 0,
+        "online_top1": 0.7110999822616577,
+        "ssl_loss": -82.93208312988281
+      },
+      {
+        "epoch": 30,
+        "step": 5850,
+        "amp_skips": 13,
+        "nonfinite_batches": 0,
+        "online_top1": 0.7157999873161316,
+        "ssl_loss": -86.22933959960938
+      },
+      {
+        "epoch": 40,
+        "step": 7800,
+        "amp_skips": 13,
+        "nonfinite_batches": 0,
+        "online_top1": 0.7275999784469604,
+        "ssl_loss": -100.85662841796875
+      },
+      {
+        "epoch": 50,
+        "step": 9750,
+        "amp_skips": 13,
+        "nonfinite_batches": 0,
+        "online_top1": 0.7903000116348267,
+        "ssl_loss": -110.2059326171875
+      },
+      {
+        "epoch": 100,
+        "step": 19500,
+        "amp_skips": 1,
+        "nonfinite_batches": 0,
+        "online_top1": 0.8411999940872192,
+        "ssl_loss": -137.92251586914062
+      },
+      {
+        "epoch": 200,
+        "step": 39000,
+        "amp_skips": 5,
+        "nonfinite_batches": 0,
+        "online_top1": 0.8654999732971191,
+        "ssl_loss": -157.42164611816406
+      },
+      {
+        "epoch": 500,
+        "step": 97500,
+        "amp_skips": 35,
+        "nonfinite_batches": 0,
+        "online_top1": 0.8859999775886536,
+        "ssl_loss": -184.378662109375
+      },
+      {
+        "epoch": 1000,
+        "step": 195000,
+        "amp_skips": 82,
+        "nonfinite_batches": 0,
+        "online_top1": 0.894599974155426,
+        "ssl_loss": -210.34388732910156
+      }
+    ]
+  },
+  "ablation": {
+    "configuration": "ssley-fp32-only.json",
+    "planned_epochs": 50,
+    "completed_epochs": 28,
+    "last_completed_step": 5460,
+    "failure_step": 5581,
+    "state": "failed",
+    "online_top1": 0.10620000213384628,
+    "online_top5": 0.5673999786376953,
+    "mean_ssl_loss": 4226147692838912.0,
+    "amp_skips_at_failure": 319,
+    "error": "Non-finite model state: ['backbone.layer4.1.bn1.running_mean', 'backbone.layer4.1.bn1.running_var', 'backbone.layer4.1.bn2.running_mean', 'backbone.layer4.1.bn2.running_var', 'projector.1.running_mean', 'projector.1.running_var', 'projector.4.running_mean', 'projector.4.running_var']"
+  },
+  "comparison_at_epoch_28": {
+    "stable_online_top1": 0.7332000136375427,
+    "ablation_online_top1": 0.10620000213384628
+  },
+  "limitations": [
+    "One seed and one GPU",
+    "FP32 loss and vector clipping change the released training arithmetic/optimization",
+    "Paper Table 1 environment, seed and checkpoint-selection details not fully reconstructed",
+    "No multi-GPU runtime validation"
+  ]
+}

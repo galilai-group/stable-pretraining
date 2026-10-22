@@ -1261,3 +1261,50 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     )
 
     return out
+
+
+def ssley(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Encode two augmented views and optimize the SSL-EY objective.
+
+    Args:
+        self: Module with backbone, projector, and ssley_loss attributes.
+        batch: Two view dictionaries under ``views`` (list or named mapping),
+            a direct mapping of named views, or a single image dictionary.
+            Labels are optional and are passed through for evaluation callbacks.
+        stage: Framework stage, such as ``fit``, ``validate``, or ``test``.
+
+    Returns:
+        Backbone embeddings, optional labels, and a loss during training.
+
+    Note:
+        Single-view batches are supported for evaluation only. The projector
+        is skipped during evaluation; no labels enter the SSL objective.
+    """
+    views = _get_views_list(batch)
+    if views is None:
+        if self.training:
+            raise ValueError("SSL-EY training requires exactly two views")
+        out = {"embedding": self.backbone(batch["image"])}
+        if "label" in batch:
+            out["label"] = batch["label"]
+        return out
+    if isinstance(views, dict):
+        views = list(views.values())
+    if len(views) != 2:
+        raise ValueError("SSL-EY requires exactly two views")
+    embeddings = [self.backbone(view["image"]) for view in views]
+    out = {"embedding": torch.cat(embeddings, dim=0)}
+    if all("label" in view for view in views):
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+    if self.training:
+        projections = [self.projector(embedding) for embedding in embeddings]
+        out["loss"] = self.ssley_loss(*projections)
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=projections[0].shape[0],
+        )
+    return out
