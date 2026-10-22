@@ -179,6 +179,7 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "open_registry": ("stable_pretraining.registry", "open_registry"),
     # Method classes (most-used; full catalog in stable_pretraining.methods)
     "BarlowTwins": ("stable_pretraining.methods.barlow_twins", "BarlowTwins"),
+    "BayesNCL": ("stable_pretraining.methods.bayesncl", "BayesNCL"),
     "BYOL": ("stable_pretraining.methods.byol", "BYOL"),
     "CrossMAE": ("stable_pretraining.methods.cross_mae", "CrossMAE"),
     "DINO": ("stable_pretraining.methods.dino", "DINO"),
@@ -482,6 +483,7 @@ __all__ = [
     "TeacherStudentWrapper",
     # Method classes (most-used; full catalog: stable_pretraining.methods)
     "BarlowTwins",
+    "BayesNCL",
     "BYOL",
     "CrossMAE",
     "DINO",

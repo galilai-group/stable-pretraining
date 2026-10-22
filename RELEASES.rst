@@ -4,6 +4,9 @@ Unreleased
 
 **New method**
 
+- ``BayesNCL``: nonnegative contrastive learning with learned binary gates
+  and Bernoulli KL regularization. Includes a two-view method class,
+  composable forward function, and ``BayesNCLLoss``.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

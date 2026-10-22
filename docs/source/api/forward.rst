@@ -83,6 +83,59 @@ SimCLR
         _target_: stable_pretraining.losses.NTXEntLoss
         temperature: 0.5
 
+BayesNCL
+~~~~~~~~
+
+.. autofunction:: bayesncl
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: Projection head mapping features to latent space
+- ``gating_head``: Head predicting binary feature gate probabilities
+- ``bayesncl_loss``: Contrastive loss with Bernoulli KL regularization
+- ``gate_temperature``: Sigmoid temperature for the feature gates
+- ``gate_threshold``: Probability threshold for opening a gate
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      _target_: stable_pretraining.Module
+      forward: stable_pretraining.forward.bayesncl
+      backbone:
+        _target_: stable_pretraining.backbone.from_torchvision
+        model_name: resnet18
+        low_resolution: true
+      projector:
+        _target_: torch.nn.Sequential
+        _args_:
+          - _target_: torch.nn.Linear
+            in_features: 512
+            out_features: 2048
+          - _target_: torch.nn.ReLU
+          - _target_: torch.nn.Linear
+            in_features: 2048
+            out_features: 256
+      gating_head:
+        _target_: torch.nn.Sequential
+        _args_:
+          - _target_: torch.nn.Linear
+            in_features: 512
+            out_features: 2048
+          - _target_: torch.nn.ReLU
+          - _target_: torch.nn.Linear
+            in_features: 2048
+            out_features: 256
+      bayesncl_loss:
+        _target_: stable_pretraining.losses.BayesNCLLoss
+        temperature: 0.2
+        kl_weight: 0.00003
+        prior_probability: 0.8
+      gate_temperature: 1.0
+      gate_threshold: 0.5
+
 NNCLR
 ~~~~~
 
