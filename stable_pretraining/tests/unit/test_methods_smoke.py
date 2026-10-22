@@ -299,3 +299,27 @@ def test_eval_mode_no_loss(method_name: str, kwargs: dict) -> None:
         output = model(v)
     assert torch.isfinite(output.loss).all()
     assert output.embedding is not None and output.embedding.shape[0] == B
+
+
+def test_capi_dict_method_forward_backward() -> None:
+    """CAPI's dict API shares the smoke contract without a ModelOutput adapter."""
+    model = M.CAPI(
+        embed_dim=32,
+        depth=1,
+        num_heads=4,
+        predictor_depth=1,
+        patch_size=8,
+        n_registers=4,
+        num_clusters=8,
+        total_steps=8,
+        warmup_steps=1,
+        drop_path_rate=0,
+    )
+    output = model({"image": torch.randn(2, 3, 32, 32)}, stage="train")
+    loss = output["loss"]
+    assert loss.ndim == 0 and torch.isfinite(loss)
+    loss.backward()
+    assert any(
+        p.grad is not None and p.grad.abs().sum() > 0
+        for p in model.backbone.parameters()
+    )

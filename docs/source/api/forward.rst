@@ -275,6 +275,11 @@ Supervised
         in_features: 2048
         out_features: 1000
 
+CAPI
+~~~~
+
+.. autofunction:: capi
+
 Custom Forward Functions
 ------------------------
 

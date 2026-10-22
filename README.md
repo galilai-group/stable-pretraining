@@ -771,6 +771,7 @@ spt.set(default_loggers={"registry": False})
 
 | Method | Forward fn | Loss | Description |
 |--------|-----------|------|-------------|
+| CAPI | `forward.capi` | `CAPILoss` | Masked prediction of position-wise balanced teacher clusters |
 | Supervised | `forward.supervised` | any | Standard supervised training with labels |
 | SimCLR | `forward.simclr` | `NTXEntLoss` | Contrastive learning with 2 augmented views |
 | BYOL | `forward.byol` | `BYOLLoss` | Momentum-based self-distillation without negatives |

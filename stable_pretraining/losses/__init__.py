@@ -9,6 +9,7 @@ This module provides various self-supervised learning loss functions organized b
 
 # DINO self-distillation losses
 from .dino import DINOv1Loss, DINOv2Loss, iBOTPatchLoss
+from .capi import CAPILoss
 
 # Joint embedding losses
 from .joint_embedding import (
@@ -34,6 +35,7 @@ from .utils import (
 )
 
 __all__ = [
+    "CAPILoss",
     # DINO
     "DINOv1Loss",
     "DINOv2Loss",

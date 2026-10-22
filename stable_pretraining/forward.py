@@ -1261,3 +1261,85 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     )
 
     return out
+
+
+def capi(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Predict dropped patch clusters from visible patches of the same crop.
+
+    Args:
+        self: Module with CAPI backbone, frozen teacher, student_head, clustering,
+            capi_loss, mask_ratio, prediction_subsampling, and representation.
+        batch: Dict containing a single image tensor and optional evaluation labels.
+        stage: ``train``/``fit`` for SSL training; other stages extract full features.
+
+    Returns:
+        Dict containing mean patch embedding and patch_features. Training adds
+        total loss, prediction_loss, clustering_loss, and clustering diagnostics.
+
+    Note:
+        Labels are passed through for callbacks and never used by the SSL loss.
+        Clustering sees detached full-image teacher patches, balanced independently
+        at every position. CAPIEMA averages the student backbone, excluding heads.
+    """
+    from .backbone.capi import capi_mask
+
+    images = batch["image"]
+    if not isinstance(images, torch.Tensor) or images.ndim != 4:
+        raise ValueError("CAPI expects one BCHW image tensor")
+    p = self.backbone.patch_size
+    if images.shape[-2] % p or images.shape[-1] % p:
+        raise ValueError("Image dimensions must be divisible by patch size")
+    training = self.training and stage in ("train", "fit")
+    self.teacher.eval()
+    with torch.no_grad():
+        teacher_patches, _ = self.teacher.forward_pretrain(images)
+    output = dict(batch)
+    if self.representation == "teacher":
+        patches = teacher_patches
+    else:
+        patches, _ = self.backbone.forward_pretrain(images)
+    output.update(embedding=patches.mean(1), patch_features=patches)
+    if not training:
+        return output
+    visible, predicted = capi_mask(
+        images.shape[0],
+        (images.shape[-2] // p, images.shape[-1] // p),
+        images.device,
+        self.mask_ratio,
+        self.prediction_subsampling,
+    )
+    _, predictions = self.backbone.forward_pretrain(
+        images, visible, predicted, do_prediction=True
+    )
+    logits = self.clustering(
+        torch.nn.functional.normalize(teacher_patches.detach(), dim=-1, eps=1e-7)
+    )
+    terms = self.capi_loss(self.student_head(predictions), logits, predicted)
+    targets = terms.pop("assignments")
+    output.update(terms)
+    output.update(
+        visible_indices=visible,
+        predict_indices=predicted,
+        target_entropy=-(targets * targets.clamp_min(1e-12).log()).sum(-1).mean(),
+        cluster_occupancy=targets.new_tensor(
+            targets.argmax(-1).unique().numel() / targets.shape[-1]
+        ),
+        feature_variance=teacher_patches.float().var(dim=0, unbiased=False).mean(),
+    )
+    if self._trainer is not None:
+        for key in (
+            "loss",
+            "prediction_loss",
+            "clustering_loss",
+            "target_entropy",
+            "cluster_occupancy",
+            "feature_variance",
+        ):
+            self.log(
+                f"train/{key}",
+                output[key],
+                on_step=True,
+                on_epoch=True,
+                batch_size=images.shape[0],
+            )
+    return output

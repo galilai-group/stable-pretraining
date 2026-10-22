@@ -1,5 +1,15 @@
 # Third-party components
 
+## CAPI
+
+The CAPI backbone, loss, prediction head, and schedules adapt code from
+[facebookresearch/capi](https://github.com/facebookresearch/capi), commit
+`98b4fa17ee8eec8810c17022df9a27a44845368b`, distributed under Apache-2.0.
+The full license is in `stable_pretraining/backbone/licenses/CAPI-Apache-2.0.txt`
+and is included in built distributions. Adaptations integrate the dict-based
+Module API, separate student/clustering optimizers, checkpointed EMA progress,
+and reduced-precision and rectangular-grid handling.
+
 ## Jet
 
 `stable_pretraining/backbone/jet.py` adapts the transformer conditioner and

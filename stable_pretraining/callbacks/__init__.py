@@ -1,3 +1,4 @@
+from .capi import CAPIEMA
 from .checkpoint_sklearn import (
     SklearnCheckpoint,
     WandbCheckpoint,
@@ -32,6 +33,7 @@ from .unused_parameters import LogUnusedParametersOnce
 from .hf_models import HuggingFaceCheckpointCallback
 
 __all__ = [
+    "CAPIEMA",
     OnlineProbe,
     OnlineImageDecoder,
     ReconViz,

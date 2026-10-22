@@ -1,5 +1,6 @@
 from .convmixer import ConvMixer
 from .jet import Jet
+from .capi import CAPIBackbone, capi_backbone
 from .mlp import MLP
 from .nn_modules import (
     BatchNorm1dNoBias,
@@ -78,6 +79,8 @@ from . import video  # noqa: F401  — video encoders live under sp.backbone.vid
 
 __all__ = [
     Jet,
+    CAPIBackbone,
+    capi_backbone,
     MLP,
     TensorAggregator,
     TeacherStudentWrapper,

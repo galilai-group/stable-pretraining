@@ -4,6 +4,11 @@ Unreleased
 
 **New method**
 
+- ``CAPI``: dict-based masked cluster prediction with position-wise distributed
+  balancing, coordinate-preserving RoPE, a cross-attention predictor, disjoint
+  optimization and checkpointed successful-step EMA. Includes reference
+  configuration, numerical fixtures and a reduced-scale evaluation campaign.
+
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

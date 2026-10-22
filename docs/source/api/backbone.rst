@@ -24,6 +24,7 @@ Utility Functions
    :toctree: gen_modules/
    :template: myfunc_template.rst
 
+   capi_backbone
    from_timm
    from_torchvision
    set_embedding_dim
