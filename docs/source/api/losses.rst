@@ -9,6 +9,7 @@ stable_pretraining.losses
    :template: myclass_template.rst
 
    NTXEntLoss
+   DirectCLRLoss
    NegativeCosineSimilarity
    VICRegLoss
    BarlowTwinsLoss

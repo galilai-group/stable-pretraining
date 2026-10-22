@@ -49,6 +49,16 @@ Or in Python code:
 Available Forward Functions
 ---------------------------
 
+DirectCLR
+~~~~~~~~~
+
+.. autofunction:: directclr
+
+Required module attributes: ``backbone``, ``subspace_dim`` and
+``directclr_loss``. See :doc:`../directclr` for usage and the
+`ImageNet-100 results <https://github.com/galilai-group/stable-pretraining/blob/main/benchmarks/imagenet100/RESULTS.md>`_
+for evaluation protocols and matched controls.
+
 SimCLR
 ~~~~~~
 

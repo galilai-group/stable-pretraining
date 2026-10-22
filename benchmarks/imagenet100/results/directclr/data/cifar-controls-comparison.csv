@@ -1,0 +1,4 @@
+configuration,correct1,samples,top1,epochs,successful_updates
+SSL pretrained + full finetune (historical),4693,5000,93.86,100,17600
+Random initialization + full training,4419,5000,88.38,100,17600
+SSL pretrained + frozen encoder,4020,5000,80.4,100,17600

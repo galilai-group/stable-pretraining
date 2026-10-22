@@ -45,6 +45,7 @@ from .methods.barlow_twins import BarlowTwins as BarlowTwins
 from .methods.byol import BYOL as BYOL
 from .methods.dino import DINO as DINO
 from .methods.dinov2 import DINOv2 as DINOv2
+from .methods.directclr import DirectCLR as DirectCLR
 from .methods.mae import MAE as MAE
 from .methods.nnclr import NNCLR as NNCLR
 from .methods.simclr import SimCLR as SimCLR

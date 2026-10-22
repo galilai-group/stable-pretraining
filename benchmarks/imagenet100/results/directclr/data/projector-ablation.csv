@@ -1,0 +1,7 @@
+method,protocol,contrastive_dim,classifier_lr,val_correct1,val_correct5,val_samples,val_top1_percent,val_top5_percent
+directclr,fixed-lr1,360,1,2699,4114,5000,53.98,82.28
+directclr,dev-selected-lr10,360,10,3113,4342,5000,62.26,86.84
+linear,fixed-lr1,360,1,2890,4285,5000,57.80,85.70
+linear,dev-selected-lr10,360,10,3221,4427,5000,64.42,88.54
+full,fixed-lr1,2048,1,2871,4277,5000,57.42,85.54
+full,dev-selected-lr10,2048,10,2951,4295,5000,59.02,85.90

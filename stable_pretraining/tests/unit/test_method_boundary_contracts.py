@@ -28,9 +28,11 @@ def encoder(has_cls=True):
     )
 
 
-@pytest.mark.parametrize("name", ["BarlowTwins", "SimCLR", "VICReg", "WMSE", "BYOL"])
+@pytest.mark.parametrize(
+    "name", ["BarlowTwins", "SimCLR", "VICReg", "WMSE", "BYOL", "DirectCLR"]
+)
 def test_joint_embedding_methods_accept_existing_encoder_for_evaluation(name):
-    kwargs = {"projector_dims": (16, 8)}
+    kwargs = {"subspace_dim": 8} if name == "DirectCLR" else {"projector_dims": (16, 8)}
     if name == "BYOL":
         kwargs["predictor_dims"] = (16, 8)
     model = getattr(methods, name)(encoder_name=encoder(), **kwargs).eval()
@@ -189,3 +191,10 @@ def test_distribution_regularized_methods_evaluate_without_views(monkeypatch, na
     result = model(images=images)
     torch.testing.assert_close(result.embedding, backbone(images))
     assert result.loss.item() == result.inv_loss.item() == 0
+
+
+@pytest.mark.parametrize("backbone", [None, {}, 4])
+def test_directclr_rejects_invalid_encoder_specifications(backbone):
+    """Invalid encoders fail before the training lifecycle is initialized."""
+    with pytest.raises(TypeError, match="encoder_name"):
+        methods.DirectCLR(encoder_name=backbone, subspace_dim=2)
