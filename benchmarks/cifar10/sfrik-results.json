@@ -1,0 +1,240 @@
+{
+  "description": "CIFAR-10 learning checks, not paper reproductions or tuned method rankings. Accuracy is a fraction. The official test split is unused. Seed 42 matches split and initialization across methods.",
+  "environment": {
+    "hardware": "Apple M2 Max",
+    "python": "3.12.15",
+    "torch": "2.14.1",
+    "lightning": "2.6.6",
+    "precision": "float32"
+  },
+  "shared_config": {
+    "accelerator": "mps",
+    "batch_size": 128,
+    "projector_dim": 512,
+    "sim_coeff": 256.0,
+    "lr": 0.001,
+    "workers": 2,
+    "dataset": "uoft-cs/cifar10",
+    "split": "train",
+    "backbone": "resnet18, CIFAR stem",
+    "optimizer": "AdamW",
+    "weight_decay": 0.0001,
+    "scheduler": "CosineAnnealingLR",
+    "mmd_coeff": 1,
+    "kernel_weights": [
+      1,
+      40,
+      40
+    ],
+    "simclr_temperature": 0.5,
+    "linear_probe": {
+      "type": "LogisticRegression",
+      "C": 1.0,
+      "max_iter": 1000,
+      "solver": "lbfgs"
+    },
+    "knn": {
+      "neighbors": 20,
+      "distance": "cosine",
+      "voting": "unweighted"
+    },
+    "feature_preprocessing": "L2-normalized frozen backbone embeddings; deterministic image preprocessing"
+  },
+  "experiments": [
+    {
+      "name": "200-epoch primary comparison",
+      "epochs": 200,
+      "train_size": 45000,
+      "val_size": 5000,
+      "runs": [
+        {
+          "method": "sfrik",
+          "seed": 42,
+          "steps": 70200,
+          "training_seconds": 13189.89,
+          "initial": {
+            "linear_accuracy": 0.3166,
+            "knn20_accuracy": 0.3686000108718872,
+            "effective_rank": 341.9133910475162,
+            "mean_feature_std": 0.003713843412697315
+          },
+          "final": {
+            "linear_accuracy": 0.795,
+            "knn20_accuracy": 0.782800018787384,
+            "effective_rank": 269.3228248330146,
+            "mean_feature_std": 0.028751354664564133
+          },
+          "evaluations": [
+            {
+              "epoch": 0,
+              "linear_accuracy": 0.3166,
+              "knn20_accuracy": 0.3686000108718872,
+              "effective_rank": 341.9133910475162,
+              "mean_feature_std": 0.003713843412697315
+            },
+            {
+              "epoch": 1,
+              "linear_accuracy": 0.3476,
+              "knn20_accuracy": 0.3490000069141388,
+              "effective_rank": 59.205455814597904,
+              "mean_feature_std": 0.006289878860116005
+            },
+            {
+              "epoch": 20,
+              "linear_accuracy": 0.6304,
+              "knn20_accuracy": 0.6215999722480774,
+              "effective_rank": 151.43015715128234,
+              "mean_feature_std": 0.01749463379383087
+            },
+            {
+              "epoch": 50,
+              "linear_accuracy": 0.7106,
+              "knn20_accuracy": 0.6990000009536743,
+              "effective_rank": 202.96095507815795,
+              "mean_feature_std": 0.02354416251182556
+            },
+            {
+              "epoch": 100,
+              "linear_accuracy": 0.7594,
+              "knn20_accuracy": 0.7440000176429749,
+              "effective_rank": 239.53526853303856,
+              "mean_feature_std": 0.026720397174358368
+            },
+            {
+              "epoch": 200,
+              "linear_accuracy": 0.795,
+              "knn20_accuracy": 0.782800018787384,
+              "effective_rank": 269.3228248330146,
+              "mean_feature_std": 0.028751354664564133
+            }
+          ],
+          "loss_first_epoch": 2.4444420806363096,
+          "loss_last_epoch": 0.8654346678331707
+        },
+        {
+          "method": "simclr",
+          "seed": 42,
+          "steps": 70200,
+          "training_seconds": 12944.16,
+          "initial": {
+            "linear_accuracy": 0.3166,
+            "knn20_accuracy": 0.3686000108718872,
+            "effective_rank": 341.9133910475162,
+            "mean_feature_std": 0.003713843412697315
+          },
+          "final": {
+            "linear_accuracy": 0.7394,
+            "knn20_accuracy": 0.7378000020980835,
+            "effective_rank": 95.8074150159685,
+            "mean_feature_std": 0.019342511892318726
+          },
+          "evaluations": [
+            {
+              "epoch": 0,
+              "linear_accuracy": 0.3166,
+              "knn20_accuracy": 0.3686000108718872,
+              "effective_rank": 341.9133910475162,
+              "mean_feature_std": 0.003713843412697315
+            },
+            {
+              "epoch": 1,
+              "linear_accuracy": 0.2922,
+              "knn20_accuracy": 0.2766000032424927,
+              "effective_rank": 12.757094322531083,
+              "mean_feature_std": 0.010831726714968681
+            },
+            {
+              "epoch": 20,
+              "linear_accuracy": 0.4334,
+              "knn20_accuracy": 0.4230000078678131,
+              "effective_rank": 24.132032942289513,
+              "mean_feature_std": 0.011254260316491127
+            },
+            {
+              "epoch": 50,
+              "linear_accuracy": 0.5656,
+              "knn20_accuracy": 0.5546000003814697,
+              "effective_rank": 43.150512943392286,
+              "mean_feature_std": 0.01417055819183588
+            },
+            {
+              "epoch": 100,
+              "linear_accuracy": 0.6726,
+              "knn20_accuracy": 0.6796000003814697,
+              "effective_rank": 67.24654510769136,
+              "mean_feature_std": 0.016735993325710297
+            },
+            {
+              "epoch": 200,
+              "linear_accuracy": 0.7394,
+              "knn20_accuracy": 0.7378000020980835,
+              "effective_rank": 95.8074150159685,
+              "mean_feature_std": 0.019342511892318726
+            }
+          ],
+          "loss_first_epoch": 4.918242707211747,
+          "loss_last_epoch": 3.8901993759676943
+        }
+      ]
+    },
+    {
+      "name": "20-epoch supporting checks",
+      "epochs": 20,
+      "train_size": 10000,
+      "val_size": 2000,
+      "runs": [
+        {
+          "method": "sfrik",
+          "seed": 42,
+          "steps": 1560,
+          "initial": {
+            "linear_accuracy": 0.272,
+            "knn20_accuracy": 0.3140000104904175,
+            "effective_rank": 339.79291108678086,
+            "mean_feature_std": 0.0037141276989132166
+          },
+          "final": {
+            "linear_accuracy": 0.4455,
+            "knn20_accuracy": 0.44200000166893005,
+            "effective_rank": 146.30126337071388,
+            "mean_feature_std": 0.012789838016033173
+          }
+        },
+        {
+          "method": "simclr",
+          "seed": 42,
+          "steps": 1560,
+          "initial": {
+            "linear_accuracy": 0.272,
+            "knn20_accuracy": 0.3140000104904175,
+            "effective_rank": 339.79291108678086,
+            "mean_feature_std": 0.0037141276989132166
+          },
+          "final": {
+            "linear_accuracy": 0.3575,
+            "knn20_accuracy": 0.34150001406669617,
+            "effective_rank": 21.827790595244963,
+            "mean_feature_std": 0.010007141157984734
+          }
+        },
+        {
+          "method": "sfrik",
+          "seed": 7,
+          "steps": 1560,
+          "initial": {
+            "linear_accuracy": 0.274,
+            "knn20_accuracy": 0.33550000190734863,
+            "effective_rank": 343.5862428598476,
+            "mean_feature_std": 0.005046830512583256
+          },
+          "final": {
+            "linear_accuracy": 0.452,
+            "knn20_accuracy": 0.45649999380111694,
+            "effective_rank": 137.01294972156296,
+            "mean_feature_std": 0.011226626113057137
+          }
+        }
+      ]
+    }
+  ]
+}

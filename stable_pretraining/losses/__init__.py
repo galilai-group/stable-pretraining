@@ -19,6 +19,8 @@ from .joint_embedding import (
     SwAVLoss,
 )
 
+from .sfrik import SFRIKLoss
+
 # Multimodal losses
 from .multimodal import CLIPLoss
 
@@ -41,6 +43,7 @@ __all__ = [
     # Joint embedding
     "BYOLLoss",
     "VICRegLoss",
+    "SFRIKLoss",
     "BarlowTwinsLoss",
     "NTXEntLoss",
     "SwAVLoss",
