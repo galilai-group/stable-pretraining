@@ -4,6 +4,7 @@ from .byol import BYOL
 from .cmae import CMAE
 from .cross_mae import CrossMAE
 from .data2vec import Data2Vec
+from .dcl import DCL
 from .dino import DINO
 from .dinov2 import DINOv2
 from .dinov3 import DINOv3
@@ -39,6 +40,7 @@ __all__ = [
     "CMAE",
     "CrossMAE",
     "Data2Vec",
+    "DCL",
     "DINO",
     "DINOv2",
     "DINOv3",

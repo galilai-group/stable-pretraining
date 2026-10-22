@@ -43,6 +43,7 @@ from .registry import open_registry as open_registry
 # Method classes (most-used; full catalog: stable_pretraining.methods)
 from .methods.barlow_twins import BarlowTwins as BarlowTwins
 from .methods.byol import BYOL as BYOL
+from .methods.dcl import DCL as DCL
 from .methods.dino import DINO as DINO
 from .methods.dinov2 import DINOv2 as DINOv2
 from .methods.mae import MAE as MAE

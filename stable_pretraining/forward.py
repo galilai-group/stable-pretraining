@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``dcl`` — decoupled contrastive learning
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -1260,4 +1261,88 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         prog_bar=True,
     )
 
+    return out
+
+
+def dcl(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for DCL (Decoupled Contrastive Learning).
+
+    Aligns positive views while contrasting against other samples, excluding
+    both self-similarities and positive pairs from the loss denominator.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: Feature extraction network
+            - projector: Projection head mapping features to latent space
+            - dcl_loss: Decoupled contrastive loss function
+        batch: Dictionary with two view dictionaries under "views", two named
+            view dictionaries, or a single "image" dictionary for evaluation.
+        stage: Runtime stage. "fit" and "train" compute the loss when the module
+            is in training mode; "validate", "val", "test", and "predict"
+            return embeddings without computing the loss.
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Feature representations from backbone
+            - 'projection': Projected embeddings (during training only)
+            - 'loss': Decoupled contrastive loss (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Raises:
+        ValueError: If the multi-view batch does not contain exactly two views,
+            or a single-view batch is supplied during training.
+
+    Note:
+        Introduced by Yeh et al., "Decoupled Contrastive Learning" (ECCV 2022).
+        https://arxiv.org/abs/2110.06848
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import dcl
+
+            backbone = spt.backbone.from_torchvision("resnet50")
+            module = spt.Module(
+                forward=dcl,
+                backbone=backbone,
+                projector=torch.nn.Linear(2048, 128),
+                dcl_loss=spt.losses.DCLLoss(temperature=0.1),
+                optim={"optimizer": {"type": "LARS", "lr": 5}},
+            )
+    """
+    out = {}
+    compute_loss = self.training and stage in ("fit", "train")
+    # Module adds batch_idx before forwarding; it is metadata, not a named view.
+    views = _get_views_list({k: v for k, v in batch.items() if k != "batch_idx"})
+
+    if views is None:
+        if compute_loss:
+            raise ValueError("DCL requires exactly 2 views during training")
+
+        out["embedding"] = self.backbone(batch["image"])
+        if "label" in batch:
+            out["label"] = batch["label"]
+        return out
+
+    if len(views) != 2:
+        raise ValueError(f"DCL requires exactly 2 views, got {len(views)}")
+
+    embeddings = [self.backbone(view["image"]) for view in views]
+    out["embedding"] = torch.cat(embeddings, dim=0)
+    if "label" in views[0]:
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+    if compute_loss:
+        projections = [self.projector(embedding) for embedding in embeddings]
+        out["projection"] = torch.cat(projections, dim=0)
+        out["loss"] = self.dcl_loss(projections[0], projections[1])
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+        )
     return out

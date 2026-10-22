@@ -343,3 +343,59 @@ class NTXEntLoss(InfoNCELoss):
         mask[local_idx, offset + local_idx] = True
 
         return self._compute(anchors, candidates, targets, mask=mask)
+
+
+class DCLLoss(torch.nn.Module):
+    """Symmetric contrastive loss with positives excluded from the denominator.
+
+    Introduced by Yeh et al., "Decoupled Contrastive Learning" (ECCV 2022).
+    https://arxiv.org/abs/2110.06848
+
+    Negatives span all distributed ranks using an autograd-aware gather.
+    Each rank must supply the same number of samples. The loss averages over
+    both views of the local batch and can be negative.
+
+    Args:
+        temperature: Positive, finite temperature scaling the cosine similarities.
+    """
+
+    def __init__(self, temperature: float = 0.1) -> None:
+        super().__init__()
+        self.temperature = temperature
+
+    def forward(self, z_i: torch.Tensor, z_j: torch.Tensor) -> torch.Tensor:
+        """Compute the mean DCL loss for two aligned batches of projections.
+
+        Args:
+            z_i: First-view projections of shape [N, D].
+            z_j: Second-view projections of shape [N, D].
+
+        Returns:
+            Scalar loss with gradients through both views and global candidates.
+
+        Raises:
+            ValueError: If projections do not share a nonempty [N, D] shape,
+                or the global batch contains no negative samples.
+        """
+        if z_i.ndim != 2 or z_i.shape != z_j.shape or 0 in z_i.shape:
+            raise ValueError("DCL projections must have the same nonempty [N, D] shape")
+
+        anchors = F.normalize(torch.cat([z_i, z_j], dim=0), dim=-1)
+        candidates = torch.cat(all_gather(anchors), dim=0)
+
+        if candidates.size(0) <= 2:
+            raise ValueError("DCL requires at least one negative sample per anchor")
+
+        two_n = anchors.size(0)
+        offset = get_rank() * two_n
+        indices = torch.arange(two_n, device=anchors.device)
+        positives = offset + (indices + z_i.size(0)) % two_n
+        logits = anchors @ candidates.T / self.temperature
+        positive_logits = logits[indices, positives]
+
+        mask = torch.zeros_like(logits, dtype=torch.bool)
+        mask[indices, offset + indices] = True
+        mask[indices, positives] = True
+        negative_logits = logits.masked_fill(mask, -torch.inf)
+
+        return (torch.logsumexp(negative_logits, dim=1) - positive_logits).mean()
