@@ -182,6 +182,31 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         assert "embedding" in result
         assert "loss" in result
 
+    def test_resa_forward_with_benchmark_transforms(self):
+        """Test resa with SimCLR-style transforms (2 views) and the real loss."""
+        sample = {"image": _create_dummy_pil_image(), "label": torch.tensor([0])}
+
+        transform = _simclr_transforms()
+        batch = transform(sample)
+
+        # Create module with teacher-student wrappers
+        module = Mock()
+        module.backbone = Mock()
+        module.backbone.forward_student = lambda x: torch.randn(x.shape[0], 512)
+        module.backbone.forward_teacher = lambda x: torch.randn(x.shape[0], 512)
+        module.projector = Mock()
+        module.projector.forward_student = lambda x: torch.randn(x.shape[0], 128)
+        module.projector.forward_teacher = lambda x: torch.randn(x.shape[0], 128)
+        module.resa_loss = spt.losses.ReSALoss()
+        module.training = True
+        module.log = Mock()
+
+        result = forward_module.resa(module, batch, "train")
+
+        assert "embedding" in result
+        assert torch.isfinite(result["loss"])
+        assert "resa_assignment" in result
+
     def test_vicreg_forward_with_benchmark_transforms(self):
         """Test vicreg with benchmark transforms."""
         sample = {"image": _create_dummy_pil_image()}

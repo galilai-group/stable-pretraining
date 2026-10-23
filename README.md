@@ -778,6 +778,7 @@ spt.set(default_loggers={"registry": False})
 | Barlow Twins | `forward.barlow_twins` | `BarlowTwinsLoss` | Cross-correlation matrix alignment to identity |
 | SwAV | `forward.swav` | `SwAVLoss` | Online clustering with Sinkhorn-Knopp normalization |
 | NNCLR | `forward.nnclr` | `NTXEntLoss` | Nearest-neighbor contrastive learning |
+| ReSA | `forward.resa` | `ReSALoss` | Contrastive learning with Sinkhorn self-assigned soft targets |
 | DINO | `forward.dino` | `DINOv1Loss` | Self-distillation with multi-crop and centering |
 | DINOv2 | `forward.dinov2` | `DINOv2Loss`, `iBOTPatchLoss` | DINO + iBOT masked patch prediction |
 

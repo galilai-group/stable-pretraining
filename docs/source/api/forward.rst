@@ -187,6 +187,43 @@ BYOL
             in_features: 4096
             out_features: 256
 
+ReSA
+~~~~
+
+.. autofunction:: resa
+
+**Required Module Attributes:**
+
+- ``backbone``: ``TeacherStudentWrapper`` around the encoder
+- ``projector``: ``TeacherStudentWrapper`` around the projector
+- ``resa_loss``: ``ReSALoss`` instance
+
+**Key Features:**
+
+- Soft labels from Sinkhorn-Knopp on the student-teacher similarities of the
+  first view, which should be the weakly augmented one
+- Cross-entropy between the soft labels and the cross-view projection
+  similarities; identity labels recover InfoNCE
+- Returns the detached soft labels as ``resa_assignment`` for monitoring
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.resa
+      backbone:
+        _target_: stable_pretraining.TeacherStudentWrapper
+        student: ...
+        base_ema_coefficient: 0.996
+      projector:
+        _target_: stable_pretraining.TeacherStudentWrapper
+        student: ...
+        base_ema_coefficient: 0.996
+      resa_loss:
+        _target_: stable_pretraining.losses.ReSALoss
+        temperature: 0.4
+
 VICReg
 ~~~~~~
 
