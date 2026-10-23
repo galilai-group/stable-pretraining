@@ -4,6 +4,13 @@ Unreleased
 
 **New method**
 
+- ``LpJEPA`` (Rectified LpJEPA): two-view mean squared error and rectified
+  distribution matching with ``RDMReg``. Includes a shared dictionary-based
+  ``stable_pretraining.forward.lpjepa`` function and the ``spt.LpJEPA`` method
+  class, with encoder features and rectified projections available for probing.
+  Adds the ``Sparsity`` monitoring callback and a CIFAR-100 / ResNet-18 benchmark
+  with three-seed results.
+  See `PR #453 <https://github.com/galilai-group/stable-pretraining/pull/453>`_.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

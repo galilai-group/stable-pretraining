@@ -47,6 +47,7 @@ def _worker(rank, world_size, backend, port, fn, error_queue):
         dist.barrier()
     except Exception:  # noqa: BLE001 - propagate full traceback to parent
         error_queue.put((rank, traceback.format_exc()))
+        raise
     finally:
         if dist.is_initialized():
             dist.destroy_process_group()
@@ -82,10 +83,13 @@ def run_distributed(fn, world_size: int = 2, backend: str = "gloo", timeout: int
     errors = []
     while not error_queue.empty():
         errors.append(error_queue.get())
-    for p in procs:
+    for rank, p in enumerate(procs):
         if p.is_alive():
             p.terminate()
             p.join()
+            errors.append((rank, f"Worker timed out after {timeout} seconds."))
+        elif p.exitcode != 0:
+            errors.append((rank, f"Worker exited with code {p.exitcode}."))
 
     if errors:
         errors.sort(key=lambda rt: rt[0])
@@ -658,3 +662,80 @@ def w_clip_crossgpu_matches_global(rank, world_size):
 
     ref = _ref_clip_global(feats_i_global, feats_j_global, 0.07)
     assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+def _ref_rdmreg_global(regularizer, z1, z2, step):
+    """Compute full-batch RDMReg without invoking distributed collectives."""
+    generator = torch.Generator(device=z1.device).manual_seed(step)
+    directions = regularizer._sample_directions(z1, generator)
+    targets1 = regularizer._sample_targets(z1, generator)
+    targets2 = regularizer._sample_targets(z2, generator)
+    distances = [
+        ((z @ directions).sort(dim=0).values - (target @ directions).sort(dim=0).values)
+        .square()
+        .mean()
+        for z, target in ((z1, targets1), (z2, targets2))
+    ]
+    return (distances[0] + distances[1]) / 2
+
+
+def w_rdmreg_matches_global(rank: int, world_size: int, p: float) -> None:
+    """Check distributed RDMReg loss, gradients, and synchronized sampling.
+
+    Args:
+        rank: Current process rank.
+        world_size: Number of processes in the initialized group.
+        p: Shape parameter of the target distribution.
+    """
+    from stable_pretraining.methods.lpjepa import RDMReg
+
+    torch.set_num_threads(1)
+    torch.manual_seed(100 + rank)
+    device = (
+        torch.device("cuda", rank)
+        if dist.get_backend() == "nccl"
+        else torch.device("cpu")
+    )
+    generator = torch.Generator(device=device).manual_seed(42)
+    batch_size, dim = 4, 5
+    global_views = tuple(
+        torch.rand(
+            batch_size * world_size,
+            dim,
+            generator=generator,
+            device=device,
+            dtype=torch.float64,
+        ).requires_grad_()
+        for _ in range(2)
+    )
+    start, stop = rank * batch_size, (rank + 1) * batch_size
+    local_views = tuple(
+        view[start:stop].detach().clone().requires_grad_() for view in global_views
+    )
+    regularizer = RDMReg(num_slices=16, p=p).to(device)
+    # Different counters must converge to rank 0's counter before sampling.
+    regularizer.global_step.fill_(7 + rank)
+    rng_state = torch.random.get_rng_state().clone()
+    cuda_rng_state = torch.cuda.get_rng_state(device) if device.type == "cuda" else None
+
+    for step in (7, 8):
+        expected = _ref_rdmreg_global(regularizer, *global_views, step)
+        expected_grads = torch.autograd.grad(expected, global_views)
+        actual = regularizer(*local_views)
+        grads = torch.autograd.grad(actual, local_views)
+
+        torch.testing.assert_close(actual, expected, rtol=1e-9, atol=1e-12)
+        assert regularizer.global_step.item() == step + 1
+        assert torch.equal(torch.random.get_rng_state(), rng_state)
+        if cuda_rng_state is not None:
+            assert torch.equal(torch.cuda.get_rng_state(device), cuda_rng_state)
+        for grad, expected_grad in zip(grads, expected_grads):
+            assert torch.isfinite(grad).all() and grad.abs().sum() > 0
+            # Each rank consumes the global loss, so gather backward sums
+            # world_size copies of its gradient before DDP would average them.
+            torch.testing.assert_close(
+                grad,
+                world_size * expected_grad[start:stop],
+                rtol=1e-9,
+                atol=1e-12,
+            )

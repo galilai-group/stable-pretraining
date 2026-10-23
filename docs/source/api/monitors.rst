@@ -16,6 +16,7 @@ Online Monitoring
    OnlineKNN
    OnlineWriter
    RankMe
+   Sparsity
    LiDAR
 
 Training Utilities

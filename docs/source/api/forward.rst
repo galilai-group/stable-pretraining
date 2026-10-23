@@ -218,6 +218,55 @@ VICReg
         var_weight: 25.0
         cov_weight: 1.0
 
+LpJEPA
+~~~~~~
+
+.. autofunction:: lpjepa
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: Projection head; the forward function applies ReLU to its output
+- ``rdmreg``: ``RDMReg`` from ``stable_pretraining.methods.lpjepa``
+- ``inv_weight``: Weight of the two-view mean squared error
+- ``rdmreg_weight``: Weight of the distribution-matching loss
+
+**Key Features:**
+
+- Aligns exactly two augmented views during training.
+- Matches each view's rectified projections to sampled target distributions,
+  sharing random slice directions across views.
+- Returns both ``embedding`` and ``projection`` for online probes.
+- Uses ``self.training`` to control loss computation; ``stage`` supplies the
+  logging prefix. Evaluation accepts one or two views and omits loss keys.
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      _target_: stable_pretraining.Module
+      forward: stable_pretraining.forward.lpjepa
+      backbone:
+        _target_: stable_pretraining.backbone.from_torchvision
+        model_name: resnet18
+        weights: null
+      projector:
+        _target_: torch.nn.Linear
+        in_features: 512
+        out_features: 128
+      rdmreg:
+        _target_: stable_pretraining.methods.lpjepa.RDMReg
+        num_slices: 1024
+        p: 1.0
+        mu: 0.0
+      inv_weight: 25.0
+      rdmreg_weight: 125.0
+
+This example illustrates component configuration with a custom linear projector.
+For the method class and its default three-layer projector, see
+:class:`~stable_pretraining.methods.LpJEPA`.
+
 Barlow Twins
 ~~~~~~~~~~~~
 

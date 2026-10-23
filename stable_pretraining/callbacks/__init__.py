@@ -17,6 +17,7 @@ from .image_decoder import OnlineImageDecoder
 from .recon_viz import ReconViz
 from .hardware_monitor import HardwareMonitor
 from .rankme import RankMe
+from .sparsity import Sparsity
 from .teacher_student import TeacherStudentCallback
 from .trainer_info import LoggingCallback, ModuleSummary, TrainerInfo, SLURMInfo
 from .utils import EarlyStopping
@@ -49,6 +50,7 @@ __all__ = [
     EarlyStopping,
     OnlineWriter,
     RankMe,
+    Sparsity,
     LiDAR,
     ImageRetrieval,
     TeacherStudentCallback,

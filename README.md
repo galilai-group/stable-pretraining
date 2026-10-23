@@ -775,6 +775,7 @@ spt.set(default_loggers={"registry": False})
 | SimCLR | `forward.simclr` | `NTXEntLoss` | Contrastive learning with 2 augmented views |
 | BYOL | `forward.byol` | `BYOLLoss` | Momentum-based self-distillation without negatives |
 | VICReg | `forward.vicreg` | `VICRegLoss` | Variance-invariance-covariance regularization |
+| Rectified LpJEPA | `forward.lpjepa` | `RDMReg` | Two-view invariance and rectified distribution matching |
 | Barlow Twins | `forward.barlow_twins` | `BarlowTwinsLoss` | Cross-correlation matrix alignment to identity |
 | SwAV | `forward.swav` | `SwAVLoss` | Online clustering with Sinkhorn-Knopp normalization |
 | NNCLR | `forward.nnclr` | `NTXEntLoss` | Nearest-neighbor contrastive learning |

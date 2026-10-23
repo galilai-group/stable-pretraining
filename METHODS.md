@@ -33,6 +33,7 @@ Methods come in two forms:
 | iGPT | — | `iGPT` | — | — | [El-Nouby et al., 2024](https://arxiv.org/abs/2401.08541) |
 | IJEPA | — | `IJEPA` | — | — | [Assran et al., 2023](https://arxiv.org/abs/2301.08243) |
 | LeJEPA | — | `LeJEPA` | — | — | [Balestriero & LeCun, 2025](https://arxiv.org/abs/2511.08544) |
+| Rectified LpJEPA | `lpjepa` | `LpJEPA` | `RDMReg`, `SlicedWassersteinDistance` | — | [Kuang et al., 2026](https://arxiv.org/abs/2602.01456) |
 | MAE | — | `MAE` | `MAELoss` | — | [He et al., 2022](https://arxiv.org/abs/2111.06377) |
 | MaskFeat | — | `MaskFeat` | — | — | [Wei et al., 2022](https://arxiv.org/abs/2112.09133) |
 | MIMRefiner | — | `MIMRefiner` | `DINOv1Loss`, `iBOTPatchLoss` | — | [Lehner et al., 2024](https://arxiv.org/abs/2402.10093) |
@@ -99,7 +100,7 @@ config in its module docstring.
 
 ## Loss Classes
 
-All loss classes are importable from `stable_pretraining.losses`:
+The following loss classes are importable from `stable_pretraining.losses`:
 
 | Loss | Methods that use it |
 |------|-------------------|
@@ -114,3 +115,6 @@ All loss classes are importable from `stable_pretraining.losses`:
 | `MAELoss` | MAE |
 | `CLIPLoss` | Multimodal CLIP-style objectives |
 | `NegativeCosineSimilarity` | SimSiam, general use |
+
+LpJEPA's `RDMReg` and `SlicedWassersteinDistance` helpers are available from
+`stable_pretraining.methods.lpjepa`.

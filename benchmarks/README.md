@@ -47,6 +47,12 @@ python benchmarks/cifar10/barlow-resnet18.py
 python benchmarks/cifar10/nnclr-resnet18.py
 ```
 
+### CIFAR-100 Benchmarks
+
+[Rectified LpJEPA / ResNet-18](cifar100/README.md) includes the training command,
+paper comparison, and three-seed results. This benchmark uses `--data-dir`
+(default `./data`) for dataset storage.
+
 ## Notes
 
 - The data directory will be created automatically if it doesn't exist
