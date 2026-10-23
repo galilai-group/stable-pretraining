@@ -4,6 +4,14 @@ Unreleased
 
 **New method**
 
+- ``ADNCE``: adaptive negative weighting for contrastive learning, following
+  Wu et al., "Understanding Contrastive Learning via Distributionally Robust
+  Optimization" (NeurIPS 2023). Adds ``ADNCELoss``, a composable ``adnce`` forward
+  function, a dictionary-based ``ADNCE`` method class, and a CIFAR-10/CIFAR-100 example
+  with a matched SimCLR baseline and held-out frozen-feature evaluation. The
+  loss uses stable logarithmic calculations and gradient-preserving distributed
+  gathering while retaining the authors' image-loss stop-gradient convention.
+
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

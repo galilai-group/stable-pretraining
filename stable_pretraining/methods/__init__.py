@@ -1,3 +1,4 @@
+from .adnce import ADNCE
 from .barlow_twins import BarlowTwins
 from .beit import BEiT
 from .byol import BYOL
@@ -33,6 +34,7 @@ from .visreg import VISReg
 from .wmse import WMSE
 
 __all__ = [
+    "ADNCE",
     "BarlowTwins",
     "BEiT",
     "BYOL",
