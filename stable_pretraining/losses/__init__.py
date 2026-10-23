@@ -2,6 +2,7 @@
 
 This module provides various self-supervised learning loss functions organized by category:
 - DINO losses: Self-distillation methods (DINOLoss, iBOTPatchLoss)
+- Deep InfoMax losses: Local mutual information maximization (LocalDIMLoss, DIMPriorLoss)
 - Joint embedding losses: Contrastive and non-contrastive methods (BYOL, VICReg, Barlow Twins, SimCLR)
 - Reconstruction losses: Masked prediction methods (MAE)
 - Utilities: Helper functions (sinkhorn_knopp, off_diagonal, NegativeCosineSimilarity)
@@ -9,6 +10,9 @@ This module provides various self-supervised learning loss functions organized b
 
 # DINO self-distillation losses
 from .dino import DINOv1Loss, DINOv2Loss, iBOTPatchLoss
+
+# Deep InfoMax losses
+from .dim import DIMPriorLoss, LocalDIMLoss
 
 # Joint embedding losses
 from .joint_embedding import (
@@ -38,6 +42,9 @@ __all__ = [
     "DINOv1Loss",
     "DINOv2Loss",
     "iBOTPatchLoss",
+    # Deep InfoMax
+    "DIMPriorLoss",
+    "LocalDIMLoss",
     # Joint embedding
     "BYOLLoss",
     "VICRegLoss",
