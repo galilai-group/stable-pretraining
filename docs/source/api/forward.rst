@@ -83,6 +83,46 @@ SimCLR
         _target_: stable_pretraining.losses.NTXEntLoss
         temperature: 0.5
 
+Poly-View
+~~~~~~~~~
+
+.. autofunction:: poly_view
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: Projection head for embedding transformation
+- ``poly_view_loss``: ``PVCLoss`` (``aggregation="geometric"`` or
+  ``"arithmetic"``) or ``SufficientStatisticsLoss``
+
+Each training batch needs ``M >= 2`` views per sample, e.g. from
+``MultiViewTransform`` with ``M`` transforms, or ``StackedMultiView`` with
+``n_views=M`` on GPU.
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.poly_view
+      backbone:
+        _target_: stable_pretraining.backbone.from_torchvision
+        model_name: resnet50
+      projector:
+        _target_: torch.nn.Sequential
+        _args_:
+          - _target_: torch.nn.Linear
+            in_features: 2048
+            out_features: 2048
+          - _target_: torch.nn.ReLU
+          - _target_: torch.nn.Linear
+            in_features: 2048
+            out_features: 128
+      poly_view_loss:
+        _target_: stable_pretraining.losses.PVCLoss
+        temperature: 0.1
+        aggregation: geometric
+
 NNCLR
 ~~~~~
 

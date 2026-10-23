@@ -37,16 +37,26 @@ class FakeDataset(Dataset):
     perfectly reproducible.
     """
 
-    def __init__(self, num_samples=32, image_size=32, num_classes=10, multi_view=False):
+    def __init__(
+        self,
+        num_samples=32,
+        image_size=32,
+        num_classes=10,
+        multi_view=False,
+        n_views=2,
+    ):
         self.num_samples = num_samples
         self.multi_view = multi_view
         g = torch.Generator().manual_seed(0)
         self.images = torch.randn(num_samples, 3, image_size, image_size, generator=g)
         self.labels = torch.randint(0, num_classes, (num_samples,), generator=g)
         if multi_view:
-            # Pre-generate views so __getitem__ is deterministic
-            self.noise1 = torch.randn_like(self.images, generator=g) * 0.1
-            self.noise2 = torch.randn_like(self.images, generator=g) * 0.1
+            # Pre-generate views so __getitem__ is deterministic. Views beyond
+            # the first two are drawn after them, so the two-view data (and the
+            # reference losses captured on it) do not change.
+            self.noises = [
+                torch.randn_like(self.images, generator=g) * 0.1 for _ in range(n_views)
+            ]
 
     def __len__(self):
         return self.num_samples
@@ -57,13 +67,10 @@ class FakeDataset(Dataset):
             return {
                 "views": [
                     {
-                        "image": self.images[idx] + self.noise1[idx],
+                        "image": self.images[idx] + noise[idx],
                         "label": self.labels[idx],
-                    },
-                    {
-                        "image": self.images[idx] + self.noise2[idx],
-                        "label": self.labels[idx],
-                    },
+                    }
+                    for noise in self.noises
                 ]
             }
         return {"image": self.images[idx], "label": self.labels[idx]}
@@ -108,12 +115,13 @@ def make_predictor(in_dim=PROJ_DIM, out_dim=PROJ_DIM):
     )
 
 
-def make_data(multi_view=True):
+def make_data(multi_view=True, n_views=2):
     ds = FakeDataset(
         num_samples=32,
         image_size=IMAGE_SIZE,
         num_classes=NUM_CLASSES,
         multi_view=multi_view,
+        n_views=n_views,
     )
     train_dl = DataLoader(ds, batch_size=8, drop_last=True, num_workers=0)
     val_ds = FakeDataset(
@@ -152,6 +160,19 @@ def build_simclr():
             optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
         ),
         data=make_data(multi_view=True),
+    )
+
+
+def build_poly_view():
+    return dict(
+        module=spt.Module(
+            backbone=make_backbone(),
+            projector=make_projector(),
+            forward=forward.poly_view,
+            poly_view_loss=losses.PVCLoss(temperature=0.5, aggregation="geometric"),
+            optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+        ),
+        data=make_data(multi_view=True, n_views=4),
     )
 
 
@@ -216,17 +237,19 @@ def build_supervised():
 
 METHOD_BUILDERS = {
     "simclr": build_simclr,
+    "poly_view": build_poly_view,
     "byol": build_byol,
     "vicreg": build_vicreg,
     "barlow_twins": build_barlow_twins,
     "supervised": build_supervised,
 }
 
-# Reference loss values captured on 2026-04-09 with seed=42.
-# If any method's loss changes, the forward/loss logic has drifted.
+# Reference loss values captured on 2026-04-09 with seed=42 (poly_view on
+# 2026-10-18). If any method's loss changes, the forward/loss logic has drifted.
 # Re-capture with: python stable_pretraining/tests/regression/_capture_refs.py
 REFERENCE_LOSSES = {
     "simclr": ("fit/loss_epoch", 1.645321011543274),
+    "poly_view": ("fit/loss_epoch", 2.2329773902893066),
     "byol": ("fit/loss_epoch", 1.822302222251892),
     "vicreg": ("fit/loss_epoch", 18.119741439819336),
     "barlow_twins": ("fit/loss_epoch", 1.7105509042739868),

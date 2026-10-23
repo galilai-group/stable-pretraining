@@ -48,14 +48,17 @@ def make_predictor():
 
 
 class FakeDataset(Dataset):
-    def __init__(self, n=32, multi_view=False):
+    def __init__(self, n=32, multi_view=False, n_views=2):
         g = torch.Generator().manual_seed(0)
         self.images = torch.randn(n, 3, IMAGE_SIZE, IMAGE_SIZE, generator=g)
         self.labels = torch.randint(0, NUM_CLASSES, (n,), generator=g)
         self.multi_view = multi_view
         if multi_view:
-            self.n1 = torch.randn_like(self.images, generator=g) * 0.1
-            self.n2 = torch.randn_like(self.images, generator=g) * 0.1
+            # Views beyond the first two are drawn after them, so the two-view
+            # data (and the references captured on it) do not change.
+            self.noises = [
+                torch.randn_like(self.images, generator=g) * 0.1 for _ in range(n_views)
+            ]
 
     def __len__(self):
         return len(self.images)
@@ -64,17 +67,20 @@ class FakeDataset(Dataset):
         if self.multi_view:
             return {
                 "views": [
-                    {"image": self.images[i] + self.n1[i], "label": self.labels[i]},
-                    {"image": self.images[i] + self.n2[i], "label": self.labels[i]},
+                    {"image": self.images[i] + noise[i], "label": self.labels[i]}
+                    for noise in self.noises
                 ]
             }
         return {"image": self.images[i], "label": self.labels[i]}
 
 
-def make_data(multi_view=True):
+def make_data(multi_view=True, n_views=2):
     return spt.data.DataModule(
         train=DataLoader(
-            FakeDataset(32, multi_view), batch_size=8, drop_last=True, num_workers=0
+            FakeDataset(32, multi_view, n_views),
+            batch_size=8,
+            drop_last=True,
+            num_workers=0,
         ),
         val=DataLoader(FakeDataset(16, False), batch_size=8, num_workers=0),
     )
@@ -90,6 +96,16 @@ METHODS = {
             optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
         ),
         data=make_data(True),
+    ),
+    "poly_view": lambda: dict(
+        module=spt.Module(
+            backbone=make_backbone(),
+            projector=make_projector(),
+            forward=forward.poly_view,
+            poly_view_loss=losses.PVCLoss(temperature=0.5, aggregation="geometric"),
+            optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+        ),
+        data=make_data(True, n_views=4),
     ),
     "byol": lambda: dict(
         module=spt.Module(

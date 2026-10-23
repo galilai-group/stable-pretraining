@@ -16,6 +16,8 @@ from .joint_embedding import (
     VICRegLoss,
     BarlowTwinsLoss,
     NTXEntLoss,
+    PVCLoss,
+    SufficientStatisticsLoss,
     SwAVLoss,
 )
 
@@ -43,6 +45,8 @@ __all__ = [
     "VICRegLoss",
     "BarlowTwinsLoss",
     "NTXEntLoss",
+    "PVCLoss",
+    "SufficientStatisticsLoss",
     "SwAVLoss",
     "CLIPLoss",
     # Reconstruction
