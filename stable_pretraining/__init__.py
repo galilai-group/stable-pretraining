@@ -180,6 +180,7 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     # Method classes (most-used; full catalog in stable_pretraining.methods)
     "BarlowTwins": ("stable_pretraining.methods.barlow_twins", "BarlowTwins"),
     "BYOL": ("stable_pretraining.methods.byol", "BYOL"),
+    "COSTAR": ("stable_pretraining.methods.costar", "COSTAR"),
     "CrossMAE": ("stable_pretraining.methods.cross_mae", "CrossMAE"),
     "DINO": ("stable_pretraining.methods.dino", "DINO"),
     "DINOv2": ("stable_pretraining.methods.dinov2", "DINOv2"),
@@ -483,6 +484,7 @@ __all__ = [
     # Method classes (most-used; full catalog: stable_pretraining.methods)
     "BarlowTwins",
     "BYOL",
+    "COSTAR",
     "CrossMAE",
     "DINO",
     "DINOv2",

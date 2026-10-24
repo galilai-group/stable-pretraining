@@ -157,6 +157,7 @@ docs/source/stable_pretraining*.rst
 docs/source/modules.rst
 
 outputs/
+/artifacts/
 multirun/
 ./data/
 mock_runs/

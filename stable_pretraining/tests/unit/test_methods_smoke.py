@@ -148,6 +148,58 @@ def test_multicrop_method_forward_backward(method_name: str, kwargs: dict) -> No
 # --- methods needing a custom call signature -----------------------------
 
 
+def test_costar_forward_backward() -> None:
+    """COSTAR accepts history dictionaries and keeps its EMA target detached."""
+    generator = torch.Generator().manual_seed(7)
+    model = M.COSTAR(
+        covariate_dim=2,
+        treatment_dim=1,
+        outcome_dim=1,
+        static_dim=1,
+        d_model=4,
+        num_heads=2,
+        num_layers=1,
+        max_relative_distance=2,
+        ffn_hidden_dim=8,
+        predictor_hidden_dim=8,
+        dropout=0.0,
+    )
+    valid_mask = torch.arange(4)[None, :] < torch.tensor([4, 3, 2])[:, None]
+    history = torch.randn(3, 4, 4, generator=generator)
+    history[~valid_mask] = float("nan")
+    batch = {
+        "dynamic_history": history,
+        "static_features": torch.randn(3, 1, generator=generator),
+        "valid_mask": valid_mask,
+    }
+    target_before = {
+        name: value.detach().clone()
+        for name, value in model.momentum_encoder.state_dict().items()
+    }
+    model.train()
+
+    output = model(batch, stage="fit")
+
+    assert isinstance(output, dict)
+    assert output["loss"].ndim == 0
+    assert torch.isfinite(output["loss"])
+    output["loss"].backward()
+    for component in (model.encoder, model.predictor):
+        gradients = [p.grad for p in component.parameters() if p.grad is not None]
+        assert gradients
+        assert all(torch.isfinite(gradient).all() for gradient in gradients)
+        assert any(gradient.abs().sum() > 0 for gradient in gradients)
+    assert all(
+        not parameter.requires_grad and parameter.grad is None
+        for parameter in model.momentum_encoder.parameters()
+    )
+    assert all(
+        torch.equal(value, target_before[name])
+        for name, value in model.momentum_encoder.state_dict().items()
+    )
+    assert model.ema_updates.item() == 0
+
+
 def test_msn_forward_backward():
     model = M.MSN(
         encoder_name=TINY_VIT,
