@@ -49,6 +49,7 @@ Methods come in two forms:
 | VICRegL | — | `VICRegL` | `VICRegLoss` | — | [Bardes et al., 2022](https://arxiv.org/abs/2210.01571) |
 | VISReg | — | `VISReg` | — | — | [Wu et al., 2026](https://arxiv.org/abs/2606.02572) |
 | WMSE | — | `WMSE` | — | — | [Ermolov et al., 2021](https://arxiv.org/abs/2007.06346) |
+| DenseCL | - | `DenseCL` | - | - | [Wang et al., 2021](https://arxiv.org/abs/2011.09157)
 
 ---
 

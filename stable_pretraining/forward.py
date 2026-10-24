@@ -1261,3 +1261,191 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     )
 
     return out
+
+
+def densecl(self, batch, stage):
+    """DenseCL forward pass.
+
+    Expected batch:
+        batch["views"]: two augmented image batches, each [B, C, H, W]
+
+    The backbone must return spatial feature maps [B, C, H, W].
+    """
+    # global loss and dense loss difer in implemntauiton by what is passed in
+    # def dense_loss(r, t_all, idx, t_negative, temp, exclude_self=False):
+    #     # r, t_all:   (B, S², D)   dense queries / dense keys
+    #     # idx:        (B, S²)      Eq. 4 correspondence
+    #     # t_negative: (N, D)       pooled dense keys of other images (queue or the batch)
+    #     r = F.normalize(r, dim=-1)
+    #     t_all = F.normalize(t_all, dim=-1).detach()
+    #     t_negative = F.normalize(t_negative, dim=-1).detach()
+
+    #     # positive key for each query location comes from the correspondence
+    #     t_positive = torch.gather(t_all, 1, idx.unsqueeze(-1).expand(-1, -1, t_all.size(-1)))  # (B, S², D)
+
+    #     neg_logits = torch.einsum("bsd,nd->bsn", r, t_negative)                                # (B, S², N)
+    #     if exclude_self:
+    #         own_image = torch.eye(r.size(0), dtype=torch.bool, device=r.device)                # (B, B)
+    #         neg_logits = neg_logits.masked_fill(own_image[:, None, :], float("-inf"))
+
+    #     positive_correspondence = torch.exp((r * t_positive).sum(dim=-1) / temp)               # (B, S²)
+    #     negative_correspondence = torch.exp(neg_logits / temp).sum(dim=-1)                     # (B, S²)
+
+    #     loss = -torch.log(positive_correspondence / (positive_correspondence + negative_correspondence))
+
+    #     return loss.mean()  # (1/S²) Σ_s, averaged over the batch
+
+    # def global_loss(q, k_positive, k_negative, temp, exclude_self=False):
+    #     # q, k_positive: (B, D);  k_negative: (N, D)
+    #     q = F.normalize(q, dim=-1)
+    #     k_positive = F.normalize(k_positive, dim=-1).detach()  # detach because they come from the momentum encoder
+    #     k_negative = F.normalize(k_negative, dim=-1).detach()
+
+    #     neg_logits = torch.einsum("bd,nd->bn", q, k_negative)                                  # (B, N)
+    #     if exclude_self:
+    #         own_image = torch.eye(q.size(0), dtype=torch.bool, device=q.device)                # (B, B)
+    #         neg_logits = neg_logits.masked_fill(own_image, float("-inf"))
+
+    #     positive_correspondence = torch.exp((q * k_positive).sum(dim=-1) / temp)                    # (B,)
+    #     negative_correspondence = torch.exp(neg_logits / temp).sum(dim=-1)  # (B,)
+
+    #     loss = -torch.log(positive_correspondence / (positive_correspondence + negative_correspondence))
+
+    #     return loss.mean()  # mean over batch
+
+    # @torch.no_grad()
+    # def dense_correspondence(feat_q, feat_k):
+    #     # feat_q, feat_k: (B, K, S, S) backbone maps, adaptive-avg-pooled to S x S
+    #     fq = F.normalize(feat_q.flatten(2), dim=1)       # (B, K, S²)
+    #     fk = F.normalize(feat_k.flatten(2), dim=1)       # (B, K, S²)
+    #     sim = torch.bmm(fq.transpose(1, 2), fk)          # (B, S², S²) cosine similarity
+    #     return sim.argmax(dim=2)                         # (B, S²)
+
+    # def total_loss(q, k_global, r, t_all, feat_q, feat_k,
+    #            queue_global=None, queue_dense=None, lam=0.5, temp=0.2):
+    #     idx = dense_correspondence(feat_q, feat_k)                     # Eq. 4
+    #     in_batch = queue_global is None or queue_dense is None
+    #     if in_batch:
+    #         queue_global = k_global                                        # (B, D) other images' global keys
+    #         queue_dense = t_all.mean(dim=1)
+    #     loss_q = global_loss(q, k_global, queue_global, temp, exclude_self=in_batch)          # Eq. 1
+    #     loss_r = dense_loss(r, t_all, idx, queue_dense, temp, exclude_self=in_batch)          # Eq. 2
+    #     return (1 - lam) * loss_q + lam * loss_r                       # Eq. 3
+
+    # view1, view2 = batch["views"]
+
+    # # Online encoder: gradients flow through this branch.
+    # q_map = self.backbone(view1)    # dense feature map
+    # q_map2 = self.backbone(view2)
+
+    # q_global = F.normalize(self.global_projector(q_map.mean(dim=(-2, -1))), dim=1) # global feature
+    # q_global2 = F.normalize(self.global_projector(q_map2.mean(dim=(-2, -1))), dim=1)
+
+    # q_dense = F.normalize(self.local_projector(q_map), dim=1)
+    # q_dense2 = F.normalize(self.local_projector(q_map2), dim=1)
+
+    # # Momentum encoder supplies stop-gradient targets.
+    # with torch.no_grad():
+    #     k_map = self.momentum_backbone(view2)
+    #     k_map2 = self.momentum_backbone(view1)
+
+    #     k_global = F.normalize(self.global_projector(k_map.mean(dim=(-2, -1))), dim=1)
+    #     k_global2 = F.normalize(self.global_projector(k_map2.mean(dim=(-2, -1))), dim=1)
+
+    #     k_dense = F.normalize(self.local_projector(k_map), dim=1)
+    #     k_dense2 = F.normalize(self.local_projector(k_map2), dim=1)
+
+    # temperature = self.temperature
+    # to_tokens = lambda x: x.flatten(2).transpose(1, 2)
+
+    # loss_12 = total_loss(q_global, k_global, to_tokens(q_dense), to_tokens(k_dense),
+    #                      q_map, k_map, lam=self.dense_loss_weight, temp=temperature)
+    # loss_21 = total_loss(q_global2, k_global2, to_tokens(q_dense2), to_tokens(k_dense2),
+    #                      q_map2, k_map2, lam=self.dense_loss_weight, temp=temperature)
+    # loss = (loss_12 + loss_21) / 2
+
+    # # Project each spatial location into a local embedding.
+
+    # # Match each online spatial feature to the most similar target
+    # # spatial feature in the corresponding image.
+    # # b, d, h, w = q_dense.shape
+    # # q_flat = q_dense.flatten(2).transpose(1, 2)  # [B, HW, D]
+    # # k_flat = k_dense.flatten(2).transpose(1, 2)  # [B, HW, D]
+
+    # # Dense contrastive logits: matched locations are positives;
+    # # other spatial locations in the minibatch act as negatives.
+    # # q_all = q_flat.reshape(b * h * w, d)
+    # # k_all = k_flat.reshape(b * h * w, d)
+
+    # result = {"loss": loss}
+    # if stage != "train":
+    #     result["embedding"] = q_global.detach()
+    # # matched_indices = (
+    # #     torch.arange(b, device=view1.device)[:, None] * (h * w) + matches
+    # # ).reshape(-1)
+
+    # # dense_logits = q_all @ k_all.T / temperature
+    # # dense_loss = F.cross_entropy(dense_logits, matched_indices)
+
+    # # loss = global_loss + self.dense_loss_weight * dense_loss
+
+    # # # Scalar loss is the required training contract.
+    # # result = {"loss": loss}
+
+    # # # Expose representations for downstream evaluation callbacks.
+    # # if stage != "train":
+    # #     result["embedding"] = q_global.detach()
+
+    # return result
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is None:
+        # Single-view validation
+        out["embedding"] = self.backbone(batch["image"]).mean(dim=(-2, -1))
+        if "label" in batch:
+            out["label"] = batch["label"]
+        return out
+
+    if len(views) != 2:
+        raise ValueError(
+            f"DenseCL requires exactly 2 views, got {len(views)}. "
+            "For other configurations, please implement a custom forward function."
+        )
+
+    if self.training:
+        self.update_momentum_encoder()
+
+    images = [view["image"] for view in views]
+    pool = lambda m: m.mean(dim=(-2, -1))  # noqa: E731
+
+    # Online encoder gradient flow).
+    q_maps = [self.backbone(img) for img in images]
+    out["embedding"] = torch.cat([pool(m) for m in q_maps], dim=0).detach()
+    if "label" in views[0]:
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+    if not self.training:
+        return out
+
+    q = [self.global_projector(pool(m)) for m in q_maps]
+    r = [self.local_projector(m) for m in q_maps]
+
+    # Momentum encoder (stop-gradient targets), views swapped.
+    with torch.no_grad():
+        k_maps = [self.momentum_backbone(images[1]), self.momentum_backbone(images[0])]
+        k = [self.global_projector(pool(m)) for m in k_maps]
+        t = [self.local_projector(m) for m in k_maps]
+
+    loss_12 = self.densecl_loss(q[0], k[0], r[0], t[0], q_maps[0], k_maps[0])
+    loss_21 = self.densecl_loss(q[1], k[1], r[1], t[1], q_maps[1], k_maps[1])
+
+    out["loss"] = (loss_12 + loss_21) / 2
+    self.log(
+        f"{stage}/loss",
+        out["loss"],
+        on_step=True,
+        on_epoch=True,
+        sync_dist=True,
+    )
+    return out

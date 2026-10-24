@@ -1,0 +1,3 @@
+method: simclr
+temperature: 0.5
+system.working_dir: /Users/ethanlin/stable-pretraining

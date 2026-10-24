@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "run_id": "8689607f2f40",
+  "run_dir": "/Users/ethanlin/stable-pretraining/spt-quickstart/runs/20261017/210915/8689607f2f40",
+  "updated_at": 1792285755.920871,
+  "step": 3,
+  "epoch": 0,
+  "metrics": {
+    "fit/loss_step": {
+      "last": 2.7069711685180664,
+      "min": 2.7069711685180664,
+      "max": 2.7080202102661133,
+      "count": 4
+    },
+    "train/probe_loss_step": {
+      "last": 0.6956136226654053,
+      "min": 0.6953829526901245,
+      "max": 0.7502759099006653,
+      "count": 4
+    },
+    "hparams/lr_default_0": {
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0008535534143447876,
+      "count": 4
+    },
+    "hparams/lr_probe": {
+      "last": 0.0010000000474974513,
+      "min": 0.0010000000474974513,
+      "max": 0.0010000000474974513,
+      "count": 4
+    },
+    "hardware/cpu_percent": {
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "count": 4
+    },
+    "hardware/ram_used_pct": {
+      "last": 76.5,
+      "min": 76.5,
+      "max": 76.5,
+      "count": 4
+    },
+    "hardware/ram_used_gb": {
+      "last": 6.4359893798828125,
+      "min": 6.4359893798828125,
+      "max": 6.4359893798828125,
+      "count": 4
+    },
+    "hardware/disk_read_mb_s": {
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "count": 4
+    },
+    "hardware/disk_write_mb_s": {
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "count": 4
+    },
+    "hardware/net_recv_mb_s": {
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "count": 4
+    },
+    "hardware/net_sent_mb_s": {
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "count": 4
+    },
+    "epoch": {
+      "last": 0.0,
+      "min": 0.0,
+      "max": 0.0,
+      "count": 6
+    },
+    "eval/probe_accuracy_step": {
+      "last": 0.5,
+      "min": 0.5,
+      "max": 0.5,
+      "count": 2
+    },
+    "eval/probe_accuracy_epoch": {
+      "last": 0.5,
+      "min": 0.5,
+      "max": 0.5,
+      "count": 1
+    },
+    "fit/loss_epoch": {
+      "last": 2.7074124813079834,
+      "min": 2.7074124813079834,
+      "max": 2.7074124813079834,
+      "count": 1
+    },
+    "train/probe_loss_epoch": {
+      "last": 0.7181565165519714,
+      "min": 0.7181565165519714,
+      "max": 0.7181565165519714,
+      "count": 1
+    }
+  }
+}
