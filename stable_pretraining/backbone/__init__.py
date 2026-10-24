@@ -1,4 +1,5 @@
 from .convmixer import ConvMixer
+from .direct_predictor import DirectPredictor
 from .jet import Jet
 from .mlp import MLP
 from .nn_modules import (
@@ -79,6 +80,7 @@ from . import video  # noqa: F401  — video encoders live under sp.backbone.vid
 __all__ = [
     Jet,
     MLP,
+    DirectPredictor,
     TensorAggregator,
     TeacherStudentWrapper,
     Resnet9,
