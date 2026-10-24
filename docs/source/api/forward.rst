@@ -187,6 +187,40 @@ BYOL
             in_features: 4096
             out_features: 256
 
+DirectPred
+~~~~~~~~~~
+
+.. autofunction:: directpred
+
+**Required Module Attributes:**
+
+- ``backbone``: TeacherStudentWrapper for feature extraction
+- ``projector``: TeacherStudentWrapper for projection head
+- ``predictor``: :class:`~stable_pretraining.backbone.DirectPredictor`
+- ``byol_loss``: BYOL loss function
+
+**Key Features:**
+
+- BYOL training with an EMA target network (requires ``TeacherStudentCallback``)
+- Linear predictor set in closed form from a running correlation of the online projections
+- Predictor statistics are buffers, so they are checkpointed with the model
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.directpred
+      backbone: ...
+      projector: ...
+      predictor:
+        _target_: stable_pretraining.backbone.DirectPredictor
+        dim: 128
+        rho: 0.3
+        eps: 0.1
+      byol_loss:
+        _target_: stable_pretraining.losses.BYOLLoss
+
 VICReg
 ~~~~~~
 

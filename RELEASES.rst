@@ -17,6 +17,15 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``DirectPred``: BYOL whose linear predictor is not trained but set in
+  closed form from a running correlation estimate of the online projections
+  (shared eigenvectors, square-root eigenvalues plus a small boost), per Tian,
+  Chen and Ganguli, "Understanding self-supervised learning dynamics without
+  contrastive pairs" (ICML 2021). Adds ``stable_pretraining.backbone.DirectPredictor``
+  (statistics and weight kept as buffers, so they are checkpointed), the
+  ``directpred`` forward function, and the ``DirectPred`` method class, with a
+  CIFAR-10 ResNet-18 benchmark under ``benchmarks/cifar10/directpred-resnet18.py``.
+  Registered in ``stable_pretraining.methods`` and ``METHODS.md``.
 
 **Discoverability improvements**
 

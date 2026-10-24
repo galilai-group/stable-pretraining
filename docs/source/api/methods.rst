@@ -33,6 +33,7 @@ or by bootstrapping without explicit negatives.
 
    SimCLR
    BYOL
+   DirectPred
    NNCLR
    MoCov2
    MoCov3

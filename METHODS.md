@@ -18,6 +18,7 @@ Methods come in two forms:
 | Supervised | `supervised` | — | any | — | — |
 | SimCLR | `simclr` | `SimCLR` | `NTXEntLoss` | — | [Chen et al., 2020](https://arxiv.org/abs/2002.05709) |
 | BYOL | `byol` | `BYOL` | `BYOLLoss` | `TeacherStudent†` | [Grill et al., 2020](https://arxiv.org/abs/2006.07733) |
+| DirectPred | `directpred` | `DirectPred` | `BYOLLoss` | `TeacherStudent†` | [Tian et al., 2021](https://arxiv.org/abs/2102.06810) |
 | VICReg | `vicreg` | `VICReg` | `VICRegLoss` | — | [Bardes et al., 2022](https://arxiv.org/abs/2105.04906) |
 | Barlow Twins | `barlow_twins` | `BarlowTwins` | `BarlowTwinsLoss` | — | [Zbontar et al., 2021](https://arxiv.org/abs/2103.03230) |
 | SwAV | `swav` | `SwAV` | `SwAVLoss` | `OnlineQueue` | [Caron et al., 2020](https://arxiv.org/abs/2006.09882) |
@@ -104,7 +105,7 @@ All loss classes are importable from `stable_pretraining.losses`:
 | Loss | Methods that use it |
 |------|-------------------|
 | `NTXEntLoss` | SimCLR, NNCLR, MoCov2, MoCov3 |
-| `BYOLLoss` | BYOL |
+| `BYOLLoss` | BYOL, DirectPred |
 | `VICRegLoss` | VICReg, VICRegL |
 | `BarlowTwinsLoss` | Barlow Twins |
 | `SwAVLoss` | SwAV |
