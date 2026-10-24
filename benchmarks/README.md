@@ -45,6 +45,9 @@ python benchmarks/cifar10/barlow-resnet18.py
 
 # NNCLR
 python benchmarks/cifar10/nnclr-resnet18.py
+
+# EquiMod
+python benchmarks/cifar10/equimod-resnet18.py
 ```
 
 ## Notes

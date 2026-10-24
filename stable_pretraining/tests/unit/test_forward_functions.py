@@ -439,3 +439,197 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         assert "embedding" in result
         assert "logits" in result
         assert "loss" in result
+
+
+# ---------------------------------------------------------------------------
+# EquiMod: three-view forward function
+# ---------------------------------------------------------------------------
+
+
+def _equimod_transforms():
+    """[un-augmented, augmented, augmented] CIFAR-style pipelines."""
+
+    def augmented():
+        return transforms.Compose(
+            transforms.RGB(),
+            transforms.RandomResizedCrop((32, 32), scale=(0.2, 1.0)),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.ColorJitter(
+                brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1, p=0.8
+            ),
+            transforms.RandomGrayscale(p=0.2),
+            transforms.ToImage(**spt.data.static.CIFAR10),
+        )
+
+    original = transforms.Compose(
+        transforms.RGB(), transforms.ToImage(**spt.data.static.CIFAR10)
+    )
+    return transforms.MultiViewTransform([original, augmented(), augmented()])
+
+
+def _equimod_batch(n: int = 4):
+    """Collated three-view training batch, as the DataLoader delivers it."""
+    torch.manual_seed(0)
+    transform = _equimod_transforms()
+    samples = [
+        transform({"image": _create_dummy_pil_image((32, 32)), "label": i % 10})
+        for i in range(n)
+    ]
+    return torch.utils.data.default_collate(samples)
+
+
+def _equimod_module(embed_dim: int = 16):
+    """A real EquiMod so forward.equimod and EquiMod.forward can be compared."""
+    from stable_pretraining.methods import EquiMod
+
+    torch.manual_seed(0)
+    encoder = nn.Sequential(
+        nn.Conv2d(3, embed_dim, kernel_size=3, stride=2),
+        nn.BatchNorm2d(embed_dim),
+        nn.AdaptiveAvgPool2d(1),
+        nn.Flatten(),
+    )
+    return EquiMod(
+        encoder_name=encoder,
+        projector_dims=(32, 8),
+        equi_projector_dims=(32, 8),
+        param_projector_dims=(8,),
+    )
+
+
+@pytest.mark.unit
+class TestEquiModForward:
+    """forward.equimod on a composable Module and on the EquiMod class."""
+
+    def test_training_batch_with_benchmark_transforms(self):
+        from stable_pretraining.methods.equimod import EquivarianceModule
+
+        batch = _equimod_batch(n=4)
+        module = Mock()
+        module.backbone = nn.Sequential(nn.Flatten(), nn.Linear(3 * 32 * 32, 16))
+        module.projector = nn.Linear(16, 8)
+        module.simclr_loss = spt.losses.NTXEntLoss(temperature=0.5)
+        module.equi = EquivarianceModule(
+            16, projector_dims=(16, 8), param_projector_dims=(8,)
+        )
+        module.equi_loss = spt.losses.NTXEntLoss(temperature=0.2)
+        module.training = True
+        module.log = Mock()
+
+        result = forward_module.equimod(module, batch, "fit")
+
+        assert result["embedding"].shape == (8, 16)  # two augmented views
+        _, v1, v2 = batch["views"]
+        assert torch.equal(result["label"], torch.cat([v1["label"], v2["label"]]))
+        assert torch.isfinite(result["loss"])
+        logged = {call.args[0] for call in module.log.call_args_list}
+        assert logged == {"fit/inv", "fit/equi", "fit/equi_gain", "fit/loss"}
+
+    def test_loss_weight_and_param_keys_are_honoured(self):
+        from stable_pretraining.methods.equimod import EquivarianceModule
+
+        def augmented_with_blur():
+            return transforms.Compose(
+                transforms.RGB(),
+                transforms.RandomResizedCrop((32, 32), scale=(0.2, 1.0)),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.ColorJitter(
+                    brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1, p=0.8
+                ),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.PILGaussianBlur(p=0.5),  # records the 16th/17th entries
+                transforms.ToImage(**spt.data.static.CIFAR10),
+            )
+
+        torch.manual_seed(0)
+        original = transforms.Compose(
+            transforms.RGB(), transforms.ToImage(**spt.data.static.CIFAR10)
+        )
+        transform = transforms.MultiViewTransform(
+            [original, augmented_with_blur(), augmented_with_blur()]
+        )
+        samples = [
+            transform({"image": _create_dummy_pil_image((32, 32)), "label": i})
+            for i in range(4)
+        ]
+        batch = torch.utils.data.default_collate(samples)
+
+        module = Mock()
+        module.backbone = nn.Sequential(nn.Flatten(), nn.Linear(3 * 32 * 32, 16))
+        module.projector = nn.Linear(16, 8)
+        module.simclr_loss = spt.losses.NTXEntLoss(temperature=0.5)
+        module.equi = EquivarianceModule(
+            16,
+            projector_dims=(16, 8),
+            param_dim=17,
+            param_projector_dims=(8,),
+            weight=0.5,
+            param_keys={"blur": "PILGaussianBlur"},
+        )
+        module.equi_loss = spt.losses.NTXEntLoss(temperature=0.2)
+        module.training = True
+        module.log = Mock()
+
+        result = forward_module.equimod(module, batch, "fit")
+
+        logged = {call.args[0]: call.args[1] for call in module.log.call_args_list}
+        assert torch.allclose(
+            result["loss"], logged["fit/inv"] + 0.5 * logged["fit/equi"], atol=1e-6
+        )
+
+    def test_matches_method_class_forward(self):
+        model = _equimod_module()
+        model.train()
+        model.log = Mock()
+        batch = _equimod_batch(n=4)
+        original, v1, v2 = batch["views"]
+
+        torch.manual_seed(1)
+        via_forward = forward_module.equimod(model, batch, "fit")
+        torch.manual_seed(1)
+        via_class = model(
+            v1["image"],
+            v2["image"],
+            original["image"],
+            model.augmentation_params(v1),
+            model.augmentation_params(v2),
+        )
+        assert torch.allclose(via_forward["loss"], via_class.loss, atol=1e-6)
+        assert torch.allclose(via_forward["embedding"], via_class.embedding, atol=1e-6)
+
+    def test_eval_mode_skips_loss(self):
+        model = _equimod_module()
+        model.eval()
+        batch = _equimod_batch(n=4)
+        result = forward_module.equimod(model, batch, "fit")
+        assert "loss" not in result
+        assert result["embedding"].shape == (8, 16)
+
+    def test_validation_single_view(self):
+        model = _equimod_module()
+        model.eval()
+        batch = {"image": torch.randn(4, 3, 32, 32), "label": torch.arange(4)}
+        result = forward_module.equimod(model, batch, "validate")
+        assert result["embedding"].shape == (4, 16)
+        assert torch.equal(result["label"], torch.arange(4))
+        assert "loss" not in result
+
+    def test_named_views_dict_is_accepted(self):
+        model = _equimod_module()
+        model.train()
+        model.log = Mock()
+        batch = _equimod_batch(n=4)
+        original, v1, v2 = batch["views"]
+        named = {"views": {"original": original, "view_a": v1, "view_b": v2}}
+        torch.manual_seed(1)
+        from_named = forward_module.equimod(model, named, "fit")
+        torch.manual_seed(1)
+        from_list = forward_module.equimod(model, batch, "fit")
+        assert torch.allclose(from_named["loss"], from_list["loss"], atol=1e-6)
+
+    def test_two_views_is_rejected(self):
+        model = _equimod_module()
+        model.train()
+        batch = _equimod_batch(n=4)
+        with pytest.raises(ValueError, match="exactly 3 views"):
+            forward_module.equimod(model, {"views": batch["views"][1:]}, "fit")

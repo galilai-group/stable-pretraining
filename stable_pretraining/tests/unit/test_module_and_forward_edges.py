@@ -32,6 +32,35 @@ def test_ssl_evaluation_preserves_labels_and_does_not_require_loss(name, multipl
     assert "loss" not in result
 
 
+@pytest.mark.parametrize("multiple", [False, True])
+def test_equimod_evaluation_preserves_labels_and_does_not_require_loss(multiple):
+    backbone = nn.Linear(3, 4)
+    model = SimpleNamespace(backbone=backbone, training=False)
+    views = [
+        {"image": torch.randn(2, 3), "label": torch.tensor([0, 1])} for _ in range(3)
+    ]
+    batch = {"views": views} if multiple else views[0]
+    result = forward.equimod(model, batch, "validate")
+    # the un-augmented view (views[0]) is excluded from the probe embeddings
+    images = (
+        torch.cat([view["image"] for view in views[1:]])
+        if multiple
+        else views[0]["image"]
+    )
+    torch.testing.assert_close(result["embedding"], backbone(images))
+    assert result["label"].tolist() == ([0, 1] * (2 if multiple else 1))
+    assert "loss" not in result
+
+
+def test_equimod_rejects_wrong_number_of_views():
+    with pytest.raises(ValueError, match="exactly 3"):
+        forward.equimod(
+            SimpleNamespace(),
+            {"views": [{"image": torch.zeros(2, 3)} for _ in range(2)]},
+            "fit",
+        )
+
+
 @pytest.mark.parametrize("name", ["byol", "vicreg", "barlow_twins", "nnclr"])
 def test_two_view_methods_reject_wrong_number_of_views(name):
     with pytest.raises(ValueError, match="exactly 2"):

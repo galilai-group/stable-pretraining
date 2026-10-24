@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``equimod`` — EquiMod augmentation-equivariance module on SimCLR
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -1259,5 +1260,114 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         sync_dist=True,
         prog_bar=True,
     )
+
+    return out
+
+
+def equimod(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for EquiMod (SimCLR plus an equivariance module).
+
+    EquiMod keeps SimCLR's invariance loss between two augmented views and adds
+    an equivariance loss: an augmentation-conditioned predictor maps the
+    embedding of the un-augmented image to the embedding of each augmented view,
+    given the parameters of the augmentation that produced it. The parameters
+    are read from the records the library's transforms write into each view.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: Feature extraction network
+            - projector: Projection head for the invariance loss
+            - simclr_loss: NT-Xent loss for the invariance term
+            - equi: EquivarianceModule (heads, parameter projector, loss weight)
+            - equi_loss: NT-Xent loss for the equivariance term
+        batch: A list of exactly three view dicts (from MultiViewTransform):
+            ``[un-augmented, augmented, augmented]``. The two augmented views
+            must carry the parameter records of ``RandomResizedCrop``,
+            ``RandomHorizontalFlip``, ``ColorJitter`` and ``RandomGrayscale``.
+            A single dict is treated as validation / single-view input.
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Backbone features of the two augmented views, [2B, D]
+            - 'loss': invariance + lambda * equivariance (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in the EquiMod paper :cite:`devillers2023equimod`. The
+        backbone runs once over ``[original, view1, view2]`` so batch-norm
+        statistics are shared, as in the official implementation.
+
+    Example:
+        ::
+
+            import stable_pretraining as spt
+            from stable_pretraining.forward import equimod
+            from stable_pretraining.methods.equimod import EquivarianceModule
+
+            backbone = spt.backbone.from_torchvision("resnet18", low_resolution=True)
+            module = spt.Module(
+                forward=equimod,
+                backbone=backbone,
+                projector=torch.nn.Linear(512, 128),
+                simclr_loss=spt.losses.NTXEntLoss(temperature=0.5),
+                equi=EquivarianceModule(512, projector_dims=(2048, 2048, 128)),
+                equi_loss=spt.losses.NTXEntLoss(temperature=0.2),
+                optim={"optimizer": {"type": "LARS", "lr": 4.0}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is not None:
+        if isinstance(views, dict):  # named views: keep insertion order
+            views = list(views.values())
+        if len(views) != 3:
+            raise ValueError(
+                f"EquiMod requires exactly 3 views [original, view1, view2], got "
+                f"{len(views)}. Use a MultiViewTransform whose first pipeline "
+                "applies no augmentation."
+            )
+        original, view1, view2 = views
+        B = original["image"].shape[0]
+        # One pass over [original, view1, view2] so batch-norm statistics are
+        # shared by the three, as in the official implementation.
+        h = self.backbone(
+            torch.cat([original["image"], view1["image"], view2["image"]], dim=0)
+        )
+        h_views = h[B:]
+        out["embedding"] = h_views
+
+        if "label" in view1:
+            out["label"] = torch.cat([view1["label"], view2["label"]], dim=0)
+
+        if self.training:
+            z = self.projector(h_views)
+            invariance = self.simclr_loss(z[:B], z[B:])
+            params = torch.cat(
+                [self.equi.params_from_view(view1), self.equi.params_from_view(view2)],
+                dim=0,
+            )
+            y_views, y_hat, gain = self.equi(h[:B], h_views, params)
+            equivariance = self.equi_loss(y_views, y_hat)
+            out["loss"] = invariance + self.equi.weight * equivariance
+            for name, value in (
+                ("inv", invariance),
+                ("equi", equivariance),
+                ("equi_gain", gain),
+                ("loss", out["loss"]),
+            ):
+                self.log(
+                    f"{stage}/{name}",
+                    value,
+                    on_step=True,
+                    on_epoch=True,
+                    sync_dist=True,
+                )
+    else:
+        # Single-view validation
+        out["embedding"] = self.backbone(batch["image"])
+        if "label" in batch:
+            out["label"] = batch["label"]
 
     return out

@@ -275,6 +275,45 @@ Supervised
         in_features: 2048
         out_features: 1000
 
+EquiMod
+~~~~~~~
+
+.. autofunction:: equimod
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: Projection head for the invariance loss
+- ``simclr_loss``: NT-Xent loss for the invariance term
+- ``equi``: :class:`~stable_pretraining.methods.equimod.EquivarianceModule`
+  (equivariance projector, parameter projector, predictor, loss weight)
+- ``equi_loss``: NT-Xent loss for the equivariance term
+
+**Key Features:**
+
+- SimCLR invariance plus an augmentation-equivariance objective
+- Predictor conditioned on the recorded augmentation parameters
+- Needs three views per sample: ``[un-augmented, augmented, augmented]``
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.equimod
+      backbone: ...
+      projector: ...
+      simclr_loss:
+        _target_: stable_pretraining.losses.NTXEntLoss
+        temperature: 0.5
+      equi:
+        _target_: stable_pretraining.methods.equimod.EquivarianceModule
+        embed_dim: 512
+        projector_dims: [2048, 2048, 128]
+      equi_loss:
+        _target_: stable_pretraining.losses.NTXEntLoss
+        temperature: 0.2
+
 Custom Forward Functions
 ------------------------
 

@@ -172,6 +172,23 @@ def test_pmsn_forward_backward():
     _assert_loss_and_backward(model, output)
 
 
+def test_equimod_forward_backward():
+    model = M.EquiMod(
+        encoder_name=TINY_VIT,
+        projector_dims=(256, 64),
+        equi_projector_dims=(256, 64),
+        param_projector_dims=(32,),
+    )
+    model.train()
+    v1, v2 = _two_views()
+    g = torch.Generator().manual_seed(3)
+    original = torch.randn(B, C, H, W, generator=g)
+    p1 = torch.randn(B, model.param_dim, generator=g)
+    p2 = torch.randn(B, model.param_dim, generator=g)
+    output = model(v1, v2, original, p1, p2)
+    _assert_loss_and_backward(model, output)
+
+
 def test_swav_forward_backward_two_view():
     """SwAV's compatibility 2-view forward (no multi-crop)."""
     model = M.SwAV(
@@ -283,6 +300,7 @@ def test_mim_refiner_forward_backward():
         ("SimCLR", {"projector_dims": (256, 256, 64)}),
         ("BYOL", {"projector_dims": (256, 64), "predictor_dims": (256, 64)}),
         ("VICReg", {"projector_dims": (256, 256, 256)}),
+        ("EquiMod", {"projector_dims": (256, 64), "equi_projector_dims": (256, 64)}),
     ],
 )
 def test_eval_mode_no_loss(method_name: str, kwargs: dict) -> None:
