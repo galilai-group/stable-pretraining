@@ -1,5 +1,7 @@
 """Callback for automatic TeacherStudentWrapper EMA updates."""
 
+import math
+
 import lightning as pl
 import torch
 from lightning.pytorch.callbacks import Callback
@@ -27,6 +29,13 @@ class TeacherStudentCallback(Callback):
         will see the pre-update teacher state. Reading state from the
         *next* step is fine — the order rule only matters within a single
         step.
+
+        Wrappers with ``ema_schedule="step"`` use the current coefficient for
+        the teacher update, then prepare the next coefficient from
+        ``trainer.global_step / trainer.estimated_stepping_batches``. Before
+        the optimizer step, the numerator includes that impending step.
+        A finite, positive total step count is required. The schedule is
+        clamped at its endpoint. Other wrappers retain epoch-based scheduling.
 
     Args:
         update_frequency: How often to update the teacher network, measured in
@@ -145,10 +154,20 @@ class TeacherStudentCallback(Callback):
             if hasattr(module, "update_teacher") and callable(
                 getattr(module, "update_teacher")
             ):
-                # Update EMA coefficient first (use current epoch's value), then update teacher parameters via EMA
-                if hasattr(module, "update_ema_coefficient") and callable(
+                has_schedule = hasattr(module, "update_ema_coefficient") and callable(
                     getattr(module, "update_ema_coefficient")
-                ):
+                )
+                step_schedule = (
+                    has_schedule and getattr(module, "ema_schedule", "epoch") == "step"
+                )
+                if step_schedule:
+                    total_steps = trainer.estimated_stepping_batches
+                    if not math.isfinite(total_steps) or total_steps <= 0:
+                        raise ValueError(
+                            "Step-based EMA requires a finite, positive "
+                            "estimated_stepping_batches; configure max_steps or max_epochs"
+                        )
+                elif has_schedule:
                     module.update_ema_coefficient(
                         trainer.current_epoch, trainer.max_epochs
                     )
@@ -162,6 +181,12 @@ class TeacherStudentCallback(Callback):
                         on_step=True,
                         on_epoch=False,
                     )
+
+                if step_schedule:
+                    # All4One's reference prepares the next coefficient only
+                    # after applying EMA; the saved coefficient resumes that order.
+                    step = trainer.global_step + int(self.update_after_backward)
+                    module.update_ema_coefficient(min(step, total_steps), total_steps)
 
                 # Mark that updates are happening (for warning system)
                 if hasattr(module, "_mark_updated"):

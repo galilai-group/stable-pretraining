@@ -1,7 +1,7 @@
 import copy
 import math
 from functools import partial
-from typing import Union, Iterable, List, Optional, Any, Dict
+from typing import Union, Iterable, List, Optional, Any, Dict, Literal
 
 import torch
 import torchvision
@@ -355,9 +355,9 @@ class TeacherStudentWrapper(nn.Module):
     forward_student() and forward_teacher() methods in your custom forward function.
 
     The teacher model is updated by taking a running average of the student's
-    parameters and buffers. When `ema_coefficient == 0.0`, the teacher and student
-    are literally the same object, saving memory but forward passes through the teacher
-    will not produce any gradients.
+    parameters and, by default, buffers. When both EMA endpoints are zero and
+    ``update_buffers=True``, the teacher and student are the same object, saving
+    memory. Forward passes through the teacher will not produce any gradients.
 
     Usage example::
 
@@ -382,6 +382,20 @@ class TeacherStudentWrapper(nn.Module):
             Default is 0.996.
         final_ema_coefficient (float, optional): EMA decay factor at the end of training.
             Default is 1.
+        update_buffers: Whether EMA also updates floating-point buffers and
+            copies integer buffers. Default is True. If False, teacher buffers
+            evolve only through the teacher's own forward passes (e.g. batch
+            normalization in train mode); student buffers are not copied.
+        ema_schedule: Schedule clock used by ``TeacherStudentCallback``.
+            Default is ``"epoch"``, which sets the coefficient before updating
+            the teacher. ``"step"`` updates the teacher with the current
+            coefficient, then schedules the next one using completed optimizer
+            steps. The first step uses ``base_ema_coefficient``.
+
+    Note:
+        Reconstruct the wrapper with the same ``update_buffers`` and
+        ``ema_schedule`` settings when loading a state dict. These configuration
+        options add no checkpoint keys; existing checkpoints remain compatible.
     """
 
     def __init__(
@@ -390,7 +404,10 @@ class TeacherStudentWrapper(nn.Module):
         warm_init: bool = True,
         base_ema_coefficient: float = 0.996,
         final_ema_coefficient: float = 1,
-    ):
+        *,
+        update_buffers: bool = True,
+        ema_schedule: Literal["epoch", "step"] = "epoch",
+    ) -> None:
         if not (0.0 <= base_ema_coefficient <= 1.0) or not (
             0.0 <= final_ema_coefficient <= 1.0
         ):
@@ -401,8 +418,12 @@ class TeacherStudentWrapper(nn.Module):
             )
             logging.error(error_msg)
             raise ValueError(error_msg)
+        if ema_schedule not in ("epoch", "step"):
+            raise ValueError("ema_schedule must be 'epoch' or 'step'")
 
         super().__init__()
+        self.update_buffers = update_buffers
+        self.ema_schedule = ema_schedule
         self.student = student
         # Register EMA coefficients as buffers so they persist through checkpointing
         self.register_buffer("base_ema_coefficient", torch.tensor(base_ema_coefficient))
@@ -410,7 +431,11 @@ class TeacherStudentWrapper(nn.Module):
             "final_ema_coefficient", torch.tensor(final_ema_coefficient)
         )
 
-        if self.base_ema_coefficient == 0.0 and self.final_ema_coefficient == 0.0:
+        if (
+            self.base_ema_coefficient == 0.0
+            and self.final_ema_coefficient == 0.0
+            and self.update_buffers
+        ):
             # No need to create a teacher network if the EMA coefficient is 0.0.
             self.teacher = student
             # Even when teacher == student, register the buffer for consistency
@@ -432,7 +457,7 @@ class TeacherStudentWrapper(nn.Module):
                 )
 
     @torch.no_grad
-    def update_teacher(self):
+    def update_teacher(self) -> None:
         """Perform one EMA update step on the teacher’s parameters.
 
         The update rule is:
@@ -442,7 +467,9 @@ class TeacherStudentWrapper(nn.Module):
         This is done in a `no_grad` context to ensure the teacher’s parameters do
         not accumulate gradients, but the student remains fully trainable.
 
-        Everything is updated, including buffers (e.g. batch norm running averages).
+        Buffers (e.g. batch norm running averages) are updated only when
+        ``update_buffers=True``. Parameter-only EMA keeps a separate teacher
+        even at zero decay so its buffers remain independent.
         """
         if not self.training:
             return  # We don't update in eval
@@ -451,10 +478,10 @@ class TeacherStudentWrapper(nn.Module):
         elif self.ema_coefficient.item() == 1.0:
             return  # No need to update when the teacher is fixed.
 
-        for teacher_group, student_group in [
-            (self.teacher.parameters(), self.student.parameters()),
-            (self.teacher.buffers(), self.student.buffers()),
-        ]:
+        groups = [(self.teacher.parameters(), self.student.parameters())]
+        if self.update_buffers:
+            groups.append((self.teacher.buffers(), self.student.buffers()))
+        for teacher_group, student_group in groups:
             for t, s in zip(teacher_group, student_group):
                 if t.is_floating_point() or t.is_complex():
                     t.mul_(self.ema_coefficient.to(dtype=t.dtype))
@@ -464,7 +491,7 @@ class TeacherStudentWrapper(nn.Module):
                     t.copy_(s)
 
     @torch.no_grad
-    def update_ema_coefficient(self, epoch: int, total_epochs: int):
+    def update_ema_coefficient(self, epoch: int, total_epochs: int) -> None:
         """Update the EMA coefficient following a cosine schedule.
 
         The EMA coefficient is updated following a cosine schedule:
@@ -473,8 +500,10 @@ class TeacherStudentWrapper(nn.Module):
             * (1 + cos(epoch / total_epochs * pi))
 
         Args:
-            epoch (int): Current epoch in the training loop.
-            total_epochs (int): Total number of epochs in the training loop.
+            epoch: Current epoch, or completed optimizer steps when the callback
+                uses ``ema_schedule="step"``. The argument name is retained for
+                compatibility with existing callers.
+            total_epochs: Total epochs, or total optimizer steps in step mode.
         """
         new_value = self.final_ema_coefficient - 0.5 * (
             self.final_ema_coefficient - self.base_ema_coefficient
@@ -489,9 +518,8 @@ class TeacherStudentWrapper(nn.Module):
     def forward_teacher(self, *args, **kwargs):
         """Forward pass through the teacher network.
 
-        By default, the teacher network does not require grad.
-        If ema_coefficient == 0, then teacher==student,
-        so we wrap in torch.no_grad() to ensure no gradients flow.
+        The no-grad context also covers the shared teacher/student case when
+        both EMA endpoints are zero and buffer updates are enabled.
         """
         with torch.no_grad():
             return self.teacher(*args, **kwargs)

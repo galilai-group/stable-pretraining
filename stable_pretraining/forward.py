@@ -12,6 +12,7 @@ Available forward functions:
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
     - ``swav`` — SwAV online clustering
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
+    - ``all4one`` — All4One neighbour, centroid, and feature contrast
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
 
@@ -731,6 +732,115 @@ def nnclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         if "label" in batch:
             out["label"] = batch["label"]
 
+    return out
+
+
+def all4one(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Compute All4One representations and its three self-supervised objectives.
+
+    Args:
+        self: Module with parameter-only, step-scheduled ``TeacherStudentWrapper``
+            attributes ``backbone`` and ``projector``; ``predictor`` and
+            ``centroid_predictor`` MLPs; ``attention`` (All4OneAttention);
+            ``queue`` (All4OneQueue); and ``all4one_loss`` (All4OneLoss).
+        batch: Single-view ``{'image': tensor}`` for evaluation, or two view
+            dictionaries supplied as ``{'views': list_or_dict}`` or a direct
+            dictionary of named views. Each view may contain ``label``.
+        stage: ``"fit"`` (Module's training stage) or ``"train"`` for training;
+            other stages return student backbone embeddings only.
+
+    Returns:
+        Dict with detached ``embedding`` and optional aligned ``label`` tensors.
+        Training also returns scalar loss terms and view-concatenated
+        ``projection``, ``momentum_projection``, ``prediction``,
+        ``centroid_prediction``, ``neighbours``, ``nn_index``, ``centroid``,
+        and ``shifted_centroid`` tensors. The first batch-size rows belong
+        to the first view.
+
+    Note:
+        Training requires two equally sized batches with at least two samples
+        for the projection heads' BatchNorm layers. Both views retrieve from
+        the same queue snapshot; only first-view momentum projections are
+        enqueued, after loss computation. Evaluation does not update the queue.
+        EMA updates require TeacherStudentCallback, automatically added by
+        Manager. Both centroid branches retain gradients through attention.
+    """
+    views = _get_views_list(batch)
+    if isinstance(views, dict):
+        views = list(views.values())
+    training = self.training and stage in ("fit", "train")
+    if training and (views is None or len(views) != 2):
+        raise ValueError("All4One training requires exactly two views")
+    if views is None:
+        views = [batch]
+    if not views or any(
+        not isinstance(view, dict) or "image" not in view for view in views
+    ):
+        raise ValueError("All4One expects view dictionaries containing 'image'")
+    if training and (
+        views[0]["image"].shape[0] < 2
+        or views[0]["image"].shape[0] != views[1]["image"].shape[0]
+    ):
+        raise ValueError(
+            "All4One training requires equal view batch sizes of at least two"
+        )
+
+    embeddings = [self.backbone.forward_student(view["image"]) for view in views]
+    out = {"embedding": torch.cat(embeddings).detach()}
+    if all("label" in view for view in views):
+        out["label"] = torch.cat([view["label"] for view in views])
+    if not training:
+        return out
+
+    projections = tuple(self.projector.forward_student(value) for value in embeddings)
+    predictions = tuple(self.predictor(value) for value in projections)
+    centroid_predictions = tuple(
+        self.centroid_predictor(value) for value in projections
+    )
+    with torch.no_grad():
+        momentum = tuple(
+            self.projector.forward_teacher(self.backbone.forward_teacher(view["image"]))
+            for view in views
+        )
+    retrieved = [self.queue(value) for value in momentum]
+    neighbours = tuple(result["neighbours"] for result in retrieved)
+    centroids = tuple(self.attention(value) for value in neighbours)
+    shifted = tuple(
+        self.attention(value, prediction)
+        for value, prediction in zip(neighbours, centroid_predictions)
+    )
+    out.update(
+        self.all4one_loss(
+            projections=projections,
+            momentum_projections=momentum,
+            neighbours=tuple(value[:, 0] for value in neighbours),
+            predictions=predictions,
+            centroids=centroids,
+            shifted_centroids=shifted,
+        )
+    )
+    for name in ("loss", "neighbour_loss", "centroid_loss", "feature_loss"):
+        self.log(
+            f"{stage}/{name}",
+            out[name],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=views[0]["image"].shape[0],
+        )
+    out.update(
+        {
+            "projection": torch.cat(projections),
+            "momentum_projection": torch.cat(momentum),
+            "prediction": torch.cat(predictions),
+            "centroid_prediction": torch.cat(centroid_predictions),
+            "neighbours": torch.cat(neighbours),
+            "nn_index": torch.cat([result["indices"] for result in retrieved]),
+            "centroid": torch.cat(centroids),
+            "shifted_centroid": torch.cat(shifted),
+        }
+    )
+    self.queue.enqueue(momentum[0])
     return out
 
 

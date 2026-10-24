@@ -21,6 +21,7 @@
     guides/quickstart
     guides/custom_images
     guides/online_evaluation
+    guides/all4one
     guides/resume
     guides/jet
     guides/agents
