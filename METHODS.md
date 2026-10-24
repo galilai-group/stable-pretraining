@@ -38,6 +38,7 @@ Methods come in two forms:
 | MIMRefiner | — | `MIMRefiner` | `DINOv1Loss`, `iBOTPatchLoss` | — | [Lehner et al., 2024](https://arxiv.org/abs/2402.10093) |
 | MoCov2 | — | `MoCov2` | `NTXEntLoss` | — | [Chen et al., 2020](https://arxiv.org/abs/2003.04297) |
 | MoCov3 | — | `MoCov3` | `NTXEntLoss` | — | [Chen et al., 2021](https://arxiv.org/abs/2104.02057) |
+| MSF | `msf` | `MSF` | `MSFLoss` | `TeacherStudent†` | [Koohpayegani et al., 2021](https://arxiv.org/abs/2105.07269) |
 | MSN | — | `MSN` | — | — | [Assran et al., 2022](https://arxiv.org/abs/2204.07141) |
 | NEPA | — | `NEPA` | — | — | — |
 | PIRL | — | `PIRL` | — | — | [Misra & van der Maaten, 2020](https://arxiv.org/abs/1912.01991) |
@@ -105,6 +106,7 @@ All loss classes are importable from `stable_pretraining.losses`:
 |------|-------------------|
 | `NTXEntLoss` | SimCLR, NNCLR, MoCov2, MoCov3 |
 | `BYOLLoss` | BYOL |
+| `MSFLoss` | MSF |
 | `VICRegLoss` | VICReg, VICRegL |
 | `BarlowTwinsLoss` | Barlow Twins |
 | `SwAVLoss` | SwAV |

@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader, Dataset
 
 import stable_pretraining as spt
 from stable_pretraining import forward, losses
+from stable_pretraining.callbacks.queues import UnsortedQueue
 from stable_pretraining.manager import Manager
 from stable_pretraining.registry import open_registry
 
@@ -171,6 +172,23 @@ def build_byol():
     )
 
 
+def build_msf():
+    backbone = make_backbone()
+    projector = make_projector()
+    return dict(
+        module=spt.Module(
+            backbone=spt.backbone.TeacherStudentWrapper(backbone),
+            projector=spt.backbone.TeacherStudentWrapper(projector),
+            predictor=make_predictor(),
+            queue=UnsortedQueue(max_length=64, shape=(PROJ_DIM,)),
+            forward=forward.msf,
+            msf_loss=losses.MSFLoss(topk=2),
+            optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+        ),
+        data=make_data(multi_view=True),
+    )
+
+
 def build_vicreg():
     return dict(
         module=spt.Module(
@@ -220,6 +238,7 @@ METHOD_BUILDERS = {
     "vicreg": build_vicreg,
     "barlow_twins": build_barlow_twins,
     "supervised": build_supervised,
+    "msf": build_msf,
 }
 
 # Reference loss values captured on 2026-04-09 with seed=42.
@@ -231,6 +250,7 @@ REFERENCE_LOSSES = {
     "vicreg": ("fit/loss_epoch", 18.119741439819336),
     "barlow_twins": ("fit/loss_epoch", 1.7105509042739868),
     "supervised": ("validate/loss_step", 2.3338754177093506),
+    "msf": ("fit/loss_epoch", 1.8201265335083008),
 }
 
 

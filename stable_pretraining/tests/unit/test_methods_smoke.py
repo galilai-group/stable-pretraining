@@ -63,6 +63,10 @@ TWO_VIEW_METHODS = [
     ("MoCov2", {"projector_dims": (256, 64), "queue_length": 32}),
     ("MoCov3", {"projector_dims": (512, 512, 64), "predictor_hidden_dim": 512}),
     (
+        "MSF",
+        {"projector_dims": (256, 64), "queue_length": 32, "predictor_hidden_dim": 256},
+    ),
+    (
         "NNCLR",
         {"projector_dims": (256, 64), "queue_length": 32, "predictor_hidden_dim": 256},
     ),

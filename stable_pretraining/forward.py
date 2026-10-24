@@ -12,6 +12,7 @@ Available forward functions:
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
     - ``swav`` — SwAV online clustering
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
+    - ``msf`` — MSF mean shift toward memory-bank nearest neighbors
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
 
@@ -730,6 +731,118 @@ def nnclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         out["embedding"] = self.backbone(batch["image"])
         if "label" in batch:
             out["label"] = batch["label"]
+
+    return out
+
+
+def msf(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for MSF (Mean Shift for Self-Supervised Learning).
+
+    MSF extends BYOL: instead of matching only the teacher projection of the
+    other view, the student prediction is pulled toward the ``topk`` nearest
+    neighbours of that target in a memory bank of past teacher projections.
+
+    Args:
+        self: Module instance with required attributes:
+            - backbone: TeacherStudentWrapper for feature extraction
+            - projector: TeacherStudentWrapper for projection head
+            - predictor: Online network predictor
+            - queue: UnsortedQueue memory bank of teacher projections
+            - msf_loss: MSFLoss with the number of nearest neighbours ``topk``
+        batch: Either a list of view dicts (from MultiViewTransform) or
+            a single dict (for validation/single-view)
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Feature representations from teacher backbone (EMA target)
+            - 'loss': MSF loss (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in the MSF paper :cite:`koohpayegani2021mean`.
+        The loss is symmetrized over the two views as in :func:`byol`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.callbacks.queues import UnsortedQueue
+            from stable_pretraining.forward import msf
+
+            backbone = spt.TeacherStudentWrapper(
+                spt.backbone.from_torchvision("resnet50")
+            )
+            projector = spt.TeacherStudentWrapper(torch.nn.Linear(2048, 256))
+            module = spt.Module(
+                forward=msf,
+                backbone=backbone,
+                projector=projector,
+                predictor=torch.nn.Linear(256, 256),
+                queue=UnsortedQueue(max_length=16384, shape=(256,)),
+                msf_loss=spt.losses.MSFLoss(topk=5),
+                optim={"optimizer": {"type": "LARS", "lr": 0.5}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is not None:
+        if len(views) != 2:
+            raise ValueError(
+                f"MSF requires exactly 2 views, got {len(views)}. "
+                "For other configurations, please implement a custom forward function."
+            )
+
+        images = [view["image"] for view in views]
+
+        if "label" in views[0]:
+            out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+        with torch.no_grad():
+            target_features = [self.backbone.forward_teacher(img) for img in images]
+        out["embedding"] = torch.cat(target_features, dim=0).detach()
+
+        if not self.training:
+            return out
+
+        with torch.no_grad():
+            target_proj = [
+                torch.nn.functional.normalize(
+                    self.projector.forward_teacher(feat), dim=-1
+                ).float()
+                for feat in target_features
+            ]
+            # Enqueue both targets before the neighbour search
+            bank = self.queue.append(torch.cat(target_proj, dim=0))
+
+        online_features = [self.backbone.forward_student(img) for img in images]
+        online_pred = [
+            self.predictor(self.projector.forward_student(feat))
+            for feat in online_features
+        ]
+
+        # Each view predicts the other view's target, as in BYOL
+        out["loss"] = (
+            self.msf_loss(online_pred[0], target_proj[1], bank)
+            + self.msf_loss(online_pred[1], target_proj[0], bank)
+        ) / 2
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            prog_bar=True,
+        )
+
+    else:
+        if "label" in batch:
+            out["label"] = batch["label"]
+
+        with torch.no_grad():
+            out["embedding"] = self.backbone.forward_teacher(batch["image"]).detach()
 
     return out
 
