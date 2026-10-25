@@ -1327,11 +1327,17 @@ def lfr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     if stage == "predict":
         return out
 
-    # Frozen random targets are cheap; computing them in float32 keeps their
-    # large untrained activations exact under mixed precision.
-    target_inputs = inputs.float() if inputs.is_floating_point() else inputs
+    # Frozen random targets are cheap; computing them outside autocast keeps
+    # their large untrained activations exact under mixed precision. Inputs
+    # follow each projector's dtype, which true-precision modes change.
+    targets = []
     with torch.no_grad(), torch.autocast(inputs.device.type, enabled=False):
-        targets = [projector(target_inputs) for projector in self.projectors]
+        for projector in self.projectors:
+            weight = next(projector.parameters(), None)
+            target_inputs = inputs
+            if weight is not None and inputs.is_floating_point():
+                target_inputs = inputs.to(weight.dtype)
+            targets.append(projector(target_inputs))
     # Average over projectors as in the authors' code: the paper's Eq. 5 sums,
     # which scales gradients by the number of projectors and makes the
     # published learning rate diverge with 40 projectors.

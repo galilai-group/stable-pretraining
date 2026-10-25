@@ -138,6 +138,8 @@ knn_probe = spt.callbacks.OnlineKNN(
 
 trainer = pl.Trainer(
     max_epochs=module.max_epochs_for(args.cycles),
+    # One device: the paper's batch of 512, and no automatic plain-DDP choice.
+    devices=1,
     # Validate once per cycle, after its last predictor epoch.
     check_val_every_n_epoch=1 + args.predictor_epochs,
     num_sanity_val_steps=0,

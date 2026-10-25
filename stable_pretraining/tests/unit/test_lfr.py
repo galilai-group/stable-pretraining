@@ -415,17 +415,36 @@ def test_alternating_epochs_update_one_half_while_probes_keep_training() -> None
     assert all(p.requires_grad for p in trainable)
 
 
-def test_default_optimizer_follows_the_paper_schedule() -> None:
+def test_default_optimizer_follows_the_authors_schedule() -> None:
     model = tiny_lfr()
-    trainer = tiny_trainer(max_epochs=model.max_epochs_for(2))
+    seen = []
+
+    class _Rates(pl.Callback):
+        def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
+            groups = trainer.optimizers[0].param_groups
+            seen.append((trainer.current_epoch, groups[0]["lr"], groups[1]["lr"]))
+
+    # Three cycles of one encoder epoch and one predictor epoch, 2 batches each.
+    trainer = tiny_trainer(max_epochs=model.max_epochs_for(3), callbacks=[_Rates()])
     trainer.fit(model, DataLoader(image_samples(), batch_size=4, drop_last=True))
     optimizer = trainer.optimizers[0]
     assert isinstance(optimizer, torch.optim.SGD)
     assert optimizer.defaults["momentum"] == 0.9
     assert optimizer.defaults["weight_decay"] == 5e-4
-    scheduler = trainer.lr_scheduler_configs[0].scheduler
-    assert isinstance(scheduler, torch.optim.lr_scheduler.CosineAnnealingLR)
-    assert scheduler.T_max == trainer.global_step == 8
+    assert len(seen) == 12
+    for epoch, encoder_lr, predictor_lr in seen:
+        cycle = epoch // 2
+        # Authors' adjust_learning_rate: cosine over cycles, fixed within one.
+        expected = 0.03 * 0.5 * (1 + math.cos(math.pi * cycle / 3))
+        assert encoder_lr == pytest.approx(expected)
+        assert predictor_lr == pytest.approx(0.03)
+
+
+def test_custom_optim_uses_the_generic_module_path() -> None:
+    model = tiny_lfr(optim={"optimizer": {"type": "Adam", "lr": 1e-3}})
+    trainer = tiny_trainer(max_epochs=1, limit_train_batches=1)
+    trainer.fit(model, DataLoader(image_samples(), batch_size=4, drop_last=True))
+    assert isinstance(trainer.optimizers[0], torch.optim.Adam)
 
 
 def test_plain_ddp_strategy_is_rejected_with_a_fix() -> None:
@@ -523,3 +542,52 @@ def test_loss_without_gather_uses_only_the_local_batch() -> None:
     torch.testing.assert_close(
         criterion(prediction, target, gather=False), criterion(prediction, target)
     )
+
+
+def test_loss_stays_float32_under_autocast() -> None:
+    torch.manual_seed(4)
+    target = torch.randn(64, 32)
+    prediction = target + 0.01 * torch.randn_like(target)
+    criterion = BatchwiseBarlowTwinsLoss()
+    expected = criterion(prediction, target)
+    with torch.autocast("cpu", dtype=torch.bfloat16):
+        actual = criterion(prediction, target)
+    assert actual.dtype == torch.float32
+    torch.testing.assert_close(actual, expected)
+
+
+def test_projectors_use_the_authors_initialization_order() -> None:
+    torch.manual_seed(5)
+    projector = random_image_projector(dim=12)
+    convs = [m for m in projector.modules() if isinstance(m, nn.Conv2d)]
+    linear = projector[-1]
+    # Beta init runs after dropout and redraws every conv weight.
+    for conv in convs:
+        assert (conv.weight == 0).float().mean() < 0.01
+    assert (linear.weight == 0).sum().item() == round(0.4 * linear.weight.numel())
+
+
+def test_forward_supports_true_half_precision() -> None:
+    model = tiny_lfr().to(torch.bfloat16).eval()
+    images = torch.randn(4, 3, 32, 32, dtype=torch.bfloat16)
+    with torch.no_grad():
+        out = model({"image": images}, stage="validate")
+    assert torch.isfinite(out["loss"])
+
+
+def test_plain_ddp_is_allowed_outside_fitting() -> None:
+    model = tiny_lfr()
+    model.trainer = tiny_trainer(strategy=DDPStrategy())
+    for stage in ("validate", "test", "predict"):
+        model.setup(stage)
+    with pytest.raises(RuntimeError, match="ddp_find_unused_parameters_true"):
+        model.setup("fit")
+
+
+def test_singleton_evaluation_batch_has_a_loss() -> None:
+    model = tiny_lfr().eval()
+    with torch.no_grad():
+        out = model({"image": torch.randn(1, 3, 32, 32)}, stage="validate")
+    assert torch.isfinite(out["loss"])
+    with pytest.raises(ValueError, match="at least 2"):
+        BatchwiseBarlowTwinsLoss()(torch.randn(1, 3), torch.randn(1, 3))

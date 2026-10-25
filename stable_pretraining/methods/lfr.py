@@ -15,9 +15,9 @@ Example::
 See ``benchmarks/cifar10/lfr-resnet18.py`` for the paper's CIFAR-10 setup.
 """
 
+import math
 from collections.abc import Sequence
 from contextlib import contextmanager
-from functools import partial
 from typing import Any, Iterator, Optional, Union
 
 import torch
@@ -79,8 +79,10 @@ def random_image_projector(dim: int, in_channels: int = 3) -> nn.Module:
     """Build the paper's frozen four-layer CNN image target.
 
     Channels ``in -> 8 -> 16 -> 32 -> 32`` with ReLU, max-pooling after every
-    two convolutions and a linear map to ``dim``, initialized with
-    :func:`beta_init_` and :func:`weight_dropout_` as for CIFAR-10. The final
+    two convolutions and a linear map to ``dim``. As in the authors' code,
+    :func:`weight_dropout_` runs first and :func:`beta_init_` then redraws the
+    convolutions, so the convolutions are dense and the Linear map keeps 40%
+    zeros. The final
     adaptive pooling is the identity for ``32 x 32`` inputs and lets the same
     projector accept larger images.
 
@@ -106,7 +108,9 @@ def random_image_projector(dim: int, in_channels: int = 3) -> nn.Module:
         nn.Flatten(),
         nn.Linear(32 * 8 * 8, dim),
     )
-    return weight_dropout_(beta_init_(projector))
+    # Same order as the authors' build_target: dropout, then Beta init, which
+    # overwrites the convolutions, so only the Linear layer stays sparse.
+    return beta_init_(weight_dropout_(projector))
 
 
 def predictor_mlp(in_dim: int, out_dim: int, hidden_dim: int = 256) -> nn.Module:
@@ -235,9 +239,10 @@ class LFR(Module):
     encoder epoch (predictors frozen) followed by ``predictor_epochs``
     predictor epochs (encoder frozen, its BatchNorm statistics included). Use
     :meth:`max_epochs_for` to size the Trainer. Both phases share one
-    optimizer and scheduler; the frozen half has no gradients, so its weights,
-    momentum and weight decay are untouched, while online probes and other
-    callbacks keep training every step.
+    optimizer with separate encoder and predictor parameter groups; the frozen
+    half has no gradients, so its weights, momentum and weight decay are
+    untouched, while online probes and other callbacks keep training every
+    step.
 
     Args:
         encoder_name: timm model name or a prebuilt encoder returning
@@ -264,16 +269,20 @@ class LFR(Module):
         low_resolution: Adapt a timm encoder's stem to ``32 x 32`` inputs.
         pretrained: Load pretrained timm weights.
         input_key: Batch key holding the inputs.
-        **kwargs: Passed to :class:`Module`, including ``optim``. The default
-            optimizer follows the paper: SGD (lr 0.03, momentum 0.9, weight
-            decay 5e-4) with cosine annealing over all training steps.
+        **kwargs: Passed to :class:`Module`, including ``optim``. Without
+            ``optim``, LFR follows the authors' recipe: SGD (lr 0.03,
+            momentum 0.9, weight decay 5e-4) where the encoder's learning rate
+            follows a cosine over cycles, set once per cycle, and the
+            predictors keep 0.03. A custom ``optim`` is not saved in the
+            hyperparameters; pass it again to ``load_from_checkpoint``.
 
     Note:
         Distributed training needs
         ``Trainer(strategy="ddp_find_unused_parameters_true")``: each phase
-        leaves half of the parameters without gradients. The loss uses the
-        global batch, so equal local batch sizes (``drop_last=True``) are
-        required.
+        leaves half of the parameters without gradients. The training loss
+        uses the global batch, so equal local batch sizes (``drop_last=True``)
+        are required. Validation and test losses use each rank's local batch,
+        so they are not directly comparable with the training loss under DDP.
     """
 
     def __init__(
@@ -301,16 +310,11 @@ class LFR(Module):
             num_projectors = len(predictors)
             if num_projectors == 0:
                 raise ValueError("provide at least one predictor")
-        kwargs.setdefault(
-            "optim",
-            {
-                "optimizer": partial(
-                    torch.optim.SGD, lr=0.03, momentum=0.9, weight_decay=5e-4
-                ),
-                "scheduler": "CosineAnnealingLR",
-            },
-        )
+        # Without ``optim``, LFR builds the authors' optimizer itself (see
+        # ``configure_optimizers``); with it, the generic Module path applies.
+        paper_schedule = "optim" not in kwargs
         super().__init__(forward=lfr, **kwargs)
+        self._paper_schedule = paper_schedule
 
         if isinstance(encoder_name, str):
             self.backbone = from_timm(
@@ -392,6 +396,50 @@ class LFR(Module):
         """
         return cycles * (1 + self.predictor_epochs)
 
+    def _lr_factors(self) -> tuple[float, float]:
+        """Learning-rate multipliers for the (encoder, predictor) groups.
+
+        The encoder follows the authors' ``adjust_learning_rate``: a cosine over
+        cycles, constant within a cycle. The predictors keep the base rate.
+        """
+        cycles = 0
+        if self._trainer is not None and (self.trainer.max_epochs or 0) > 0:
+            # A trailing partial cycle still trains, so round up.
+            cycles = math.ceil(self.trainer.max_epochs / (1 + self.predictor_epochs))
+        if cycles < 1:
+            return 1.0, 1.0
+        cycle = self.current_epoch // (1 + self.predictor_epochs)
+        return 0.5 * (1 + math.cos(math.pi * cycle / cycles)), 1.0
+
+    def configure_optimizers(self):
+        """Build the authors' optimizer, unless a custom ``optim`` was given."""
+        if not self._paper_schedule:
+            return super().configure_optimizers()
+        optimizer = torch.optim.SGD(
+            [
+                {"params": list(self.backbone.parameters())},
+                {"params": list(self.predictors.parameters())},
+            ],
+            lr=0.03,
+            momentum=0.9,
+            weight_decay=5e-4,
+        )
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer,
+            [lambda _: self._lr_factors()[0], lambda _: self._lr_factors()[1]],
+        )
+        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
+
+    def on_train_epoch_start(self) -> None:
+        """Apply the new cycle's learning rates before its first step."""
+        super().on_train_epoch_start()
+        if not self._paper_schedule:
+            return
+        optimizers = self.optimizers()
+        optimizer = optimizers[0] if isinstance(optimizers, list) else optimizers
+        for group, factor in zip(optimizer.param_groups, self._lr_factors()):
+            group["lr"] = group["initial_lr"] * factor
+
     @property
     def is_encoder_epoch(self) -> bool:
         """Whether the current epoch trains the encoder (else the predictors)."""
@@ -404,14 +452,16 @@ class LFR(Module):
         return self
 
     def setup(self, stage: str) -> None:
-        """Reject DDP configurations that cannot handle phase-wise frozen weights."""
+        """Reject DDP fitting that cannot handle phase-wise frozen weights."""
         super().setup(stage)
         from lightning.pytorch.strategies import DDPStrategy
 
         strategy = getattr(self.trainer, "strategy", None)
         ddp_kwargs = getattr(strategy, "_ddp_kwargs", None) or {}
-        if isinstance(strategy, DDPStrategy) and not ddp_kwargs.get(
-            "find_unused_parameters", False
+        if (
+            stage == "fit"
+            and isinstance(strategy, DDPStrategy)
+            and not ddp_kwargs.get("find_unused_parameters", False)
         ):
             raise RuntimeError(
                 "LFR alternates which parameters receive gradients, which plain "

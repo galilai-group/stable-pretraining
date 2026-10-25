@@ -26,7 +26,8 @@ class BatchwiseBarlowTwinsLoss(nn.Module):
     ranks gives the global-batch loss, and DDP's averaged gradients equal those
     of a single process seeing the whole batch. Local batch sizes must then be
     equal across ranks. ``gather=False`` uses only the local batch, which is
-    safe when ranks see different batch sizes (validation, testing).
+    safe when ranks see different batch sizes (validation, testing), and
+    accepts a single sample, for which only the alignment term remains.
 
     Args:
         lambd: Weight of the off-diagonal squared cosine similarities.
@@ -54,8 +55,20 @@ class BatchwiseBarlowTwinsLoss(nn.Module):
         if prediction.ndim != 2 or prediction.shape != target.shape:
             raise ValueError("prediction and target must have matching [B, D] shapes")
         world_size = get_world_size() if gather else 1
-        if prediction.shape[0] * world_size < 2:
-            raise ValueError("the batch must contain at least 2 samples")
+        if gather and prediction.shape[0] * world_size < 2:
+            raise ValueError("the training batch must contain at least 2 samples")
+        # Autocast would run the matmul below in half precision despite
+        # ``.float()``; the B x B similarities and their sums stay float32.
+        with torch.autocast(prediction.device.type, enabled=False):
+            return self._loss(prediction, target, gather, world_size)
+
+    def _loss(
+        self,
+        prediction: torch.Tensor,
+        target: torch.Tensor,
+        gather: bool,
+        world_size: int,
+    ) -> torch.Tensor:
         prediction = F.normalize(prediction.float(), dim=1)
         targets = F.normalize(target.float(), dim=1)
         offset = 0
