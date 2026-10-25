@@ -247,6 +247,36 @@ Barlow Twins
         _target_: stable_pretraining.losses.BarlowTwinsLoss
         lambda_: 0.005
 
+LFR
+~~~
+
+.. autofunction:: lfr
+
+**Required Module Attributes:**
+
+- ``backbone``: Encoder returning ``[B, E]`` embeddings
+- ``projectors``: ``nn.ModuleList`` of frozen random target networks
+- ``predictors``: ``nn.ModuleList`` with one prediction head per projector
+- ``lfr_loss``: Batch-wise Barlow Twins loss
+
+**Key Features:**
+
+- Single, unaugmented view per sample
+- Targets come from frozen, randomly initialized projectors
+- Sample-wise (``B x B``) redundancy reduction instead of feature-wise
+- Use :class:`stable_pretraining.LFR` for the paper's alternating encoder/predictor schedule
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      _target_: stable_pretraining.LFR
+      encoder_name: resnet18
+      low_resolution: true
+      num_projectors: 40
+      predictor_epochs: 5
+
 Supervised
 ~~~~~~~~~~
 

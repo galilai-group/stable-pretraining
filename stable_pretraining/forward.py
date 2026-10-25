@@ -1261,3 +1261,103 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     )
 
     return out
+
+
+def lfr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for Learning From Randomness (LFR).
+
+    The encoder sees a single, unaugmented view. Each predictor head maps the
+    embedding to the output of one frozen random projector, and the batch-wise
+    Barlow Twins loss is averaged over projectors.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: Encoder returning ``[B, E]`` embeddings
+            - projectors: ``nn.ModuleList`` of frozen random target networks
+            - predictors: ``nn.ModuleList`` with one head per projector
+            - lfr_loss: :class:`~stable_pretraining.losses.BatchwiseBarlowTwinsLoss`
+            - input_key (optional): Batch key of the inputs, ``"image"`` by default
+        batch: Single-view dictionary with inputs and, optionally, ``label``
+        stage: Lightning stage (``"fit"``, ``"validate"``, ``"test"`` or
+            ``"predict"``); the loss is skipped for ``"predict"``
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Encoder representations
+            - 'loss': LFR loss averaged over projectors (all stages except
+              ``"predict"``)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in the LFR paper :cite:`sui2024lfr`. The alternating
+        encoder/predictor schedule lives in :class:`~stable_pretraining.LFR`;
+        a plain :class:`~stable_pretraining.Module` with this forward trains
+        both halves jointly, which the paper reports to be less stable.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import lfr
+            from stable_pretraining.methods.lfr import random_image_projector
+
+            module = spt.Module(
+                forward=lfr,
+                backbone=spt.backbone.from_timm("resnet18", num_classes=0),
+                projectors=torch.nn.ModuleList([random_image_projector(256)]),
+                predictors=torch.nn.ModuleList([torch.nn.Linear(512, 256)]),
+                lfr_loss=spt.losses.BatchwiseBarlowTwinsLoss(),
+            )
+    """
+    if not hasattr(self, "lfr_loss"):
+        raise ValueError(
+            "lfr requires 'lfr_loss' to be provided (e.g., spt.losses.BatchwiseBarlowTwinsLoss()). "
+            "Pass it when constructing the Module: Module(..., lfr_loss=spt.losses.BatchwiseBarlowTwinsLoss(), ...)"
+        )
+    inputs = batch[getattr(self, "input_key", "image")]
+    embedding = self.backbone(inputs)
+    if embedding.ndim != 2:
+        raise ValueError(
+            f"LFR encoder must return [B, E] embeddings, got {tuple(embedding.shape)}"
+        )
+    out = {"embedding": embedding}
+    if "label" in batch:
+        out["label"] = batch["label"]
+    if stage == "predict":
+        return out
+
+    # Frozen random targets are cheap; computing them outside autocast keeps
+    # their large untrained activations exact under mixed precision. Inputs
+    # follow each projector's dtype, which true-precision modes change.
+    targets = []
+    with torch.no_grad(), torch.autocast(inputs.device.type, enabled=False):
+        for projector in self.projectors:
+            weight = next(projector.parameters(), None)
+            target_inputs = inputs
+            if weight is not None and inputs.is_floating_point():
+                target_inputs = inputs.to(weight.dtype)
+            targets.append(projector(target_inputs))
+    # Average over projectors as in the authors' code: the paper's Eq. 5 sums,
+    # which scales gradients by the number of projectors and makes the
+    # published learning rate diverge with 40 projectors.
+    out["loss"] = torch.stack(
+        [
+            # Validation/test batches may differ in size across ranks, so only
+            # training gathers negatives from every rank.
+            self.lfr_loss(predictor(embedding), target, gather=stage == "fit")
+            for predictor, target in zip(self.predictors, targets)
+        ]
+    ).mean()
+    # Direct calls (outside a running Trainer stage) must not log.
+    if self._trainer is not None and self.trainer.state.stage is not None:
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=stage == "fit",
+            on_epoch=True,
+            batch_size=inputs.shape[0],
+            sync_dist=True,
+            prog_bar=True,
+        )
+    return out

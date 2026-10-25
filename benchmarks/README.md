@@ -45,6 +45,9 @@ python benchmarks/cifar10/barlow-resnet18.py
 
 # NNCLR
 python benchmarks/cifar10/nnclr-resnet18.py
+
+# LFR (single unaugmented view; --cycles sets the budget)
+python benchmarks/cifar10/lfr-resnet18.py --cycles 50
 ```
 
 ## Notes
