@@ -93,6 +93,7 @@ input, either in pixel space or in a latent feature space.
    IJEPA
    LeJEPA
    VISReg
+   LambdaJEPA
    SALT
 
 Other

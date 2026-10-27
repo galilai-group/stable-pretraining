@@ -17,6 +17,16 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``LambdaJEPA`` (λ-JEPA): multi-view invariance (to an EMA target, or
+  between view pairs) combined with ``SACRegLoss``, a sliced Gaussian moment
+  regulariser (KL of the batch mean and covariance to a standard normal on a
+  random orthonormal slice) applied to the per-image view centers of both the
+  projections and the backbone embeddings, per Demirel et al., "λ-JEPA:
+  Spectral Anti-Collapse Regularization for Self-Supervised Learning" (2026).
+  Registered in ``stable_pretraining.methods`` and ``METHODS.md``, with an
+  ImageNet-100 ViT-S/16 benchmark under
+  ``benchmarks/imagenet100/lambdajepa-vit-small.py`` and an ImageNet-1k ViT-B/16
+  benchmark under ``benchmarks/imagenet1k/lambdajepa-vit-base.py``.
 
 **Discoverability improvements**
 

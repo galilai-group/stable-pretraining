@@ -176,7 +176,7 @@ def test_block_hook_reset_discards_only_previous_features():
     assert not blocks[0]._forward_hooks
 
 
-@pytest.mark.parametrize("name", ["LeJEPA", "VISReg"])
+@pytest.mark.parametrize("name", ["LeJEPA", "VISReg", "LambdaJEPA"])
 def test_distribution_regularized_methods_evaluate_without_views(monkeypatch, name):
     import timm
 
