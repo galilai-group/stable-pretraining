@@ -145,15 +145,35 @@ def test_lambdajepa_ema_target_forward_backward():
     assert model.backbone.teacher.patch_embed.proj.weight.grad is None
 
 
-def test_lambdajepa_eval_mode_returns_embedding_without_loss():
+@pytest.mark.parametrize("n_views", [0, 1])
+def test_lambdajepa_training_requires_two_views(n_views):
     model = LambdaJEPA(**SMALL_KWARGS)
+    model.train()
+    with pytest.raises(AssertionError, match="at least two global_views"):
+        model(global_views=_views()[:n_views] or None)
+
+
+@pytest.mark.parametrize("ema_target", [False, True])
+def test_lambdajepa_eval_mode_returns_embedding_without_loss(ema_target):
+    model = LambdaJEPA(**{**SMALL_KWARGS, "ema_target": ema_target})
     model.eval()
+    images = _views()[0]
 
     with torch.no_grad():
-        output = model(images=_views()[0])
+        output = model(images=images)
+        backbone = model.backbone.student if ema_target else model.backbone
+        expected = backbone(images)
 
     assert output.loss == 0
     assert output.embedding.shape == (B, model.embed_dim)
+    torch.testing.assert_close(output.embedding, expected)
+
+
+def test_lambdajepa_eval_mode_requires_images():
+    model = LambdaJEPA(**SMALL_KWARGS)
+    model.eval()
+    with pytest.raises(AssertionError, match="images must be provided"):
+        model()
 
 
 # --- distributed ------------------------------------------------------------
@@ -194,6 +214,61 @@ def _two_rank_sacreg(rank, rendezvous):
 def test_two_rank_sacreg_matches_full_batch_value_and_gradient(tmp_path):
     torch.multiprocessing.spawn(
         _two_rank_sacreg,
+        args=((tmp_path / "two-rank-rendezvous").as_uri(),),
+        nprocs=2,
+        join=True,
+    )
+
+
+def _two_rank_lambdajepa(rank, rendezvous):
+    from copy import deepcopy
+    from datetime import timedelta
+
+    from torch.nn.parallel import DistributedDataParallel
+
+    torch.set_num_threads(1)
+    torch.manual_seed(0)
+    # A linear projector and no drop path, so both runs see the same statistics.
+    model = LambdaJEPA(
+        **{**SMALL_KWARGS, "projector": torch.nn.Linear(192, 16)},
+        z_slice_dim=8,
+        drop_path_rate=0.0,
+    )
+    model.train()
+    reference = deepcopy(model)
+    views = _views()
+    expected = reference(global_views=views).loss
+    expected.backward()
+
+    dist.init_process_group(
+        "gloo",
+        init_method=rendezvous,
+        rank=rank,
+        world_size=2,
+        timeout=timedelta(seconds=45),
+    )
+    try:
+        ddp = DistributedDataParallel(model)
+        local = [v[rank * 2 : (rank + 1) * 2] for v in views]
+        loss = ddp(global_views=local).loss
+        loss.backward()
+        mean_loss = loss.detach().clone()
+        dist.all_reduce(mean_loss)
+        torch.testing.assert_close(mean_loss / 2, expected.detach())
+        for (name, actual), (_, target) in zip(
+            model.named_parameters(), reference.named_parameters()
+        ):
+            torch.testing.assert_close(
+                actual.grad, target.grad, atol=1e-2, rtol=1e-3, msg=name
+            )
+    finally:
+        dist.destroy_process_group()
+
+
+@pytest.mark.skipif(not dist.is_gloo_available(), reason="Gloo unavailable")
+def test_two_rank_lambdajepa_matches_full_batch_loss_and_gradients(tmp_path):
+    torch.multiprocessing.spawn(
+        _two_rank_lambdajepa,
         args=((tmp_path / "two-rank-rendezvous").as_uri(),),
         nprocs=2,
         join=True,
