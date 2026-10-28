@@ -4,12 +4,11 @@ import copy
 from types import SimpleNamespace
 
 import pytest
+import stable_pretraining as spt
 import torch
 import torch.nn.functional as F
-from torch import nn
-
-import stable_pretraining as spt
 from stable_pretraining.losses import LeVLJEPALoss
+from torch import nn
 
 pytestmark = pytest.mark.unit
 
@@ -429,3 +428,57 @@ def test_prediction_reduction_is_elementwise_mean_and_directional_average(width)
         image_prediction.grad, torch.full_like(image, 1 / (4 * width))
     )
     torch.testing.assert_close(text_prediction.grad, torch.zeros_like(image))
+
+
+@pytest.mark.parametrize("probability", [-0.1, 1.0, float("nan")])
+def test_predictor_dropout_rejects_invalid_probability(probability):
+    with pytest.raises(ValueError, match="predictor_dropout"):
+        make_model(predictor_dropout=probability)
+
+
+def test_predictor_dropout_matches_reference_and_preserves_checkpoint_keys():
+    from stable_pretraining.methods.levljepa import _head
+    from torchvision.ops import MLP
+
+    torch.manual_seed(42)
+    baseline = _head(8, (16, 16), 8)
+    actual = _head(8, (16, 16), 8, dropout=0.1)
+    actual.load_state_dict(baseline.state_dict(), strict=True)
+    assert list(actual.state_dict()) == list(baseline.state_dict())
+    assert not any(isinstance(layer, nn.Dropout) for layer in baseline)
+    reference = MLP(
+        8, [16, 16, 8], norm_layer=nn.BatchNorm1d, activation_layer=nn.GELU, dropout=0.1
+    )
+    for target, source in zip(reference.parameters(), actual.parameters(), strict=True):
+        target.data.copy_(source.data)
+    x = torch.randn(12, 8)
+    for training in [True, False]:
+        actual.train(training)
+        reference.train(training)
+        u = x.clone().requires_grad_()
+        v = x.clone().requires_grad_()
+        torch.manual_seed(7)
+        y = actual(u)
+        torch.manual_seed(7)
+        expected = reference(v)
+        torch.testing.assert_close(y, expected)
+        y.square().mean().backward()
+        expected.square().mean().backward()
+        torch.testing.assert_close(u.grad, v.grad)
+
+
+def test_predictor_dropout_only_changes_predictors():
+    model = make_model(predictor_dropout=0.1)
+    assert not any(
+        isinstance(layer, nn.Dropout) for layer in model.vision_pre_proj.modules()
+    )
+    assert not any(
+        isinstance(layer, nn.Dropout) for layer in model.text_pre_proj.modules()
+    )
+    for head in [model.projector_vision, model.projector_text]:
+        assert any(
+            isinstance(layer, nn.Dropout) and layer.p == 0.1 for layer in head.modules()
+        )
+    model.eval()
+    model(make_batch(), "predict")["image_prediction"].sum().backward()
+    assert model.vision_encoder.weight.grad is not None

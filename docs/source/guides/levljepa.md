@@ -373,11 +373,82 @@ indicate a constant representation. These bounded checks support a
 poor-generalization diagnosis; they neither isolate its cause nor exclude
 other training or implementation problems.
 
-The two new full-capacity frozen ADE20K attempts failed before head training:
-the framework rejected the relative cache path derived from the supplied
-relative output directory. They provide no ADE metric and must not be counted
-as successful evaluations. Earlier completed reduced-encoder and author-weight
-ADE results remain separate. No paper-level performance claim is made.
+The initial two full-capacity ADE20K attempts failed before head training
+because the supplied relative output directory produced a rejected cache path.
+Corrected runs with absolute output paths completed: frozen linear-head mIoU
+was 0.9731% for LeVLJEPA and 1.3751% for CLIP. The failed attempts remain
+separate from these successful reruns. Both used the same head initialization,
+20 training epochs and native-resolution confusion metrics, with unchanged
+frozen backbones. This is an approximate head protocol, not paper reproduction.
+
+## Expanded-subset diagnosis and controlled follow-up
+
+A seed-42 follow-up expanded the training corpus to 128,000 CC12M-subset pairs
+while preserving the 1,000-pair validation gallery and the full-capacity
+repository-default architecture. Both methods used batch 32, 50,000 updates
+and 1.6 million exposures. This is still much smaller than the paper's
+pretraining, and the CLIP control is not an exact OpenCLIP reproduction.
+
+The initial comparison used peak LR 2e-4 for both objectives. A development-
+selected LeVLJEPA follow-up used LR 1e-4, as described below; all three runs
+used the same data, seed, batch size and fixed update/exposure budget.
+
+| Evaluation | LeVLJEPA LR 2e-4 | LeVLJEPA LR 1e-4 | Fixed CLIP control |
+|---|---:|---:|---:|
+| Validation image-to-text R@1 | 0.40% | 3.80% | 0.60% |
+| Validation text-to-image R@1 | 0.40% | 2.40% | 0.90% |
+| Pets frozen CLS test Top-1 | 4.3336% | 18.2066% | 8.2311% |
+| Aircraft frozen CLS test Top-1 | 1.8002% | 7.8008% | 4.8905% |
+| ADE20K frozen patch validation mIoU | 1.0030% | 3.2488% | 1.1091% |
+
+Classification used L2-normalized CLS features, training-only per-dimension
+standardization, a bias-free linear head, AdamW (LR 0.1, weight decay 1e-4),
+batch 4,096 and 50 fixed epochs. ADE used the same approximate 20-epoch head
+protocol as above. Confusion-derived metrics, identical control head
+initialization and frozen-backbone hashes were independently verified.
+Neither transfer task supports a paper-level representation-quality claim.
+
+The marginal embeddings retained diversity, but the predictor outputs had
+low effective rank from the first recorded 5,000-step validation onward.
+A no-update diagnostic recalibrated BatchNorm using only 1,024 training
+examples; LeVLJEPA validation R@1 remained 0.40% in both directions. BatchNorm
+running statistics alone therefore did not explain this gap. This diagnostic
+used BF16 encoders and FP32 heads, separately from the canonical BF16 metrics.
+High marginal effective rank does not establish semantic feature quality.
+
+Four fresh development-only ablations used the same data and initialization,
+5,000 updates, 1,000 warmup steps and a shortened cosine schedule. The baseline
+used LR 2e-4, symmetric SIGReg weights 0.02 and no predictor dropout. Each other
+case changed one factor; the cosine floor was one tenth of the peak LR and
+the warmup start LR remained 2e-6.
+
+| Changed factor | Image-to-text R@1 | Text-to-image R@1 | Mean bidirectional R@10 |
+|---|---:|---:|---:|
+| Short-run baseline | 0.20% | 0.10% | 3.50% |
+| Predictor dropout 0.1 | 0.70% | 0.60% | 4.20% |
+| SIGReg weights 0.01 each | 0.20% | 0.20% | 2.85% |
+| Peak LR 1e-4 | 1.10% | 0.40% | 8.05% |
+
+The lower-LR case met a predeclared development continuation gate: at least
+0.5 percentage points improvement in mean bidirectional R@1, 2 points in
+mean R@10, and positive pairing margins. The selected LR 1e-4 completed a
+fixed 50,000-step confirmation; its final checkpoint produced the follow-up
+results in the table above. Image/text R@10 was 17.30%/16.60%, versus
+7.10%/6.80% for the fixed CLIP control. Strict model-only reload and SHA256
+backup checks passed. Classification and ADE used the same frozen encoder
+hash; confusion metrics, head initializers and split identities were checked.
+
+The confirmation used an A6000 because the earlier L40S was unavailable;
+this is update-matched rather than hardware/FLOP-matched. LeVLJEPA's LR was
+selected on development data, whereas this CLIP control retained its fixed
+LR 2e-4. The single-seed improvement over this control does not establish
+universal method superiority. No held-out retrieval test or downstream test
+labels were used to choose the pretraining variant. The paper's LeVLJEPA
+Pets/Aircraft linear-probe accuracy is 81.28%/46.38%, and ADE20K mIoU is
+23.15%; the follow-up remains far below these differently pretrained models.
+The paper has no directly comparable 1,000-gallery retrieval R@1 result.
+Training data, model weights and local experimental adapters remain outside
+the contribution.
 
 ## Verification
 
@@ -414,3 +485,18 @@ contribution, so no clean full-repository result is claimed.
 - [Paper](https://arxiv.org/html/2607.00784v1)
 - [Flickr8k mirror revision](https://huggingface.co/datasets/jxie/flickr8k/tree/56f58c967835f7c508d684f36bd7897cca9d7634)
 - [ADE20K dataset and download reference](https://github.com/CSAILVision/semantic-segmentation-pytorch/blob/master/download_ADE20K.sh)
+
+
+### Predictor dropout and recipe scope
+
+`LeVLJEPA(..., predictor_dropout=0.1)` enables the dropout probability
+reported for the paper's cross-modal predictors. The default remains `0.0`,
+matching the public default configuration and existing experiments. Dropout
+applies only to predictors; pre-projection heads remain unchanged. Parameter
+and BatchNorm buffer keys are identical across these settings, so existing
+zero-dropout state dictionaries load strictly. Inference requires `.eval()`.
+
+Changing dropout alone does not reproduce the paper's data, batch statistics,
+learning rate or regularization recipe. Report these separately. Two independent
+single-GPU controls do not form a distributed statistical batch, and gradient
+accumulation does not combine their SIGReg or BatchNorm statistics.

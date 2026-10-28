@@ -278,6 +278,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--lambda-vision", type=float, default=0.02)
     parser.add_argument("--lambda-text", type=float, default=0.02)
+    parser.add_argument("--predictor-dropout", type=float, default=0.0)
     parser.add_argument("--alignment", choices=("mse", "cosine"), default="mse")
     parser.add_argument("--warmup-fraction", type=float, default=0.0)
     parser.add_argument("--gradient-clip-val", type=float, default=0.0)
@@ -421,6 +422,7 @@ def main() -> None:
         embedding_dim=args.width,
         pre_projection_dims=(args.width * 2,),
         predictor_dims=(args.width * 2, args.width * 2),
+        predictor_dropout=args.predictor_dropout,
         lambda_vision=args.lambda_vision,
         lambda_text=args.lambda_text,
         alignment=args.alignment,

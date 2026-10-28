@@ -4,17 +4,19 @@ Reference and architecture: https://github.com/MLO-lab/LeVLJEPA.
 Encoders are injected so the method also supports small, offline experiments.
 """
 
+from collections import OrderedDict
 from collections.abc import Sequence
-
-from torch import nn
 
 from stable_pretraining import Module
 from stable_pretraining.backbone import MLP
 from stable_pretraining.forward import levljepa
 from stable_pretraining.losses import LeVLJEPALoss
+from torch import nn
 
 
-def _head(in_dim: int, hidden_dims: Sequence[int], out_dim: int) -> nn.Module:
+def _head(
+    in_dim: int, hidden_dims: Sequence[int], out_dim: int, dropout: float = 0.0
+) -> nn.Module:
     """Build reference BN/GELU hidden layers with an unnormalized output."""
     dims = [in_dim, *hidden_dims, out_dim]
     if any(dim < 1 for dim in dims):
@@ -26,12 +28,19 @@ def _head(in_dim: int, hidden_dims: Sequence[int], out_dim: int) -> nn.Module:
         hidden_channels=[*hidden_dims, out_dim],
         norm_layer="batch_norm",
         activation_layer=nn.GELU,
-        dropout=0.0,
+        dropout=dropout,
     )
-    # Zero-dropout modules shift parameter names in existing LeVLJEPA checkpoints.
-    return nn.Sequential(
-        *(layer for layer in head if not isinstance(layer, nn.Dropout))
-    )
+    # Keep parameter keys stable when dropout is enabled on existing checkpoints.
+    layers = OrderedDict()
+    index = 0
+    for layer in head:
+        if isinstance(layer, nn.Dropout):
+            if dropout:
+                layers[f"dropout_{index}"] = layer
+        else:
+            layers[str(index)] = layer
+            index += 1
+    return nn.Sequential(layers)
 
 
 class LeVLJEPA(Module):
@@ -54,6 +63,8 @@ class LeVLJEPA(Module):
         distributed: Use global-batch characteristic functions under DDP.
         seed: Seed of checkpointed regularizer slice sequences.
         optim: Standard ``spt.Module`` optimizer/scheduler configuration.
+        predictor_dropout: Dropout probability in predictor heads, in [0, 1).
+            Defaults to zero; 0.1 supports the paper training configuration.
 
     Note:
         Input is a dict with ``image``, ``input_ids`` and ``attention_mask``.
@@ -80,7 +91,10 @@ class LeVLJEPA(Module):
         distributed: bool = True,
         seed: int = 0,
         optim: dict | None = None,
+        predictor_dropout: float = 0.0,
     ) -> None:
+        if not 0.0 <= predictor_dropout < 1.0:
+            raise ValueError("predictor_dropout must be in [0, 1)")
         super().__init__(
             forward=levljepa,
             optim=optim
@@ -91,8 +105,12 @@ class LeVLJEPA(Module):
         self.text_encoder = text_encoder
         self.vision_pre_proj = _head(vision_dim, pre_projection_dims, embedding_dim)
         self.text_pre_proj = _head(text_dim, pre_projection_dims, embedding_dim)
-        self.projector_vision = _head(embedding_dim, predictor_dims, embedding_dim)
-        self.projector_text = _head(embedding_dim, predictor_dims, embedding_dim)
+        self.projector_vision = _head(
+            embedding_dim, predictor_dims, embedding_dim, predictor_dropout
+        )
+        self.projector_text = _head(
+            embedding_dim, predictor_dims, embedding_dim, predictor_dropout
+        )
         self.levljepa_loss = LeVLJEPALoss(
             lambda_vision=lambda_vision,
             lambda_text=lambda_text,
