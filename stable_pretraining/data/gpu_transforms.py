@@ -75,6 +75,9 @@ record kornia's sampled per-sample parameters into the batch dict
 """
 
 import math
+import queue
+import threading
+import warnings
 from collections import deque
 from typing import Iterable, Optional, Sequence, Tuple, Union
 
@@ -915,11 +918,12 @@ class GPUMultiCrop(nn.Module):
     """All views of a multi-crop recipe in a few batched kernels, for images or clips.
 
     Replaces a :class:`MultiView` of per-view kornia chains (one random-resized
-    crop + photometric chain per view) with one batched crop-and-resize per
-    view group and one fused colour pass over all views. For LeVJEPA's recipe
-    (1 global + 10 local views of 96 x 16-frame clips) the kornia chains cost
-    ~380-890 ms per batch on an H100; this module is designed to make that a
-    small fraction of a training step.
+    crop + photometric chain per view) with one fused crop + colour kernel per
+    view group (Triton, uint8 CUDA input) or, elsewhere, one batched
+    ``roi_align`` plus batched colour ops. For LeVJEPA's recipe (1 global + 10
+    local views of 96 x 16-frame 256 px clips) the kornia chains cost
+    ~380-890 ms per batch on an H100; the fused kernel takes ~5-8 ms on
+    L40S / RTX PRO 6000 class GPUs (the unfused path 115-250 ms).
 
     Crops follow ``torchvision.transforms.RandomResizedCrop`` (area in
     ``scale``, log-uniform aspect ratio in ``ratio``, 10 attempts, then a
@@ -953,6 +957,13 @@ class GPUMultiCrop(nn.Module):
             consumers that want the views stacked.
         record_params: Write the sampled boxes and photometric params into
             ``batch["GPUMultiCrop"]``.
+        backend: ``"triton"`` runs crop, resize and all colour ops in one
+            fused kernel per view group (uint8 RGB CUDA input; reads the
+            source once and writes uint8 once, several times faster and far
+            less memory traffic than the unfused path); ``"torch"`` uses
+            ``roi_align`` plus elementwise torch ops (any device and dtype);
+            ``"auto"`` (default) picks Triton when it applies. Both draw
+            identical parameters; outputs agree to rounding.
 
     Output dtype matches the input (uint8 in, uint8 out). The source key is
     removed from the batch to free memory.
@@ -992,8 +1003,14 @@ class GPUMultiCrop(nn.Module):
         size_key: Optional[str] = None,
         output: str = "views",
         record_params: bool = True,
+        backend: str = "auto",
     ):
         super().__init__()
+        if backend not in ("auto", "triton", "torch"):
+            raise ValueError(
+                f"backend must be 'auto', 'triton' or 'torch', got {backend!r}"
+            )
+        self.backend = backend
         if output not in ("views", "groups"):
             raise ValueError(f"output must be 'views' or 'groups', got {output!r}")
         self.groups = []
@@ -1018,14 +1035,9 @@ class GPUMultiCrop(nn.Module):
         self.size_key, self.output, self.record_params = size_key, output, record_params
 
     @staticmethod
-    def _jitter(
-        y: torch.Tensor, g: dict, shape: Tuple[int, int]
-    ) -> Tuple[torch.Tensor, dict]:
-        """Colour jitter + grayscale on ``y`` (B, n, T, C, h, w) in [0, 1]."""
-        B, n = shape
-        dev = y.device
-        bshape = (B, n, 1, 1, 1, 1)
-        params = {}
+    def _sample_params(g: dict, B: int, n: int, dev: torch.device) -> dict:
+        """Photometric params per (sample, view) and the colour-op order."""
+        params: dict = {"order": []}
         if g["color_jitter"] is not None:
             bri, con, sat, hue = g["color_jitter"]
             on = torch.rand(B, n, device=dev) < g["color_jitter_p"]
@@ -1036,32 +1048,62 @@ class GPUMultiCrop(nn.Module):
                 )
                 return torch.where(on, f, torch.full_like(f, center))
 
-            fb = factor(bri, 1.0).clamp_min(0)
-            fc = factor(con, 1.0).clamp_min(0)
-            fs = factor(sat, 1.0).clamp_min(0)
-            fh = factor(hue, 0.0)
-            params.update(applied=on, brightness=fb, contrast=fc, saturation=fs, hue=fh)
-            for op in torch.randperm(4).tolist():
-                if op == 0 and bri > 0:
-                    y = (y * fb.view(bshape)).clamp_(0, 1)
-                elif op == 1 and con > 0:
-                    mean = _gray(y).mean((-3, -2, -1), keepdim=True)
-                    f = fc.view(bshape)
-                    y = (f * y + (1 - f) * mean).clamp_(0, 1)
-                elif op == 2 and sat > 0:
-                    f = fs.view(bshape)
-                    y = (f * y + (1 - f) * _gray(y)).clamp_(0, 1)
-                elif op == 3 and hue > 0:
-                    hsv = _rgb_to_hsv(y)
-                    hsv[..., 0, :, :] = (
-                        hsv[..., 0, :, :] + fh.view(B, n, 1, 1, 1)
-                    ) % 1.0
-                    y = _hsv_to_rgb(hsv).clamp_(0, 1)
+            params.update(
+                applied=on,
+                brightness=factor(bri, 1.0).clamp_min(0),
+                contrast=factor(con, 1.0).clamp_min(0),
+                saturation=factor(sat, 1.0).clamp_min(0),
+                hue=factor(hue, 0.0),
+            )
+            amounts = (bri, con, sat, hue)
+            params["order"] = [
+                op for op in torch.randperm(4).tolist() if amounts[op] > 0
+            ]
         if g["grayscale_p"] > 0:
-            gray = torch.rand(B, n, device=dev) < g["grayscale_p"]
-            params["grayscale"] = gray
-            y = torch.where(gray.view(bshape), _gray(y).expand_as(y), y)
-        return y, params
+            params["grayscale"] = torch.rand(B, n, device=dev) < g["grayscale_p"]
+        if g["hflip_p"] > 0:
+            params["hflip"] = torch.rand(B, n, device=dev) < g["hflip_p"]
+        return params
+
+    @staticmethod
+    def _apply_color(y: torch.Tensor, params: dict) -> torch.Tensor:
+        """Colour jitter + grayscale on ``y`` (B, n, T, C, h, w) in [0, 1]."""
+        B, n = y.shape[:2]
+        bshape = (B, n, 1, 1, 1, 1)
+        for op in params["order"]:
+            if op == 0:
+                y = (y * params["brightness"].view(bshape)).clamp_(0, 1)
+            elif op == 1:
+                mean = _gray(y).mean((-3, -2, -1), keepdim=True)
+                f = params["contrast"].view(bshape)
+                y = (f * y + (1 - f) * mean).clamp_(0, 1)
+            elif op == 2:
+                f = params["saturation"].view(bshape)
+                y = (f * y + (1 - f) * _gray(y)).clamp_(0, 1)
+            else:
+                hsv = _rgb_to_hsv(y)
+                hsv[..., 0, :, :] = (
+                    hsv[..., 0, :, :] + params["hue"].view(B, n, 1, 1, 1)
+                ) % 1.0
+                y = _hsv_to_rgb(hsv).clamp_(0, 1)
+        if "grayscale" in params:
+            y = torch.where(params["grayscale"].view(bshape), _gray(y).expand_as(y), y)
+        return y
+
+    def _use_fused(self, x: torch.Tensor) -> bool:
+        if self.backend == "torch":
+            return False
+        ok = x.is_cuda and x.dtype == torch.uint8 and x.shape[-3] == 3
+        if ok:
+            try:
+                from . import _multicrop_triton  # noqa: F401
+            except ImportError:
+                ok = False
+        if self.backend == "triton" and not ok:
+            raise RuntimeError(
+                "backend='triton' needs Triton and a uint8 RGB CUDA input"
+            )
+        return ok
 
     def forward(self, batch: dict) -> dict:
         """Replace ``batch[source]`` by the augmented views.
@@ -1084,8 +1126,11 @@ class GPUMultiCrop(nn.Module):
             x = x.unsqueeze(1)
         B, T, C, H, W = x.shape
         is_uint8 = x.dtype == torch.uint8
-        frames = x.reshape(B * T, C, H, W)
-        frames = frames.float().div_(255) if is_uint8 else frames.float()
+        fused = self._use_fused(x)
+        frames = None
+        if not fused:
+            frames = x.reshape(B * T, C, H, W)
+            frames = frames.float().div_(255) if is_uint8 else frames.float()
         if self.size_key is not None and self.size_key in batch:
             hw = batch[self.size_key].to(x.device)
             vh, vw = hw[:, 0], hw[:, 1]
@@ -1102,22 +1147,43 @@ class GPUMultiCrop(nn.Module):
             n, (oh, ow) = g["n_views"], g["size"]
             boxes = _sample_rrc_boxes(
                 vh.repeat_interleave(n), vw.repeat_interleave(n), g["scale"], g["ratio"]
-            ).view(B, n, 1, 4)
-            rois = torch.cat(
-                (frame_idx.expand(B, n, T).unsqueeze(-1), boxes.expand(B, n, T, 4)), -1
-            ).reshape(-1, 5)
-            y = roi_align(frames, rois, (oh, ow), 1.0, -1, True).view(
-                B, n, T, C, oh, ow
-            )
-            y, params = self._jitter(y, g, (B, n)) if C == 3 else (y, {})
-            if g["hflip_p"] > 0:
-                flip = torch.rand(B, n, device=x.device) < g["hflip_p"]
-                params["hflip"] = flip
-                y = torch.where(flip.view(B, n, 1, 1, 1, 1), y.flip(-1), y)
-            params["boxes"] = boxes.view(B, n, 4)
-            record.append(params)
-            if is_uint8:
-                y = y.mul_(255).round_().to(torch.uint8)
+            ).view(B, n, 4)
+            params = self._sample_params(g, B, n, x.device) if C == 3 else {"order": []}
+            if fused:
+                from ._multicrop_triton import crop_color
+
+                y = crop_color(
+                    x,
+                    boxes,
+                    (oh, ow),
+                    jitter=params if params["order"] else None,
+                    order=params["order"],
+                    gray=params.get("grayscale"),
+                    flip=params.get("hflip"),
+                )
+            else:
+                rois = torch.cat(
+                    (
+                        frame_idx.expand(B, n, T).unsqueeze(-1),
+                        boxes.view(B, n, 1, 4).expand(B, n, T, 4),
+                    ),
+                    -1,
+                ).reshape(-1, 5)
+                y = roi_align(frames, rois, (oh, ow), 1.0, -1, True).view(
+                    B, n, T, C, oh, ow
+                )
+                if C == 3:
+                    y = self._apply_color(y, params)
+                if "hflip" in params:
+                    y = torch.where(
+                        params["hflip"].view(B, n, 1, 1, 1, 1), y.flip(-1), y
+                    )
+                if is_uint8:
+                    y = y.mul_(255).round_().to(torch.uint8)
+            if self.record_params:
+                rec = {k: v for k, v in params.items() if k != "order"}
+                rec["boxes"] = boxes
+                record.append(rec)
             if not is_clip:
                 y = y.squeeze(2)
             group_out.append(y)
@@ -1141,8 +1207,15 @@ class GPUDecodeJPEG(nn.Module):
     Lets DataLoader workers ship encoded bytes only (no decode, no
     augmentation on the CPU); decoding then runs on the GPU inside
     ``Module.on_after_batch_transfer`` (or :class:`GPUPrefetcher`). Uses
-    ``torchvision.io.decode_jpeg(list, device=...)``; on a CPU device it
-    falls back to libjpeg.
+    ``torchvision.io.decode_jpeg(list, device=...)``, whose batched nvJPEG
+    path runs on the GPU's hardware JPEG engines where present (A100, H100,
+    B200, ...) and on CUDA cores otherwise; on a CPU device it falls back to
+    libjpeg.
+
+    Most of the cost is host-side (bitstream parsing and per-image
+    submission, about 25 us per image); nvJPEG releases the GIL meanwhile, so
+    :class:`GPUPrefetcher` hides it behind training by running it in a
+    background thread.
 
     Input ``batch[source]``: a sequence of ``B`` encoded images (``bytes`` or
     1-D uint8 CPU tensors), or for clips the layout ``default_collate``
@@ -1185,7 +1258,35 @@ class GPUDecodeJPEG(nn.Module):
             # nvJPEG reads the bitstream from host memory regardless of the
             # decode device (torchvision requirement).
             return x.cpu() if x.device.type != "cpu" else x
-        return torch.frombuffer(bytearray(x), dtype=torch.uint8)
+        # Zero-copy view of the (read-only) bytes: the decoder never writes
+        # to its input, and copying 1-2k bitstreams per batch costs ~4 ms.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message="The given buffer is not writable"
+            )
+            return torch.frombuffer(x, dtype=torch.uint8)
+
+    @staticmethod
+    def _pad_stack(imgs: list[torch.Tensor]) -> torch.Tensor:
+        shapes = [tuple(i.shape[1:]) for i in imgs]
+        groups: dict[tuple[int, int], list[int]] = {}
+        for k, hw in enumerate(shapes):
+            groups.setdefault(hw, []).append(k)
+        if len(groups) == 1:
+            return torch.stack(imgs)
+        Hm = max(h for h, _ in groups)
+        Wm = max(w for _, w in groups)
+        out = imgs[0].new_empty(len(imgs), 3, Hm, Wm)
+        # One stack + edge-replicate + scatter per distinct size: a per-image
+        # loop costs ~3 launches per image (~40 ms for 1.5k frames).
+        for (h, w), idx in groups.items():
+            g = torch.stack([imgs[k] for k in idx])
+            if w < Wm:
+                g = torch.cat([g, g[..., w - 1 :].expand(-1, -1, -1, Wm - w)], dim=3)
+            if h < Hm:
+                g = torch.cat([g, g[:, :, h - 1 :].expand(-1, -1, Hm - h, -1)], dim=2)
+            out.index_copy_(0, torch.tensor(idx, device=out.device), g)
+        return out
 
     def forward(self, batch: dict) -> dict:
         """Decode ``batch[source]`` into ``batch[target]`` and ``batch[size_key]``.
@@ -1211,18 +1312,7 @@ class GPUDecodeJPEG(nn.Module):
             mode=ImageReadMode.RGB,
             device=self.device,
         )
-        shapes = {tuple(i.shape) for i in imgs}
-        if len(shapes) == 1:
-            out = torch.stack(imgs)
-        else:
-            Hm = max(i.shape[1] for i in imgs)
-            Wm = max(i.shape[2] for i in imgs)
-            out = imgs[0].new_empty(len(imgs), 3, Hm, Wm)
-            for k, i in enumerate(imgs):
-                h, w = i.shape[1:]
-                out[k, :, :h, :w] = i
-                out[k, :, :h, w:] = i[:, :, w - 1 : w]
-                out[k, :, h:, :] = out[k, :, h - 1 : h, :]
+        out = self._pad_stack(imgs)
         sizes = torch.tensor(
             [list(imgs[b * T].shape[1:]) for b in range(B)], device=out.device
         )
@@ -1257,8 +1347,13 @@ class GPUPrefetcher:
     series with every step. Enable for an spt :class:`DataModule` with
     ``DataModule(..., gpu_prefetch=True)``.
 
-    Overlap needs free GPU resources: kernels that occupy every SM for a whole
-    step (e.g. persistent megakernels) leave the side stream only the gaps.
+    With ``background=True`` (default) the copy and transform are issued from
+    a background thread, so their host-side work (e.g. nvJPEG bitstream
+    parsing in :class:`GPUDecodeJPEG`, Python launch overhead) also overlaps
+    with the training loop instead of running between steps. GPU-side
+    overlap needs free GPU resources: kernels that occupy every SM for a
+    whole step (e.g. persistent megakernels) leave the side stream only the
+    gaps, but the hardware JPEG engines are separate from the SMs.
 
     Args:
         loader: The (CPU) DataLoader.
@@ -1267,12 +1362,16 @@ class GPUPrefetcher:
         device: Target device; default the current CUDA device (CPU if none,
             in which case the transform runs synchronously).
         depth: Batches prepared ahead of the one being consumed.
+        background: Prepare batches in a background thread.
 
     Note:
         Attribute access falls through to ``loader`` (``dataset``,
         ``sampler``, ``batch_size``, ...). Lightning does not inject a
         distributed sampler into non-DataLoader iterables, so under DDP give
-        the wrapped DataLoader a ``DistributedSampler`` yourself.
+        the wrapped DataLoader a ``DistributedSampler`` yourself. With
+        ``background=True`` random transforms draw from the shared torch RNG
+        in another thread, so their draws interleave nondeterministically
+        with the training step's.
     """
 
     def __init__(
@@ -1281,6 +1380,7 @@ class GPUPrefetcher:
         transform: Optional[nn.Module] = None,
         device: Optional[Union[str, torch.device]] = None,
         depth: int = 1,
+        background: bool = True,
     ):
         self.loader = loader
         if device is None:
@@ -1296,6 +1396,7 @@ class GPUPrefetcher:
         if isinstance(transform, nn.Module):
             transform.to(self.device)
         self.depth = max(int(depth), 1)
+        self.background = background
 
     def __len__(self) -> int:
         return len(self.loader)
@@ -1311,6 +1412,28 @@ class GPUPrefetcher:
             batch = self.transform(batch)
         return batch
 
+    def _submit(self, it, stream):
+        batch = next(it)
+        with torch.cuda.device(self.device), torch.cuda.stream(stream):
+            batch = self._prepare(batch)
+            event = torch.cuda.Event()
+            event.record(stream)
+        return batch, event
+
+    def _consume(self, batch, event):
+        current = torch.cuda.current_stream(self.device)
+        current.wait_event(event)
+
+        def keep_alive(t):
+            # Allocated on the side stream, used on the training stream:
+            # stop the caching allocator from reusing the memory early.
+            if t.is_cuda:
+                t.record_stream(current)
+            return t
+
+        _walk_tensors(batch, keep_alive)
+        return _PrefetchedBatch(batch)
+
     def __iter__(self):
         if self.device.type != "cuda":
             for batch in self.loader:
@@ -1318,36 +1441,65 @@ class GPUPrefetcher:
             return
         stream = torch.cuda.Stream(self.device)
         it = iter(self.loader)
+        if self.background:
+            yield from self._iter_threaded(it, stream)
+            return
         pending = deque()
 
         def submit() -> None:
             try:
-                batch = next(it)
+                pending.append(self._submit(it, stream))
             except StopIteration:
-                return
-            with torch.cuda.stream(stream):
-                batch = self._prepare(batch)
-                event = torch.cuda.Event()
-                event.record(stream)
-            pending.append((batch, event))
+                pass
 
         for _ in range(self.depth):
             submit()
         while pending:
             batch, event = pending.popleft()
-            current = torch.cuda.current_stream(self.device)
-            current.wait_event(event)
-
-            def keep_alive(t):
-                # Allocated on the side stream, used on the training stream:
-                # stop the caching allocator from reusing the memory early.
-                if t.is_cuda:
-                    t.record_stream(current)
-                return t
-
-            _walk_tensors(batch, keep_alive)
+            out = self._consume(batch, event)
             submit()
-            yield _PrefetchedBatch(batch)
+            yield out
+
+    def _iter_threaded(self, it, stream):
+        done = object()
+        q: queue.Queue = queue.Queue(maxsize=self.depth)
+        stop = threading.Event()
+
+        def put(item) -> bool:
+            while not stop.is_set():
+                try:
+                    q.put(item, timeout=0.1)
+                    return True
+                except queue.Full:
+                    pass
+            return False
+
+        def produce() -> None:
+            try:
+                while not stop.is_set():
+                    try:
+                        item = self._submit(it, stream)
+                    except StopIteration:
+                        break
+                    if not put(item):
+                        return
+                put(done)
+            except BaseException as e:  # noqa: BLE001 - re-raised in the consumer
+                put(e)
+
+        worker = threading.Thread(target=produce, name="GPUPrefetcher", daemon=True)
+        worker.start()
+        try:
+            while True:
+                item = q.get()
+                if item is done:
+                    return
+                if isinstance(item, BaseException):
+                    raise item
+                yield self._consume(*item)
+        finally:
+            stop.set()
+            worker.join()
 
 
 __all__ = [

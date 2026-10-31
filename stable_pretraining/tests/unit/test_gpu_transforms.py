@@ -736,6 +736,61 @@ class TestGPUMultiCrop:
         assert torch.equal(views[2]["label"], torch.tensor([3, 7]))
         assert len(out["GPUMultiCrop"]) == 2
 
+    def test_invalid_backend(self):
+        with pytest.raises(ValueError, match="backend"):
+            gt.GPUMultiCrop(LEVJEPA_GROUPS, backend="cuda")
+
+    def test_triton_backend_requires_cuda_uint8(self):
+        with pytest.raises(RuntimeError, match="triton"):
+            gt.GPUMultiCrop(LEVJEPA_GROUPS, backend="triton")({"image": _static_clip()})
+
+    @pytest.mark.gpu
+    @pytest.mark.parametrize("seed", range(6))
+    def test_fused_matches_torch(self, seed):
+        # Padded batch of two sizes, every colour op at full probability: the
+        # fused kernel and the torch path draw identical params (same seed).
+        groups = [
+            dict(n_views=2, size=(20, 28), scale=(0.3, 1.0), hflip_p=0.5),
+            dict(
+                n_views=5,
+                size=12,
+                scale=(0.02, 0.6),
+                hflip_p=0.5,
+                color_jitter=(0.4, 0.4, 0.2, 0.1),
+                color_jitter_p=1.0,
+                grayscale_p=0.3,
+            ),
+        ]
+        g = torch.Generator().manual_seed(seed)
+        x = torch.randint(0, 256, (3, 4, 3, 36, 44), generator=g, dtype=torch.uint8)
+        x = (
+            torch.nn.functional.avg_pool2d(x.view(12, 3, 36, 44).float(), 3, 1, 1)
+            .round()
+            .to(torch.uint8)
+            .view(3, 4, 3, 36, 44)
+            .cuda()
+        )
+        sizes = torch.tensor([[36, 44], [30, 44], [36, 37]], device="cuda")
+        outs = []
+        for backend in ("triton", "torch"):
+            torch.manual_seed(seed)
+            mc = gt.GPUMultiCrop(
+                groups, size_key="size", output="groups", backend=backend
+            )
+            outs.append(mc({"image": x.clone(), "size": sizes})["views"])
+        for a, b in zip(*outs):
+            d = (a.int() - b.int()).abs()
+            assert a.shape == b.shape and a.dtype == torch.uint8
+            assert d.float().mean() < 0.05 and d.max() <= 3
+
+    @pytest.mark.gpu
+    def test_fused_is_default_on_cuda_uint8(self):
+        mc = gt.GPUMultiCrop(LEVJEPA_GROUPS)
+        x = (_static_clip() * 255).to(torch.uint8).cuda()
+        assert mc._use_fused(x) and not mc._use_fused(x.float())
+        out = mc({"image": x})
+        assert _max_frame_diff([v["image"].float() for v in out["views"]]) == 0
+
     def test_frames_share_params(self):
         out = gt.GPUMultiCrop(LEVJEPA_GROUPS)({"image": _static_clip()})
         assert _max_frame_diff([v["image"] for v in out["views"]]) < 1e-6
@@ -939,9 +994,34 @@ class TestGPUPrefetcher:
         assert isinstance(loader.transform, _Double)
 
     @pytest.mark.gpu
-    def test_cuda_prefetch_matches_synchronous(self):
-        pf = gt.GPUPrefetcher(_loader(n=8), transform=_Double(), device="cuda", depth=2)
+    @pytest.mark.parametrize("background", [True, False])
+    def test_cuda_prefetch_matches_synchronous(self, background):
+        pf = gt.GPUPrefetcher(
+            _loader(n=8),
+            transform=_Double(),
+            device="cuda",
+            depth=2,
+            background=background,
+        )
         got = [b["image"] for b in pf]
         assert all(t.is_cuda for t in got)
         expect = torch.arange(24.0).view(8, 3) * 2
         assert torch.equal(torch.cat(got).cpu(), expect)
+
+    @pytest.mark.gpu
+    def test_background_thread_stops_on_early_exit(self):
+        import threading
+
+        it = iter(gt.GPUPrefetcher(_loader(n=40), transform=_Double(), device="cuda"))
+        next(it)
+        it.close()
+        assert not any(t.name == "GPUPrefetcher" for t in threading.enumerate())
+
+    @pytest.mark.gpu
+    def test_background_errors_reach_the_consumer(self):
+        class Boom(torch.nn.Module):
+            def forward(self, batch):
+                raise RuntimeError("bad batch")
+
+        with pytest.raises(RuntimeError, match="bad batch"):
+            list(gt.GPUPrefetcher(_loader(), transform=Boom(), device="cuda"))
