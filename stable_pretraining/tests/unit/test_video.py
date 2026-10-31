@@ -297,3 +297,39 @@ class TestLanceVideoSegments:
         assert batch["video"].shape[0] == 3
         assert batch["video"].shape[1] == 4  # window_length
         assert len(batch["filename"]) == 3
+
+
+@pytest.mark.unit
+class TestJpegEncodingAndRawBytes:
+    """``encoding="jpeg"`` + ``decode=False`` for GPU decoding."""
+
+    def test_jpeg_roundtrip_matches_decoded(self, mp4_dir, tmp_path):
+        from torch.utils.data import default_collate
+
+        from stable_pretraining.data.gpu_transforms import GPUDecodeJPEG
+
+        out = tmp_path / "ds.lance"
+        build_lance_video_dataset(mp4_dir, out, quality=95, encoding="jpeg", workers=1)
+        meta = json.loads((tmp_path / "ds.lance.videos.json").read_text())
+        assert meta["encoding"] == "jpeg"
+
+        raw = LanceVideoSegments(out, window_length=4, decode=False)
+        dec = LanceVideoSegments(out, window_length=4)
+        sample = raw[0]
+        assert "video" not in sample and len(sample["video_bytes"]) == 4
+        assert sample["video_bytes"][0][:2] == b"\xff\xd8"  # JPEG SOI marker
+
+        batch = default_collate([raw[0], raw[1]])
+        video = GPUDecodeJPEG(source="video_bytes", target="video", device="cpu")(
+            batch
+        )["video"]
+        ref = torch.stack([dec[0]["video"], dec[1]["video"]]).permute(0, 1, 4, 2, 3)
+        assert video.shape == ref.shape
+        # libjpeg (torchvision) vs OpenCV's decoder: same bitstream, IDCT rounding may differ.
+        assert (video.int() - ref.int()).abs().float().mean() < 1.0
+
+    def test_invalid_encoding_raises(self, mp4_dir, tmp_path):
+        with pytest.raises(ValueError, match="encoding"):
+            build_lance_video_dataset(
+                mp4_dir, tmp_path / "x.lance", encoding="png", workers=1
+            )
