@@ -328,6 +328,29 @@ class TestJpegEncodingAndRawBytes:
         # libjpeg (torchvision) vs OpenCV's decoder: same bitstream, IDCT rounding may differ.
         assert (video.int() - ref.int()).abs().float().mean() < 1.0
 
+    def test_packed_loader_matches(self, mp4_dir, tmp_path):
+        from torch.utils.data import DataLoader, default_collate
+
+        from stable_pretraining.data.gpu_transforms import GPUDecodeJPEG, PackedJPEG
+
+        out = tmp_path / "ds.lance"
+        build_lance_video_dataset(mp4_dir, out, quality=95, encoding="jpeg", workers=1)
+        raw = LanceVideoSegments(out, window_length=4, decode=False)
+        loader = DataLoader(
+            raw,
+            batch_size=2,
+            num_workers=1,
+            collate_fn=LanceVideoSegments.collate,
+            worker_init_fn=LanceVideoSegments.worker_init,
+            multiprocessing_context="spawn",
+        )
+        batch = next(iter(loader))
+        assert isinstance(batch["video_bytes"], PackedJPEG)
+        assert batch["video_bytes"].offsets.shape == (2, 5)
+        dec = GPUDecodeJPEG(source="video_bytes", target="video", device="cpu")
+        ref = dec(default_collate([raw[0], raw[1]]))["video"]
+        assert torch.equal(dec(batch)["video"], ref)
+
     def test_invalid_encoding_raises(self, mp4_dir, tmp_path):
         with pytest.raises(ValueError, match="encoding"):
             build_lance_video_dataset(

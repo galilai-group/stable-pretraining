@@ -432,7 +432,8 @@ class LanceVideoSegments(Dataset):
         decode: If ``False``, return the encoded frames (``video_bytes``)
             instead of decoding them in the worker, for GPU decoding with
             :class:`~stable_pretraining.data.gpu_transforms.GPUDecodeJPEG`
-            (dataset built with ``encoding="jpeg"``).
+            (dataset built with ``encoding="jpeg"``). Pass
+            ``collate_fn=LanceVideoSegments.collate`` to the DataLoader.
 
     Returns per item (before optional ``transform``):
         ``video``          : uint8 tensor ``(L, H, W, 3)`` RGB (``decode=True``)
@@ -492,7 +493,7 @@ class LanceVideoSegments(Dataset):
         # without a user-provided collate_fn). Warn if resolutions vary.
         hs = {v["H"] for v in self._videos}
         ws = {v["W"] for v in self._videos}
-        if len(hs) > 1 or len(ws) > 1:
+        if self.decode and (len(hs) > 1 or len(ws) > 1):
             logging.warning(
                 f"video resolutions differ ({len(hs)} Hs, {len(ws)} Ws). "
                 "Default collate will fail — supply a custom collate_fn."
@@ -587,6 +588,44 @@ class LanceVideoSegments(Dataset):
         return self.process_sample(sample)
 
     # --- DataLoader helper ---------------------------------------------------
+
+    @staticmethod
+    def collate(samples: list[dict]) -> dict:
+        """Pass as ``collate_fn=LanceVideoSegments.collate`` with ``decode=False``.
+
+        Packs the batch's encoded frames into one
+        :class:`~stable_pretraining.data.gpu_transforms.PackedJPEG`, whose
+        buffer reaches the main process through shared memory. Lists of
+        ``bytes`` (``default_collate``) are pickled through a pipe instead,
+        which caps the loader at ~1.7k 16-frame clips/s regardless of the
+        worker count (vs. ~6.6k packed with 24 workers on a B200 host).
+        Other keys are default-collated; batches without ``video_bytes``
+        fall through to ``default_collate``.
+
+        Args:
+            samples: Items from this dataset.
+
+        Returns:
+            The collated batch.
+        """
+        from torch.utils.data import default_collate
+
+        if "video_bytes" not in samples[0]:
+            return default_collate(samples)
+        from .gpu_transforms import PackedJPEG
+
+        clips = [s["video_bytes"] for s in samples]
+        lens = torch.tensor([[len(b) for b in c] for c in clips], dtype=torch.int64)
+        ends = lens.flatten().cumsum(0).view_as(lens)
+        offsets = torch.cat([ends - lens, ends[:, -1:]], dim=1)
+        data = torch.frombuffer(
+            bytearray(b"".join(b for c in clips for b in c)), dtype=torch.uint8
+        )
+        batch = default_collate(
+            [{k: v for k, v in s.items() if k != "video_bytes"} for s in samples]
+        )
+        batch["video_bytes"] = PackedJPEG(data, offsets)
+        return batch
 
     @staticmethod
     def worker_init(worker_id: int) -> None:

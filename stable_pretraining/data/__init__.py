@@ -13,6 +13,7 @@ from .gpu_transforms import (
     GPUMultiCrop,
     GPUPrefetcher,
     MultiView,
+    PackedJPEG,
     StackedMultiView,
     ToDevice,
 )
@@ -78,6 +79,7 @@ __all__ = [
     "GPUMultiCrop",
     "GPUDecodeJPEG",
     "GPUPrefetcher",
+    "PackedJPEG",
     # Real data wrappers
     "FromTorchDataset",
     "HFDataset",

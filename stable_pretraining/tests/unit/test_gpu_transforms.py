@@ -902,6 +902,38 @@ class TestGPUDecodeJPEG:
         )
         assert torch.allclose(red, expect, atol=3)
 
+    def test_packed_matches_default_collate(self):
+        from torch.utils.data import default_collate
+
+        from stable_pretraining.data.video import LanceVideoSegments
+
+        samples = [
+            {
+                "video_bytes": [
+                    bytes(_jpeg((40 * (3 * b + t), 9 * t, 0), 16 + 8 * b).numpy())
+                    for t in range(3)
+                ],
+                "sample_idx": b,
+            }
+            for b in range(2)
+        ]
+        packed = LanceVideoSegments.collate(samples)
+        assert isinstance(packed["video_bytes"], gt.PackedJPEG)
+        assert packed["sample_idx"].tolist() == [0, 1]
+        frames = packed["video_bytes"].frames()
+        assert [bytes(f.numpy()) for f in frames] == [
+            b for s in samples for b in s["video_bytes"]
+        ]
+        dec = gt.GPUDecodeJPEG(source="video_bytes", target="video", device="cpu")
+        a, b = dec(packed), dec(default_collate(samples))
+        assert torch.equal(a["video"], b["video"])
+        assert torch.equal(a["video_size"], b["video_size"])
+
+    def test_packed_stays_on_host(self):
+        p = gt.PackedJPEG(torch.zeros(4, dtype=torch.uint8), torch.tensor([[0, 4]]))
+        batch = gt.ToDevice("meta")({"video_bytes": p, "x": torch.zeros(2)})
+        assert batch["video_bytes"] is p and batch["x"].device.type == "meta"
+
     def test_mixed_sizes_are_padded(self):
         enc = [
             bytes(_jpeg((255, 0, 0), 16, 16).numpy()),

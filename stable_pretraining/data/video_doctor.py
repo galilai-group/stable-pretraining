@@ -590,12 +590,16 @@ def _bench(
     workers: int,
     device: int,
 ) -> None:
-    from torch.utils.data import DataLoader, RandomSampler, default_collate
+    from torch.utils.data import DataLoader, RandomSampler
 
     from .gpu_transforms import GPUCompose, GPUDecodeJPEG, GPUMultiCrop, GPUPrefetcher
 
     if ds is not None:
-        raw = default_collate([ds[i] for i in torch.randperm(len(ds))[:batch].tolist()])
+        from .video import LanceVideoSegments
+
+        raw = LanceVideoSegments.collate(
+            [ds[i] for i in torch.randperm(len(ds))[:batch].tolist()]
+        )
         src = "store"
     else:
         raw = _synthetic_batch(batch, window, (256, 340))
@@ -624,7 +628,6 @@ def _bench(
     if ds is None or workers <= 0:
         r.bottleneck = min(r.throughput, key=r.throughput.get)
         return
-    from .video import LanceVideoSegments
 
     # Workers fill their queues before the clock starts; time a window long
     # enough that the burst does not count. Sampling with replacement keeps
@@ -640,6 +643,7 @@ def _bench(
         persistent_workers=True,
         prefetch_factor=2,
         worker_init_fn=LanceVideoSegments.worker_init,
+        collate_fn=LanceVideoSegments.collate,
         multiprocessing_context="spawn",
     )
     prefetched = GPUPrefetcher(

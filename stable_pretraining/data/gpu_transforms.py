@@ -1201,6 +1201,46 @@ class GPUMultiCrop(nn.Module):
 # ---------------------------------------------------------------------------
 
 
+class PackedJPEG:
+    """A batch of encoded clips as one uint8 buffer plus frame offsets.
+
+    Built by :meth:`LanceVideoSegments.collate
+    <stable_pretraining.data.video.LanceVideoSegments.collate>`. DataLoader
+    moves tensors between processes through shared memory but pickles
+    ``bytes`` through a pipe, which caps a loader of per-frame ``bytes`` at
+    ~1.7k 16-frame clips/s in the main process however many workers it has.
+
+    Deliberately not a tensor, dataclass or ``.to()``-able object: device
+    transfer (:class:`GPUPrefetcher`, :class:`ToDevice`, Lightning) leaves it
+    on the host, where nvJPEG reads bitstreams from.
+
+    Args:
+        data: 1-D uint8 tensor, every frame's bitstream back to back.
+        offsets: ``(B, T + 1)`` int64; frame ``t`` of clip ``b`` is
+            ``data[offsets[b, t]:offsets[b, t + 1]]``.
+    """
+
+    __slots__ = ("data", "offsets")
+
+    def __init__(self, data: torch.Tensor, offsets: torch.Tensor):
+        self.data, self.offsets = data, offsets
+
+    def __len__(self) -> int:
+        return self.offsets.shape[0]
+
+    @property
+    def num_frames(self) -> int:
+        """Frames per clip."""
+        return self.offsets.shape[1] - 1
+
+    def frames(self) -> list[torch.Tensor]:
+        """Clip-major list of ``B * T`` zero-copy views, one per frame."""
+        data = self.data
+        return [
+            data[a:b] for row in self.offsets.tolist() for a, b in zip(row, row[1:])
+        ]
+
+
 class GPUDecodeJPEG(nn.Module):
     """Decode JPEG bytes into a padded uint8 batch with nvJPEG (batched).
 
@@ -1218,8 +1258,10 @@ class GPUDecodeJPEG(nn.Module):
     background thread.
 
     Input ``batch[source]``: a sequence of ``B`` encoded images (``bytes`` or
-    1-D uint8 CPU tensors), or for clips the layout ``default_collate``
-    produces from per-sample lists of ``T`` frames: ``T`` sequences of ``B``.
+    1-D uint8 CPU tensors); for clips, a :class:`PackedJPEG` (from
+    ``LanceVideoSegments.collate``, the fast path) or the layout
+    ``default_collate`` produces from per-sample lists of ``T`` frames:
+    ``T`` sequences of ``B``.
     Images of different sizes are padded to the batch maximum by replicating
     their last row and column (so bilinear crops at the border match an
     unpadded image); the valid ``(H, W)`` per sample is written to
@@ -1300,8 +1342,13 @@ class GPUDecodeJPEG(nn.Module):
         from torchvision.io import ImageReadMode, decode_jpeg
 
         enc = batch[self.source]
-        is_clip = len(enc) > 0 and isinstance(enc[0], (list, tuple))
-        if is_clip:
+        is_clip = isinstance(enc, PackedJPEG) or (
+            len(enc) > 0 and isinstance(enc[0], (list, tuple))
+        )
+        if isinstance(enc, PackedJPEG):
+            B, T = len(enc), enc.num_frames
+            flat = enc.frames()
+        elif is_clip:
             T, B = len(enc), len(enc[0])
             flat = [enc[t][b] for b in range(B) for t in range(T)]
         else:
