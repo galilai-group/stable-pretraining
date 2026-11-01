@@ -8,8 +8,13 @@ source frame to float and makes ~30 passes over the float views; this one
 reads the source once per sample point and writes each output byte once.
 
 Contrast blends towards the mean luma of the frame as it is when contrast
-runs, which depends on the ops before it, so it needs a first reduction pass
-over the same pipeline (``REDUCE``) truncated before contrast.
+runs, which depends on the ops before it. The first pass (``REDUCE``) resamples
+and applies the ops before contrast and accumulates that mean. On Hopper and
+newer it also keeps the float32 colours in a scratch buffer, and
+:func:`_finish_kernel` applies the remaining ops from it, so the crop is
+resampled once (H100: 6.9 -> 4.1 ms for 96 clips x 10 local views). With less
+memory bandwidth (Ada, L40S) the scratch round trip costs more than
+resampling again, so the second pass recomputes the crop (``REDUCE=False``).
 """
 
 from typing import Optional, Sequence
@@ -99,6 +104,7 @@ def _apply(OP, r, g, b, fb, fc, fs, fh, mean):
 def _crop_color_kernel(
     src,
     out,
+    scratch,
     boxes,
     fb_ptr,
     fc_ptr,
@@ -125,6 +131,7 @@ def _crop_color_kernel(
     GRAY: tl.constexpr,
     FLIP: tl.constexpr,
     REDUCE: tl.constexpr,
+    SCRATCH: tl.constexpr,
     BLOCK: tl.constexpr,
 ):
     vf = tl.program_id(0)  # ((b * n_views + v) * T + t)
@@ -221,6 +228,11 @@ def _crop_color_kernel(
     if REDUCE:
         part = tl.sum(tl.where(mask, _luma(r, g, b), 0.0), axis=0) / (OH * OW)
         tl.atomic_add(mean_ptr + vf, part)
+        if SCRATCH:
+            sp = scratch + vf.to(tl.int64) * (3 * OH * OW) + offs
+            tl.store(sp, r, mask=mask)
+            tl.store(sp + OH * OW, g, mask=mask)
+            tl.store(sp + 2 * OH * OW, b, mask=mask)
         return
     if GRAY:
         lum = _luma(r, g, b)
@@ -232,6 +244,60 @@ def _crop_color_kernel(
     tl.store(dst, libdevice.rint(r * 255.0).to(tl.uint8), mask=mask)
     tl.store(dst + OH * OW, libdevice.rint(g * 255.0).to(tl.uint8), mask=mask)
     tl.store(dst + 2 * OH * OW, libdevice.rint(b * 255.0).to(tl.uint8), mask=mask)
+
+
+@triton.jit(do_not_specialize=["n_views", "T", "O0", "O1", "O2", "O3", "CPOS"])
+def _finish_kernel(
+    scratch,
+    out,
+    fb_ptr,
+    fc_ptr,
+    fs_ptr,
+    fh_ptr,
+    gray_ptr,
+    mean_ptr,
+    T,
+    n_views,
+    O0,
+    O1,
+    O2,
+    O3,
+    CPOS,
+    NPIX: tl.constexpr,
+    GRAY: tl.constexpr,
+    BLOCK: tl.constexpr,
+):
+    """Second pass with contrast: ops from position ``CPOS`` on, grayscale, uint8 store."""
+    vf = tl.program_id(0)
+    bv = vf // T
+    offs = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
+    mask = offs < NPIX
+    sp = scratch + vf.to(tl.int64) * (3 * NPIX) + offs
+    r = tl.load(sp, mask=mask, other=0.0)
+    g = tl.load(sp + NPIX, mask=mask, other=0.0)
+    b = tl.load(sp + 2 * NPIX, mask=mask, other=0.0)
+    fb = tl.load(fb_ptr + bv)
+    fc = tl.load(fc_ptr + bv)
+    fs = tl.load(fs_ptr + bv)
+    fh = tl.load(fh_ptr + bv)
+    mean = tl.load(mean_ptr + vf)
+    if CPOS <= 0:
+        r, g, b = _apply(O0, r, g, b, fb, fc, fs, fh, mean)
+    if CPOS <= 1:
+        r, g, b = _apply(O1, r, g, b, fb, fc, fs, fh, mean)
+    if CPOS <= 2:
+        r, g, b = _apply(O2, r, g, b, fb, fc, fs, fh, mean)
+    r, g, b = _apply(O3, r, g, b, fb, fc, fs, fh, mean)
+    if GRAY:
+        lum = _luma(r, g, b)
+        on = tl.load(gray_ptr + bv) != 0
+        r = tl.where(on, lum, r)
+        g = tl.where(on, lum, g)
+        b = tl.where(on, lum, b)
+    dst = out + vf.to(tl.int64) * (3 * NPIX) + offs
+    tl.store(dst, libdevice.rint(r * 255.0).to(tl.uint8), mask=mask)
+    tl.store(dst + NPIX, libdevice.rint(g * 255.0).to(tl.uint8), mask=mask)
+    tl.store(dst + 2 * NPIX, libdevice.rint(b * 255.0).to(tl.uint8), mask=mask)
 
 
 def crop_color(
@@ -290,6 +356,12 @@ def crop_color(
     mean = (
         torch.zeros(B * n * T, dtype=torch.float32, device=dev) if cpos >= 0 else dummy
     )
+    use_scratch = cpos >= 0 and torch.cuda.get_device_capability(dev) >= (9, 0)
+    scratch = (
+        torch.empty(B * n * T, 3, oh, ow, dtype=torch.float32, device=dev)
+        if use_scratch
+        else dummy
+    )
     grid = (B * n * T, triton.cdiv(oh * ow, block))
     common = dict(
         OH=oh,
@@ -303,6 +375,7 @@ def crop_color(
     args = (
         frames,
         out,
+        scratch,
         boxes,
         *f,
         gray_t,
@@ -319,7 +392,25 @@ def crop_color(
         cpos,
     )
     with torch.cuda.device(dev):
-        if cpos >= 0:
-            _crop_color_kernel[grid](*args, REDUCE=True, **common)
-        _crop_color_kernel[grid](*args, REDUCE=False, **common)
+        if not use_scratch:
+            if cpos >= 0:
+                _crop_color_kernel[grid](*args, REDUCE=True, SCRATCH=False, **common)
+            _crop_color_kernel[grid](*args, REDUCE=False, SCRATCH=False, **common)
+        else:
+            _crop_color_kernel[grid](*args, REDUCE=True, SCRATCH=True, **common)
+            _finish_kernel[grid](
+                scratch,
+                out,
+                *f,
+                gray_t,
+                mean,
+                T,
+                n,
+                *codes,
+                cpos,
+                NPIX=oh * ow,
+                GRAY=gray is not None,
+                BLOCK=block,
+                num_warps=4,
+            )
     return out
