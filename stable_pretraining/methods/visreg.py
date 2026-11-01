@@ -58,7 +58,8 @@ class VISRegLoss(nn.Module):
       theoretical standard-normal quantiles (a sliced Wasserstein-2 distance
       to the standard normal).
 
-    :param num_projections: Number of random 1-D projections ``K`` (default: 1024).
+    :param num_projections: Number of random 1-D projections ``K``. When
+        ``None``, uses ``4 * D`` where ``D`` is the embedding dim (default: None).
     :param lambda_scale: Weight on the scale (unit-variance) term (default: 1.0).
     :param lambda_shape: Weight on the shape (sliced-quantile) term (default: 1.0).
     :param lambda_center: Weight on the center (zero-mean) term (default: 1.0).
@@ -72,7 +73,7 @@ class VISRegLoss(nn.Module):
 
     def __init__(
         self,
-        num_projections: int = 1024,
+        num_projections: Optional[int] = None,
         lambda_scale: float = 1.0,
         lambda_shape: float = 1.0,
         lambda_center: float = 1.0,
@@ -108,7 +109,8 @@ class VISRegLoss(nn.Module):
         scale_loss = (std - 1.0).pow(2).mean()
 
         z_norm = z_centered / std.detach().unsqueeze(1)
-        W = F.normalize(torch.randn(D, self.K, device=z.device, dtype=z.dtype), dim=0)
+        K = self.K if self.K is not None else 4 * D
+        W = F.normalize(torch.randn(D, K, device=z.device, dtype=z.dtype), dim=0)
         p_sorted = (z_norm @ W).sort(dim=1).values
         target = self._get_target(B, z.device, z.dtype).view(1, B, 1)
         shape_loss = (p_sorted - target).pow(2).mean()
@@ -153,7 +155,8 @@ class VISReg(Module):
     :param encoder_name: timm model name (e.g., ``"vit_base_patch16_224"``)
     :param projector: Optional projection head. When ``None``, a 3-layer
         BN+ReLU MLP (``embed_dim → 2048 → 2048 → 512``) is created.
-    :param num_projections: Random projection directions for the shape term (default: 1024)
+    :param num_projections: Random projection directions for the shape term.
+        When ``None``, uses ``4 * proj_dim`` (default: None)
     :param lambda_scale: Weight on the VISReg scale (unit-variance) term (default: 1.0)
     :param lambda_shape: Weight on the VISReg shape (sliced-quantile) term (default: 1.0)
     :param lambda_center: Weight on the VISReg center (zero-mean) term (default: 1.0)
@@ -203,7 +206,7 @@ class VISReg(Module):
         self,
         encoder_name: str = "vit_base_patch16_224",
         projector: Optional[nn.Module] = None,
-        num_projections: int = 1024,
+        num_projections: Optional[int] = None,
         lambda_scale: float = 1.0,
         lambda_shape: float = 1.0,
         lambda_center: float = 1.0,
