@@ -7,6 +7,8 @@ pretrained weights or external uploads are used. This reduced recipe validates
 integration and learning behavior; it is not the paper's DataComp experiment.
 Use ``--method clip`` for a control with shared encoders and marginal heads;
 CLIP omits LeVLJEPA's cross-modal predictors and uses embedding retrieval.
+``--manifest-root`` streams local image/caption pairs without caching images;
+``--profile base`` selects ViT-B/16 and 12-layer GPT-2 from random initialization.
 """
 
 import argparse
@@ -22,8 +24,10 @@ import torch
 import torch.nn.functional as F
 from datasets import load_dataset
 from lightning.pytorch.callbacks import Callback
+from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
+from torchvision.transforms import v2
 from transformers import AutoTokenizer, GPT2Config, GPT2Model
 
 import stable_pretraining as spt
@@ -116,10 +120,126 @@ class CaptionPairs(Dataset):
         caption = random.Random(f"{self.seed}:{self.epoch}:{index}").randrange(
             len(self.caption_groups[index])
         )
+        with torch.random.fork_rng(devices=[]):
+            torch.random.default_generator.manual_seed(
+                self.seed + self.epoch * len(self) + index
+            )
+            pixels = self.transform(self.images[index])
         return {
-            "image": self.transform(self.images[index]),
+            "image": pixels,
             "input_ids": self.ids[index, caption],
             "attention_mask": self.mask[index, caption],
+        }
+
+
+class ManifestPairs(Dataset):
+    """Stream local pairs with verified image identities and seeded augmentation.
+
+    Args:
+        root: Directory containing ``images/`` and JSON split manifests.
+        split: Manifest stem, either ``train`` or ``validation``.
+        tokenizer: Tokenizer exposing ``eos_token_id`` and batched tokenization.
+        samples: Number of leading manifest entries to use, without reshuffling.
+        image_size: Square input resolution.
+        max_length: Token count including the explicit final EOS token.
+        seed: Augmentation seed, independent of model RNG consumption.
+    """
+
+    def __init__(
+        self,
+        root: Path,
+        split: str,
+        tokenizer,
+        samples: int,
+        image_size: int,
+        max_length: int,
+        seed: int,
+    ) -> None:
+        if split not in {"train", "validation"} or max_length < 2 or samples < 1:
+            raise ValueError("invalid manifest split, sample count or token length")
+        manifest = root / f"{split}.json"
+        self.manifest_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
+        rows = json.loads(manifest.read_text())
+        if not isinstance(rows, list) or len(rows) < samples:
+            raise ValueError(
+                "manifest must contain at least the requested sample count"
+            )
+        self.paths, self.fingerprints, captions = [], [], []
+        image_root = (root / "images").resolve()
+        for row in rows[:samples]:
+            path = (image_root / row["file"]).resolve()
+            if not path.is_relative_to(image_root):
+                raise ValueError("manifest image must stay inside images/")
+            caption = row["caption"]
+            if not isinstance(caption, str) or not caption.strip():
+                raise ValueError("expected nonempty manifest caption")
+            with path.open("rb") as handle:
+                digest = hashlib.file_digest(handle, "sha256").hexdigest()
+            if digest != row["sha256"]:
+                raise ValueError(f"image SHA256 mismatch: {row['file']}")
+            self.paths.append(path)
+            self.fingerprints.append(digest)
+            captions.append(caption)
+        if len(set(self.fingerprints)) != samples:
+            raise ValueError("duplicate image bytes in manifest split")
+        encoded = tokenizer(
+            captions,
+            add_special_tokens=False,
+            truncation=True,
+            max_length=max_length - 1,
+        )["input_ids"]
+        self.ids = torch.full(
+            (samples, max_length), tokenizer.eos_token_id, dtype=torch.long
+        )
+        self.mask = torch.zeros_like(self.ids)
+        for index, content in enumerate(encoded):
+            sequence = content + [tokenizer.eos_token_id]
+            self.ids[index, : len(sequence)] = torch.tensor(sequence)
+            self.mask[index, : len(sequence)] = 1
+        self.seed, self.epoch = seed, 0
+        spatial = (
+            [
+                v2.RandomResizedCrop(
+                    image_size,
+                    scale=(0.8, 1.0),
+                    ratio=(0.75, 4 / 3),
+                    interpolation=v2.InterpolationMode.BICUBIC,
+                    antialias=True,
+                ),
+                v2.RandomHorizontalFlip(),
+                v2.RandomApply([v2.ColorJitter(0.2, 0.2, 0.2, 0.02)], p=0.3),
+                v2.RandomGrayscale(p=0.05),
+            ]
+            if split == "train"
+            else []
+        )
+        self.transform = v2.Compose(
+            [
+                *spatial,
+                v2.ToImage(),
+                v2.ToDtype(torch.float32, scale=True),
+                *([] if spatial else [v2.Resize((image_size, image_size))]),
+                v2.Normalize(
+                    (0.48145466, 0.4578275, 0.40821073),
+                    (0.26862954, 0.26130258, 0.27577711),
+                ),
+            ]
+        )
+
+    def __len__(self) -> int:
+        return len(self.paths)
+
+    def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
+        with Image.open(self.paths[index]) as image, torch.random.fork_rng(devices=[]):
+            # Seed CPU transforms without resetting an initialized CUDA generator.
+            torch.random.default_generator.manual_seed(
+                self.seed + self.epoch * len(self) + index
+            )
+            pixels = self.transform(image.convert("RGB"))
+        return {
+            "image": pixels,
+            "input_ids": self.ids[index],
+            "attention_mask": self.mask[index],
         }
 
 
@@ -183,16 +303,22 @@ class LossHistory(Callback):
 
 
 @torch.no_grad()
-def evaluate(model: spt.Module, loader: DataLoader, device: torch.device) -> dict:
+def evaluate(
+    model: spt.Module,
+    loader: DataLoader,
+    device: torch.device,
+    precision: str = "32-true",
+) -> dict:
     """Measure retrieval over the full holdout in the selected objective space.
 
     Args:
         model: LeVLJEPA instance or CLIP control Module.
         loader: Deterministic image/caption pairs.
         device: Evaluation device.
+        precision: Autocast precision, matching the training run.
 
     Returns:
-        R@1/R@5, random R@1, marginal standard deviations and sample count.
+        R@1/R@5/R@10, random R@1, marginal standard deviations and sample count.
         Positives use paired image identity, never equality of caption strings.
         CaptionPairs deduplicates images, leaving one caption per gallery image.
     """
@@ -208,9 +334,14 @@ def evaluate(model: spt.Module, loader: DataLoader, device: torch.device) -> dic
         )
     }
     for batch in loader:
-        output = model(
-            {key: value.to(device) for key, value in batch.items()}, stage="predict"
-        )
+        with torch.autocast(
+            device.type,
+            dtype=torch.bfloat16 if precision == "bf16-mixed" else torch.float16,
+            enabled=precision != "32-true",
+        ):
+            output = model(
+                {key: value.to(device) for key, value in batch.items()}, stage="predict"
+            )
         for key in collected:
             collected[key].append(output[key].float().cpu())
     vectors = {key: torch.cat(value) for key, value in collected.items()}
@@ -234,7 +365,7 @@ def evaluate(model: spt.Module, loader: DataLoader, device: torch.device) -> dic
             F.normalize(vectors[prediction], dim=-1)
             @ F.normalize(vectors[target], dim=-1).T
         )
-        for k in (1, 5):
+        for k in (1, 5, 10):
             neighbors = scores.topk(min(k, scores.shape[1]), dim=1).indices
             result[f"{name}_r{k}"] = float(
                 positives.gather(1, neighbors).any(1).float().mean()
@@ -254,6 +385,17 @@ def main() -> None:
         "--output", type=Path, default=Path("outputs/levljepa-flickr8k")
     )
     parser.add_argument("--method", choices=("levljepa", "clip"), default="levljepa")
+    parser.add_argument(
+        "--profile",
+        choices=("reduced", "base"),
+        default="reduced",
+        help="base fixes ViT-B/16, GPT-2 12L/12H/768, 224px, 77 tokens and 4096 slices",
+    )
+    parser.add_argument(
+        "--manifest-root",
+        type=Path,
+        help="Local images/ plus train.json and validation.json; no dataset download",
+    )
     parser.add_argument("--dataset", default="jxie/flickr8k")
     parser.add_argument(
         "--revision", default="56f58c967835f7c508d684f36bd7897cca9d7634"
@@ -269,6 +411,7 @@ def main() -> None:
     parser.add_argument("--train-samples", type=int, default=1024)
     parser.add_argument("--val-samples", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=20)
+    parser.add_argument("--max-steps", type=int, help="Fixed optimizer-update budget")
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--image-size", type=int, default=64)
     parser.add_argument("--text-length", type=int, default=32)
@@ -281,21 +424,58 @@ def main() -> None:
     parser.add_argument("--predictor-dropout", type=float, default=0.0)
     parser.add_argument("--alignment", choices=("mse", "cosine"), default="mse")
     parser.add_argument("--warmup-fraction", type=float, default=0.0)
+    parser.add_argument("--warmup-steps", type=int)
+    parser.add_argument("--warmup-start-lr", type=float)
     parser.add_argument("--gradient-clip-val", type=float, default=0.0)
     parser.add_argument(
         "--image-augmentation", choices=("crop", "resize"), default="crop"
     )
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--expected-shared-sha256",
+        help="Optional required encoder/pre-projection initializer hash",
+    )
     parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--workers", type=int, default=0)
+    parser.add_argument(
+        "--precision",
+        choices=("32-true", "bf16-mixed", "16-mixed"),
+        default="32-true",
+    )
     parser.add_argument("--accelerator", choices=("auto", "cpu", "gpu"), default="auto")
     parser.add_argument(
         "--resume", type=Path, help="Full local .ckpt, resumes optimizer and step"
     )
     args = parser.parse_args()
+    if args.profile == "base":
+        args.width, args.layers = 768, 12
+        args.image_size, args.text_length, args.projections = 224, 77, 4096
     if not math.isfinite(args.lr) or args.lr <= 0:
         parser.error("lr must be finite and positive")
     if not 0 <= args.warmup_fraction < 1:
         parser.error("warmup fraction must lie in [0, 1)")
+    if args.warmup_steps is not None and args.warmup_steps < 1:
+        parser.error("warmup steps must be positive")
+    if args.warmup_steps is not None and args.warmup_fraction:
+        parser.error("choose warmup steps or warmup fraction, not both")
+    if args.max_steps is not None and args.max_steps < 1:
+        parser.error("max steps must be positive")
+    if args.workers < 0:
+        parser.error("workers must be nonnegative")
+    if args.warmup_start_lr is not None and (
+        not math.isfinite(args.warmup_start_lr)
+        or not 0 <= args.warmup_start_lr <= args.lr
+    ):
+        parser.error("warmup start LR must be finite and between zero and peak LR")
+    if args.manifest_root and (
+        args.train_parquet
+        or args.val_parquet
+        or args.caption_mode != "first"
+        or args.image_augmentation != "crop"
+    ):
+        parser.error(
+            "manifest mode uses its own fixed captions and augmentation recipe"
+        )
     if not math.isfinite(args.gradient_clip_val) or args.gradient_clip_val < 0:
         parser.error("gradient clip value must be finite and nonnegative")
     if args.width % 4 or args.image_size % 8 or args.batch_size < 2:
@@ -315,12 +495,16 @@ def main() -> None:
         saved_schedulers = resume_checkpoint.get("lr_schedulers", [])
         if saved_schedulers:
             saved_warmup = "warmup_steps" in saved_schedulers[0]
-            if saved_warmup != bool(args.warmup_fraction):
+            if saved_warmup != bool(args.warmup_fraction or args.warmup_steps):
                 parser.error(
                     "resume must use the checkpoint's scheduler family: "
-                    "set --warmup-fraction positive for warmup checkpoints, "
-                    "or zero for the original cosine-only checkpoints"
+                    "set --warmup-fraction or --warmup-steps for warmup checkpoints, "
+                    "or neither for the original cosine-only checkpoints"
                 )
+    if not args.resume and any(
+        (args.output / name).exists() for name in ("results.json", "final.ckpt")
+    ):
+        parser.error("output contains a completed run; choose a new directory")
     args.output.mkdir(parents=True, exist_ok=True)
     torch.set_num_threads(args.threads)
     pl.seed_everything(args.seed, workers=True)
@@ -332,7 +516,26 @@ def main() -> None:
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     if bool(args.train_parquet) != bool(args.val_parquet):
         parser.error("provide both --train-parquet and --val-parquet")
-    if args.train_parquet:
+    if args.manifest_root:
+        train = ManifestPairs(
+            args.manifest_root,
+            "train",
+            tokenizer,
+            args.train_samples,
+            args.image_size,
+            args.text_length,
+            args.seed,
+        )
+        val = ManifestPairs(
+            args.manifest_root,
+            "validation",
+            tokenizer,
+            args.val_samples,
+            args.image_size,
+            args.text_length,
+            args.seed,
+        )
+    elif args.train_parquet:
         train_rows = load_dataset(
             "parquet", data_files=args.train_parquet, split="train"
         )
@@ -342,22 +545,26 @@ def main() -> None:
         val_rows = load_dataset(
             args.dataset, revision=args.revision, split="validation"
         )
-    train_rows = train_rows.shuffle(seed=args.seed).select(
-        range(min(args.train_samples, len(train_rows)))
-    )
-    val_rows = val_rows.shuffle(seed=args.seed).select(
-        range(min(args.val_samples, len(val_rows)))
-    )
-    train = CaptionPairs(
-        train_rows,
-        tokenizer,
-        args.image_size,
-        args.text_length,
-        True,
-        random_captions=args.caption_mode == "random",
-        seed=args.seed,
-    )
-    if args.image_augmentation == "resize":
+    if not args.manifest_root:
+        train_rows = train_rows.shuffle(seed=args.seed).select(
+            range(min(args.train_samples, len(train_rows)))
+        )
+        val_rows = val_rows.shuffle(seed=args.seed).select(
+            range(min(args.val_samples, len(val_rows)))
+        )
+        train = CaptionPairs(
+            train_rows,
+            tokenizer,
+            args.image_size,
+            args.text_length,
+            True,
+            random_captions=args.caption_mode == "random",
+            seed=args.seed,
+        )
+        val = CaptionPairs(
+            val_rows, tokenizer, args.image_size, args.text_length, False
+        )
+    if not args.manifest_root and args.image_augmentation == "resize":
         train.transform = transforms.Compose(
             [
                 transforms.Resize((args.image_size, args.image_size)),
@@ -365,7 +572,6 @@ def main() -> None:
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ]
         )
-    val = CaptionPairs(val_rows, tokenizer, args.image_size, args.text_length, False)
     if set(train.fingerprints) & set(val.fingerprints):
         raise ValueError("train/validation image overlap detected")
     if len(train) < args.batch_size or len(val) < 2:
@@ -373,25 +579,44 @@ def main() -> None:
             "need at least one full training batch and two validation examples"
         )
     train_loader = DataLoader(
-        train, batch_size=args.batch_size, shuffle=True, drop_last=True
+        train,
+        batch_size=args.batch_size,
+        shuffle=True,
+        drop_last=True,
+        num_workers=args.workers,
+        generator=torch.Generator().manual_seed(args.seed),
     )
-    val_loader = DataLoader(val, batch_size=args.batch_size)
+    val_loader = DataLoader(
+        val,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        generator=torch.Generator().manual_seed(args.seed),
+    )
     # Reduced randomly initialized ViT/GPT-2 retain the reference encoder families.
-    vision = timm.models.vision_transformer.VisionTransformer(
-        img_size=args.image_size,
-        patch_size=8,
-        embed_dim=args.width,
-        depth=args.layers,
-        num_heads=4,
-        num_classes=0,
+    vision = (
+        timm.create_model(
+            "vit_base_patch16_224",
+            pretrained=False,
+            num_classes=0,
+            dynamic_img_size=True,
+        )
+        if args.profile == "base"
+        else timm.models.vision_transformer.VisionTransformer(
+            img_size=args.image_size,
+            patch_size=8,
+            embed_dim=args.width,
+            depth=args.layers,
+            num_heads=4,
+            num_classes=0,
+        )
     )
     text = GPT2Model(
         GPT2Config(
             vocab_size=len(tokenizer),
-            n_positions=args.text_length,
+            n_positions=1024 if args.profile == "base" else args.text_length,
             n_embd=args.width,
             n_layer=args.layers,
-            n_head=4,
+            n_head=12 if args.profile == "base" else 4,
             n_inner=args.width * 4,
             attn_pdrop=0,
             resid_pdrop=0,
@@ -399,9 +624,11 @@ def main() -> None:
         )
     )
     optim = {"optimizer": {"type": "AdamW", "lr": args.lr, "weight_decay": 0.01}}
-    if args.warmup_fraction:
-        total_steps = len(train_loader) * args.epochs
-        warmup_steps = max(1, int(total_steps * args.warmup_fraction))
+    total_steps = args.max_steps or len(train_loader) * args.epochs
+    if args.warmup_fraction or args.warmup_steps:
+        warmup_steps = args.warmup_steps or max(
+            1, int(total_steps * args.warmup_fraction)
+        )
         if warmup_steps >= total_steps:
             parser.error("warmup must leave at least one decay step")
         optim.update(
@@ -409,7 +636,11 @@ def main() -> None:
                 "type": "LinearWarmupCosineAnnealingLR",
                 "warmup_steps": warmup_steps,
                 "max_steps": total_steps,
-                "warmup_start_lr": args.lr * 0.01,
+                "warmup_start_lr": (
+                    args.warmup_start_lr
+                    if args.warmup_start_lr is not None
+                    else args.lr * 0.01
+                ),
                 "eta_min": args.lr * 0.1,
             },
             interval="step",
@@ -420,8 +651,8 @@ def main() -> None:
         vision_dim=args.width,
         text_dim=args.width,
         embedding_dim=args.width,
-        pre_projection_dims=(args.width * 2,),
-        predictor_dims=(args.width * 2, args.width * 2),
+        pre_projection_dims=(2048,) if args.profile == "base" else (args.width * 2,),
+        predictor_dims=(2048,) * 4 if args.profile == "base" else (args.width * 2,) * 2,
         predictor_dropout=args.predictor_dropout,
         lambda_vision=args.lambda_vision,
         lambda_text=args.lambda_text,
@@ -443,18 +674,56 @@ def main() -> None:
             retrieval_mode="embedding",
             optim=optim,
         )
+    shared = hashlib.sha256()
+    for name, value in model.state_dict().items():
+        if name.startswith(
+            ("vision_encoder.", "text_encoder.", "vision_pre_proj.", "text_pre_proj.")
+        ):
+            shared.update(name.encode())
+            shared.update(value.cpu().contiguous().numpy().tobytes())
+    if (
+        args.expected_shared_sha256
+        and shared.hexdigest() != args.expected_shared_sha256
+    ):
+        raise ValueError("shared initializer SHA256 mismatch; training was not started")
+    (args.output / "protocol.json").write_text(
+        json.dumps(
+            {
+                "config": {
+                    key: str(value) if isinstance(value, Path) else value
+                    for key, value in vars(args).items()
+                },
+                "shared_initializer_sha256": shared.hexdigest(),
+                "train_samples": len(train),
+                "validation_samples": len(val),
+                "planned_steps": total_steps,
+                "planned_exposures": total_steps * args.batch_size,
+                "manifest_sha256": {
+                    "train": train.manifest_sha256,
+                    "validation": val.manifest_sha256,
+                }
+                if args.manifest_root
+                else None,
+                "selection": "fixed final checkpoint; validation is development data",
+            },
+            indent=2,
+        )
+        + "\n"
+    )
     if resume_checkpoint is not None:
         model.load_state_dict(resume_checkpoint["state_dict"])
     device = torch.device(
         "cuda" if args.accelerator != "cpu" and torch.cuda.is_available() else "cpu"
     )
     model.to(device)
-    before = evaluate(model, val_loader, device)
+    before = evaluate(model, val_loader, device, args.precision)
     history = LossHistory()
     trainer = pl.Trainer(
-        max_epochs=args.epochs,
+        max_epochs=-1 if args.max_steps else args.epochs,
+        max_steps=args.max_steps or -1,
         accelerator=args.accelerator,
         devices=1,
+        precision=args.precision,
         logger=False,
         enable_progress_bar=False,
         enable_model_summary=False,
@@ -471,7 +740,9 @@ def main() -> None:
         ckpt_path=str(args.resume.resolve()) if args.resume else None,
         weights_only=False,
     )()
-    after = evaluate(model, val_loader, model.device)
+    # Lightning teardown moves the model to CPU before this external evaluation.
+    model.to(device)
+    after = evaluate(model, val_loader, device, args.precision)
     trainer.save_checkpoint(str((args.output / "final.ckpt").resolve()))
     report = {
         "config": {
@@ -484,13 +755,28 @@ def main() -> None:
             "train_image_hashes": train.fingerprints,
             "val_image_hashes": val.fingerprints,
             "caption_column": (
-                "caption_0..caption_4; seeded per-image per-epoch training choice"
+                "caption"
+                if args.manifest_root
+                else "caption_0..caption_4; seeded per-image per-epoch training choice"
                 if args.caption_mode == "random"
                 else "caption_0"
             ),
-            "validation_caption_column": "caption_0",
-            "split": "existing train/validation; seeded subset; exact image deduplication",
+            "validation_caption_column": "caption"
+            if args.manifest_root
+            else "caption_0",
+            "split": (
+                "leading manifest entries; verified image-byte SHA256; disjoint splits"
+                if args.manifest_root
+                else "existing train/validation; seeded subset; exact image deduplication"
+            ),
+            "manifest_sha256": {
+                "train": train.manifest_sha256,
+                "validation": val.manifest_sha256,
+            }
+            if args.manifest_root
+            else None,
         },
+        "shared_initializer_sha256": shared.hexdigest(),
         "parameters": sum(p.numel() for p in model.parameters()),
         "versions": {
             "torch": torch.__version__,
@@ -501,7 +787,7 @@ def main() -> None:
         "after": after,
         "epochs": history.epochs,
         "global_step": trainer.global_step,
-        "scope": "Small reduced-model integration experiment, not paper-scale reproduction or benchmark claim.",
+        "scope": "Reduced-data experiment; profile base uses full-capacity encoders, not paper-scale reproduction.",
     }
     (args.output / "results.json").write_text(json.dumps(report, indent=2) + "\n")
     print(
