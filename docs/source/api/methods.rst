@@ -103,3 +103,12 @@ Other
    :template: myclass_template.rst
 
    NEPA
+
+Vision-Language Prediction
+--------------------------
+
+.. autosummary::
+   :toctree: gen_modules/
+   :template: myclass_template.rst
+
+   LeVLJEPA

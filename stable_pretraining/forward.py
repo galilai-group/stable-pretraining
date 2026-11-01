@@ -44,6 +44,91 @@ import torch
 from .callbacks.queue import find_or_create_queue_callback, OnlineQueue
 
 
+def levljepa(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Encode paired images/captions and apply the LeVLJEPA objective.
+
+    Args:
+        self: Module with vision/text encoders, ``vision_pre_proj``,
+            ``text_pre_proj``, ``projector_vision``, ``projector_text``, and
+            ``levljepa_loss`` (a ``LeVLJEPALoss`` instance).
+        batch: Dict containing ``image`` [B, C, H, W], ``input_ids`` [B, L],
+            and binary ``attention_mask`` [B, L]. Image-only feature extraction
+            is supported outside training.
+        stage: ``fit``/``train``, ``validate``/``val``, ``test`` or ``predict``.
+
+    Returns:
+        A dict preserving input metadata and adding ``embedding`` (raw vision
+        features), ``image_embedding``, ``text_embedding``, and directional
+        predictions. Paired batches include loss components except in predict.
+
+    Note:
+        Text pooling uses the last unmasked position, supporting either padding
+        side. The caller is responsible for including an EOS readout token.
+        Validation/test compute losses with evaluation-mode heads; predict
+        skips the loss and its distributed collectives.
+    """
+    if stage not in {"fit", "train", "validate", "val", "test", "predict"}:
+        raise ValueError(f"Unsupported LeVLJEPA stage: {stage!r}")
+    paired = "input_ids" in batch and "attention_mask" in batch
+    if ("input_ids" in batch) != ("attention_mask" in batch):
+        raise ValueError("input_ids and attention_mask must be supplied together")
+    if stage in {"fit", "train"} and not paired:
+        raise ValueError("LeVLJEPA training requires paired images and tokenized text")
+    result = dict(batch)
+    image_raw = self.vision_encoder(batch["image"])
+    result["embedding"] = image_raw
+    result["image_embedding"] = self.vision_pre_proj(image_raw)
+    if not paired:
+        return result
+    ids, mask = batch["input_ids"], batch["attention_mask"]
+    if ids.ndim != 2 or ids.shape != mask.shape or ids.shape[0] != image_raw.shape[0]:
+        raise ValueError(
+            "token IDs and mask must have matching [image_batch_size, L] shapes"
+        )
+    if (
+        ids.shape[1] == 0
+        or not ((mask == 0) | (mask == 1)).all()
+        or not mask.bool().any(dim=1).all()
+    ):
+        raise ValueError(
+            "attention_mask must be binary with at least one unmasked token per row"
+        )
+    text_output = self.text_encoder(input_ids=ids, attention_mask=mask)
+    if isinstance(text_output, torch.Tensor):
+        hidden = text_output
+    elif isinstance(text_output, dict):
+        hidden = text_output["last_hidden_state"]
+    else:
+        hidden = text_output.last_hidden_state
+    if hidden.ndim != 3 or hidden.shape[:2] != ids.shape:
+        raise ValueError(
+            "text_encoder must return last_hidden_state with shape [B, L, D]"
+        )
+    positions = torch.arange(mask.shape[1], device=hidden.device).expand_as(mask)
+    last = positions.masked_fill(~mask.to(hidden.device).bool(), -1).max(dim=1).values
+    text_raw = hidden[torch.arange(hidden.shape[0], device=hidden.device), last]
+    result["text_embedding"] = self.text_pre_proj(text_raw)
+    result["image_prediction"] = self.projector_vision(result["image_embedding"])
+    result["text_prediction"] = self.projector_text(result["text_embedding"])
+    if stage != "predict":
+        components = self.levljepa_loss(
+            result["image_embedding"],
+            result["text_embedding"],
+            result["image_prediction"],
+            result["text_prediction"],
+        )
+        result.update(components)
+        if getattr(self, "_trainer", None) is not None:
+            self.log_dict(
+                {f"{stage}/{key}": value.detach() for key, value in components.items()},
+                on_step=stage in {"fit", "train"},
+                on_epoch=True,
+                sync_dist=True,
+                batch_size=image_raw.shape[0],
+            )
+    return result
+
+
 def _get_views_list(batch: dict):
     """Convert multi-view batch to list of views."""
     if "views" in batch:

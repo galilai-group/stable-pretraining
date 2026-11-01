@@ -49,6 +49,14 @@ Or in Python code:
 Available Forward Functions
 ---------------------------
 
+LeVLJEPA
+~~~~~~~~
+
+.. autofunction:: levljepa
+
+See :doc:`../guides/levljepa` for encoder contracts, objective, training and
+distributed validation.
+
 SimCLR
 ~~~~~~
 

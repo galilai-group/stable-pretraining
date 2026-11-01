@@ -12,6 +12,7 @@ from .igpt import iGPT
 from .ijepa import IJEPA
 from .mae import MAE
 from .lejepa import LeJEPA
+from .levljepa import LeVLJEPA
 from .maskfeat import MaskFeat
 from .mim_refiner import MIMRefiner
 from .mocov2 import MoCov2
@@ -47,6 +48,7 @@ __all__ = [
     "IJEPA",
     "MAE",
     "LeJEPA",
+    "LeVLJEPA",
     "MaskFeat",
     "MIMRefiner",
     "MoCov2",
