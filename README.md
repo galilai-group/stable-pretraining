@@ -1152,8 +1152,8 @@ reproduction commands:
 
 | Method | Family | KNN top-1 | Linear top-1 |
 |---|---|---:|---:|
-| VISReg        | multi-view + sliced wasserstein| 86.5% | **90.2%** |
-| SwAV          | multi-crop clustering          | 86.4% | **89.7%** |
+| VISReg        | multi-view + sliced wasserstein| **86.5%** | **90.2%** |
+| SwAV          | multi-crop clustering          | 86.4% | 89.7% |
 | LeJEPA        | multi-view + sliced Epps-Pulley | 85.4% | 87.1% |
 | DINO          | self-distill + multi-crop      | 83.8% | 86.1% |
 | MoCo v3       | contrastive + EMA              | 82.6% | 84.7% |

@@ -58,7 +58,7 @@ class VISRegLoss(nn.Module):
       theoretical standard-normal quantiles (a sliced Wasserstein-2 distance
       to the standard normal).
 
-    :param num_projections: Number of random 1-D projections ``K`` (default: 256).
+    :param num_projections: Number of random 1-D projections ``K`` (default: 1024).
     :param lambda_scale: Weight on the scale (unit-variance) term (default: 1.0).
     :param lambda_shape: Weight on the shape (sliced-quantile) term (default: 1.0).
     :param lambda_center: Weight on the center (zero-mean) term (default: 1.0).
@@ -72,7 +72,7 @@ class VISRegLoss(nn.Module):
 
     def __init__(
         self,
-        num_projections: int = 256,
+        num_projections: int = 1024,
         lambda_scale: float = 1.0,
         lambda_shape: float = 1.0,
         lambda_center: float = 1.0,
@@ -153,12 +153,12 @@ class VISReg(Module):
     :param encoder_name: timm model name (e.g., ``"vit_base_patch16_224"``)
     :param projector: Optional projection head. When ``None``, a 3-layer
         BN+ReLU MLP (``embed_dim → 2048 → 2048 → 512``) is created.
-    :param num_projections: Random projection directions for the shape term (default: 256)
+    :param num_projections: Random projection directions for the shape term (default: 1024)
     :param lambda_scale: Weight on the VISReg scale (unit-variance) term (default: 1.0)
     :param lambda_shape: Weight on the VISReg shape (sliced-quantile) term (default: 1.0)
     :param lambda_center: Weight on the VISReg center (zero-mean) term (default: 1.0)
     :param lamb: Convex mixing weight λ ∈ [0, 1] between the invariance and
-        VISReg terms: ``(1 - λ) * inv + λ * visreg`` (default: 0.02)
+        VISReg terms: ``(1 - λ) * inv + λ * visreg`` (default: 0.9)
     :param pretrained: Load pretrained timm weights
     :param drop_path_rate: Stochastic depth rate for the backbone (default: 0.1)
 
@@ -203,11 +203,11 @@ class VISReg(Module):
         self,
         encoder_name: str = "vit_base_patch16_224",
         projector: Optional[nn.Module] = None,
-        num_projections: int = 256,
+        num_projections: int = 1024,
         lambda_scale: float = 1.0,
         lambda_shape: float = 1.0,
         lambda_center: float = 1.0,
-        lamb: float = 0.02,
+        lamb: float = 0.9,
         pretrained: bool = False,
         drop_path_rate: float = 0.1,
     ):
