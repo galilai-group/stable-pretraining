@@ -784,6 +784,32 @@ class TestGPUMultiCrop:
             assert d.float().mean() < 0.05 and d.max() <= 3
 
     @pytest.mark.gpu
+    @pytest.mark.parametrize("backend", ["triton", "torch"])
+    def test_channels_last_input_and_out(self, backend):
+        # A permuted (B, T, H, W, 3) buffer is read in place, and out= views
+        # (here slots of a ring buffer) are filled without changing results.
+        x = torch.randint(0, 256, (2, 3, 20, 26, 3), dtype=torch.uint8).cuda()
+        ring = [
+            torch.zeros(3, 2, n, 3, 3, *s, dtype=torch.uint8).cuda()
+            for n, s in ((1, (24, 24)), (3, (12, 12)))
+        ]
+        outs = []
+        for src, out in (
+            (x.permute(0, 1, 4, 2, 3).contiguous(), None),
+            (x.permute(0, 1, 4, 2, 3), [r[1] for r in ring]),
+        ):
+            torch.manual_seed(0)
+            mc = gt.GPUMultiCrop(LEVJEPA_GROUPS, output="groups", backend=backend)
+            outs.append(mc({"image": src}, out=out)["views"])
+        for a, b, r in zip(*outs, ring):
+            assert torch.equal(a, b) and b.data_ptr() == r[1].data_ptr()
+            assert not r[0].any() and not r[2].any()
+
+    def test_out_needs_groups_output(self):
+        with pytest.raises(ValueError, match="groups"):
+            gt.GPUMultiCrop(LEVJEPA_GROUPS)({"image": _static_clip()}, out=[None, None])
+
+    @pytest.mark.gpu
     def test_fused_is_default_on_cuda_uint8(self):
         mc = gt.GPUMultiCrop(LEVJEPA_GROUPS)
         x = (_static_clip() * 255).to(torch.uint8).cuda()

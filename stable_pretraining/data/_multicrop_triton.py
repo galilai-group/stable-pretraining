@@ -96,6 +96,7 @@ def _resample(
     stride_f,
     stride_c,
     stride_h,
+    stride_w,
     OH: tl.constexpr,
     OW: tl.constexpr,
     FLIP: tl.constexpr,
@@ -146,10 +147,10 @@ def _resample(
             w2 = hy * lx
             w3 = ly * hx
             w4 = ly * lx
-            o1 = yl * stride_h + xl
-            o2 = yl * stride_h + xh
-            o3 = yh * stride_h + xl
-            o4 = yh * stride_h + xh
+            o1 = yl * stride_h + xl * stride_w
+            o2 = yl * stride_h + xh * stride_w
+            o3 = yh * stride_h + xl * stride_w
+            o4 = yh * stride_h + xh * stride_w
             for c in tl.static_range(3):
                 p = base + c * stride_c
                 v = (
@@ -223,6 +224,7 @@ def _crop_color_kernel(
     stride_f,
     stride_c,
     stride_h,
+    stride_w,
     O0,
     O1,
     O2,
@@ -253,6 +255,7 @@ def _crop_color_kernel(
         stride_f,
         stride_c,
         stride_h,
+        stride_w,
         OH,
         OW,
         FLIP,
@@ -292,6 +295,7 @@ def _contrast_frame_kernel(
     stride_f,
     stride_c,
     stride_h,
+    stride_w,
     O0,
     O1,
     O2,
@@ -325,6 +329,7 @@ def _contrast_frame_kernel(
             stride_f,
             stride_c,
             stride_h,
+            stride_w,
             O0,
             O1,
             O2,
@@ -358,6 +363,7 @@ def _contrast_frame(
     stride_f,
     stride_c,
     stride_h,
+    stride_w,
     O0,
     O1,
     O2,
@@ -392,6 +398,7 @@ def _contrast_frame(
             stride_f,
             stride_c,
             stride_h,
+            stride_w,
             OH,
             OW,
             FLIP,
@@ -434,12 +441,14 @@ def crop_color(
     gray: Optional[torch.Tensor] = None,
     flip: Optional[torch.Tensor] = None,
     block: int = 256,
+    out: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Crop, resize, colour-jitter, grayscale and flip all views in one kernel.
 
     Args:
-        x: Source clips ``(B, T, 3, H, W)`` uint8 on a CUDA device (rows and
-            columns contiguous).
+        x: Source clips ``(B, T, 3, H, W)`` uint8 on a CUDA device, any
+            strides (a channels-last ``(B, T, H, W, 3)`` buffer permuted to
+            this shape is read in place).
         boxes: Crops ``(B, n, 4)`` as ``(x1, y1, x2, y2)`` in pixels.
         size: Output ``(h, w)``.
         jitter: ``(B, n)`` float factors under ``"brightness"``,
@@ -450,18 +459,30 @@ def crop_color(
         gray: ``(B, n)`` bool, convert the view to grayscale.
         flip: ``(B, n)`` bool, mirror the view horizontally.
         block: Output pixels per program without contrast.
+        out: Contiguous ``(B, n, T, 3, h, w)`` uint8 tensor to write into
+            instead of allocating one.
 
     Returns:
         Views ``(B, n, T, 3, h, w)`` uint8.
     """
     B, T, C, H, W = x.shape
-    if C != 3 or x.dtype != torch.uint8 or x.stride(-1) != 1:
-        raise ValueError("expected uint8 (B, T, 3, H, W) with contiguous rows")
+    if C != 3 or x.dtype != torch.uint8:
+        raise ValueError("expected uint8 (B, T, 3, H, W)")
     n = boxes.shape[1]
     oh, ow = size
     dev = x.device
     frames = x.reshape(B * T, C, H, W)
-    out = torch.empty(B, n, T, 3, oh, ow, dtype=torch.uint8, device=dev)
+    if out is None:
+        out = torch.empty(B, n, T, 3, oh, ow, dtype=torch.uint8, device=dev)
+    elif (
+        out.shape != (B, n, T, 3, oh, ow)
+        or out.dtype != torch.uint8
+        or out.device != dev
+        or not out.is_contiguous()
+    ):
+        raise ValueError(
+            f"out must be contiguous uint8 {(B, n, T, 3, oh, ow)} on {dev}"
+        )
     boxes = boxes.to(device=dev, dtype=torch.float32).contiguous()
     use_jitter = jitter is not None and len(order) > 0
     ops = list(order) if use_jitter else []
@@ -478,7 +499,7 @@ def crop_color(
     )
     gray_t = gray.to(dev, torch.int8).contiguous() if gray is not None else dummy
     flip_t = flip.to(dev, torch.int8).contiguous() if flip is not None else dummy
-    strides = (frames.stride(0), frames.stride(1), frames.stride(2))
+    strides = tuple(frames.stride())
     with torch.cuda.device(dev):
         if cpos < 0:
             _crop_color_kernel[(B * n * T, triton.cdiv(oh * ow, block))](

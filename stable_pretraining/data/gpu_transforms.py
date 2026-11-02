@@ -1105,17 +1105,27 @@ class GPUMultiCrop(nn.Module):
             )
         return ok
 
-    def forward(self, batch: dict) -> dict:
+    def forward(
+        self, batch: dict, out: Optional[Sequence[torch.Tensor]] = None
+    ) -> dict:
         """Replace ``batch[source]`` by the augmented views.
 
         Args:
             batch: Batch dict with ``batch[source]`` on the target device.
+            out: With ``output="groups"``, one preallocated tensor per group
+                shaped like that group's output (e.g. a slot of a ring buffer
+                the consumer reads); the views are written into it directly
+                instead of being allocated.
 
         Returns:
             The batch with ``batch[views_key]`` set (see ``output``).
         """
         from torchvision.ops import roi_align
 
+        if out is not None and (
+            self.output != "groups" or len(out) != len(self.groups)
+        ):
+            raise ValueError("out needs output='groups' and one tensor per group")
         x = batch[self.source]
         is_clip = x.dim() == 5
         if not is_clip and x.dim() != 4:
@@ -1143,7 +1153,7 @@ class GPUMultiCrop(nn.Module):
         frame_idx = torch.arange(B * T, device=x.device, dtype=torch.float32).view(
             B, 1, T
         )
-        for g in self.groups:
+        for gi, g in enumerate(self.groups):
             n, (oh, ow) = g["n_views"], g["size"]
             boxes = _sample_rrc_boxes(
                 vh.repeat_interleave(n), vw.repeat_interleave(n), g["scale"], g["ratio"]
@@ -1160,6 +1170,7 @@ class GPUMultiCrop(nn.Module):
                     order=params["order"],
                     gray=params.get("grayscale"),
                     flip=params.get("hflip"),
+                    out=None if out is None else out[gi].view(B, n, T, C, oh, ow),
                 )
             else:
                 rois = torch.cat(
@@ -1186,6 +1197,8 @@ class GPUMultiCrop(nn.Module):
                 record.append(rec)
             if not is_clip:
                 y = y.squeeze(2)
+            if out is not None and y.data_ptr() != out[gi].data_ptr():
+                y = out[gi].copy_(y)
             group_out.append(y)
             views.extend({"image": y[:, v], self.label_key: label} for v in range(n))
 
