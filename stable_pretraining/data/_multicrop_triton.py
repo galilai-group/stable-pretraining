@@ -8,13 +8,13 @@ source frame to float and makes ~30 passes over the float views; this one
 reads the source once per sample point and writes each output byte once.
 
 Contrast blends towards the mean luma of the frame as it is when contrast
-runs, which depends on the ops before it. The first pass (``REDUCE``) resamples
-and applies the ops before contrast and accumulates that mean. On Hopper and
-newer it also keeps the float32 colours in a scratch buffer, and
-:func:`_finish_kernel` applies the remaining ops from it, so the crop is
-resampled once (H100: 6.9 -> 4.1 ms for 96 clips x 10 local views). With less
-memory bandwidth (Ada, L40S) the scratch round trip costs more than
-resampling again, so the second pass recomputes the crop (``REDUCE=False``).
+runs, which depends on the ops before it, so :func:`_contrast_frame_kernel`
+does each (sample, view, frame) in one program: it resamples the whole view and
+applies the ops before contrast while summing that luma, parks the float32
+colours in a scratch buffer it reads straight back (still in L2), then applies
+the rest. For 96 clips x 10 local views this takes L40S 6.6 -> 3.4 ms and
+H100 4.1 -> 3.4 ms against a separate reduction pass, and the mean no longer
+depends on atomic ordering.
 """
 
 from typing import Optional, Sequence
@@ -82,64 +82,26 @@ def _apply(OP, r, g, b, fb, fc, fs, fh, mean):
     return r, g, b
 
 
-# Triton specializes int arguments equal to 1 or divisible by 16; op codes,
-# frame sizes (padded batch maxima) and strides vary between calls, and each
-# new specialization is a ~0.7 s compile.
-@triton.jit(
-    do_not_specialize=[
-        "T",
-        "H",
-        "W",
-        "n_views",
-        "stride_f",
-        "stride_c",
-        "stride_h",
-        "O0",
-        "O1",
-        "O2",
-        "O3",
-        "CPOS",
-    ]
-)
-def _crop_color_kernel(
+@triton.jit
+def _resample(
     src,
-    out,
-    scratch,
     boxes,
-    fb_ptr,
-    fc_ptr,
-    fs_ptr,
-    fh_ptr,
-    gray_ptr,
     flip_ptr,
-    mean_ptr,
-    T,
+    bv,
+    frame,
+    offs,
+    mask,
     H,
     W,
-    n_views,
     stride_f,
     stride_c,
     stride_h,
-    O0,
-    O1,
-    O2,
-    O3,
-    CPOS,
     OH: tl.constexpr,
     OW: tl.constexpr,
-    JITTER: tl.constexpr,
-    GRAY: tl.constexpr,
     FLIP: tl.constexpr,
-    REDUCE: tl.constexpr,
-    SCRATCH: tl.constexpr,
     BLOCK: tl.constexpr,
 ):
-    vf = tl.program_id(0)  # ((b * n_views + v) * T + t)
-    bv = vf // T
-    t = vf % T
-    frame = (bv // n_views) * T + t
-    offs = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
-    mask = offs < OH * OW
+    """Crop ``bv`` of ``frame`` at output pixels ``offs`` as RGB in [0, 1]."""
     py = offs // OW
     px = offs % OW
     if FLIP:
@@ -207,97 +169,260 @@ def _crop_color_kernel(
     r *= scale
     g *= scale
     b *= scale
+    return r, g, b
 
-    if JITTER:
-        fb = tl.load(fb_ptr + bv)
-        fc = tl.load(fc_ptr + bv)
-        fs = tl.load(fs_ptr + bv)
-        fh = tl.load(fh_ptr + bv)
-        # The op order is a runtime argument (one compiled kernel for all 24
-        # orders); the reduction pass stops before contrast (position CPOS).
-        mean = tl.load(mean_ptr + vf, mask=(not REDUCE) & (CPOS >= 0), other=0.0)
-        n_ops = CPOS if REDUCE else 4
-        if n_ops > 0:
-            r, g, b = _apply(O0, r, g, b, fb, fc, fs, fh, mean)
-        if n_ops > 1:
-            r, g, b = _apply(O1, r, g, b, fb, fc, fs, fh, mean)
-        if n_ops > 2:
-            r, g, b = _apply(O2, r, g, b, fb, fc, fs, fh, mean)
-        if n_ops > 3:
-            r, g, b = _apply(O3, r, g, b, fb, fc, fs, fh, mean)
-    if REDUCE:
-        part = tl.sum(tl.where(mask, _luma(r, g, b), 0.0), axis=0) / (OH * OW)
-        tl.atomic_add(mean_ptr + vf, part)
-        if SCRATCH:
-            sp = scratch + vf.to(tl.int64) * (3 * OH * OW) + offs
-            tl.store(sp, r, mask=mask)
-            tl.store(sp + OH * OW, g, mask=mask)
-            tl.store(sp + 2 * OH * OW, b, mask=mask)
-        return
+
+@triton.jit
+def _store_rgb(
+    dst, offs, mask, r, g, b, gray_ptr, bv, NPIX: tl.constexpr, GRAY: tl.constexpr
+):
     if GRAY:
         lum = _luma(r, g, b)
         on = tl.load(gray_ptr + bv) != 0
         r = tl.where(on, lum, r)
         g = tl.where(on, lum, g)
         b = tl.where(on, lum, b)
-    dst = out + vf.to(tl.int64) * (3 * OH * OW) + offs
-    tl.store(dst, libdevice.rint(r * 255.0).to(tl.uint8), mask=mask)
-    tl.store(dst + OH * OW, libdevice.rint(g * 255.0).to(tl.uint8), mask=mask)
-    tl.store(dst + 2 * OH * OW, libdevice.rint(b * 255.0).to(tl.uint8), mask=mask)
+    tl.store(dst + offs, libdevice.rint(r * 255.0).to(tl.uint8), mask=mask)
+    tl.store(dst + NPIX + offs, libdevice.rint(g * 255.0).to(tl.uint8), mask=mask)
+    tl.store(dst + 2 * NPIX + offs, libdevice.rint(b * 255.0).to(tl.uint8), mask=mask)
 
 
-@triton.jit(do_not_specialize=["n_views", "T", "O0", "O1", "O2", "O3", "CPOS"])
-def _finish_kernel(
-    scratch,
+# Triton specializes int arguments equal to 1 or divisible by 16; op codes,
+# frame sizes (padded batch maxima) and strides vary between calls, and each
+# new specialization is a ~0.7 s compile.
+_DYNAMIC = [
+    "T",
+    "H",
+    "W",
+    "n_views",
+    "stride_f",
+    "stride_c",
+    "stride_h",
+    "O0",
+    "O1",
+    "O2",
+    "O3",
+]
+
+
+@triton.jit(do_not_specialize=_DYNAMIC)
+def _crop_color_kernel(
+    src,
     out,
+    boxes,
     fb_ptr,
     fc_ptr,
     fs_ptr,
     fh_ptr,
     gray_ptr,
-    mean_ptr,
+    flip_ptr,
     T,
+    H,
+    W,
     n_views,
+    stride_f,
+    stride_c,
+    stride_h,
+    O0,
+    O1,
+    O2,
+    O3,
+    OH: tl.constexpr,
+    OW: tl.constexpr,
+    JITTER: tl.constexpr,
+    GRAY: tl.constexpr,
+    FLIP: tl.constexpr,
+    BLOCK: tl.constexpr,
+):
+    """No contrast: one block of output pixels of one (sample, view, frame)."""
+    vf = tl.program_id(0)  # ((b * n_views + v) * T + t)
+    bv = vf // T
+    frame = (bv // n_views) * T + vf % T
+    offs = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
+    mask = offs < OH * OW
+    r, g, b = _resample(
+        src,
+        boxes,
+        flip_ptr,
+        bv,
+        frame,
+        offs,
+        mask,
+        H,
+        W,
+        stride_f,
+        stride_c,
+        stride_h,
+        OH,
+        OW,
+        FLIP,
+        BLOCK,
+    )
+    if JITTER:
+        fb = tl.load(fb_ptr + bv)
+        fc = tl.load(fc_ptr + bv)
+        fs = tl.load(fs_ptr + bv)
+        fh = tl.load(fh_ptr + bv)
+        # The op order is a runtime argument: one compiled kernel for all orders.
+        r, g, b = _apply(O0, r, g, b, fb, fc, fs, fh, 0.0)
+        r, g, b = _apply(O1, r, g, b, fb, fc, fs, fh, 0.0)
+        r, g, b = _apply(O2, r, g, b, fb, fc, fs, fh, 0.0)
+        r, g, b = _apply(O3, r, g, b, fb, fc, fs, fh, 0.0)
+    dst = out + vf.to(tl.int64) * (3 * OH * OW)
+    _store_rgb(dst, offs, mask, r, g, b, gray_ptr, bv, OH * OW, GRAY)
+
+
+@triton.jit(do_not_specialize=_DYNAMIC + ["N", "CPOS"])
+def _contrast_frame_kernel(
+    src,
+    out,
+    scratch,
+    boxes,
+    fb_ptr,
+    fc_ptr,
+    fs_ptr,
+    fh_ptr,
+    gray_ptr,
+    flip_ptr,
+    N,
+    T,
+    H,
+    W,
+    n_views,
+    stride_f,
+    stride_c,
+    stride_h,
     O0,
     O1,
     O2,
     O3,
     CPOS,
-    NPIX: tl.constexpr,
+    OH: tl.constexpr,
+    OW: tl.constexpr,
     GRAY: tl.constexpr,
+    FLIP: tl.constexpr,
     BLOCK: tl.constexpr,
 ):
-    """Second pass with contrast: ops from position ``CPOS`` on, grayscale, uint8 store."""
-    vf = tl.program_id(0)
+    """With contrast (at position ``CPOS``): all of one (sample, view, frame)."""
+    sp = scratch + tl.program_id(0).to(tl.int64) * (3 * OH * OW)
+    for vf in range(tl.program_id(0), N, tl.num_programs(0)):
+        _contrast_frame(
+            src,
+            out,
+            sp,
+            boxes,
+            fb_ptr,
+            fc_ptr,
+            fs_ptr,
+            fh_ptr,
+            gray_ptr,
+            flip_ptr,
+            vf,
+            T,
+            H,
+            W,
+            n_views,
+            stride_f,
+            stride_c,
+            stride_h,
+            O0,
+            O1,
+            O2,
+            O3,
+            CPOS,
+            OH,
+            OW,
+            GRAY,
+            FLIP,
+            BLOCK,
+        )
+
+
+@triton.jit
+def _contrast_frame(
+    src,
+    out,
+    sp,
+    boxes,
+    fb_ptr,
+    fc_ptr,
+    fs_ptr,
+    fh_ptr,
+    gray_ptr,
+    flip_ptr,
+    vf,
+    T,
+    H,
+    W,
+    n_views,
+    stride_f,
+    stride_c,
+    stride_h,
+    O0,
+    O1,
+    O2,
+    O3,
+    CPOS,
+    OH: tl.constexpr,
+    OW: tl.constexpr,
+    GRAY: tl.constexpr,
+    FLIP: tl.constexpr,
+    BLOCK: tl.constexpr,
+):
     bv = vf // T
-    offs = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
-    mask = offs < NPIX
-    sp = scratch + vf.to(tl.int64) * (3 * NPIX) + offs
-    r = tl.load(sp, mask=mask, other=0.0)
-    g = tl.load(sp + NPIX, mask=mask, other=0.0)
-    b = tl.load(sp + 2 * NPIX, mask=mask, other=0.0)
+    frame = (bv // n_views) * T + vf % T
     fb = tl.load(fb_ptr + bv)
     fc = tl.load(fc_ptr + bv)
     fs = tl.load(fs_ptr + bv)
     fh = tl.load(fh_ptr + bv)
-    mean = tl.load(mean_ptr + vf)
-    if CPOS <= 0:
-        r, g, b = _apply(O0, r, g, b, fb, fc, fs, fh, mean)
-    if CPOS <= 1:
-        r, g, b = _apply(O1, r, g, b, fb, fc, fs, fh, mean)
-    if CPOS <= 2:
-        r, g, b = _apply(O2, r, g, b, fb, fc, fs, fh, mean)
-    r, g, b = _apply(O3, r, g, b, fb, fc, fs, fh, mean)
-    if GRAY:
-        lum = _luma(r, g, b)
-        on = tl.load(gray_ptr + bv) != 0
-        r = tl.where(on, lum, r)
-        g = tl.where(on, lum, g)
-        b = tl.where(on, lum, b)
-    dst = out + vf.to(tl.int64) * (3 * NPIX) + offs
-    tl.store(dst, libdevice.rint(r * 255.0).to(tl.uint8), mask=mask)
-    tl.store(dst + NPIX, libdevice.rint(g * 255.0).to(tl.uint8), mask=mask)
-    tl.store(dst + 2 * NPIX, libdevice.rint(b * 255.0).to(tl.uint8), mask=mask)
+    total = 0.0
+    for start in range(0, OH * OW, BLOCK):
+        offs = start + tl.arange(0, BLOCK)
+        mask = offs < OH * OW
+        r, g, b = _resample(
+            src,
+            boxes,
+            flip_ptr,
+            bv,
+            frame,
+            offs,
+            mask,
+            H,
+            W,
+            stride_f,
+            stride_c,
+            stride_h,
+            OH,
+            OW,
+            FLIP,
+            BLOCK,
+        )
+        if CPOS > 0:
+            r, g, b = _apply(O0, r, g, b, fb, fc, fs, fh, 0.0)
+        if CPOS > 1:
+            r, g, b = _apply(O1, r, g, b, fb, fc, fs, fh, 0.0)
+        if CPOS > 2:
+            r, g, b = _apply(O2, r, g, b, fb, fc, fs, fh, 0.0)
+        total += tl.sum(tl.where(mask, _luma(r, g, b), 0.0), axis=0)
+        tl.store(sp + offs, r, mask=mask)
+        tl.store(sp + OH * OW + offs, g, mask=mask)
+        tl.store(sp + 2 * OH * OW + offs, b, mask=mask)
+    mean = total / (OH * OW)
+    dst = out + vf.to(tl.int64) * (3 * OH * OW)
+    for start in range(0, OH * OW, BLOCK):
+        offs = start + tl.arange(0, BLOCK)
+        mask = offs < OH * OW
+        r = tl.load(sp + offs, mask=mask, other=0.0)
+        g = tl.load(sp + OH * OW + offs, mask=mask, other=0.0)
+        b = tl.load(sp + 2 * OH * OW + offs, mask=mask, other=0.0)
+        if CPOS <= 0:
+            r, g, b = _apply(O0, r, g, b, fb, fc, fs, fh, mean)
+        if CPOS <= 1:
+            r, g, b = _apply(O1, r, g, b, fb, fc, fs, fh, mean)
+        if CPOS <= 2:
+            r, g, b = _apply(O2, r, g, b, fb, fc, fs, fh, mean)
+        r, g, b = _apply(O3, r, g, b, fb, fc, fs, fh, mean)
+        _store_rgb(dst, offs, mask, r, g, b, gray_ptr, bv, OH * OW, GRAY)
 
 
 def crop_color(
@@ -324,7 +449,7 @@ def crop_color(
             ``HUE``) to apply, in order.
         gray: ``(B, n)`` bool, convert the view to grayscale.
         flip: ``(B, n)`` bool, mirror the view horizontally.
-        block: Output pixels per program.
+        block: Output pixels per program without contrast.
 
     Returns:
         Views ``(B, n, T, 3, h, w)`` uint8.
@@ -353,64 +478,62 @@ def crop_color(
     )
     gray_t = gray.to(dev, torch.int8).contiguous() if gray is not None else dummy
     flip_t = flip.to(dev, torch.int8).contiguous() if flip is not None else dummy
-    mean = (
-        torch.zeros(B * n * T, dtype=torch.float32, device=dev) if cpos >= 0 else dummy
-    )
-    use_scratch = cpos >= 0 and torch.cuda.get_device_capability(dev) >= (9, 0)
-    scratch = (
-        torch.empty(B * n * T, 3, oh, ow, dtype=torch.float32, device=dev)
-        if use_scratch
-        else dummy
-    )
-    grid = (B * n * T, triton.cdiv(oh * ow, block))
-    common = dict(
-        OH=oh,
-        OW=ow,
-        JITTER=use_jitter,
-        GRAY=gray is not None,
-        FLIP=flip is not None,
-        BLOCK=block,
-        num_warps=4,
-    )
-    args = (
-        frames,
-        out,
-        scratch,
-        boxes,
-        *f,
-        gray_t,
-        flip_t,
-        mean,
-        T,
-        H,
-        W,
-        n,
-        frames.stride(0),
-        frames.stride(1),
-        frames.stride(2),
-        *codes,
-        cpos,
-    )
+    strides = (frames.stride(0), frames.stride(1), frames.stride(2))
     with torch.cuda.device(dev):
-        if not use_scratch:
-            if cpos >= 0:
-                _crop_color_kernel[grid](*args, REDUCE=True, SCRATCH=False, **common)
-            _crop_color_kernel[grid](*args, REDUCE=False, SCRATCH=False, **common)
-        else:
-            _crop_color_kernel[grid](*args, REDUCE=True, SCRATCH=True, **common)
-            _finish_kernel[grid](
-                scratch,
+        if cpos < 0:
+            _crop_color_kernel[(B * n * T, triton.cdiv(oh * ow, block))](
+                frames,
                 out,
+                boxes,
                 *f,
                 gray_t,
-                mean,
+                flip_t,
                 T,
+                H,
+                W,
                 n,
+                *strides,
                 *codes,
-                cpos,
-                NPIX=oh * ow,
+                OH=oh,
+                OW=ow,
+                JITTER=use_jitter,
                 GRAY=gray is not None,
+                FLIP=flip is not None,
                 BLOCK=block,
                 num_warps=4,
+            )
+        else:
+            # Each program handles whole (sample, view, frame)s and reuses its
+            # scratch slot. Measured: H100 is fastest with a program per frame
+            # (512 px blocks, 4 warps); L40S with 8 programs per SM, each
+            # 1024 px / 8 warps, which also keeps the scratch small.
+            hopper = torch.cuda.get_device_capability(dev) >= (9, 0)
+            progs = B * n * T
+            if not hopper:
+                sms = torch.cuda.get_device_properties(dev).multi_processor_count
+                progs = min(progs, 8 * sms)
+            scratch = torch.empty(progs, 3, oh, ow, dtype=torch.float32, device=dev)
+            _contrast_frame_kernel[(progs,)](
+                frames,
+                out,
+                scratch,
+                boxes,
+                *f,
+                gray_t,
+                flip_t,
+                B * n * T,
+                T,
+                H,
+                W,
+                n,
+                *strides,
+                *codes,
+                cpos,
+                OH=oh,
+                OW=ow,
+                GRAY=gray is not None,
+                FLIP=flip is not None,
+                BLOCK=512 if hopper else 1024,
+                num_warps=4 if hopper else 8,
             )
     return out
