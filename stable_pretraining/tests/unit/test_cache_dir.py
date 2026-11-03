@@ -545,6 +545,17 @@ class TestDDPRankHandoff:
         key = _ddp_launch_key()
         assert key.startswith("local-127.0.0.1-29500-")
 
+    def test_launch_key_local_ddp_without_getpgid(self, monkeypatch):
+        """Windows has no ``os.getpgid``; the key falls back to ``nopgid``."""
+        from stable_pretraining.manager import _ddp_launch_key
+
+        for v in ("SLURM_JOB_ID", "SLURM_ARRAY_TASK_ID", "TORCHELASTIC_RUN_ID"):
+            monkeypatch.delenv(v, raising=False)
+        monkeypatch.setenv("MASTER_ADDR", "127.0.0.1")
+        monkeypatch.setenv("MASTER_PORT", "29500")
+        monkeypatch.delattr(os, "getpgid", raising=False)
+        assert _ddp_launch_key() == "local-127.0.0.1-29500-nopgid"
+
     def test_launch_key_none_for_single_process(self, monkeypatch):
         from stable_pretraining.manager import _ddp_launch_key
 
