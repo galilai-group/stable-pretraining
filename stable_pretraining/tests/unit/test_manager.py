@@ -503,6 +503,24 @@ class TestPrintSignalInfo:
         # Should not raise; label is purely cosmetic.
         print_signal_info("post-fit")
 
+    def test_platform_without_posix_signals(self, monkeypatch):
+        # Windows defines none of SIGUSR1/SIGUSR2/SIGCONT; Manager.__call__
+        # dumps the handlers on every run, so a missing one must not raise.
+        from loguru import logger as loguru_logger
+
+        for name in ("SIGUSR1", "SIGUSR2", "SIGCONT"):
+            monkeypatch.delattr(signal, name, raising=False)
+        lines = []
+        sink_id = loguru_logger.add(
+            lambda msg: lines.append(msg.record["message"]), level="INFO"
+        )
+        try:
+            print_signal_info("windows")
+        finally:
+            loguru_logger.remove(sink_id)
+        assert any("SIGUSR1" in line and "unavailable" in line for line in lines)
+        assert any("SIGTERM" in line and "unavailable" not in line for line in lines)
+
 
 @pytest.mark.unit
 class TestDistributedCheckpointResume:

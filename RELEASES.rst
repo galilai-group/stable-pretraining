@@ -163,6 +163,14 @@ Unreleased
   still named ``_get_params`` / ``_transform`` and every ``spt`` transform
   raised ``AttributeError`` when called.
 
+**Bug fixes**
+
+- ``Manager`` runs on Windows. Every ``Manager()`` call logs the bound signal
+  handlers and raised ``AttributeError: module 'signal' has no attribute
+  'SIGUSR1'`` before training started; the dump now reports signals the
+  platform does not define as unavailable. The local-DDP launch key also
+  falls back to ``nopgid`` where ``os.getpgid`` does not exist.
+
 Version 0.1
 -----------
 
