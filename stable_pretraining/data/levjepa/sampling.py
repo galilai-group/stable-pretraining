@@ -8,6 +8,11 @@ import math
 
 import numpy as np
 
+try:
+    import numba
+except ImportError:
+    numba = None
+
 
 def sample_boxes(rng, n, scale, r):
     area = r.squash * r.squash * rng.uniform(*scale, n)
@@ -20,12 +25,33 @@ def sample_boxes(rng, n, scale, r):
 
 
 def sample_idx(rng, n, grid, keep, frames):
-    """Kept tokens, drawn iid: frames * keep of the frames * grid^2 of each view, sorted (frame-major)."""
-    N = frames * grid * grid
-    return np.sort(
-        np.argpartition(rng.random((n, N)), frames * keep, axis=1)[:, : frames * keep],
-        axis=1,
-    ).astype(np.int16)
+    """Kept tokens, drawn iid: frames * keep of the frames * grid^2 of each view, sorted (frame-major).
+
+    Each view's k kept tokens are a uniform k-subset of its N tokens, drawn with Floyd's algorithm (k draws, not N).
+    """
+    N, k = frames * grid * grid, frames * keep
+    out = np.empty((n, k), np.int16)
+    _floyd(rng.random((n, k)), N, np.zeros(N, np.uint8), out)
+    return out
+
+
+if numba is not None:
+
+    @numba.njit(cache=True, nogil=True)
+    def _floyd(u, N, seen, out):
+        n, k = out.shape
+        for v in range(n):
+            # Floyd: j = N - k + i; t uniform in [0, j]; take t, or j if t is taken
+            for i in range(k):
+                j = N - k + i
+                t = min(int(u[v, i] * (j + 1)), j)
+                seen[j if seen[t] else t] = 1
+            m = 0
+            for t in range(N):  # sorted, and the marks cleared for the next view
+                if seen[t]:
+                    out[v, m] = t
+                    m += 1
+                    seen[t] = 0
 
 
 def sample_params(rng, B, r):

@@ -18,6 +18,9 @@ except ImportError:
 
 from .sampling import sample_params, token_footprints
 
+if numba is not None:
+    from stable_datasets.framestore.store import copy_bytes
+
 PACK_COLS = 64  # MCUs per row of a packed JPEG (1024 px for 16 x 16 MCUs)
 MCU_COLS = 4  # per packed MCU: frame, MCU row, MCU column (in its frame), slot in its clip's packed JPEG
 
@@ -87,22 +90,19 @@ if numba is not None:
     ):
         """Pack each clip's needed MCUs into one baseline JPEG.
 
-        mframe/mid: needed MCUs sorted by frame then id; frame f's bytes start at bufs[fid[f]][pos[f]]. Writes B
+        mframe/mid: needed MCUs sorted by frame then id; frame f's bytes start at bufs[fid[f]][pos[f]], its MCU
+        segment lengths at seg_len[seg_base[f]] (only seg_base[f] is read: a cumulative or any start array). Writes B
         packed JPEGs into out and, per packed MCU, (frame, mcu row, mcu col, slot k in its clip's packed JPEG) into
         mcu. Returns JPEG offsets (B + 1), MCU offsets (B + 1), rows per JPEG.
         """
         joff = np.zeros(B + 1, np.int64)
         moff = np.zeros(B + 1, np.int64)
         rows = np.zeros(B, np.int64)
-        # per-frame segment start offsets (relative to the frame's SOS end)
-        starts = np.empty(len(seg_len), np.int64)
-        for f in range(len(pos)):
-            p = 0
-            for j in range(seg_base[f], seg_base[f + 1]):
-                starts[j] = p
-                p += np.int64(seg_len[j]) + 2
         q = 0
         o = 0
+        # the current frame, its next segment and that segment's offset in the frame's scan
+        cf, ptr, acc = -1, 0, np.int64(0)
+        d = bufs[0]
         for b in range(B):
             q0 = q
             while q < len(mframe) and mframe[q] < (b + 1) * T:
@@ -114,7 +114,7 @@ if numba is not None:
             f0 = b * T
             d0 = bufs[fid[f0]]
             hl = sos_end[f0] - pos[f0]
-            out[o : o + hl] = d0[pos[f0] : sos_end[f0]]
+            copy_bytes(out, o, d0, pos[f0], hl)
             s = o + sof[f0] - pos[f0] + 5
             h, w = r * geo[f0, 1], cols * geo[f0, 0]
             out[s] = h >> 8
@@ -123,24 +123,58 @@ if numba is not None:
             out[s + 3] = w & 255
             o += hl
             total = r * cols
-            for k in range(total):
+            k = 0
+            while k < total:
                 i = q0 + min(k, n - 1)  # pad the last row by repeating the last MCU
                 f = mframe[i]
-                d = bufs[fid[f]]
-                j = seg_base[f] + mid[i]
-                a = sos_end[f] + starts[j]
-                L = np.int64(seg_len[j])
-                out[o : o + L] = d[a : a + L]
-                o += L
-                out[o] = 0xFF
-                out[o + 1] = 0xD9 if k == total - 1 else 0xD0 + (k & 7)
-                o += 2
-                if k < n:
-                    m = moff[b] + k
-                    mcu[m, 0] = f
-                    mcu[m, 1] = mid[i] // geo[f, 3]
-                    mcu[m, 2] = mid[i] % geo[f, 3]
-                    mcu[m, 3] = k
+                if f != cf:
+                    cf, ptr, acc = f, 0, np.int64(0)
+                    d = bufs[fid[f]]
+                j0 = seg_base[f]
+                m = mid[i]
+                if m < ptr:  # the padding repeats the last MCU: step back over it
+                    ptr -= 1
+                    acc -= np.int64(seg_len[j0 + ptr]) + 2
+                # MCUs are in order within a frame: the offsets are a running sum
+                while ptr < m:
+                    acc += np.int64(seg_len[j0 + ptr]) + 2
+                    ptr += 1
+                a = sos_end[f] + acc
+                # a run of MCUs adjacent in the frame is one stretch of its scan, restart markers included: one copy,
+                # then each marker renumbered for its place in the packed JPEG
+                e = k + 1
+                while (
+                    e < n and mframe[q0 + e] == f and mid[q0 + e] == mid[q0 + e - 1] + 1
+                ):
+                    e += 1
+                o0 = o
+                ncol = geo[f, 3]
+                # divided once per run: the run's MCUs step along the frame's MCU rows
+                my, mx = m // ncol, m % ncol
+                for kk in range(k, e):
+                    L = np.int64(seg_len[j0 + m + kk - k])
+                    o += L + 2
+                    acc += L + 2
+                    ptr += 1
+                    if kk < n:
+                        x = moff[b] + kk
+                        mcu[x, 0] = f
+                        mcu[x, 1] = my
+                        mcu[x, 2] = mx
+                        mcu[x, 3] = kk
+                    mx += 1
+                    if mx == ncol:
+                        my, mx = my + 1, 0
+                copy_bytes(out, o0, d, a, o - 2 - o0)
+                if o > len(out):  # the markers after it
+                    raise IndexError("packed JPEGs overflow the slot")
+                p = o0
+                for kk in range(k, e):
+                    p += np.int64(seg_len[j0 + m + kk - k])
+                    out[p] = 0xFF
+                    out[p + 1] = 0xD9 if kk == total - 1 else 0xD0 + (kk & 7)
+                    p += 2
+                k = e
             joff[b + 1] = o
         return joff, moff, rows
 
@@ -149,20 +183,47 @@ def needed_mcus(frame, xa, ya, xb, yb, geo, halo=1.0):
     """The MCUs under token boxes, sorted by frame then id, unique.
 
     Tokens (frame index + box in stored pixels) -> (mcu frame, mcu id) sorted by frame then id, unique.
-    `halo` widens each box by the resampler's support (1px for bilinear roi_align).
+    `halo` widens each box by the resampler's support (1px for bilinear roi_align). The MCUs are marked in a bitmap
+    of the batch's frames and read back in order, which sorts and dedups them without a sort.
     """
-    mw, mh, rows, cols = (geo[frame, j] for j in range(4))
-    c0 = np.clip(np.floor((xa - halo) / mw), 0, cols - 1).astype(np.int64)
-    c1 = np.clip(np.floor((xb + halo) / mw), 0, cols - 1).astype(np.int64)
-    r0 = np.clip(np.floor((ya - halo) / mh), 0, rows - 1).astype(np.int64)
-    r1 = np.clip(np.floor((yb + halo) / mh), 0, rows - 1).astype(np.int64)
-    nc, nr = c1 - c0 + 1, r1 - r0 + 1
-    cells = nc * nr
-    rep = np.repeat(np.arange(len(frame)), cells)
-    local = np.arange(cells.sum()) - np.repeat(np.cumsum(cells) - cells, cells)
-    ids = (r0[rep] + local // nc[rep]) * cols[rep] + c0[rep] + local % nc[rep]
-    key = np.unique(frame[rep].astype(np.int64) << 32 | ids)
-    return key >> 32, key & 0xFFFFFFFF
+    cells = geo[:, 2] * geo[:, 3]
+    base = np.concatenate(([0], np.cumsum(cells)))
+    mask = np.zeros(int(base[-1]), np.uint8)
+    _mark(frame, xa, ya, xb, yb, geo, float(halo), base, mask)
+    return _marked(mask, base)
+
+
+if numba is not None:
+
+    @numba.njit(cache=True, nogil=True)
+    def _mark(frame, xa, ya, xb, yb, geo, halo, base, mask):
+        for i in range(len(frame)):
+            f = frame[i]
+            mw, mh, rows, cols = geo[f, 0], geo[f, 1], geo[f, 2], geo[f, 3]
+            c0 = min(max(np.floor((xa[i] - halo) / mw), 0), cols - 1)
+            c1 = min(max(np.floor((xb[i] + halo) / mw), 0), cols - 1)
+            r0 = min(max(np.floor((ya[i] - halo) / mh), 0), rows - 1)
+            r1 = min(max(np.floor((yb[i] + halo) / mh), 0), rows - 1)
+            for r in range(int(r0), int(r1) + 1):
+                o = base[f] + r * cols
+                for c in range(int(c0), int(c1) + 1):
+                    mask[o + c] = 1
+
+    @numba.njit(cache=True, nogil=True)
+    def _marked(mask, base):
+        n = 0
+        for j in range(len(mask)):
+            n += mask[j]
+        mframe = np.empty(n, np.int64)
+        mid = np.empty(n, np.int64)
+        k = 0
+        for f in range(len(base) - 1):
+            for j in range(base[f], base[f + 1]):
+                if mask[j]:
+                    mframe[k] = f
+                    mid[k] = j - base[f]
+                    k += 1
+        return mframe, mid
 
 
 def make_batch(store, rng, B, out_jpeg, out_mcu, r, stride=2, decode="partial"):
@@ -185,7 +246,7 @@ def make_batch(store, rng, B, out_jpeg, out_mcu, r, stride=2, decode="partial"):
         return _with_order(
             _batch_ranges(store, rng, B, rows, out_jpeg, out_mcu, r), B, r
         )
-    fid, pos, seg_len, nseg, h, w = store.take(rows)
+    fid, pos, seg_len, seg_start, nseg, h, w = store.segments(rows)
     sof, sos_end, geo, ok = _headers(store.bufs, fid, pos)
     assert ok.all(), "frames must be baseline JPEGs with 8 or 16 pixel MCUs"
     assert np.array_equal(geo[:, :2], np.repeat(geo[::T, :2], T, axis=0)), (
@@ -194,7 +255,6 @@ def make_batch(store, rng, B, out_jpeg, out_mcu, r, stride=2, decode="partial"):
     assert np.array_equal(nseg, geo[:, 2] * geo[:, 3]), (
         "segment lengths do not match the MCU grid"
     )
-    seg_base = np.concatenate(([0], np.cumsum(nseg)))
     H, W = h[::T].astype(np.float64), w[::T].astype(np.float64)
     p = sample_params(rng, B, r)
     mframe, mid = needed_mcus(*token_footprints(p, B, H, W, r), geo, halo=1.0)
@@ -205,7 +265,7 @@ def make_batch(store, rng, B, out_jpeg, out_mcu, r, stride=2, decode="partial"):
         sof,
         sos_end,
         seg_len,
-        seg_base,
+        seg_start,
         mframe,
         mid,
         geo,

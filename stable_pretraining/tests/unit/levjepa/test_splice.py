@@ -21,7 +21,7 @@ simplejpeg = pytest.importorskip("simplejpeg")
 from stable_datasets.framestore.convert import convert_store
 from stable_datasets.framestore.store import FrameStore
 from stable_pretraining.data.levjepa.recipe import V2, ViewRecipe
-from stable_pretraining.data.levjepa.sampling import token_footprints
+from stable_pretraining.data.levjepa.sampling import sample_idx, token_footprints
 from stable_pretraining.data.levjepa.splice import (
     MCU_COLS,
     PACK_COLS,
@@ -86,9 +86,39 @@ def test_every_kept_patch_is_covered(store):
     mw, mh = (int(x) for x in p["mdim"][0])
     rows, cols = -(-int(H[0]) // mh), -(-int(W[0]) // mw)
     geo = np.tile([mw, mh, rows, cols], (B * V2.frames, 1))
-    want = set(zip(*needed_mcus(fr, xa, ya, xb, yb, geo)))
+    want = set()  # every MCU a footprint (widened 1 px) overlaps, clipped to the frame
+    for f, x0, y0, x1, y1 in zip(fr, xa, ya, xb, yb):
+        c0, c1 = (
+            min(max(int(np.floor(v / mw)), 0), cols - 1) for v in (x0 - 1, x1 + 1)
+        )
+        r0, r1 = (
+            min(max(int(np.floor(v / mh)), 0), rows - 1) for v in (y0 - 1, y1 + 1)
+        )
+        want |= {
+            (int(f), r * cols + c) for r in range(r0, r1 + 1) for c in range(c0, c1 + 1)
+        }
+    mframe, mid = needed_mcus(fr, xa, ya, xb, yb, geo)
+    # sorted by frame then id, unique
+    assert np.all(np.diff(mframe * (rows * cols) + mid) > 0)
+    assert set(zip(mframe.tolist(), mid.tolist())) == want
     got = {(int(f), int(r) * cols + int(c)) for f, r, c, _ in mcu[: p["moff"][-1]]}
     assert want == got
+
+
+def test_kept_tokens_are_uniform():
+    """sample_idx: k distinct sorted tokens per view, every token kept with probability k / N."""
+    n, grid, keep, frames = 20000, 6, 2, 16
+    idx = sample_idx(np.random.default_rng(0), n, grid, keep, frames)
+    N, k = frames * grid * grid, frames * keep
+    assert idx.shape == (n, k) and idx.min() >= 0 and idx.max() < N
+    assert np.all(np.diff(idx.astype(np.int64), axis=1) > 0)
+    freq = np.bincount(idx.ravel(), minlength=N) / n
+    sd = np.sqrt(k / N * (1 - k / N) / n)
+    assert np.abs(freq - k / N).max() < 5 * sd
+    # a pair of tokens is kept together with probability k (k - 1) / (N (N - 1))
+    both = np.mean((idx == 0).any(1) & (idx == N - 1).any(1))
+    q = k * (k - 1) / (N * (N - 1))
+    assert abs(both - q) < 5 * np.sqrt(q / n)
 
 
 def test_recipe_limits():
