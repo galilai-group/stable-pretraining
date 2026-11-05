@@ -137,7 +137,16 @@ docstring-code-format = true
 
 [tool.coverage.run]
 source = ["stable_pretraining"]
-omit = ["*/tests/*", "*/test_*", "stable_pretraining/_version.py"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "stable_pretraining/_version.py",
+    # GPU-only (Triton kernels and the CUDA stage of the LeVJEPA token loader): CI runners have no GPU; their tests
+    # (tests/unit/levjepa/test_gpu.py, marked gpu) run on a GPU node
+    "stable_pretraining/data/levjepa/views.py",
+    "stable_pretraining/data/levjepa/kernels/fused.py",
+    "stable_pretraining/data/levjepa/kernels/squash.py",
+]
 relative_files = true
 
 [tool.coverage.report]
