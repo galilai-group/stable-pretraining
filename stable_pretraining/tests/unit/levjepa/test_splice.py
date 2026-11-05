@@ -14,6 +14,7 @@ same MCU of its whole frame, bit for bit.
 import numpy as np
 import pytest
 
+pytestmark = pytest.mark.unit
 pytest.importorskip("lance")
 pytest.importorskip("numba")
 simplejpeg = pytest.importorskip("simplejpeg")

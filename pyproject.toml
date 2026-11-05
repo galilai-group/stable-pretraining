@@ -104,9 +104,8 @@ swanlab = ["swanlab>=0.8.0"]
 # DeepSpeed ZeRO sharding (partial: single-optimizer methods only; FSDP2 is the
 # preferred sharding path and needs no extra dep). Strategy: "deepspeed_stage_3".
 deepspeed = ["deepspeed"]
-# LeVJEPA's token loader (stable_pretraining.data.levjepa); it reads stores made by stable-datasets' framestore,
-# which is installed separately: pip install "stable-datasets[framestore] @ git+https://github.com/galilai-group/stable-datasets"
-levjepa = ["numba", "simplejpeg", "triton"]
+# LeVJEPA's token loader (stable_pretraining.data.levjepa); it reads frame stores made by stable-datasets' framestore
+levjepa = ["stable-datasets[framestore]", "numba", "triton"]
 # Development and documentation tools
 dev = [
     "pytest",

@@ -12,6 +12,7 @@ out batches of the right shapes.
 import numpy as np
 import pytest
 
+pytestmark = pytest.mark.gpu
 torch = pytest.importorskip("torch")
 if not torch.cuda.is_available():
     pytest.skip("needs CUDA", allow_module_level=True)

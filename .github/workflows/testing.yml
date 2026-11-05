@@ -1,6 +1,10 @@
 name: Testing
 on:
   workflow_dispatch:
+    inputs:
+      stable_datasets:
+        description: "pip requirement for stable-datasets with framestore (the LeVJEPA token loader's tests)"
+        required: false
   pull_request:
     branches:
       - "main"
@@ -39,6 +43,13 @@ jobs:
       - name: Install 'stable_pretraining' package
         run: |
           python -m pip install --user -e .[dev,trackio,swanlab]
+      - name: Install stable-datasets with framestore (the LeVJEPA token loader's tests)
+        env:
+          # from git until a stable-datasets release has framestore; then the levjepa extra installs it from PyPI
+          SDS: ${{ inputs.stable_datasets || 'stable-datasets[framestore] @ git+https://github.com/galilai-group/stable-datasets@main' }}
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq libjpeg-turbo8-dev
+          python -m pip install --user "$SDS"
       - name: Run Unit Tests (shard ${{ matrix.shard }}/4)
         env:
           COVERAGE_FILE: .coverage.${{ matrix.shard }}
