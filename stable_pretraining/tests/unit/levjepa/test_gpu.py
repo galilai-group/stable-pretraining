@@ -51,18 +51,54 @@ def slots_of(store, seed, decode="partial"):
     return p, slots
 
 
+def engines():
+    try:
+        Decoder("hw")
+        return True
+    except Exception:
+        return False
+
+
 @pytest.mark.parametrize(
-    "fused", [False, True], ids=["torch scatter", "triton scatter"]
+    "fused, decoder",
+    [
+        (False, "nvjpeg"),
+        (True, "nvjpeg"),
+        pytest.param(
+            True, "hw", marks=pytest.mark.skipif(not engines(), reason="no NVJPG")
+        ),
+        pytest.param(
+            False, "hw", marks=pytest.mark.skipif(not engines(), reason="no NVJPG")
+        ),
+        (True, "cpu"),
+    ],
+    ids=[
+        "torch scatter",
+        "triton scatter",
+        "triton scatter, NVJPG engines",
+        "torch scatter, NVJPG engines",
+        "triton scatter, CPU-decoded",
+    ],
 )
-def test_canvas_equals_full_decode(path, fused):
+def test_canvas_equals_full_decode(path, fused, decoder):
     store = FrameStore(path)
     p, slots = slots_of(store, 0)
     fid, pos, size, _, _ = store.descriptors(p["rows"])
     full = Decoder("nvjpeg")(
         [np.array(store.frame(f, o, n)) for f, o, n in zip(fid, pos, size)]
     )
-    v = TokenViews(B, fused=fused)
-    v.fill_canvas(slots, 0)
+    v = TokenViews(B, fused=fused, decoder="nvjpeg" if decoder == "cpu" else decoder)
+    imgs = None
+    if (
+        decoder == "cpu"
+    ):  # as a CPU worker decodes (libjpeg-turbo, chroma per MCU), uploaded
+        joff = slots["joff"][0].tolist()
+        cpu = Decoder("cpu", exact=True)
+        imgs = [
+            cpu([np.asarray(slots["jpeg"][0][joff[b] : joff[b + 1]])])[0].cuda()
+            for b in range(B)
+        ]
+    v.fill_canvas(slots, 0, imgs)
     m = slots["mcu"][0][: int(p["moff"][-1])].long()
     mw, mh = (int(x) for x in p["mdim"][0])
     for f in torch.unique(m[:, 0]).tolist():
@@ -71,8 +107,14 @@ def test_canvas_equals_full_decode(path, fused):
         need = torch.zeros(-(-h // mh), -(-w // mw), dtype=torch.bool)
         need[rc[:, 1], rc[:, 2]] = True
         need = need.repeat_interleave(mh, 0).repeat_interleave(mw, 1)[:h, :w].cuda()
-        d = (v.canvas[f, :, :h, :w].int() - full[f].int()).abs().amax(0)
-        assert int(d[need].max()) == 0, f
+        d = (v.canvas[f, :, :h, :w].int() - full[f].int()).abs().amax(0)[need]
+        if decoder == "nvjpeg":
+            assert int(d.max()) == 0, f
+        elif decoder == "cpu":  # libjpeg-turbo's IDCT and colour conversion vs nvJPEG's
+            assert int(d.max()) <= 2 and float((d > 0).float().mean()) < 0.05, f
+        else:  # the engines' IDCT: a rare 1/255 (H100: 1.5e-5 of k400 pixels, 3e-4 of synthetic ones; per frame
+            # up to 0.11%)
+            assert int(d.max()) <= 1 and float((d > 0).float().mean()) < 1e-2, f
 
 
 def test_fused_matches_unfused(path):

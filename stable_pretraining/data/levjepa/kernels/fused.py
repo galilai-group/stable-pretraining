@@ -243,6 +243,138 @@ def scatter_mcus(imgs, prow, mcu, canvas, T, ncol=64, mdim=None):
 
 
 @triton.jit
+def _scatter_ycc_kernel(
+    base,
+    yoff,
+    cboff,
+    croff,
+    ypitch,
+    cpitch,
+    mcu,
+    mdim,
+    canvas,
+    sf,
+    sc,
+    sh,
+    T: tl.constexpr,
+    NCOL: tl.constexpr,
+):
+    """Copy one engine-decoded packed MCU (raw planes) to its place in the canvas, as RGB.
+
+    Chroma is spread over its sx x sy pixels inside the MCU (as nvJPEG upsamples), then YCbCr -> RGB as nvJPEG converts
+    (float, round to nearest even). Planes of clip c: Y at base + yoff[c], pitch ypitch[c]; Cb, Cr at cboff[c],
+    croff[c], pitch cpitch[c]; 8 x 8 chroma samples per MCU.
+    """
+    i = tl.program_id(0).to(tl.int64)
+    f = tl.load(mcu + i * 4).to(tl.int64)
+    my = tl.load(mcu + i * 4 + 1)
+    mx = tl.load(mcu + i * 4 + 2)
+    k = tl.load(mcu + i * 4 + 3)
+    clip = f // T
+    mw = tl.load(mdim + clip * 2)
+    mh = tl.load(mdim + clip * 2 + 1)
+    sx = mw // 8
+    sy = mh // 8
+    r = tl.arange(0, 16)[:, None]
+    c = tl.arange(0, 16)[None, :]
+    inside = (r < mh) & (c < mw)
+    yp = tl.load(ypitch + clip).to(tl.int64)
+    cp = tl.load(cpitch + clip).to(tl.int64)
+    y = tl.load(
+        base
+        + tl.load(yoff + clip)
+        + ((k // NCOL) * mh + r).to(tl.int64) * yp
+        + (k % NCOL) * mw
+        + c,
+        mask=inside,
+        other=0,
+    ).to(tl.float32)
+    cidx = ((k // NCOL) * 8 + r // sy).to(tl.int64) * cp + (k % NCOL) * 8 + c // sx
+    cb = (
+        tl.load(base + tl.load(cboff + clip) + cidx, mask=inside, other=128).to(
+            tl.float32
+        )
+        - 128.0
+    )
+    cr = (
+        tl.load(base + tl.load(croff + clip) + cidx, mask=inside, other=128).to(
+            tl.float32
+        )
+        - 128.0
+    )
+    rgb_r = y + 1.402 * cr
+    rgb_g = y - 0.344136 * cb - 0.714136 * cr
+    rgb_b = y + 1.772 * cb
+    dst = canvas + f * sf + (my * mh + r).to(tl.int64) * sh + mx * mw + c
+    lo, hi = 0.0, 255.0
+    tl.store(
+        dst,
+        tl.minimum(tl.maximum(tl.extra.cuda.libdevice.rint(rgb_r), lo), hi).to(
+            tl.uint8
+        ),
+        mask=inside,
+    )
+    tl.store(
+        dst + sc,
+        tl.minimum(tl.maximum(tl.extra.cuda.libdevice.rint(rgb_g), lo), hi).to(
+            tl.uint8
+        ),
+        mask=inside,
+    )
+    tl.store(
+        dst + 2 * sc,
+        tl.minimum(tl.maximum(tl.extra.cuda.libdevice.rint(rgb_b), lo), hi).to(
+            tl.uint8
+        ),
+        mask=inside,
+    )
+
+
+def scatter_mcus_ycc(planes, mcu, canvas, T, ncol=64, mdim=None):
+    """Scatter packed MCUs decoded as raw planes (Decoder("hw").planes) into the frame canvas, as RGB.
+
+    Chroma is upsampled per MCU and converted on the way. planes: per clip (Y, Cb, Cr) 2-D uint8 CUDA tensors (any tensors for
+    clips mcu does not touch); mcu (M, 4) int32; mdim (B, 2) int32 MCU width, height per clip.
+    """
+    base = planes[0][
+        0
+    ]  # every plane addressed from one tensor: a byte offset each (may be negative)
+    dev = canvas.device
+
+    def offsets(j):
+        return torch.tensor(
+            [p[j].data_ptr() - base.data_ptr() for p in planes], dtype=torch.int64
+        ).to(dev, non_blocking=True)
+
+    ypitch = torch.tensor([p[0].stride(0) for p in planes], dtype=torch.int32).to(
+        dev, non_blocking=True
+    )
+    cpitch = torch.tensor([p[1].stride(0) for p in planes], dtype=torch.int32).to(
+        dev, non_blocking=True
+    )
+    if mdim is None:
+        mdim = torch.full((len(planes), 2), 16, dtype=torch.int32, device=dev)
+    _scatter_ycc_kernel[(len(mcu),)](
+        base,
+        offsets(0),
+        offsets(1),
+        offsets(2),
+        ypitch,
+        cpitch,
+        mcu,
+        mdim,
+        canvas,
+        canvas.stride(0),
+        canvas.stride(1),
+        canvas.stride(2),
+        T=T,
+        NCOL=ncol,
+        num_warps=1,
+        enable_fp_fusion=False,  # one rounding per multiply and per add, as nvJPEG's conversion: bit for bit
+    )
+
+
+@triton.jit
 def _jitter_kernel(out, vsum, jit, S, mean0, mean1, mean2, std0, std1, std2):
     """ViewBuilder.jitter after brightness (done in _patch_kernel), contrast pivoting on the view's kept patches."""
     q = tl.program_id(0)

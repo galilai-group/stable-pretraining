@@ -2,7 +2,7 @@
 
     from stable_pretraining.data.levjepa import SharedTokenLoader, ViewRecipe
 
-    loader = SharedTokenLoader("/vol/frames.lance", batch=64, workers=20, servers=4, index="shared")
+    loader = SharedTokenLoader("/vol/frames.lance", batch=64, index="shared")  # workers: from the node
     global_patches, global_idx, local_patches, local_idx = next(loader)
 
 The store is a converted frame store (stable_datasets.framestore.convert). Modules:

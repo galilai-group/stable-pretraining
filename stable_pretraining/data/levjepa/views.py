@@ -15,6 +15,23 @@ from .recipe import V2
 from .splice import PACK_COLS
 
 
+def _ycc_rgb(y, cb, cr, mdim):
+    """Raw planes of a packed image -> (3, h, w) uint8 RGB.
+
+    Chroma is spread over each MCU's pixels and converted as nvJPEG converts (the torch path of what
+    kernels.fused.scatter_mcus_ycc does per MCU).
+    """
+    sx, sy = int(mdim[0]) // 8, int(mdim[1]) // 8
+    h, w = y.shape
+    yf = y.float()
+    cb = cb.float().repeat_interleave(sy, 0).repeat_interleave(sx, 1)[:h, :w] - 128.0
+    cr = cr.float().repeat_interleave(sy, 0).repeat_interleave(sx, 1)[:h, :w] - 128.0
+    rgb = torch.stack(
+        [yf + 1.402 * cr, yf - 0.344136 * cb - 0.714136 * cr, yf + 1.772 * cb]
+    )
+    return rgb.round_().clamp_(0, 255).to(torch.uint8)
+
+
 def ring_slot(B, r, device="cuda", n=()):
     """Empty (global patches, global idx, local patches, local idx) for B clips; n=(k,): k of each, stacked."""
     T, P, V = r.frames, 3 * r.patch * r.patch, r.num_local * B
@@ -34,6 +51,8 @@ class TokenViews:
     grid.
     contrast: "view" (C2, the view's kept patches) or "frame" (each frame's kept patches of the view).
     decode: "partial" (packed MCUs) or "full" (ablation: whole frames, make_batch(decode="full")).
+    decoder: "nvjpeg" (CUDA cores) or "hw" (the NVJPG engines, A100 / H100 / B200: decoding leaves the SMs to the
+    training step).
     fused: everything after decoding in Triton kernels (kernels/fused.py; C2 contrast and window squash only): one
     copies the decoded MCUs into the frame canvas, one builds every kept patch, one jitters the local views.
     """
@@ -47,6 +66,7 @@ class TokenViews:
         squash="windows",
         decode="partial",
         fused=False,
+        decoder="nvjpeg",
     ):
         self.B, self.r, self.dev, self.contrast, self.squash, self.decode = (
             B,
@@ -61,11 +81,103 @@ class TokenViews:
         self.mean = torch.tensor(r.mean, device=device).view(1, 1, 3, 1, 1)
         self.std = torch.tensor(r.std, device=device).view(1, 1, 3, 1, 1)
         self.canvas = torch.empty(0, dtype=torch.uint8, device=device)
-        self.decoder = Decoder("nvjpeg", device)
+        self.decoder = Decoder(decoder, device)
+        self.fallback, self.fallbacks = (
+            None,
+            0,
+        )  # nvJPEG, for images the NVJPG engines do not decode
         self.grid = (
             0,
             0,
         )  # canvas size in MCUs; grows to the largest frame seen (e.g. 384 x 1211 is 24 x 76)
+
+    def _decode(self, frames):
+        """Decode frames into (3, h, w) uint8 images on the GPU.
+
+        With decoder="hw" (the NVJPG engines, which leave the SMs to training), the images the engines return
+        nothing for go through nvJPEG.
+        """
+        imgs = self.decoder(frames)
+        miss = [i for i, x in enumerate(imgs) if x is None]
+        if miss:
+            if self.fallback is None:
+                self.fallback = Decoder("nvjpeg", self.dev)
+            for i, x in zip(miss, self.fallback([frames[i] for i in miss])):
+                imgs[i] = x
+            self.fallbacks += len(miss)
+        return [x.contiguous() for x in imgs]
+
+    def _engine_planes(self, frames, mdim):
+        """Decode each clip's packed JPEG on the NVJPG engines, as raw planes.
+
+        Returns per clip (Y, Cb, Cr), or None where the engines fail, and nvJPEG's RGB image for those they fail on
+        (None for the others).
+        """
+        B = len(frames)
+        planes, keep = [None] * B, []
+        for mw, mh in set(map(tuple, mdim)):  # one call per chroma layout
+            clips = [b for b in range(B) if tuple(mdim[b]) == (mw, mh)]
+            for b, p in zip(
+                clips,
+                self.decoder.planes([frames[b] for b in clips], (mw // 8, mh // 8)),
+            ):
+                planes[b] = p
+            keep += self.decoder.keep
+        self._keep = (
+            keep  # the engines' buffers, until the next batch: kernels still read them
+        )
+        imgs = [None] * B
+        miss = [b for b in range(B) if planes[b] is None]
+        if miss:
+            if self.fallback is None:
+                self.fallback = Decoder("nvjpeg", self.dev)
+            for b, x in zip(miss, self.fallback([frames[b] for b in miss])):
+                imgs[b] = x.contiguous()
+            self.fallbacks += len(miss)
+        return planes, imgs
+
+    def _scatter_planes(self, planes, imgs, slots, s, moff):
+        """Scatter engine-decoded clips (planes, converted to RGB per MCU) and any nvJPEG ones (imgs)."""
+        from .kernels import fused as tf
+
+        T, dev = self.r.frames, self.dev
+        m = slots["mcu"][s][: int(moff[-1])].to(dev, non_blocking=True)
+        mdim = slots["mdim"][s].to(dev, non_blocking=True)
+        miss = [b for b, x in enumerate(imgs) if x is not None]
+        if len(miss) == len(imgs):
+            tf.scatter_mcus(
+                imgs,
+                slots["prow"][s].to(dev, non_blocking=True),
+                m,
+                self.canvas,
+                T,
+                PACK_COLS,
+                mdim,
+            )
+            return
+        some = next(p for p in planes if p is not None)
+        if not miss:
+            tf.scatter_mcus_ycc(planes, m, self.canvas, T, PACK_COLS, mdim)
+            return
+        rgb = torch.isin(m[:, 0] // T, torch.tensor(miss, device=dev))
+        tf.scatter_mcus_ycc(
+            [p if p is not None else some for p in planes],
+            m[~rgb],
+            self.canvas,
+            T,
+            PACK_COLS,
+            mdim,
+        )
+        filler = imgs[miss[0]]
+        tf.scatter_mcus(
+            [x if x is not None else filler for x in imgs],
+            slots["prow"][s].to(dev, non_blocking=True),
+            m[rgb],
+            self.canvas,
+            T,
+            PACK_COLS,
+            mdim,
+        )
 
     def squashed(self, slots, s):
         """Squash slot s's frames whole, after decoding them into the canvas.
@@ -94,7 +206,7 @@ class TokenViews:
             )
         return out.div_(255)
 
-    def fill_canvas(self, slots, s):
+    def fill_canvas(self, slots, s, imgs=None):
         """Decode slot s's packed JPEGs into the frame canvas.
 
         Decode slot s's packed JPEGs on the GPU and scatter their MCUs into the frame canvas; returns the
@@ -106,7 +218,7 @@ class TokenViews:
         jp = slots["jpeg"][s]
         if self.decode == "full":
             joff = slots["joff"][s].tolist()
-            imgs = self.decoder([jp[joff[f] : joff[f + 1]] for f in range(B * T)])
+            imgs = self._decode([jp[joff[f] : joff[f + 1]] for f in range(B * T)])
             for b in range(B):  # the frames of a clip share one size
                 h, w = imgs[b * T].shape[1:]
                 self.canvas[b * T : (b + 1) * T, :, :h, :w] = torch.stack(
@@ -114,7 +226,22 @@ class TokenViews:
                 )
             return size
         joff, moff = slots["joff"][s][: B + 1].tolist(), slots["moff"][s]
-        imgs = self.decoder([jp[joff[b] : joff[b + 1]] for b in range(B)])
+        frames = [jp[joff[b] : joff[b + 1]] for b in range(B)]
+        if (
+            imgs is not None
+        ):  # decoded already (by a CPU worker): (3, h, w) RGB per clip
+            imgs = [x.contiguous() for x in imgs]  # the scatter reads whole planes
+        elif self.decoder.kind == "hw":
+            planes, imgs = self._engine_planes(frames, slots["mdim"][s].tolist())
+            if self.fused:
+                self._scatter_planes(planes, imgs, slots, s, moff)
+                return size
+            imgs = [
+                x if x is not None else _ycc_rgb(*planes[b], slots["mdim"][s][b])
+                for b, x in enumerate(imgs)
+            ]
+        else:
+            imgs = self._decode(frames)
         if (
             self.fused
         ):  # one Triton program per MCU instead of cat + permute + index_put
@@ -254,7 +381,7 @@ class TokenViews:
         x = ((x - lum) * sat + lum).clamp_(0, 1)
         return torch.where(gray.bool(), self.luminance(x).expand_as(x), x)
 
-    def fused_call(self, slots, s, out=None):
+    def fused_call(self, slots, s, out=None, imgs=None):
         """(global patches, idx, local patches, idx) via kernels/fused.py, into out (a ring slot) when given."""
         from .kernels import fused as tf
 
@@ -276,7 +403,7 @@ class TokenViews:
         }
         if out is None:
             out = ring_slot(B, r, dev)
-        size = self.fill_canvas(slots, s).to(dev, non_blocking=True)
+        size = self.fill_canvas(slots, s, imgs).to(dev, non_blocking=True)
         hw = size.repeat_interleave(T, dim=0).int()
         tf.kept_patches(
             self.canvas,
@@ -320,9 +447,9 @@ class TokenViews:
         out[3].copy_(g["lidx"])
         return out
 
-    def __call__(self, slots, s, frames=None):
+    def __call__(self, slots, s, frames=None, imgs=None):
         if self.fused and frames is None:
-            return self.fused_call(slots, s)
+            return self.fused_call(slots, s, imgs=imgs)
         B, dev, r = self.B, self.dev, self.r
         g = {
             k: slots[k][s].to(dev, non_blocking=True)
@@ -331,7 +458,7 @@ class TokenViews:
         if frames is None and self.squash == "full":
             frames = self.squashed(slots, s)
         elif frames is None:
-            size = self.fill_canvas(slots, s).to(dev)
+            size = self.fill_canvas(slots, s, imgs).to(dev)
             self.hw_frames = size.repeat_interleave(r.frames, dim=0).int()
         clips = torch.arange(B, device=dev)
         gp = self.patches(
