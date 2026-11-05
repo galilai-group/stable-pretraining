@@ -51,32 +51,16 @@ def slots_of(store, seed, decode="partial"):
     return p, slots
 
 
-def engines():
-    try:
-        Decoder("hw")
-        return True
-    except Exception:
-        return False
-
-
 @pytest.mark.parametrize(
     "fused, decoder",
     [
         (False, "nvjpeg"),
         (True, "nvjpeg"),
-        pytest.param(
-            True, "hw", marks=pytest.mark.skipif(not engines(), reason="no NVJPG")
-        ),
-        pytest.param(
-            False, "hw", marks=pytest.mark.skipif(not engines(), reason="no NVJPG")
-        ),
         (True, "cpu"),
     ],
     ids=[
         "torch scatter",
         "triton scatter",
-        "triton scatter, NVJPG engines",
-        "torch scatter, NVJPG engines",
         "triton scatter, CPU-decoded",
     ],
 )
@@ -110,11 +94,8 @@ def test_canvas_equals_full_decode(path, fused, decoder):
         d = (v.canvas[f, :, :h, :w].int() - full[f].int()).abs().amax(0)[need]
         if decoder == "nvjpeg":
             assert int(d.max()) == 0, f
-        elif decoder == "cpu":  # libjpeg-turbo's IDCT and colour conversion vs nvJPEG's
+        else:  # libjpeg-turbo's IDCT and colour conversion vs nvJPEG's
             assert int(d.max()) <= 2 and float((d > 0).float().mean()) < 0.05, f
-        else:  # the engines' IDCT: a rare 1/255 (H100: 1.5e-5 of k400 pixels, 3e-4 of synthetic ones; per frame
-            # up to 0.11%)
-            assert int(d.max()) <= 1 and float((d > 0).float().mean()) < 1e-2, f
 
 
 def test_fused_matches_unfused(path):

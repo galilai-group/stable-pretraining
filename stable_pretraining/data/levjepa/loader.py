@@ -482,7 +482,7 @@ def _token_server(
 def server_decoders(decoders, servers, decoder):
     """The GPU-stage servers' decoders, and the number of CPU decoders.
 
-    From a spec ("nvjpeg:2,hw:1,cpu:4"; a kind with no count: nvjpeg 2, hw 1, cpu "auto", half the workers), else
+    From a spec ("nvjpeg:2,cpu:4"; a kind with no count: nvjpeg 2, cpu "auto", half the workers), else
     `servers` servers of `decoder` and no CPU decoding.
     """
     if decoders is None:
@@ -491,10 +491,9 @@ def server_decoders(decoders, servers, decoder):
 
     d = parse(decoders)
     kinds = ["nvjpeg"] * (2 if d.get("nvjpeg", 0) is None else d.get("nvjpeg", 0))
-    kinds += ["hw"] * (1 if d.get("hw", 0) is None else d.get("hw", 0))
     if not kinds:
         raise ValueError(
-            f"{decoders!r}: the GPU stage needs a server (nvjpeg or hw), even if the CPU decodes"
+            f"{decoders!r}: the GPU stage needs a server (nvjpeg), even if the CPU decodes"
         )
     return kinds, "auto" if d.get("cpu", 0) is None else d.get("cpu", 0)
 
@@ -507,7 +506,7 @@ class SharedTokenLoader:
     stride, index, read; workers default to the CPUs the budget allows (2 kept free), less one for the trainer and
     one per server). Servers, workers and slots are cut to what the host and GPU memory budget allows
     (stable_datasets.framestore.resources; said when they are). fused=True: the GPU stage's Triton kernels (kernels/fused.py).
-    decoder: the GPU stage's JPEG decoder, "nvjpeg" or "hw" (stable_datasets.framestore.decoders; see TokenViews).
+    decoder: the GPU stage's JPEG decoder, "nvjpeg" (stable_datasets.framestore.decoders; see TokenViews).
     """
 
     def __init__(
