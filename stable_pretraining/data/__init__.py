@@ -7,7 +7,16 @@ and other data-related functionality for the stable-pretraining framework.
 from . import dataset_stats, gpu_transforms, sampler, synthetic_data, transforms
 from .collate import Collator
 from .datasets import Dataset, FromTorchDataset, HFDataset, Subset
-from .gpu_transforms import GPUCompose, MultiView, StackedMultiView, ToDevice
+from .gpu_transforms import (
+    GPUCompose,
+    GPUDecodeJPEG,
+    GPUMultiCrop,
+    GPUPrefetcher,
+    MultiView,
+    PackedJPEG,
+    StackedMultiView,
+    ToDevice,
+)
 from .download import bulk_download, download
 from .module import DataModule
 from .sampler import RandomBatchSampler, RepeatedRandomSampler, SupervisedBatchSampler
@@ -67,6 +76,10 @@ __all__ = [
     "GPUCompose",
     "StackedMultiView",
     "MultiView",
+    "GPUMultiCrop",
+    "GPUDecodeJPEG",
+    "GPUPrefetcher",
+    "PackedJPEG",
     # Real data wrappers
     "FromTorchDataset",
     "HFDataset",
