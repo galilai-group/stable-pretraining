@@ -507,7 +507,7 @@ class SharedTokenLoader:
     stride, index, read; workers default to the CPUs the budget allows (2 kept free), less one for the trainer and
     one per server). Servers, workers and slots are cut to what the host and GPU memory budget allows
     (stable_datasets.framestore.resources; said when they are). fused=True: the GPU stage's Triton kernels (kernels/fused.py).
-    decoder: the GPU stage's JPEG decoder, "nvjpeg" (CUDA cores) or "hw" (the NVJPG engines; see TokenViews).
+    decoder: the GPU stage's JPEG decoder, "nvjpeg" or "hw" (stable_datasets.framestore.decoders; see TokenViews).
     """
 
     def __init__(

@@ -51,8 +51,8 @@ class TokenViews:
     grid.
     contrast: "view" (C2, the view's kept patches) or "frame" (each frame's kept patches of the view).
     decode: "partial" (packed MCUs) or "full" (ablation: whole frames, make_batch(decode="full")).
-    decoder: "nvjpeg" (CUDA cores) or "hw" (the NVJPG engines, A100 / H100 / B200: decoding leaves the SMs to the
-    training step).
+    decoder: "nvjpeg" (torchvision's nvJPEG: the NVJPG engines where the GPU has them, else the CUDA cores) or "hw"
+    (the NVJPG engines through nvImageCodec, A100 / H100 / B200; raw planes, upsampled per MCU here).
     fused: everything after decoding in Triton kernels (kernels/fused.py; C2 contrast and window squash only): one
     copies the decoded MCUs into the frame canvas, one builds every kept patch, one jitters the local views.
     """
