@@ -35,7 +35,7 @@ from stable_datasets.framestore.resources import (
     gpu_free,
     process_bytes,
 )
-from stable_datasets.framestore.store import FrameStore
+from stable_datasets.framestore.store import FrameStore, store_format
 
 from .recipe import V2
 from .splice import MCU_COLS, PACK_COLS, make_batch
@@ -224,6 +224,13 @@ class TokenLoader:
         cpu_decoders=0,
         pix_slots=None,
     ):
+        if decode == "partial":  # here rather than in each worker, which would only die
+            import lance
+
+            if store_format(lance.dataset(store).schema) is None:
+                raise ValueError(
+                    f"{store}: not a converted frame store (no seg_len); run python -m stable_datasets.framestore.convert on it"
+                )
         self.ctx = mp.get_context("spawn")
         self.budget = budget or Budget("loader", resources or LOADER_RESOURCES)
         workers = workers or max(1, self.budget.cpus - 1 - servers)
