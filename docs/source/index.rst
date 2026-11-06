@@ -23,6 +23,7 @@
     guides/online_evaluation
     guides/resume
     guides/jet
+    guides/levjepa_loader
     guides/agents
     cache_dir
     cli

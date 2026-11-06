@@ -2,6 +2,15 @@
 Unreleased
 ----------
 
+**New: LeVJEPA token loader**
+
+- ``stable_pretraining.data.levjepa``: ``SharedTokenLoader`` hands a LeVJEPA step every view's kept patches,
+  decoding only the JPEG MCUs those patches cover (CPU workers splice them from a stable-datasets frame store; GPU
+  server processes decode with nvJPEG and build the patches in Triton kernels). ``ViewRecipe`` describes the views
+  (``V2``: LeVJEPA v2's). ViT-S on an H100 trains at 2,828 clips/s against 946 with v2's DataLoader, with the same
+  loss within seed noise. New extra ``levjepa`` (``stable-datasets[framestore]``, ``numba``, ``triton``); guide
+  ``guides/levjepa_loader``.
+
 **New method**
 
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
