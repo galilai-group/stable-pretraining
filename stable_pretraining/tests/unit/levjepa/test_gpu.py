@@ -1,8 +1,8 @@
 """The token loader's GPU stages (skipped without CUDA).
 
 The GPU stages (skipped without CUDA): the spliced frame canvas equals nvJPEG's decode of the whole frames at
-every packed MCU (both scatters), the fused Triton stage agrees with the unfused one, and both shared loaders hand
-out batches of the right shapes.
+every packed MCU (both scatters), the fused Triton stage agrees with the unfused one, both shared loaders hand
+out batches of the right shapes, and batches decoded by CPU workers equal nvJPEG's.
 
     pytest tests/levjepa_tokens/test_gpu.py
 """
@@ -131,6 +131,31 @@ def test_shared_token_loader(path):
         assert torch.isfinite(gp).all() and torch.isfinite(lp).all()
     finally:
         loader.close()
+
+
+@pytest.mark.parametrize("spec", ["cpu", "nvjpeg:1,cpu"])
+def test_cpu_decoded_batches_reach_the_gpu(path, spec):
+    """CPU workers' decoded images reach the GPU stage (shared pixel slots, not per-process copies).
+
+    One worker and one server see the same batches in the same order, so CPU and nvJPEG decoding agree batch for batch.
+    """
+    from stable_pretraining.data.levjepa.loader import SharedTokenLoader
+
+    def batches(decoders):
+        loader = SharedTokenLoader(
+            path, B, workers=1, servers=1, ring=2, slots=4, seed=3, decoders=decoders
+        )
+        try:
+            return [tuple(x.clone() for x in next(loader)) for _ in range(6)]
+        finally:
+            loader.close()
+
+    got, want = batches(spec), batches("nvjpeg:1")
+    for g, w in zip(got, want):
+        assert torch.equal(g[1], w[1]) and torch.equal(g[3], w[3])
+        assert torch.allclose(g[0], w[0], atol=1e-5) and torch.allclose(
+            g[2], w[2], atol=1e-5
+        )
 
 
 def test_shared_clip_loader(path):

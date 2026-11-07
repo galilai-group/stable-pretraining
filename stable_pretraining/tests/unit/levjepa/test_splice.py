@@ -23,12 +23,7 @@ from stable_datasets.framestore.convert import convert_store
 from stable_datasets.framestore.store import FrameStore
 from stable_pretraining.data.levjepa.recipe import V2, ViewRecipe
 from stable_pretraining.data.levjepa.sampling import sample_idx, token_footprints
-from stable_pretraining.data.levjepa.splice import (
-    MCU_COLS,
-    PACK_COLS,
-    make_batch,
-    needed_mcus,
-)
+from stable_pretraining.data.levjepa.splice import MCU_COLS, PACK_COLS, make_batch, needed_mcus
 from ._stores import make_store
 
 

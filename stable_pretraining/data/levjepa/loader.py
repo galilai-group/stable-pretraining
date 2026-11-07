@@ -28,13 +28,7 @@ import torch
 import torch.multiprocessing as mp
 
 from stable_datasets.framestore.index import FrameIndex
-from stable_datasets.framestore.resources import (
-    Budget,
-    Resources,
-    Stage,
-    gpu_free,
-    process_bytes,
-)
+from stable_datasets.framestore.resources import Budget, Resources, Stage, gpu_free, process_bytes
 from stable_datasets.framestore.store import FrameStore, store_format
 
 from .recipe import V2
@@ -133,6 +127,8 @@ def worker(
     store = FrameStore(store_path, index=index, read=read)
     rng = np.random.default_rng(seed)
     view = {k: v.numpy() for k, v in slots.items()}
+    if cpu is not None:
+        cpu = (cpu[0].numpy(), *cpu[1:])
     drop = os.environ.get("FRAMESTORE_DROP_PAGES") == "1"
     while (s := free.get()) is not None:
         p = make_batch(
@@ -143,7 +139,7 @@ def worker(
                 view[k][s][: len(v)] = v
         view["pix"][s][0] = -1
         if cpu is not None and decode == "partial" and backlog(ready) >= cpu[2]:
-            cpu_decode(view, s, p, B, *cpu[:2])
+            cpu_decode(view, s, p, B, *cpu[:2], wait=cpu[2] == 0)
         if drop:
             store.drop_pages()
         ready.put(s)
@@ -157,18 +153,18 @@ def backlog(q):
         return 0
 
 
-def cpu_decode(view, s, p, B, pix, pix_free):
+def cpu_decode(view, s, p, B, pix, pix_free, wait=False):
     """Decode slot s's packed JPEGs on this CPU into a free pixel slot.
 
     libjpeg-turbo, chroma upsampled per MCU as nvJPEG does; the GPU server then only uploads the images. Workers
     decode only while the GPU servers have a backlog (a CPU decodes a batch ~10x slower than it splices one, so
     decoding while the GPU keeps up would starve it of spliced batches), and only into a free pixel slot the images
-    fit: CPU decoding only ever adds capacity.
+    fit: CPU decoding only ever adds capacity. wait=True (CPU-only decoding): every batch, waiting for a pixel slot.
     """
     import simplejpeg
 
     try:
-        q = pix_free.get_nowait()
+        q = pix_free.get() if wait else pix_free.get_nowait()
     except queue.Empty:
         return
     buf, o = pix[q], 0
@@ -223,6 +219,7 @@ class TokenLoader:
         servers=0,
         cpu_decoders=0,
         pix_slots=None,
+        cpu_only=False,
     ):
         if decode == "partial":  # here rather than in each worker, which would only die
             import lance
@@ -239,8 +236,13 @@ class TokenLoader:
         self.servers = servers
         # CPU decoders: the first cpu_decoders workers also decode their batches into pixel slots (shared memory; a
         # packed clip decodes to ~3 MB)
+        self.cpu_only = cpu_only
         self.cpu_decoders = (
-            workers // 2 if cpu_decoders == "auto" else min(cpu_decoders, workers)
+            workers
+            if cpu_only
+            else workers // 2
+            if cpu_decoders == "auto"
+            else min(cpu_decoders, workers)
         )
         self.pix_bytes = PIX_BYTES_PER_CLIP * batch
         n_pix = (pix_slots or 2 * self.cpu_decoders) if self.cpu_decoders else 0
@@ -257,7 +259,11 @@ class TokenLoader:
             self.want[1], batch, recipe
         )  # shared memory is touched only by the slots handed out
         self.free, self.ready = self.ctx.Queue(), self.ctx.Queue()
-        self.procs, self.n = [], 0
+        self.procs, self.n, self.pix_given = [], 0, 0
+        if (
+            cpu_only and n_pix
+        ):  # the first worker, measured, waits for a pixel slot for every batch
+            self.add_pix(1)
         self.add(workers=1, slots=2)
         if plan:
             nw, ns, *npix = self.budget.allocate(self.stages())
@@ -265,16 +271,21 @@ class TokenLoader:
             self.add_pix(*npix)
 
     def add_pix(self, n=0):
-        """Hand out n pixel slots to the CPU decoders."""
-        for q in range(n):
+        """Hand out pixel slots to the CPU decoders, n in all."""
+        for q in range(self.pix_given, n):
             self.pix_free.put(q)
+        self.pix_given = max(self.pix_given, n)
 
     def add(self, workers=0, slots=0):
         """Start more workers and hand out more slots."""
         store, recipe, stride, decode, index, read, seed = self.args
-        # CPU decoders decode while at least one batch per GPU server waits
+        # CPU decoders decode while at least one batch per GPU server waits (CPU-only: always)
         pix = (
-            (self.pix.numpy(), self.pix_free, max(1, self.servers))
+            (
+                self.pix,  # the shared tensor: a numpy view would be pickled as a private copy
+                self.pix_free,
+                0 if self.cpu_only else max(1, self.servers),
+            )
             if self.pix is not None
             else None
         )
@@ -490,19 +501,20 @@ def server_decoders(decoders, servers, decoder):
     """The GPU-stage servers' decoders, and the number of CPU decoders.
 
     From a spec ("nvjpeg:2,cpu:4"; a kind with no count: nvjpeg 2, cpu "auto", half the workers), else
-    `servers` servers of `decoder` and no CPU decoding.
+    `servers` servers of `decoder` and no CPU decoding. A spec with only cpu ("cpu"): every worker decodes every
+    batch, and `servers` servers only upload the images and build the views (third value True).
     """
     if decoders is None:
-        return [decoder] * servers, 0
+        return [decoder] * servers, 0, False
     from stable_datasets.framestore.decoders import decoders as parse
 
     d = parse(decoders)
     kinds = ["nvjpeg"] * (2 if d.get("nvjpeg", 0) is None else d.get("nvjpeg", 0))
     if not kinds:
-        raise ValueError(
-            f"{decoders!r}: the GPU stage needs a server (nvjpeg), even if the CPU decodes"
-        )
-    return kinds, "auto" if d.get("cpu", 0) is None else d.get("cpu", 0)
+        if "cpu" not in d:
+            raise ValueError(f"{decoders!r}: no decoder")
+        return [decoder] * servers, "auto", True
+    return kinds, "auto" if d.get("cpu", 0) is None else d.get("cpu", 0), False
 
 
 class SharedTokenLoader:
@@ -538,7 +550,7 @@ class SharedTokenLoader:
     ):
         ctx = mp.get_context("spawn")
         r = recipe
-        kinds, cpu = server_decoders(decoders, servers, decoder)
+        kinds, cpu, cpu_only = server_decoders(decoders, servers, decoder)
         if (
             index == "shared"
         ):  # build the node's index here, before any worker needs it (and before the budget
@@ -571,6 +583,7 @@ class SharedTokenLoader:
             plan=False,
             servers=len(kinds),
             cpu_decoders=cpu,
+            cpu_only=cpu_only,
         )
         self.kinds = kinds
         host_stages = self.host.stages()  # measures the first worker
