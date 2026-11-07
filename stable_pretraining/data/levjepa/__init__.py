@@ -27,7 +27,9 @@ _WHERE = {
 
 def __getattr__(name):  # lazy: importing the package does not import torch
     if name not in _WHERE:
-        raise AttributeError(f"module 'stable_pretraining.data.levjepa' has no attribute {name!r}")
+        raise AttributeError(
+            f"module 'stable_pretraining.data.levjepa' has no attribute {name!r}"
+        )
     import importlib
 
     return getattr(importlib.import_module(f".{_WHERE[name]}", __name__), name)

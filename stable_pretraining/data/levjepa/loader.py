@@ -28,7 +28,13 @@ import torch
 import torch.multiprocessing as mp
 
 from stable_datasets.framestore.index import FrameIndex
-from stable_datasets.framestore.resources import Budget, Resources, Stage, gpu_free, process_bytes
+from stable_datasets.framestore.resources import (
+    Budget,
+    Resources,
+    Stage,
+    gpu_free,
+    process_bytes,
+)
 from stable_datasets.framestore.store import FrameStore, store_format
 
 from .recipe import V2
