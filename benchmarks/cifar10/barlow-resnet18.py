@@ -1,4 +1,4 @@
-"""Barlow Twins training on CIFAR-10.   """
+"""Barlow Twins training on CIFAR-10."""
 
 import lightning as pl
 import torch
