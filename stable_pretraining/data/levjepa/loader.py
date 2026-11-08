@@ -33,6 +33,7 @@ from stable_datasets.framestore.resources import (
     Resources,
     Stage,
     gpu_free,
+    lower_priority,
     process_bytes,
 )
 from stable_datasets.framestore.store import FrameStore, store_format
@@ -126,15 +127,30 @@ def slot_tensors(n, B, r):
 
 
 def worker(
-    store_path, B, r, stride, slots, free, ready, seed, decode, index, read, cpu=None
+    store_path,
+    B,
+    r,
+    stride,
+    slots,
+    free,
+    ready,
+    seed,
+    decode,
+    index,
+    read,
+    cpu=None,
+    nice=10,
 ):
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    lower_priority(
+        nice
+    )  # the consumer, and the GPU servers, win any contention for the CPU
     torch.set_num_threads(1)
     store = FrameStore(store_path, index=index, read=read)
     rng = np.random.default_rng(seed)
     view = {k: v.numpy() for k, v in slots.items()}
     if cpu is not None:
-        cpu = (cpu[0].numpy(), *cpu[1:])
+        pix, pix_free, least, stalled = cpu[0].numpy(), cpu[1], cpu[2], cpu[3].numpy()
     drop = os.environ.get("FRAMESTORE_DROP_PAGES") == "1"
     while (s := free.get()) is not None:
         p = make_batch(
@@ -144,8 +160,15 @@ def worker(
             if k in view:
                 view[k][s][: len(v)] = v
         view["pix"][s][0] = -1
-        if cpu is not None and decode == "partial" and backlog(ready) >= cpu[2]:
-            cpu_decode(view, s, p, B, *cpu[:2], wait=cpu[2] == 0)
+        # decode here only while the GPU servers are the bottleneck: batches wait for them, and they are not
+        # themselves waiting for the consumer (stalled; decoding then would only take CPU from the consumer)
+        if (
+            cpu is not None
+            and decode == "partial"
+            and backlog(ready) >= least
+            and not (least and stalled[0])
+        ):
+            cpu_decode(view, s, p, B, pix, pix_free, wait=least == 0)
         if drop:
             store.drop_pages()
         ready.put(s)
@@ -200,8 +223,8 @@ class TokenLoader:
 
     Iterator of slots ready on the host (self.slots[k][slot]); TokenViews turns one into patches on the GPU.
     Clips are `recipe.frames` rows, every `stride`-th, of one episode of `store` (a converted frame store; `index`,
-    `read`: stable_datasets.framestore.FrameStore's). Workers (default: the CPUs the budget allows, 2 kept free, less one for the
-    trainer and one per GPU-stage server) and
+    `read`: stable_datasets.framestore.FrameStore's). Workers (default: the CPUs the budget allows, 2 kept free; they run below the
+    trainer and the GPU-stage servers in priority, so no core is held back for those) and
     slots are what the memory budget allows (stable_datasets.framestore.resources; logged when fewer than asked): one worker
     starts first and is measured once it has filled a batch, then the rest start. plan=False leaves the rest to the caller (SharedTokenLoader sizes workers, slots and its servers
     together).
@@ -226,6 +249,7 @@ class TokenLoader:
         cpu_decoders=0,
         pix_slots=None,
         cpu_only=False,
+        nice=10,
     ):
         if decode == "partial":  # here rather than in each worker, which would only die
             import lance
@@ -236,13 +260,17 @@ class TokenLoader:
                 )
         self.ctx = mp.get_context("spawn")
         self.budget = budget or Budget("loader", resources or LOADER_RESOURCES)
-        workers = workers or max(1, self.budget.cpus - 1 - servers)
+        # every CPU the budget allows: workers are niced, so the trainer and the servers win any contention, and a
+        # core held back for them would sit idle whenever they do not need it
+        workers = workers or self.budget.cpus
         self.B, self.r, self.want = batch, recipe, (workers, slots or 2 * workers)
         self.args = (store, recipe, stride, decode, index, read, seed)
         self.servers = servers
         # CPU decoders: the first cpu_decoders workers also decode their batches into pixel slots (shared memory; a
         # packed clip decodes to ~3 MB)
-        self.cpu_only = cpu_only
+        self.cpu_only, self.nice = cpu_only, nice
+        # set by the GPU servers while they wait for the consumer (a free ring slot): CPU decoding is then no help
+        self.stalled = torch.zeros(1, dtype=torch.int32).share_memory_()
         self.cpu_decoders = (
             workers
             if cpu_only
@@ -291,6 +319,7 @@ class TokenLoader:
                 self.pix,  # the shared tensor: a numpy view would be pickled as a private copy
                 self.pix_free,
                 0 if self.cpu_only else max(1, self.servers),
+                self.stalled,
             )
             if self.pix is not None
             else None
@@ -314,6 +343,7 @@ class TokenLoader:
                     index,
                     read,
                     pix if len(self.procs) < self.cpu_decoders else None,
+                    self.nice,
                 ),
                 daemon=True,
             )
@@ -396,6 +426,8 @@ def token_server(
     decoder,
     pix=(None, None),
     stats=None,
+    stalled=None,
+    defer=0,
 ):
     try:
         _token_server(
@@ -413,6 +445,8 @@ def token_server(
             decoder,
             pix,
             stats,
+            stalled,
+            defer,
         )
     except torch.OutOfMemoryError:
         print("token server: out of GPU memory", file=sys.stderr, flush=True)
@@ -437,6 +471,8 @@ def _token_server(
     decoder,
     pix=(None, None),
     stats=None,
+    stalled=None,
+    defer=0,
 ):
     import warnings
 
@@ -462,14 +498,27 @@ def _token_server(
     )
     while not stop.is_set():
         try:
-            s = host_ready.get(timeout=0.5)
+            if defer:  # a reserve: take a batch only while `defer` or more wait (the first servers are behind)
+                if backlog(host_ready) < defer:
+                    time.sleep(0.0005)
+                    continue
+                s = host_ready.get_nowait()
+            else:
+                s = host_ready.get(timeout=0.5)
         except queue.Empty:
             continue
         if s not in locked:
             for t in big:
                 lock(t[s])
             locked.add(s)
-        v = ring_free.get()
+        try:
+            v = ring_free.get_nowait()
+            if stalled is not None:
+                stalled[0] = 0
+        except queue.Empty:  # every ring slot is with the consumer: it, not this server, is the bottleneck
+            if stalled is not None:
+                stalled[0] = 1
+            v = ring_free.get()
         q = int(slots["pix"][s][0])
         with torch.cuda.stream(stream):
             imgs = None
@@ -506,9 +555,11 @@ def _token_server(
 def server_decoders(decoders, servers, decoder):
     """The GPU-stage servers' decoders, and the number of CPU decoders.
 
-    From a spec ("nvjpeg:2,cpu:4"; a kind with no count: nvjpeg 2, cpu "auto", half the workers), else
+    From a spec ("nvjpeg:2,cpu:4", "triton:2"; a kind with no count: nvjpeg 2, triton 1, cpu "auto", half the workers;
+    with both nvjpeg and triton, the triton servers are a reserve that decodes only while batches wait for the nvjpeg
+    ones, so the JPEG engines take what they can and the CUDA cores only the rest), else
     `servers` servers of `decoder` and no CPU decoding. A spec with only cpu ("cpu"): every worker decodes every
-    batch, and `servers` servers only upload the images and build the views (third value True).
+    batch, and one server only uploads the images and builds the views (third value True).
     """
     if decoders is None:
         return [decoder] * servers, 0, False
@@ -516,10 +567,15 @@ def server_decoders(decoders, servers, decoder):
 
     d = parse(decoders)
     kinds = ["nvjpeg"] * (2 if d.get("nvjpeg", 0) is None else d.get("nvjpeg", 0))
+    kinds += ["triton"] * (1 if d.get("triton", 0) is None else d.get("triton", 0))
     if not kinds:
         if "cpu" not in d:
             raise ValueError(f"{decoders!r}: no decoder")
-        return [decoder] * servers, "auto", True
+        return (
+            [decoder],
+            "auto",
+            True,
+        )  # one server: it only uploads and builds the views
     return kinds, "auto" if d.get("cpu", 0) is None else d.get("cpu", 0), False
 
 
@@ -528,10 +584,11 @@ class SharedTokenLoader:
 
     next(loader) -> (global patches, global idx, local patches, local idx) on the GPU, valid until the next call,
     from a ring written by `servers` GPU-stage processes fed by `workers` CPU workers (TokenLoader: store, recipe,
-    stride, index, read; workers default to the CPUs the budget allows (2 kept free), less one for the trainer and
-    one per server). Servers, workers and slots are cut to what the host and GPU memory budget allows
+    stride, index, read; workers default to the CPUs the budget allows, 2 kept free). With decoders="cpu" one
+    server, which only uploads the images and builds the views. Servers, workers and slots are cut to what the host and GPU memory budget allows
     (stable_datasets.framestore.resources; said when they are). fused=True: the GPU stage's Triton kernels (kernels/fused.py).
-    decoder: the GPU stage's JPEG decoder, "nvjpeg" (stable_datasets.framestore.decoders; see TokenViews).
+    decoder: the GPU stage's JPEG decoder, "nvjpeg" (stable_datasets.framestore.decoders; see TokenViews). nice: the CPU workers'
+    priority below the consumer's (and I/O priority, stable_datasets.framestore.resources.lower_priority); 0 to run level with it.
     """
 
     def __init__(
@@ -553,6 +610,7 @@ class SharedTokenLoader:
         resources=None,
         budget=None,
         decoders=None,
+        nice=10,
     ):
         ctx = mp.get_context("spawn")
         r = recipe
@@ -590,6 +648,7 @@ class SharedTokenLoader:
             servers=len(kinds),
             cpu_decoders=cpu,
             cpu_only=cpu_only,
+            nice=nice,
         )
         self.kinds = kinds
         host_stages = self.host.stages()  # measures the first worker
@@ -619,7 +678,15 @@ class SharedTokenLoader:
                 self.servers.append(
                     ctx.Process(
                         target=token_server,
-                        args=(*args, kind, pix, self.stats[len(self.servers)]),
+                        args=(
+                            *args,
+                            kind,
+                            pix,
+                            self.stats[len(self.servers)],
+                            self.host.stalled,
+                            # triton servers beside nvjpeg ones decode only what the JPEG engines fall behind on
+                            kinds.count("nvjpeg") if kind == "triton" else 0,
+                        ),
                     )
                 )
                 self.servers[-1].start()

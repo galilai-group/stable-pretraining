@@ -22,7 +22,9 @@ if numba is not None:
     from stable_datasets.framestore.store import copy_bytes
 
 PACK_COLS = 64  # MCUs per row of a packed JPEG (1024 px for 16 x 16 MCUs)
-MCU_COLS = 4  # per packed MCU: frame, MCU row, MCU column (in its frame), slot in its clip's packed JPEG
+# per packed MCU: frame, MCU row, MCU column (in its frame), slot in its clip's packed JPEG, and the byte where its
+# entropy-coded data starts in the batch's packed bytes (decoders that start every MCU on its own read it)
+MCU_COLS = 5
 
 if numba is not None:
 
@@ -92,8 +94,8 @@ if numba is not None:
 
         mframe/mid: needed MCUs sorted by frame then id; frame f's bytes start at bufs[fid[f]][pos[f]], its MCU
         segment lengths at seg_len[seg_base[f]] (only seg_base[f] is read: a cumulative or any start array). Writes B
-        packed JPEGs into out and, per packed MCU, (frame, mcu row, mcu col, slot k in its clip's packed JPEG) into
-        mcu. Returns JPEG offsets (B + 1), MCU offsets (B + 1), rows per JPEG.
+        packed JPEGs into out and, per packed MCU, (frame, mcu row, mcu col, slot k in its clip's packed JPEG, byte
+        where its entropy-coded data starts in out) into mcu. Returns JPEG offsets (B + 1), MCU offsets (B + 1), rows per JPEG.
         """
         joff = np.zeros(B + 1, np.int64)
         moff = np.zeros(B + 1, np.int64)
@@ -153,6 +155,7 @@ if numba is not None:
                 my, mx = m // ncol, m % ncol
                 for kk in range(k, e):
                     L = np.int64(seg_len[j0 + m + kk - k])
+                    start = o
                     o += L + 2
                     acc += L + 2
                     ptr += 1
@@ -162,6 +165,7 @@ if numba is not None:
                         mcu[x, 1] = my
                         mcu[x, 2] = mx
                         mcu[x, 3] = kk
+                        mcu[x, 4] = start
                     mx += 1
                     if mx == ncol:
                         my, mx = my + 1, 0

@@ -19,6 +19,7 @@ pytest.importorskip("lance")
 pytest.importorskip("numba")
 simplejpeg = pytest.importorskip("simplejpeg")
 
+from stable_datasets.framestore import codec
 from stable_datasets.framestore.convert import convert_store
 from stable_datasets.framestore.store import FrameStore
 from stable_pretraining.data.levjepa.recipe import V2, ViewRecipe
@@ -62,8 +63,16 @@ def test_packed_mcus_are_the_frames_mcus(store, seed):
     for b in range(B):
         packed = decode(jpeg[p["joff"][b] : p["joff"][b + 1]])
         assert packed.shape == (p["prow"][b] * mh, PACK_COLS * mw, 3)
-        for f, my, mx, k in mcu[p["moff"][b] : p["moff"][b + 1]]:
+        sos = codec.probe(jpeg, np.array([p["joff"][b], p["joff"][b + 1]]))["sos_end"][
+            0
+        ]
+        for f, my, mx, k, start in mcu[p["moff"][b] : p["moff"][b + 1]]:
             assert f // T == b
+            # where its entropy-coded data starts: after the scan header (the first) or after a restart marker
+            if k == 0:
+                assert start == sos
+            else:
+                assert jpeg[start - 2] == 0xFF and 0xD0 <= jpeg[start - 1] <= 0xD7
             src = packed[
                 (k // PACK_COLS) * mh : (k // PACK_COLS + 1) * mh,
                 (k % PACK_COLS) * mw : (k % PACK_COLS + 1) * mw,
@@ -102,7 +111,7 @@ def test_every_kept_patch_is_covered(store):
     # sorted by frame then id, unique
     assert np.all(np.diff(mframe * (rows * cols) + mid) > 0)
     assert set(zip(mframe.tolist(), mid.tolist())) == want
-    got = {(int(f), int(r) * cols + int(c)) for f, r, c, _ in mcu[: p["moff"][-1]]}
+    got = {(int(f), int(r) * cols + int(c)) for f, r, c, _, _ in mcu[: p["moff"][-1]]}
     assert want == got
 
 

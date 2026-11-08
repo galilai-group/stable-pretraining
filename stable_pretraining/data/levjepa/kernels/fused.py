@@ -180,6 +180,7 @@ def _scatter_kernel(
     sh,
     T: tl.constexpr,
     NCOL: tl.constexpr,
+    MC: tl.constexpr,
 ):
     """Copy one decoded packed MCU to its place in the frame canvas.
 
@@ -188,10 +189,12 @@ def _scatter_kernel(
     (3, rows * mh, NCOL * mw) from base.
     """
     i = tl.program_id(0).to(tl.int64)
-    f = tl.load(mcu + i * 4).to(tl.int64)
-    my = tl.load(mcu + i * 4 + 1)
-    mx = tl.load(mcu + i * 4 + 2)
-    k = tl.load(mcu + i * 4 + 3)
+    f = tl.load(mcu + i * MC).to(
+        tl.int64
+    )  # MC: the MCU table's row length (splice.MCU_COLS)
+    my = tl.load(mcu + i * MC + 1)
+    mx = tl.load(mcu + i * MC + 2)
+    k = tl.load(mcu + i * MC + 3)
     clip = f // T
     mw = tl.load(mdim + clip * 2)
     mh = tl.load(mdim + clip * 2 + 1)
@@ -238,6 +241,7 @@ def scatter_mcus(imgs, prow, mcu, canvas, T, ncol=64, mdim=None):
         canvas.stride(2),
         T=T,
         NCOL=ncol,
+        MC=mcu.shape[1],
         num_warps=1,
     )
 

@@ -1,8 +1,9 @@
 """The token loader's GPU stages (skipped without CUDA).
 
 The GPU stages (skipped without CUDA): the spliced frame canvas equals nvJPEG's decode of the whole frames at
-every packed MCU (both scatters), the fused Triton stage agrees with the unfused one, both shared loaders hand
-out batches of the right shapes, and batches decoded by CPU workers equal nvJPEG's.
+every packed MCU (both scatters; and libjpeg-turbo's, decoded on the CPU or by stable_datasets.framestore.gpu_jpeg), the fused Triton
+stage agrees with the unfused one, both shared loaders hand out batches of the right shapes, and batches decoded by
+CPU workers equal the GPU's.
 
     pytest tests/levjepa_tokens/test_gpu.py
 """
@@ -58,19 +59,26 @@ def slots_of(store, seed, decode="partial"):
         (False, "nvjpeg"),
         (True, "nvjpeg"),
         (True, "cpu"),
+        (True, "triton"),
     ],
     ids=[
         "torch scatter",
         "triton scatter",
         "triton scatter, CPU-decoded",
+        "triton scatter, triton-decoded",
     ],
 )
 def test_canvas_equals_full_decode(path, fused, decoder):
     store = FrameStore(path)
     p, slots = slots_of(store, 0)
     fid, pos, size, _, _ = store.descriptors(p["rows"])
-    full = Decoder("nvjpeg")(
-        [np.array(store.frame(f, o, n)) for f, o, n in zip(fid, pos, size)]
+    # the reference: whole frames by the same decoder (nvJPEG), or by libjpeg-turbo for the two exact ones (the CPU,
+    # and cuda); nvJPEG's own pixels differ from libjpeg's by up to 3/255 where it decodes on the CUDA cores (A40)
+    frames = [np.array(store.frame(f, o, n)) for f, o, n in zip(fid, pos, size)]
+    full = (
+        Decoder("nvjpeg")(frames)
+        if decoder == "nvjpeg"
+        else [x.cuda() for x in Decoder("cpu", exact=True)(frames)]
     )
     v = TokenViews(B, fused=fused, decoder="nvjpeg" if decoder == "cpu" else decoder)
     imgs = None
@@ -93,10 +101,7 @@ def test_canvas_equals_full_decode(path, fused, decoder):
         need[rc[:, 1], rc[:, 2]] = True
         need = need.repeat_interleave(mh, 0).repeat_interleave(mw, 1)[:h, :w].cuda()
         d = (v.canvas[f, :, :h, :w].int() - full[f].int()).abs().amax(0)[need]
-        if decoder == "nvjpeg":
-            assert int(d.max()) == 0, f
-        else:  # libjpeg-turbo's IDCT and colour conversion vs nvJPEG's
-            assert int(d.max()) <= 2 and float((d > 0).float().mean()) < 0.05, f
+        assert int(d.max()) == 0, f
 
 
 def test_fused_matches_unfused(path):
@@ -133,11 +138,12 @@ def test_shared_token_loader(path):
         loader.close()
 
 
-@pytest.mark.parametrize("spec", ["cpu", "nvjpeg:1,cpu"])
+@pytest.mark.parametrize("spec", ["cpu", "triton:1,cpu"])
 def test_cpu_decoded_batches_reach_the_gpu(path, spec):
     """CPU workers' decoded images reach the GPU stage (shared pixel slots, not per-process copies).
 
-    One worker and one server see the same batches in the same order, so CPU and nvJPEG decoding agree batch for batch.
+    One worker and one server see the same batches in the same order, so CPU decoding agrees batch for batch with the
+    triton decoder (both give libjpeg-turbo's pixels; nvJPEG's differ slightly on GPUs without JPEG engines).
     """
     from stable_pretraining.data.levjepa.loader import SharedTokenLoader
 
@@ -150,7 +156,7 @@ def test_cpu_decoded_batches_reach_the_gpu(path, spec):
         finally:
             loader.close()
 
-    got, want = batches(spec), batches("nvjpeg:1")
+    got, want = batches(spec), batches("triton:1")
     for g, w in zip(got, want):
         assert torch.equal(g[1], w[1]) and torch.equal(g[3], w[3])
         assert torch.allclose(g[0], w[0], atol=1e-5) and torch.allclose(
@@ -168,5 +174,35 @@ def test_shared_clip_loader(path):
         for _ in range(3):
             clip = next(loader)
         assert clip.shape == (B, 16, 224, 224, 3) and clip.dtype == torch.uint8
+    finally:
+        loader.close()
+
+
+def test_shared_clip_loader_cheapest_first(path):
+    """A consumer slower than the CPU decoders is fed by them alone.
+
+    The GPU servers only fill the ring at the start; decoders="auto" on a converted store runs CPU, nvjpeg and triton.
+    """
+    import time
+
+    from stable_datasets.framestore.pixel_loader import SharedClipLoader
+
+    loader = SharedClipLoader(
+        path, B, frames=16, stride=2, decoders="auto", clip_slots=2
+    )
+    try:
+        assert loader.spec.split(",")[0] == "cpu" and "nvjpeg" in loader.spec
+        for _ in range(4):  # the ring's first fill, by whichever decoder is ready
+            next(loader)
+        before = loader._stats.clone()
+        for _ in range(4):
+            time.sleep(1.0)  # far slower than one CPU decoder's batch of B clips
+            next(loader)
+        gpu = int((loader._stats - before)[:, 1].sum()) // B  # clips -> batches
+        assert gpu <= 1, (
+            f"GPU servers decoded {gpu} batches for a consumer the CPU decoders keep up with"
+        )
+        st = loader.stats()
+        assert set(st) == {"gpu_starved", "decoded_by"} and 0 <= st["gpu_starved"] < 1
     finally:
         loader.close()

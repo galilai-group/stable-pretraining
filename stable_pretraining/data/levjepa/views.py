@@ -34,7 +34,8 @@ class TokenViews:
     grid.
     contrast: "view" (C2, the view's kept patches) or "frame" (each frame's kept patches of the view).
     decode: "partial" (packed MCUs) or "full" (ablation: whole frames, make_batch(decode="full")).
-    decoder: "nvjpeg" (torchvision's nvJPEG: the NVJPG engines where the GPU has them, else the CUDA cores).
+    decoder: "nvjpeg" (torchvision's nvJPEG: the NVJPG engines where the GPU has them, else the CUDA cores) or "triton"
+    (stable_datasets.framestore.gpu_jpeg: all of it on the CUDA cores, entropy decoding included; the same pixels).
     fused: everything after decoding in Triton kernels (kernels/fused.py; C2 contrast and window squash only): one
     copies the decoded MCUs into the frame canvas, one builds every kept patch, one jitters the local views.
     """
@@ -63,17 +64,36 @@ class TokenViews:
         self.mean = torch.tensor(r.mean, device=device).view(1, 1, 3, 1, 1)
         self.std = torch.tensor(r.std, device=device).view(1, 1, 3, 1, 1)
         self.canvas = torch.empty(0, dtype=torch.uint8, device=device)
-        if decoder != "nvjpeg":
-            raise ValueError(f"decoder {decoder!r}: the GPU stage decodes with nvjpeg")
+        self._bytes = torch.empty(
+            0, dtype=torch.uint8, device=device
+        )  # the triton decoder's copy of a slot's bytes
+        if decoder not in ("nvjpeg", "triton"):
+            raise ValueError(
+                f"decoder {decoder!r}: the GPU stage decodes with nvjpeg or triton"
+            )
         self.decoder = Decoder(decoder, device)
         self.grid = (
             0,
             0,
         )  # canvas size in MCUs; grows to the largest frame seen (e.g. 384 x 1211 is 24 x 76)
 
-    def _decode(self, frames):
-        """Decode frames into (3, h, w) uint8 images on the GPU."""
-        return [x.contiguous() for x in self.decoder(frames)]
+    def _decode(self, jp, off, prof=None):
+        """Decode the JPEGs jp[off[i]:off[i + 1]] (a slot's bytes) into (3, h, w) uint8 images on the GPU."""
+        if (
+            self.decoder.kind == "triton"
+        ):  # the slot's bytes as one buffer, no per-JPEG copies
+            from stable_datasets.framestore.gpu_jpeg import decode_buffer
+
+            return [
+                x.contiguous()
+                for x in decode_buffer(jp[: off[-1]], off, self.dev, prof=prof)
+            ]
+        return [
+            x.contiguous()
+            for x in self.decoder(
+                [jp[off[i] : off[i + 1]] for i in range(len(off) - 1)]
+            )
+        ]
 
     def squashed(self, slots, s):
         """Squash slot s's frames whole, after decoding them into the canvas.
@@ -114,7 +134,7 @@ class TokenViews:
         jp = slots["jpeg"][s]
         if self.decode == "full":
             joff = slots["joff"][s].tolist()
-            imgs = self._decode([jp[joff[f] : joff[f + 1]] for f in range(B * T)])
+            imgs = self._decode(jp, joff[: B * T + 1])
             for b in range(B):  # the frames of a clip share one size
                 h, w = imgs[b * T].shape[1:]
                 self.canvas[b * T : (b + 1) * T, :, :h, :w] = torch.stack(
@@ -122,13 +142,15 @@ class TokenViews:
                 )
             return size
         joff, moff = slots["joff"][s][: B + 1].tolist(), slots["moff"][s]
-        frames = [jp[joff[b] : joff[b + 1]] for b in range(B)]
+        if imgs is None and self.decoder.kind == "triton":
+            self._fill_triton(slots, s, jp, joff, moff)
+            return size
         if (
             imgs is not None
         ):  # decoded already (by a CPU worker): (3, h, w) RGB per clip
             imgs = [x.contiguous() for x in imgs]  # the scatter reads whole planes
         else:
-            imgs = self._decode(frames)
+            imgs = self._decode(jp, joff)
         if (
             self.fused
         ):  # one Triton program per MCU instead of cat + permute + index_put
@@ -167,6 +189,71 @@ class TokenViews:
             )
             cv[mm[:, 0], mm[:, 1], mm[:, 2]] = blocks
         return size
+
+    def _fill_triton(self, slots, s, jp, joff, moff, prof=None):
+        """stable_datasets.framestore.gpu_jpeg straight into the canvas.
+
+        Every packed MCU decoded on its own from the byte the splice recorded for it (one launch per table set), its
+        8 or 16 px tile written to its place; no packed image. prof: a dict collecting each step's synchronized
+        seconds (profiling only).
+        """
+        import time
+
+        from stable_datasets.framestore.gpu_jpeg import (
+            color,
+            decode_mcus,
+            fusable,
+            idct,
+            pixels_into,
+            table_headers,
+        )
+
+        t = [time.perf_counter()]
+
+        def mark(step):
+            if prof is not None:
+                torch.cuda.synchronize()
+                now = time.perf_counter()
+                prof[step] = prof.get(step, 0.0) + now - t[0]
+                t[0] = now
+
+        B, T, PS = self.B, self.r.frames, self.r.patch
+        n, nm = joff[-1], int(moff[-1])
+        if self._bytes.numel() < n + 16:
+            self._bytes = torch.zeros(2 * n + 16, dtype=torch.uint8, device=self.dev)
+        self._bytes[:n].copy_(jp[:n], non_blocking=True)
+        self._bytes[n : n + 16].zero_()
+        m = slots["mcu"][s][:nm].to(self.dev, non_blocking=True).long()
+        mark("bytes and MCU table to the GPU")
+        keys, hdrs = table_headers(jp.numpy(), joff)
+        mark("table headers (CPU)")
+        R, C = self.grid
+        Hc, Wc = R * PS, C * PS
+        mo = moff.tolist()
+        for key, hdr in hdrs.items():
+            clips = [b for b in range(B) if keys[b] == key]
+            mm = (
+                m
+                if len(clips) == B
+                else torch.cat([m[mo[b] : mo[b + 1]] for b in clips])
+            )
+            coefs = decode_mcus(self._bytes, mm[:, 4].contiguous(), hdr)
+            mark("entropy decode")
+            if fusable(
+                hdr
+            ):  # IDCT, upsampling, colour and the write into the canvas in one kernel
+                mh, mw = 8 * hdr["comps"][0][1], 8 * hdr["comps"][0][0]
+                off = mm[:, 0] * (3 * Hc * Wc) + mm[:, 1] * (mh * Wc) + mm[:, 2] * mw
+                pixels_into(coefs, hdr, self.canvas, off, Wc, 1, Hc * Wc)
+                mark("pixels into the canvas (IDCT, colour, write)")
+                continue
+            tiles = color(idct(coefs, hdr), hdr)  # (k, mh, mw, 3)
+            mh, mw = tiles.shape[1:3]
+            cv = self.canvas.view(B * T, 3, R * PS // mh, mh, C * PS // mw, mw).permute(
+                0, 2, 4, 1, 3, 5
+            )
+            cv[mm[:, 0], mm[:, 1], mm[:, 2]] = tiles.permute(0, 3, 1, 2)
+            mark("pixels into the canvas (IDCT, colour, write)")
 
     def _grow(self, B, size):
         PS, T = self.r.patch, self.r.frames
