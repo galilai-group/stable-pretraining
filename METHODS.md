@@ -33,6 +33,7 @@ Methods come in two forms:
 | iGPT | — | `iGPT` | — | — | [El-Nouby et al., 2024](https://arxiv.org/abs/2401.08541) |
 | IJEPA | — | `IJEPA` | — | — | [Assran et al., 2023](https://arxiv.org/abs/2301.08243) |
 | LeJEPA | — | `LeJEPA` | — | — | [Balestriero & LeCun, 2025](https://arxiv.org/abs/2511.08544) |
+| LeWM | — | `LeWM` | Prediction MSE, SIGReg | — | [Maes et al., 2026](https://arxiv.org/abs/2603.19312) |
 | MAE | — | `MAE` | `MAELoss` | — | [He et al., 2022](https://arxiv.org/abs/2111.06377) |
 | MaskFeat | — | `MaskFeat` | — | — | [Wei et al., 2022](https://arxiv.org/abs/2112.09133) |
 | MIMRefiner | — | `MIMRefiner` | `DINOv1Loss`, `iBOTPatchLoss` | — | [Lehner et al., 2024](https://arxiv.org/abs/2402.10093) |

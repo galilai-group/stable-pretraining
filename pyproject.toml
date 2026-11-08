@@ -29,6 +29,7 @@ dependencies = [
     "prettytable",
     "submitit",
     "timm",
+    "einops",
     "zstandard",
     "typer",
     "transformers",

@@ -3,7 +3,11 @@ Unreleased
 ----------
 
 **New method**
-
+- ``LeWM`` (Latent Equilibrium World Model): adds an action-conditioned
+  JEPA world model with an autoregressive predictor, prediction loss,
+  and SIGReg regularization. Exposed as ``spt.LeWM`` with an OGBench
+  Cube training example and unit tests. Registered in
+  ``stable_pretraining.methods``.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,
