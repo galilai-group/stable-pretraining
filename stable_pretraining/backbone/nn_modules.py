@@ -69,6 +69,146 @@ class L2Norm(torch.nn.Module):
         return F.normalize(x, dim=-1, p=2)
 
 
+class IterNorm(torch.nn.Module):
+    """Group-wise iterative whitening layer :cite:`huang2019iterative`.
+
+    Splits the ``D`` features into ``num_groups`` contiguous groups and whitens
+    each group over the batch. The inverse square root of each group covariance
+    is approximated with ``T`` Newton-Schulz iterations instead of an
+    eigendecomposition, so the layer stays cheap and differentiable. VIbCReg
+    appends it to the end of the projector.
+
+    Running estimates of the mean and whitening matrix are tracked during
+    training and used in eval mode, mirroring :class:`torch.nn.BatchNorm1d`.
+
+    Args:
+        num_features: Feature dimension ``D``.
+        num_groups: Number of groups. Must divide ``num_features``. Default 64.
+        T: Number of Newton-Schulz iterations. Default 5.
+        eps: Value added to the covariance diagonal. Default 1e-5.
+        momentum: Momentum of the running statistics. Default 0.1.
+        affine: If ``True``, apply a learnable per-feature scale and shift
+            after whitening. Default ``True``.
+
+    Example:
+        ```python
+        projector = nn.Sequential(
+            nn.Linear(512, 2048),
+            nn.BatchNorm1d(2048),
+            nn.GELU(),
+            nn.Linear(2048, 2048),
+            IterNorm(2048, num_groups=64, T=5),
+        )
+        ```
+
+    Note:
+        Matches the solo-learn implementation used for the VIbCReg reference
+        results, except that gradients come from autograd rather than a
+        hand-written backward pass.
+    """
+
+    def __init__(
+        self,
+        num_features: int,
+        num_groups: int = 64,
+        T: int = 5,
+        eps: float = 1e-5,
+        momentum: float = 0.1,
+        affine: bool = True,
+    ):
+        super().__init__()
+        if num_features % num_groups != 0:
+            raise ValueError(
+                f"num_features ({num_features}) must be divisible by "
+                f"num_groups ({num_groups})"
+            )
+        self.num_features = num_features
+        self.num_groups = num_groups
+        self.num_channels = num_features // num_groups
+        self.T = T
+        self.eps = eps
+        self.momentum = momentum
+        self.affine = affine
+
+        if affine:
+            self.weight = torch.nn.Parameter(torch.ones(num_features))
+            self.bias = torch.nn.Parameter(torch.zeros(num_features))
+        else:
+            self.register_parameter("weight", None)
+            self.register_parameter("bias", None)
+
+        self.register_buffer(
+            "running_mean", torch.zeros(num_groups, self.num_channels, 1)
+        )
+        self.register_buffer(
+            "running_wm",
+            torch.eye(self.num_channels).repeat(num_groups, 1, 1),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Whiten a batch of features.
+
+        Args:
+            x: Input tensor [N, D]
+
+        Returns:
+            Whitened tensor [N, D], followed by the affine transform if enabled
+        """
+        if x.ndim != 2 or x.size(1) != self.num_features:
+            raise ValueError(
+                f"IterNorm expects input of shape [N, {self.num_features}], "
+                f"got {tuple(x.shape)}"
+            )
+        # Newton-Schulz iterations diverge in half precision.
+        dtype = torch.promote_types(x.dtype, torch.float32)
+        with torch.autocast(device_type=x.device.type, enabled=False):
+            out = self._whiten(x.to(dtype))
+        if self.affine:
+            out = out * self.weight + self.bias
+        return out
+
+    def _whiten(self, x: torch.Tensor) -> torch.Tensor:
+        n = x.size(0)
+        g, c = self.num_groups, self.num_channels
+        xg = x.T.reshape(g, c, n)
+
+        if self.training:
+            mean = xg.mean(dim=-1, keepdim=True)
+            xc = xg - mean
+            eye = torch.eye(c, device=x.device, dtype=x.dtype).expand(g, c, c)
+            sigma = torch.baddbmm(
+                eye, xc, xc.transpose(1, 2), beta=self.eps, alpha=1.0 / n
+            )
+            # Dividing by the trace puts the spectrum in (0, 1], the region
+            # where Newton-Schulz converges to Sigma^{-1/2}.
+            r_tr = sigma.diagonal(dim1=1, dim2=2).sum(-1).reciprocal()[:, None, None]
+            sigma_n = sigma * r_tr
+            p = eye
+            for _ in range(self.T):
+                p = torch.baddbmm(
+                    p,
+                    torch.linalg.matrix_power(p, 3),
+                    sigma_n,
+                    beta=1.5,
+                    alpha=-0.5,
+                )
+            wm = p * r_tr.sqrt()
+            with torch.no_grad():
+                self.running_mean.lerp_(mean.to(self.running_mean.dtype), self.momentum)
+                self.running_wm.lerp_(wm.to(self.running_wm.dtype), self.momentum)
+        else:
+            xc = xg - self.running_mean.to(x.dtype)
+            wm = self.running_wm.to(x.dtype)
+
+        return (wm @ xc).reshape(g * c, n).T
+
+    def extra_repr(self) -> str:
+        return (
+            f"{self.num_features}, num_groups={self.num_groups}, T={self.T}, "
+            f"eps={self.eps}, momentum={self.momentum}, affine={self.affine}"
+        )
+
+
 class Normalize(torch.nn.Module):
     """Normalize tensor and scale by square root of number of elements."""
 

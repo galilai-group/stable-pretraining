@@ -5,6 +5,7 @@ from .nn_modules import (
     BatchNorm1dNoBias,
     EMA,
     ImageToVideoEncoder,
+    IterNorm,
     L2Norm,
     Normalize,
 )
@@ -85,6 +86,7 @@ __all__ = [
     BatchNorm1dNoBias,
     EMA,
     ImageToVideoEncoder,
+    IterNorm,
     L2Norm,
     Normalize,
     from_timm,

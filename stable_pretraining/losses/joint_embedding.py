@@ -80,6 +80,77 @@ class VICRegLoss(torch.nn.Module):
         return loss
 
 
+class VIbCRegLoss(torch.nn.Module):
+    """SSL objective used in VIbCReg :cite:`lee2021vibcreg`.
+
+    Keeps VICReg's invariance and variance terms but replaces the covariance
+    penalty with a feature-decorrelation term computed on the normalized
+    (correlation) matrix, which makes it independent of the feature scale.
+
+    Args:
+        sim_coeff (float, optional): The weight of the similarity loss (attractive term).
+            Default is 25.
+        std_coeff (float, optional): The weight of the standard deviation loss.
+            Default is 25.
+        cov_coeff (float, optional): The weight of the feature decorrelation loss.
+            Default is 200.
+        epsilon (float, optional): Small value to avoid division by zero.
+            Default is 1e-4.
+
+    Note:
+        Follows the solo-learn implementation behind the reference VIbCReg
+        results: the per-view variance terms are summed, not averaged as in
+        :class:`VICRegLoss`, and the decorrelation term is the mean of the
+        squared off-diagonal correlations over all ``D * D`` entries.
+    """
+
+    def __init__(
+        self,
+        sim_coeff: float = 25,
+        std_coeff: float = 25,
+        cov_coeff: float = 200,
+        epsilon: float = 1e-4,
+    ):
+        super().__init__()
+        self.sim_coeff = sim_coeff
+        self.std_coeff = std_coeff
+        self.cov_coeff = cov_coeff
+        self.epsilon = epsilon
+
+    def forward(self, z_i, z_j):
+        """Compute the loss of the VIbCReg model.
+
+        Args:
+            z_i (torch.Tensor): Latent representation of the first augmented view of the batch.
+            z_j (torch.Tensor): Latent representation of the second augmented view of the batch.
+
+        Returns:
+            torch.Tensor: The computed loss.
+        """
+        repr_loss = F.mse_loss(z_i, z_j)
+
+        z_i = torch.cat(all_gather(z_i), 0)
+        z_j = torch.cat(all_gather(z_j), 0)
+        std_loss = self._variance(z_i) + self._variance(z_j)
+        cov_loss = self._decorrelation(z_i) + self._decorrelation(z_j)
+
+        return (
+            self.sim_coeff * repr_loss
+            + self.std_coeff * std_loss
+            + self.cov_coeff * cov_loss
+        )
+
+    def _variance(self, z: torch.Tensor) -> torch.Tensor:
+        std = torch.sqrt(z.var(dim=0) + self.epsilon)
+        return F.relu(1 - std).mean()
+
+    @staticmethod
+    def _decorrelation(z: torch.Tensor) -> torch.Tensor:
+        z = F.normalize(z - z.mean(dim=0), p=2, dim=0)
+        corr = z.T @ z
+        return off_diagonal(corr).pow(2).sum() / corr.numel()
+
+
 class BarlowTwinsLoss(torch.nn.Module):
     """SSL objective used in Barlow Twins :cite:`zbontar2021barlow`.
 

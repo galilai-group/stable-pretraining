@@ -184,6 +184,17 @@ def build_vicreg():
     )
 
 
+def build_vibcreg():
+    # Method class used directly through its dict forward(batch, stage).
+    module = spt.VIbCReg(
+        encoder_name=make_backbone(),
+        projector_dims=(EMBED_DIM, PROJ_DIM),
+        iternorm_groups=4,
+    )
+    module.optim = {"optimizer": {"type": "Adam", "lr": 1e-3}}
+    return dict(module=module, data=make_data(multi_view=True))
+
+
 def build_barlow_twins():
     return dict(
         module=spt.Module(
@@ -218,6 +229,7 @@ METHOD_BUILDERS = {
     "simclr": build_simclr,
     "byol": build_byol,
     "vicreg": build_vicreg,
+    "vibcreg": build_vibcreg,
     "barlow_twins": build_barlow_twins,
     "supervised": build_supervised,
 }
@@ -229,6 +241,7 @@ REFERENCE_LOSSES = {
     "simclr": ("fit/loss_epoch", 1.645321011543274),
     "byol": ("fit/loss_epoch", 1.822302222251892),
     "vicreg": ("fit/loss_epoch", 18.119741439819336),
+    "vibcreg": ("fit/loss_epoch", 60.46593475341797),
     "barlow_twins": ("fit/loss_epoch", 1.7105509042739868),
     "supervised": ("validate/loss_step", 2.3338754177093506),
 }

@@ -14,6 +14,7 @@ from .dino import DINOv1Loss, DINOv2Loss, iBOTPatchLoss
 from .joint_embedding import (
     BYOLLoss,
     VICRegLoss,
+    VIbCRegLoss,
     BarlowTwinsLoss,
     NTXEntLoss,
     SwAVLoss,
@@ -41,6 +42,7 @@ __all__ = [
     # Joint embedding
     "BYOLLoss",
     "VICRegLoss",
+    "VIbCRegLoss",
     "BarlowTwinsLoss",
     "NTXEntLoss",
     "SwAVLoss",
