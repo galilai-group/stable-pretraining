@@ -14,6 +14,8 @@ from stable_pretraining.methods.lewm_components.jepa import JEPA
 
 
 class SyntheticSequences(Dataset):
+    """Synthetic sequences for training tests."""
+
     def __len__(self):
         return 8
 

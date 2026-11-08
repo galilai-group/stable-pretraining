@@ -696,9 +696,7 @@ def w_lewm_ddp_training(rank, world_size):
     gathered_grads = [torch.empty_like(grad) for _ in range(world_size)]
     dist.all_gather(gathered_grads, grad)
 
-    max_grad_diff = (
-        gathered_grads[0] - gathered_grads[1]
-    ).abs().max().item()
+    max_grad_diff = (gathered_grads[0] - gathered_grads[1]).abs().max().item()
 
     print(f"Rank {rank}: gradient difference = {max_grad_diff}", flush=True)
     optimizer.step()

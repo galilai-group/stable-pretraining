@@ -1,14 +1,17 @@
-"""JEPA Implementation"""
+"""JEPA Implementation."""
 
 import torch
 import torch.nn.functional as F
 from einops import rearrange
 from torch import nn
 
+
 def detach_clone(v):
     return v.detach().clone() if torch.is_tensor(v) else v
 
+
 class JEPA(nn.Module):
+    """Joint embedding predictive architecture."""
 
     def __init__(
         self,
@@ -28,12 +31,12 @@ class JEPA(nn.Module):
 
     def encode(self, info):
         """Encode observations and actions into embeddings.
-        info: dict with pixels and action keys
-        """
 
-        pixels = info['pixels'].float()
+        info: dict with pixels and action keys.
+        """
+        pixels = info["pixels"].float()
         b = pixels.size(0)
-        pixels = rearrange(pixels, "b t ... -> (b t) ...") # flatten for encoding
+        pixels = rearrange(pixels, "b t ... -> (b t) ...")  # flatten for encoding
         output = self.encoder(pixels, interpolate_pos_encoding=True)
         pixels_emb = output.last_hidden_state[:, 0]  # cls token
         emb = self.projector(pixels_emb)
@@ -45,9 +48,10 @@ class JEPA(nn.Module):
         return info
 
     def predict(self, emb, act_emb):
-        """Predict next state embedding
+        """Predict next state embedding.
+
         emb: (B, T, D)
-        act_emb: (B, T, A_emb)
+        act_emb: (B, T, A_emb).
         """
         preds = self.predictor(emb, act_emb)
         preds = self.pred_proj(rearrange(preds, "b t d -> (b t) d"))
@@ -60,12 +64,12 @@ class JEPA(nn.Module):
 
     def rollout(self, info, action_sequence, history_size: int = 3):
         """Rollout the model given an initial info dict and action sequence.
+
         pixels: (B, S, T, C, H, W)
         action_sequence: (B, S, T, action_dim)
          - S is the number of action plan samples
-         - T is the time horizon
+         - T is the time horizon.
         """
-
         assert "pixels" in info, "pixels not in info_dict"
         H = info["pixels"].size(2)
         B, S, T = action_sequence.shape[:3]
@@ -126,8 +130,7 @@ class JEPA(nn.Module):
         return cost
 
     def get_cost(self, info_dict: dict, action_candidates: torch.Tensor):
-        """ Compute the cost of action candidates given an info dict with goal and initial state."""
-
+        """Compute the cost of action candidates given an info dict with goal and initial state."""
         assert "goal" in info_dict, "goal not in info_dict"
 
         device = next(self.parameters()).device

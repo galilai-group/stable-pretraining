@@ -1298,10 +1298,7 @@ def lewm_forward(
     output["pred_loss"] = (pred_emb - tgt_emb).pow(2).mean()
     output["sigreg_loss"] = self.sigreg(emb.transpose(0, 1))
 
-    output["loss"] = (
-        output["pred_loss"]
-        + self.sigreg_weight * output["sigreg_loss"]
-    )
+    output["loss"] = output["pred_loss"] + self.sigreg_weight * output["sigreg_loss"]
 
     output["embedding"] = emb
 

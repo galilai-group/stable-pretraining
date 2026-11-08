@@ -1,4 +1,3 @@
-
 """Train LeWM on OGBench Cube using Stable Pretraining.
 
 Requires the official LeWM repository's dataset utilities and configuration.
@@ -30,9 +29,9 @@ from stable_pretraining.methods.lewm_components.architecture import SIGReg
 
 
 # Locate the official LeWM repository.
-OFFICIAL_REPO = Path(
-    os.environ.get("LEWM_OFFICIAL_DIR", "../lewm-official")
-).expanduser().resolve()
+OFFICIAL_REPO = (
+    Path(os.environ.get("LEWM_OFFICIAL_DIR", "../lewm-official")).expanduser().resolve()
+)
 
 if not OFFICIAL_REPO.is_dir():
     raise FileNotFoundError(
@@ -86,13 +85,10 @@ def main(cfg):
             if col.startswith("pixels"):
                 continue
 
-            transforms.append(
-                get_column_normalizer(dataset, col, col)
-            )
+            transforms.append(get_column_normalizer(dataset, col, col))
 
         cfg.model.action_encoder.input_dim = (
-            cfg.data.dataset.frameskip
-            * dataset.get_dim("action")
+            cfg.data.dataset.frameskip * dataset.get_dim("action")
         )
 
     dataset.transform = spt.data.transforms.Compose(*transforms)
@@ -124,28 +120,22 @@ def main(cfg):
     # Resolve the official Hydra model paths against
     # our native Stable Pretraining implementation.
     with open_dict(cfg):
-        cfg.model._target_ = (
-            "stable_pretraining.methods.lewm_components.jepa.JEPA"
-        )
+        cfg.model._target_ = "stable_pretraining.methods.lewm_components.jepa.JEPA"
 
         cfg.model.predictor._target_ = (
-            "stable_pretraining.methods.lewm_components."
-            "architecture.ARPredictor"
+            "stable_pretraining.methods.lewm_components.architecture.ARPredictor"
         )
 
         cfg.model.action_encoder._target_ = (
-            "stable_pretraining.methods.lewm_components."
-            "architecture.Embedder"
+            "stable_pretraining.methods.lewm_components.architecture.Embedder"
         )
 
         cfg.model.projector._target_ = (
-            "stable_pretraining.methods.lewm_components."
-            "architecture.MLP"
+            "stable_pretraining.methods.lewm_components.architecture.MLP"
         )
 
         cfg.model.pred_proj._target_ = (
-            "stable_pretraining.methods.lewm_components."
-            "architecture.MLP"
+            "stable_pretraining.methods.lewm_components.architecture.MLP"
         )
 
     # Construct the LeWM architecture.
@@ -156,9 +146,7 @@ def main(cfg):
         "model_opt": {
             "modules": "model",
             "optimizer": dict(cfg.optimizer),
-            "scheduler": {
-                "type": "LinearWarmupCosineAnnealingLR"
-            },
+            "scheduler": {"type": "LinearWarmupCosineAnnealingLR"},
             "interval": "epoch",
         }
     }
