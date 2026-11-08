@@ -44,6 +44,8 @@ from .inspection_utils import (
     dict_values,
     get_required_fn_parameters,
 )
+
+from .ressl import gather_teacher_keys
 from .error_handling import with_hf_retry_ratelimit
 from .visualization import format_df_to_latex
 from . import flops, solver
@@ -74,6 +76,7 @@ __all__ = [
     "FullGatherLayer",
     "get_rank",
     "get_world_size",
+    "gather_teacher_keys",
     "rank_zero_only",
     "rank_zero_warn",
     "rank_zero_info",
