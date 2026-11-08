@@ -18,6 +18,7 @@ from .joint_embedding import (
     NTXEntLoss,
     SwAVLoss,
 )
+from .clumut import CluMuTLoss
 
 # Multimodal losses
 from .multimodal import CLIPLoss
@@ -44,6 +45,7 @@ __all__ = [
     "BarlowTwinsLoss",
     "NTXEntLoss",
     "SwAVLoss",
+    "CluMuTLoss",
     "CLIPLoss",
     # Reconstruction
     "mae",
