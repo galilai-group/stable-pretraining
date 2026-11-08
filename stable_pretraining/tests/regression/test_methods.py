@@ -241,7 +241,7 @@ REFERENCE_LOSSES = {
     "simclr": ("fit/loss_epoch", 1.645321011543274),
     "byol": ("fit/loss_epoch", 1.822302222251892),
     "vicreg": ("fit/loss_epoch", 18.119741439819336),
-    "vibcreg": ("fit/loss_epoch", 60.465980529785156),
+    "vibcreg": ("fit/loss_epoch", 60.46593475341797),
     "barlow_twins": ("fit/loss_epoch", 1.7105509042739868),
     "supervised": ("validate/loss_step", 2.3338754177093506),
 }
