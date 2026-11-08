@@ -21,6 +21,37 @@ Or directly from the sub-package::
 See :doc:`forward` for the stateless forward-function equivalents and
 ``METHODS.md`` at the repository root for the complete method catalog.
 
+Latent World Models
+-------------------
+
+``SubJEPA`` trains a shared observation encoder and causal action-conditioned
+predictor without an EMA teacher. It combines next-latent MSE with Gaussian
+regularization in frozen row-orthonormal subspaces. Targets retain gradients.
+
+.. autosummary::
+   :toctree: gen_modules/
+   :template: myclass_template.rst
+
+   SubJEPA
+
+Provide ``image`` with shape ``[batch, time, ...]`` and ``action`` with shape
+``[batch, time - 1, action_dim]``. The backbone must return a flat latent vector
+of dimension ``embed_dim`` for each observation. The default causal predictor
+is compact; pass ``predictor=`` to reproduce a particular LeWM architecture.
+Use 32 subspaces for the paper's default 192-dimensional latent, or 16 for
+PushT. Tune ``regularization_weight`` on held-out data.
+
+The regularizer follows the authors' released code by estimating characteristic
+functions across the batch separately at each time step, rather than pooling
+time and batch as described in the paper's equation 6. Under DDP, the statistic
+uses differentiable global batch sums. Frozen projection matrices and the
+random-direction step counter are checkpointed.
+
+Run ``python examples/subjepa_digits.py --epochs 20 --output /tmp/subjepa-digits``
+for a small CPU diagnostic on translated sklearn handwritten digits. This
+reports held-out dynamics errors and representation diagnostics; it does not
+reproduce the paper's Two-Room, Reacher, PushT, or OGB-Cube planning results.
+
 Contrastive Methods
 -------------------
 

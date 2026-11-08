@@ -49,6 +49,7 @@ from .methods.mae import MAE as MAE
 from .methods.nnclr import NNCLR as NNCLR
 from .methods.simclr import SimCLR as SimCLR
 from .methods.swav import SwAV as SwAV
+from .methods.subjepa import SubJEPA as SubJEPA
 from .methods.vicreg import VICReg as VICReg
 
 # Sub-packages (re-exported as modules)
