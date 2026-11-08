@@ -1,4 +1,3 @@
-
 """ReSSL: Relational Self-Supervised Learning.
 
 Student-teacher self-supervised learning with relational distributions over
@@ -163,18 +162,14 @@ class ReSSL(Module):
         """
         if not self.training:
             with torch.no_grad():
-                student_h = self.backbone.forward_student(
-                    contrastive_augmentation
-                )
+                student_h = self.backbone.forward_student(contrastive_augmentation)
             return ReSSLOutput(
                 loss=None,
                 student_embedding=student_h,
                 teacher_embedding=None,
             )
 
-        student_h = self.backbone.forward_student(
-            contrastive_augmentation
-        )
+        student_h = self.backbone.forward_student(contrastive_augmentation)
 
         with torch.no_grad():
             shuffle = torch.randperm(
@@ -183,9 +178,7 @@ class ReSSL(Module):
             )
             unshuffle = torch.argsort(shuffle)
 
-            teacher_h = self.backbone.forward_teacher(
-                weak_augmentation[shuffle]
-            )
+            teacher_h = self.backbone.forward_teacher(weak_augmentation[shuffle])
             teacher_z = self.projection_head.forward_teacher(teacher_h)
 
             teacher_h = teacher_h[unshuffle]

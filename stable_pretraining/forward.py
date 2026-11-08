@@ -44,6 +44,7 @@ import torch
 from .callbacks.queue import find_or_create_queue_callback, OnlineQueue
 from stable_pretraining.utils import gather_teacher_keys
 
+
 def _get_views_list(batch: dict):
     """Convert multi-view batch to list of views."""
     if "views" in batch:
@@ -617,7 +618,9 @@ def ressl(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         unshuffle = torch.argsort(shuffle)
         teacher_features = self.backbone.forward_teacher(weak_view[shuffle])
         teacher_projection = self.projector.forward_teacher(teacher_features)
-        teacher_projection = torch.nn.functional.normalize(teacher_projection, dim=-1)[unshuffle]
+        teacher_projection = torch.nn.functional.normalize(teacher_projection, dim=-1)[
+            unshuffle
+        ]
 
     student_projection = self.projector.forward_student(student_features)
     student_projection = torch.nn.functional.normalize(student_projection, dim=-1)
@@ -625,7 +628,9 @@ def ressl(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     # Clone the queue to protect autograd from the subsequent in-place update.
     queue_snapshot = self.queue.get().detach().clone()
     out["loss"] = self.ressl_loss(
-        student_projection, teacher_projection, queue_snapshot,
+        student_projection,
+        teacher_projection,
+        queue_snapshot,
     )
 
     with torch.no_grad():
@@ -633,8 +638,12 @@ def ressl(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         self.queue.append(keys)
 
     self.log(
-        f"{stage}/loss", out["loss"], on_step=True,
-        on_epoch=True, sync_dist=True, prog_bar=True,
+        f"{stage}/loss",
+        out["loss"],
+        on_step=True,
+        on_epoch=True,
+        sync_dist=True,
+        prog_bar=True,
     )
     return out
 

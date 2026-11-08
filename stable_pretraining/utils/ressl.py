@@ -1,5 +1,6 @@
-import torch 
+import torch
 import torch.distributed as dist
+
 
 @torch.no_grad()
 def gather_teacher_keys(keys: torch.Tensor) -> torch.Tensor:

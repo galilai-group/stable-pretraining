@@ -1,4 +1,3 @@
-
 """Relational self-supervised learning losses.
 
 This module contains the ReSSL loss, which learns representations by

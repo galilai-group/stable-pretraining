@@ -43,9 +43,7 @@ NUM_SPLITS = 8
 GLOBAL_BATCH_SIZE = BATCH_SIZE * NUM_DEVICES
 
 
-def replace_batchnorm(
-    module: nn.Module, num_splits: int = NUM_SPLITS
-) -> None:
+def replace_batchnorm(module: nn.Module, num_splits: int = NUM_SPLITS) -> None:
     """Recursively replace BatchNorm2d layers with SplitBatchNorm in place.
 
     Preserve each layer's configuration and existing state while enabling
@@ -86,7 +84,11 @@ def main():
         transforms.RandomResizedCrop((32, 32), scale=(0.2, 1.0)),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.ColorJitter(
-            brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1, p=0.8,
+            brightness=0.4,
+            contrast=0.4,
+            saturation=0.4,
+            hue=0.1,
+            p=0.8,
         ),
         transforms.RandomGrayscale(p=0.2),
         transforms.PILGaussianBlur(sigma=(0.1, 2.0), p=0.5),
@@ -97,23 +99,36 @@ def main():
 
     data_dir = get_data_dir("cifar10")
     cifar_train = torchvision.datasets.CIFAR10(
-        root=str(data_dir), train=True, download=True,
+        root=str(data_dir),
+        train=True,
+        download=True,
     )
     cifar_val = torchvision.datasets.CIFAR10(
-        root=str(data_dir), train=False, download=True,
+        root=str(data_dir),
+        train=False,
+        download=True,
     )
     train_dataset = spt.data.FromTorchDataset(
-        cifar_train, names=["image", "label"], transform=train_transform,
+        cifar_train,
+        names=["image", "label"],
+        transform=train_transform,
     )
     val_dataset = spt.data.FromTorchDataset(
-        cifar_val, names=["image", "label"], transform=val_transform,
+        cifar_val,
+        names=["image", "label"],
+        transform=val_transform,
     )
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=BATCH_SIZE, num_workers=4,
-        drop_last=True, shuffle=True,
+        train_dataset,
+        batch_size=BATCH_SIZE,
+        num_workers=4,
+        drop_last=True,
+        shuffle=True,
     )
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=BATCH_SIZE, num_workers=4,
+        val_dataset,
+        batch_size=BATCH_SIZE,
+        num_workers=4,
     )
 
     # Schedule the warmup and cosine decay by optimizer step, accounting
@@ -131,8 +146,10 @@ def main():
     base.fc = nn.Identity()
     replace_batchnorm(base)
     backbone = ReSSLTeacherStudentWrapper(
-        base, warm_init=True,
-        base_ema_coefficient=0.99, final_ema_coefficient=0.99,
+        base,
+        warm_init=True,
+        base_ema_coefficient=0.99,
+        final_ema_coefficient=0.99,
     )
     projector = ReSSLTeacherStudentWrapper(
         nn.Sequential(
@@ -141,16 +158,15 @@ def main():
             nn.Linear(2048, 128),
         ),
         warm_init=True,
-        base_ema_coefficient=0.99, final_ema_coefficient=0.99,
+        base_ema_coefficient=0.99,
+        final_ema_coefficient=0.99,
     )
 
     # A full, randomly initialized memory bank matches the original ReSSL setup.
     # Initialize after seeding and register as a child module for checkpointing.
     queue = UnsortedQueue(max_length=4096, shape=128)
     with torch.no_grad():
-        initial_keys = torch.nn.functional.normalize(
-            torch.randn(4096, 128), dim=-1
-        )
+        initial_keys = torch.nn.functional.normalize(torch.randn(4096, 128), dim=-1)
         queue.append(initial_keys)
 
     # Scale the base learning rate with the global batch size. The teacher
@@ -160,13 +176,16 @@ def main():
         projector=projector,
         forward=forward.ressl,
         ressl_loss=spt.losses.ReSSLLoss(
-            temperature_student=0.1, temperature_teacher=0.04,
+            temperature_student=0.1,
+            temperature_teacher=0.04,
         ),
         queue=queue,
         optim={
             "optimizer": {
-                "type": "SGD", "exclude_bias_norm": False,
-                "momentum": 0.9, "lr": 0.06 * GLOBAL_BATCH_SIZE / 256,
+                "type": "SGD",
+                "exclude_bias_norm": False,
+                "momentum": 0.9,
+                "lr": 0.06 * GLOBAL_BATCH_SIZE / 256,
                 "weight_decay": 5e-4,
             },
             "scheduler": {
@@ -186,23 +205,32 @@ def main():
     # Online probes track representation quality during pretraining; final
     # linear evaluation uses a separate frozen-backbone training procedure.
     linear_probe = spt.callbacks.OnlineProbe(
-        module, name="linear_probe", input="embedding", target="label",
-        probe=nn.Linear(512, 10), loss=nn.CrossEntropyLoss(),
+        module,
+        name="linear_probe",
+        input="embedding",
+        target="label",
+        probe=nn.Linear(512, 10),
+        loss=nn.CrossEntropyLoss(),
         metrics={
             "top1": torchmetrics.classification.MulticlassAccuracy(10),
             "top5": torchmetrics.classification.MulticlassAccuracy(10, top_k=5),
         },
     )
     knn_probe = spt.callbacks.OnlineKNN(
-        name="knn_probe", input="embedding", target="label",
+        name="knn_probe",
+        input="embedding",
+        target="label",
         queue_length=20000,
         metrics={"accuracy": torchmetrics.classification.MulticlassAccuracy(10)},
-        input_dim=512, k=10,
+        input_dim=512,
+        k=10,
     )
 
     logger = WandbLogger(
-        entity="stable-ssl", project="cifar10-ressl",
-        name="ressl-resnet18", log_model=False,
+        entity="stable-ssl",
+        project="cifar10-ressl",
+        name="ressl-resnet18",
+        log_model=False,
     )
     trainer = pl.Trainer(
         accelerator="gpu",
@@ -211,9 +239,11 @@ def main():
         max_epochs=MAX_EPOCHS,
         num_sanity_val_steps=0,
         callbacks=[
-            knn_probe, linear_probe,
+            knn_probe,
+            linear_probe,
             spt.callbacks.TeacherStudentCallback(
-                update_frequency=1, update_after_backward=False,
+                update_frequency=1,
+                update_after_backward=False,
             ),
         ],
         precision="32-true",

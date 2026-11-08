@@ -37,9 +37,9 @@ def test_ressl_loss_is_finite_and_differentiable():
 
 
 def test_ressl_loss_matches_manual_relational_cross_entropy():
-    student = F.normalize(torch.tensor([[1., 2.], [2., 1.]]), dim=-1)
-    teacher = F.normalize(torch.tensor([[2., 1.], [1., 2.]]), dim=-1)
-    queue = F.normalize(torch.tensor([[1., 0.], [0., 1.], [1., 1.]]), dim=-1)
+    student = F.normalize(torch.tensor([[1.0, 2.0], [2.0, 1.0]]), dim=-1)
+    teacher = F.normalize(torch.tensor([[2.0, 1.0], [1.0, 2.0]]), dim=-1)
+    queue = F.normalize(torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]), dim=-1)
     loss_fn = ReSSLLoss(temperature_student=0.1, temperature_teacher=0.04)
 
     targets = (teacher @ queue.T / 0.04).softmax(dim=-1)
@@ -50,8 +50,10 @@ def test_ressl_loss_matches_manual_relational_cross_entropy():
 
 def test_ressl_teacher_starts_equal_to_student():
     wrapper = ReSSLTeacherStudentWrapper(
-        nn.Linear(4, 3), warm_init=True,
-        base_ema_coefficient=0.9, final_ema_coefficient=0.9,
+        nn.Linear(4, 3),
+        warm_init=True,
+        base_ema_coefficient=0.9,
+        final_ema_coefficient=0.9,
     )
     for student, teacher in zip(
         wrapper.student.parameters(), wrapper.teacher.parameters()
@@ -62,7 +64,8 @@ def test_ressl_teacher_starts_equal_to_student():
 def test_ressl_parameter_only_ema_does_not_copy_batchnorm_buffers():
     wrapper = ReSSLTeacherStudentWrapper(
         nn.Sequential(nn.Linear(4, 4), nn.BatchNorm1d(4)),
-        warm_init=True, base_ema_coefficient=0.9,
+        warm_init=True,
+        base_ema_coefficient=0.9,
         final_ema_coefficient=0.9,
     )
     with torch.no_grad():
@@ -77,9 +80,7 @@ def test_ressl_parameter_only_ema_does_not_copy_batchnorm_buffers():
     wrapper.update_teacher()
     for param in wrapper.teacher.parameters():
         torch.testing.assert_close(param, torch.full_like(param, 0.1))
-    torch.testing.assert_close(
-        wrapper.teacher[1].running_mean, torch.full((4,), 7.0)
-    )
+    torch.testing.assert_close(wrapper.teacher[1].running_mean, torch.full((4,), 7.0))
 
 
 def test_ressl_standalone_forward():
@@ -111,10 +112,7 @@ def test_ressl_standalone_forward():
     assert torch.isfinite(output.loss)
 
     output.loss.backward()
-    assert any(
-        p.grad is not None
-        for p in model.backbone.student.parameters()
-    )
+    assert any(p.grad is not None for p in model.backbone.student.parameters())
 
 
 def test_ressl_queue_append_and_state_dict_roundtrip():
@@ -141,13 +139,15 @@ def test_gather_teacher_keys_without_distributed_process_group():
 
 def _distributed_queue_worker(rank: int, init_file: str) -> None:
     dist.init_process_group(
-        backend="gloo", init_method=f"file://{init_file}",
-        rank=rank, world_size=2,
+        backend="gloo",
+        init_method=f"file://{init_file}",
+        rank=rank,
+        world_size=2,
     )
     try:
         local = torch.tensor([[float(rank + 1), float(rank + 2)]])
         gathered = gather_teacher_keys(local)
-        expected = torch.tensor([[1., 2.], [2., 3.]])
+        expected = torch.tensor([[1.0, 2.0], [2.0, 3.0]])
         torch.testing.assert_close(gathered, expected)
 
         queue = UnsortedQueue(max_length=4, shape=2)
@@ -169,17 +169,11 @@ def _distributed_queue_worker(rank: int, init_file: str) -> None:
 def test_ressl_loss_does_not_backprop_to_queue():
     loss_fn = ReSSLLoss()
 
-    student = F.normalize(
-        torch.randn(4, 8), dim=-1
-    ).detach().requires_grad_()
+    student = F.normalize(torch.randn(4, 8), dim=-1).detach().requires_grad_()
 
-    teacher = F.normalize(
-        torch.randn(4, 8), dim=-1
-    )
+    teacher = F.normalize(torch.randn(4, 8), dim=-1)
 
-    queue = F.normalize(
-        torch.randn(16, 8), dim=-1
-    ).detach().requires_grad_()
+    queue = F.normalize(torch.randn(16, 8), dim=-1).detach().requires_grad_()
 
     loss = loss_fn(student, teacher, queue)
     loss.backward()

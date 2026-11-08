@@ -1,4 +1,3 @@
-
 """Teacher-student wrapper for Relational Self-Supervised Learning.
 
 This module provides an EMA teacher that updates model parameters

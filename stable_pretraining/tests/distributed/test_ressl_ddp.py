@@ -5,7 +5,7 @@ import pytest
 import torch
 import torch.distributed as dist
 from torch import nn
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 import stable_pretraining as spt
 from stable_pretraining import forward
@@ -13,6 +13,8 @@ from stable_pretraining.backbone.ressl import ReSSLTeacherStudentWrapper
 from stable_pretraining.callbacks.queues import UnsortedQueue
 from stable_pretraining.methods.ressl import gather_teacher_keys
 from stable_pretraining.tests.distributed import _dist_harness as H
+import subprocess
+import sys
 
 
 class _TinyEncoder(nn.Module):
@@ -44,24 +46,32 @@ class _TwoViews(Dataset):
 
 def _make_model(queue_size=7):
     backbone = ReSSLTeacherStudentWrapper(
-        _TinyEncoder(), warm_init=True,
-        base_ema_coefficient=0.9, final_ema_coefficient=0.9,
+        _TinyEncoder(),
+        warm_init=True,
+        base_ema_coefficient=0.9,
+        final_ema_coefficient=0.9,
     )
     projector = ReSSLTeacherStudentWrapper(
-        nn.Linear(8, 4), warm_init=True,
-        base_ema_coefficient=0.9, final_ema_coefficient=0.9,
+        nn.Linear(8, 4),
+        warm_init=True,
+        base_ema_coefficient=0.9,
+        final_ema_coefficient=0.9,
     )
     queue = UnsortedQueue(max_length=queue_size, shape=4)
     with torch.no_grad():
-        queue.append(torch.nn.functional.normalize(
-            torch.randn(queue_size, 4), dim=-1,
-        ))
+        queue.append(
+            torch.nn.functional.normalize(
+                torch.randn(queue_size, 4),
+                dim=-1,
+            )
+        )
     return spt.Module(
         backbone=backbone,
         projector=projector,
         queue=queue,
         ressl_loss=spt.losses.ReSSLLoss(
-            temperature_student=0.1, temperature_teacher=0.04,
+            temperature_student=0.1,
+            temperature_teacher=0.04,
         ),
         forward=forward.ressl,
         optim={"optimizer": {"type": "SGD", "lr": 0.01}},
@@ -87,10 +97,9 @@ def _worker_gather_queue(rank, world_size):
     for step in range(5):
         local = torch.full((2, 4), float(10 * step + rank))
         gathered = gather_teacher_keys(local)
-        expected_keys = torch.cat([
-            torch.full((2, 4), float(10 * step + r))
-            for r in range(world_size)
-        ])
+        expected_keys = torch.cat(
+            [torch.full((2, 4), float(10 * step + r)) for r in range(world_size)]
+        )
         torch.testing.assert_close(gathered, expected_keys)
         queue.append(gathered)
         reference.append(expected_keys)
@@ -105,7 +114,7 @@ def _worker_gather_queue(rank, world_size):
     oversized = torch.full((8, 4), float(rank))
     gathered = gather_teacher_keys(oversized)
     queue.append(gathered)
-    torch.testing.assert_close(queue.out, gathered[-queue.max_length:])
+    torch.testing.assert_close(queue.out, gathered[-queue.max_length :])
     assert int(queue.pointer) == 0
     _assert_queue_synced(queue, world_size)
 
@@ -119,7 +128,8 @@ def _worker_real_forward(rank, world_size):
     _assert_queue_synced(model.queue, world_size)
 
     optimizer = torch.optim.SGD(
-        [p for p in model.parameters() if p.requires_grad], lr=0.01,
+        [p for p in model.parameters() if p.requires_grad],
+        lr=0.01,
     )
     initial_student = next(model.backbone.student.parameters()).detach().clone()
 
@@ -149,14 +159,17 @@ def _worker_real_forward(rank, world_size):
         _assert_queue_synced(model.queue, world_size)
 
     assert not torch.equal(
-        initial_student, next(model.backbone.student.parameters()).detach(),
+        initial_student,
+        next(model.backbone.student.parameters()).detach(),
     ), "Student parameters did not update"
     assert bool(model.queue.filled)
 
     snapshot = {name: value.clone() for name, value in model.queue.named_buffers()}
     model.eval()
     output = forward.ressl(
-        model, {"image": torch.randn(2, 1, 2, 2)}, "val",
+        model,
+        {"image": torch.randn(2, 1, 2, 2)},
+        "val",
     )
     assert "loss" not in output
     for name, value in model.queue.named_buffers():
@@ -176,36 +189,37 @@ class _CheckQueueCallback(pl.Callback):
 @pytest.mark.unit
 def test_ressl_gather_queue_wraparound_ddp():
     H.run_distributed(
-        _worker_gather_queue, world_size=2, backend="gloo", timeout=180,
+        _worker_gather_queue,
+        world_size=2,
+        backend="gloo",
+        timeout=180,
     )
 
 
 @pytest.mark.unit
 def test_ressl_forward_backward_queue_ddp():
     H.run_distributed(
-        _worker_real_forward, world_size=2, backend="gloo", timeout=180,
+        _worker_real_forward,
+        world_size=2,
+        backend="gloo",
+        timeout=180,
     )
 
 
 @pytest.mark.unit
 def test_ressl_lightning_ddp(tmp_path):
-    """Smoke-test the benchmark's composable forward under real Lightning DDP."""
-    pl.seed_everything(42)
-    model = _make_model(queue_size=7)
-    loader = DataLoader(_TwoViews(), batch_size=2, num_workers=0)
-    trainer = pl.Trainer(
-        accelerator="cpu",
-        devices=2,
-        strategy="ddp",
-        max_steps=3,
-        callbacks=[_CheckQueueCallback()],
-        logger=False,
-        enable_checkpointing=False,
-        enable_progress_bar=False,
-        enable_model_summary=False,
-        num_sanity_val_steps=0,
-        default_root_dir=tmp_path,
+    """Keep Lightning's distributed processes isolated from pytest."""
+    assert not dist.is_initialized()
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "stable_pretraining.tests.distributed._ressl_lightning_smoke",
+            str(tmp_path),
+        ],
+        check=True,
+        timeout=180,
     )
-    trainer.fit(model, train_dataloaders=loader)
-    assert trainer.global_step == 3
-    assert bool(torch.isfinite(model.queue.out).all())
+
+    assert not dist.is_initialized()

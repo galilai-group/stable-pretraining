@@ -28,14 +28,14 @@ class SplitBatchNorm(nn.BatchNorm2d):
     **kwargs
         Additional arguments passed to nn.BatchNorm2d.
 
-    Raises
+    Raises:
     ------
     ValueError
         If num_splits is not a positive integer, the training batch size
         is not divisible by num_splits, or unsupported BatchNorm2d
         options are requested.
 
-    Notes
+    Notes:
     -----
     Input and output tensors have shape (N, C, H, W).
     This implementation requires affine=True and track_running_stats=True.
@@ -59,8 +59,7 @@ class SplitBatchNorm(nn.BatchNorm2d):
         n, c, h, w = input.shape
         if n % self.num_splits != 0:
             raise ValueError(
-                f"Batch size {n} must be divisible by "
-                f"num_splits={self.num_splits}"
+                f"Batch size {n} must be divisible by num_splits={self.num_splits}"
             )
 
         running_mean_split = self.running_mean.repeat(self.num_splits)
