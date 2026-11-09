@@ -20,7 +20,10 @@ pytestmark = [
 import torch.nn.functional as F
 
 from stable_pretraining.data.levjepa.kernels.attention import prefix_lengths
-from stable_pretraining.data.levjepa.kernels.qk_attention import qk_attention
+from stable_pretraining.data.levjepa.kernels.qk_attention import (
+    qk_attention,
+    qk_attention_packed,
+)
 
 
 T, H, D = 16, 6, 64
@@ -109,6 +112,72 @@ def test_matches_v2_attention(B, per_frame, kept):
     assert (out.float() - ref).abs().max() < 3e-2
     for got, want in [
         (qkv.grad, leaves[0].grad),
+        (wq.grad, leaves[1].grad),
+        (wk.grad, leaves[2].grad),
+    ]:
+        err = (got.float() - want).abs().max().item()
+        assert err < 3e-2 * max(1.0, want.abs().max().item()), err
+
+
+def test_packed_sequences_match_separate_calls():
+    """Global (161 tokens) and local (33 tokens) sequences in one packed call, as each run alone through v2's ops."""
+    g = torch.Generator(device="cuda").manual_seed(1)
+    groups = [frames(2, 196, 160, seed=3), frames(3, 36, 32, seed=4)]
+    eps = torch.finfo(torch.bfloat16).eps
+    wq = (
+        (1 + 0.1 * torch.randn(D, device="cuda", generator=g))
+        .to(torch.bfloat16)
+        .requires_grad_()
+    )
+    wk = (
+        (1 + 0.1 * torch.randn(D, device="cuda", generator=g))
+        .to(torch.bfloat16)
+        .requires_grad_()
+    )
+    qkvs, tables, outs = [], [], []
+    for frame_id in groups:
+        B, L = frame_id.shape
+        pos = torch.stack(
+            [frame_id, torch.randint(0, 15, (B, L), device="cuda", generator=g),
+             torch.randint(0, 14, (B, L), device="cuda", generator=g)], dim=-1,
+        )  # fmt: skip
+        tables.append(rope_tables(pos))
+        qkvs.append(
+            (2 * torch.randn(B, L, 3 * H * D, device="cuda", generator=g)).to(
+                torch.bfloat16
+            )
+        )
+    flat = torch.cat([x.reshape(-1, 3 * H * D) for x in qkvs]).requires_grad_()
+    cos = torch.cat([c.reshape(-1, D) for c, _ in tables])
+    sin = torch.cat([s.reshape(-1, D) for _, s in tables])
+    kv_len = torch.cat([prefix_lengths(f, f.shape[1] - 1).reshape(-1) for f in groups])
+    out = qk_attention_packed(
+        flat, wq, wk, cos, sin, kv_len, tuple(tuple(f.shape) for f in groups), H
+    )
+    go = torch.randn_like(out)
+    out.backward(go)
+    leaves = [flat.detach().float().requires_grad_(), wq.detach().float().requires_grad_(),
+              wk.detach().float().requires_grad_()]  # fmt: skip
+    at = 0
+    for frame_id, (c, s) in zip(groups, tables):
+        B, L = frame_id.shape
+        outs.append(
+            reference(
+                leaves[0][at : at + B * L].view(B, L, -1),
+                leaves[1],
+                leaves[2],
+                c,
+                s,
+                frame_id,
+                eps,
+            )
+        )
+        at += B * L
+    ref = torch.cat([o.reshape(-1, H * D) for o in outs])
+    ref.backward(go.float())
+    assert (out.float() - ref).abs().max() < 3e-2
+    for got, want in [
+        (flat.grad, leaves[0].grad),
         (wq.grad, leaves[1].grad),
         (wk.grad, leaves[2].grad),
     ]:
