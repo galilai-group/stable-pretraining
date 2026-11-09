@@ -34,6 +34,7 @@ from .attention import LOG2E
 
 BLOCK = int(os.environ.get("QK_BLOCK", 64))  # forward and prep: rows
 BLOCK_N = int(os.environ.get("QK_BLOCK_N", 32))  # forward: keys
+WARPS_B = int(os.environ.get("QK_WARPS_B", 4))  # backward kernels' warps
 
 
 @triton.jit
@@ -215,24 +216,40 @@ def _epilogue(
     """Backward through RoPE and the RMSNorm, once per row.
 
     From g = d(normalized, rotated rows): d(raw rows) into DQKV's columns col..col + D, and this block's d(norm
-    weight) into its partial row. PRIME (megakernel/): store d(raw) * RSTD[row] and sum(d(raw) * raw) into ROWDOT
-    (this row's partial for this head and q or k; summed after), as the norm folded into the projection wants it.
+    weight) into its partial row. PRIME (megakernel/) 1: store d(raw) * RSTD[row] and sum(d(raw) * raw) into ROWDOT
+    (this row's partial for this head and q or k; summed after), as the norm folded into the projection wants it;
+    2: store g itself (the megakernel's QKNORM_BWD instruction runs this backward).
     """
-    xl = 3 * H * D
-    w = tl.load(WX + rd).to(tl.float32)
-    x, r, c, s = _raw(QKV, C, S, tok, m, rd, xl, col, w, eps, D)
-    gn = g * c + _rot_t(g * s, BM, D)  # through RoPE
-    gw = gn * w[None]
-    dx = r[:, None] * gw - x * (r * r * r)[:, None] * (tl.sum(gw * x, 1) / D)[:, None]
-    if PRIME:
-        tl.store(ROWDOT + tok[:, None], tl.sum(dx * x, 1, keep_dims=True), mask=m)
-        dx = dx * tl.load(RSTD + tok[:, None], mask=m, other=0.0)
-    tl.store(
-        DQKV + tok[:, None] * xl + col + rd[None], dx.to(DQKV.dtype.element_ty), mask=m
-    )
-    # partials stored (D, programs): summed along the contiguous axis after (the other way round was 3.5% of an H100
-    # step)
-    tl.store(DW + rd * (tl.num_programs(0) * H) + part, tl.sum(gn * x * r[:, None], 0))
+    # normed: d(normalized, rotated rows) as is; megakernel/'s QKNORM_BWD does the rest
+    if PRIME == 2:
+        tl.store(
+            DQKV + tok[:, None] * 3 * H * D + col + rd[None],
+            g.to(DQKV.dtype.element_ty),
+            mask=m,
+        )
+    else:
+        xl = 3 * H * D
+        w = tl.load(WX + rd).to(tl.float32)
+        x, r, c, s = _raw(QKV, C, S, tok, m, rd, xl, col, w, eps, D)
+        gn = g * c + _rot_t(g * s, BM, D)  # through RoPE
+        gw = gn * w[None]
+        dx = (
+            r[:, None] * gw
+            - x * (r * r * r)[:, None] * (tl.sum(gw * x, 1) / D)[:, None]
+        )
+        if PRIME:
+            tl.store(ROWDOT + tok[:, None], tl.sum(dx * x, 1, keep_dims=True), mask=m)
+            dx = dx * tl.load(RSTD + tok[:, None], mask=m, other=0.0)
+        tl.store(
+            DQKV + tok[:, None] * xl + col + rd[None],
+            dx.to(DQKV.dtype.element_ty),
+            mask=m,
+        )
+        # partials stored (D, programs): summed along the contiguous axis after (the other way round was 3.5% of an H100
+        # step)
+        tl.store(
+            DW + rd * (tl.num_programs(0) * H) + part, tl.sum(gn * x * r[:, None], 0)
+        )
 
 
 @triton.jit
@@ -600,12 +617,18 @@ def _bwd_launch(
     rstd=None,
     rowdot=None,
     delta=None,
+    dw_out=None,
+    normed=False,
 ):
     """The backward kernels.
 
     rstd, rowdot (megakernel/): d(qkv) stored scaled by rstd per row; rowdot (3, heads, N) float32 gets each row's
     sum(d(qkv) * qkv) per head for q, k and v (summed over the first two dims, it is the norm's row-dot). delta
-    (megakernel/): rowsum(out * do) per head, (heads, N) float32, if already computed.
+    (megakernel/): rowsum(out * do) per head, (heads, N) float32, if already computed. dw_out (megakernel/): two
+    float32 (D,) tensors the norm weights' gradients are summed into (in float32; then None is returned for them).
+    normed (megakernel/, with rstd and rowdot): q and k's columns of d(qkv) are the gradients of the RMSNorm'd, rotated
+    q and k, the norm weights' gradients None (the megakernel's QKNORM_BWD instruction takes it from there); v's as
+    with rstd alone.
     """
     N, three_hd = qkv.shape
     D = three_hd // (3 * heads)
@@ -622,13 +645,19 @@ def _bwd_launch(
     dwk = torch.empty(D, grid_k[0] * heads, device=qkv.device, dtype=torch.float32)
     common = (kv_len, starts, lens)
     rest = (do, lse, delta, dqkv)
-    prime = rstd is not None
+    prime = 2 if normed else int(rstd is not None)
     extra = (rstd, rowdot) if prime else (lse, lse)  # unused without PRIME
     scales = (heads, N, eps, LOG2E / math.sqrt(D), 1 / math.sqrt(D))
     _bwd_dkdv[grid_k](qkv, qn, kn, wk, cos, sin, *common, tab_k, *rest, dwk, *extra, *scales, BM=bm, BN=bn, D=D,
-                      PRIME=prime, num_warps=4, num_stages=stages)  # fmt: skip
+                      PRIME=prime, num_warps=WARPS_B, num_stages=stages)  # fmt: skip
     _bwd_dq[grid](qkv, qn, kn, wq, cos, sin, *common, tab, *rest, dwq, *extra, *scales, BM=bm, BN=bn, D=D,
-                  PRIME=prime, num_warps=4, num_stages=stages)  # fmt: skip
+                  PRIME=prime, num_warps=WARPS_B, num_stages=stages)  # fmt: skip
+    if normed:
+        return dqkv, None, None
+    if dw_out is not None:
+        torch.sum(dwq, 1, out=dw_out[0])
+        torch.sum(dwk, 1, out=dw_out[1])
+        return dqkv, None, None
     return dqkv, dwq.sum(1).to(wq.dtype), dwk.sum(1).to(wk.dtype)
 
 
