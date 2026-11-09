@@ -618,9 +618,9 @@ def main() -> None:
             n_layer=args.layers,
             n_head=12 if args.profile == "base" else 4,
             n_inner=args.width * 4,
-            attn_pdrop=0,
-            resid_pdrop=0,
-            embd_pdrop=0,
+            attn_pdrop=0.0,
+            resid_pdrop=0.0,
+            embd_pdrop=0.0,
         )
     )
     optim = {"optimizer": {"type": "AdamW", "lr": args.lr, "weight_decay": 0.01}}

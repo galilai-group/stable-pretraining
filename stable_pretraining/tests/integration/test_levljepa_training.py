@@ -40,9 +40,9 @@ def _make_real_encoder_model() -> spt.Module:
                 n_layer=1,
                 n_head=2,
                 n_inner=32,
-                attn_pdrop=0,
-                resid_pdrop=0,
-                embd_pdrop=0,
+                attn_pdrop=0.0,
+                resid_pdrop=0.0,
+                embd_pdrop=0.0,
             )
         ),
         vision_dim=16,
