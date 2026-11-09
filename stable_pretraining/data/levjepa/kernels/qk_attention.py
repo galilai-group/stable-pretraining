@@ -206,13 +206,17 @@ def _epilogue(
     H,
     eps,
     part,
+    RSTD,
+    ROWDOT,
     BM: tl.constexpr,
     D: tl.constexpr,
+    PRIME: tl.constexpr,
 ):
     """Backward through RoPE and the RMSNorm, once per row.
 
     From g = d(normalized, rotated rows): d(raw rows) into DQKV's columns col..col + D, and this block's d(norm
-    weight) into its partial row.
+    weight) into its partial row. PRIME (megakernel/): store d(raw) * RSTD[row] and sum(d(raw) * raw) into ROWDOT
+    (this row's partial for this head and q or k; summed after), as the norm folded into the projection wants it.
     """
     xl = 3 * H * D
     w = tl.load(WX + rd).to(tl.float32)
@@ -220,6 +224,9 @@ def _epilogue(
     gn = g * c + _rot_t(g * s, BM, D)  # through RoPE
     gw = gn * w[None]
     dx = r[:, None] * gw - x * (r * r * r)[:, None] * (tl.sum(gw * x, 1) / D)[:, None]
+    if PRIME:
+        tl.store(ROWDOT + tok[:, None], tl.sum(dx * x, 1, keep_dims=True), mask=m)
+        dx = dx * tl.load(RSTD + tok[:, None], mask=m, other=0.0)
     tl.store(
         DQKV + tok[:, None] * xl + col + rd[None], dx.to(DQKV.dtype.element_ty), mask=m
     )
@@ -245,6 +252,8 @@ def _bwd_dkdv(
     DELTA,
     DQKV,
     DWK,
+    RSTD,
+    ROWDOT,
     H,
     N,
     eps,
@@ -253,6 +262,7 @@ def _bwd_dkdv(
     BM: tl.constexpr,
     BN: tl.constexpr,
     D: tl.constexpr,
+    PRIME: tl.constexpr,
 ):
     pid, h = (
         tl.program_id(0),
@@ -304,6 +314,15 @@ def _bwd_dkdv(
                 dk += tl.dot(dsT.to(q.dtype), q)
         tok = t0 + rn
         xl = 3 * H * D
+        if (
+            PRIME
+        ):  # see _epilogue; ROWDOT (3, H, N): this is slot 2 (dv); dk's is 1, dq's 0
+            tl.store(
+                ROWDOT + (2 * H + h) * N + tok[:, None],
+                tl.sum(dv * v.to(tl.float32), 1, keep_dims=True),
+                mask=mk,
+            )
+            dv = dv * tl.load(RSTD + tok[:, None], mask=mk, other=0.0)
         tl.store(
             DQKV + tok[:, None] * xl + 2 * H * D + h * D + rd[None],
             dv.to(DQKV.dtype.element_ty),
@@ -324,8 +343,11 @@ def _bwd_dkdv(
             H,
             eps,
             part,
+            RSTD,
+            ROWDOT + (H + h) * N,
             BN,
             D,
+            PRIME,
         )
 
 
@@ -346,6 +368,8 @@ def _bwd_dq(
     DELTA,
     DQKV,
     DWQ,
+    RSTD,
+    ROWDOT,
     H,
     N,
     eps,
@@ -354,6 +378,7 @@ def _bwd_dq(
     BM: tl.constexpr,
     BN: tl.constexpr,
     D: tl.constexpr,
+    PRIME: tl.constexpr,
 ):
     pid, h = (
         tl.program_id(0),
@@ -412,8 +437,11 @@ def _bwd_dq(
             H,
             eps,
             part,
+            RSTD,
+            ROWDOT + h * N,
             BM,
             D,
+            PRIME,
         )
 
 
@@ -530,23 +558,77 @@ def _qk_bwd(
     heads: int,
     eps: float,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    return _bwd_launch(
+        do,
+        qkv,
+        qn,
+        kn,
+        wq,
+        wk,
+        cos,
+        sin,
+        kv_len,
+        starts,
+        lens,
+        tab,
+        tab_k,
+        out,
+        lse,
+        heads,
+        eps,
+    )
+
+
+def _bwd_launch(
+    do,
+    qkv,
+    qn,
+    kn,
+    wq,
+    wk,
+    cos,
+    sin,
+    kv_len,
+    starts,
+    lens,
+    tab,
+    tab_k,
+    out,
+    lse,
+    heads,
+    eps,
+    rstd=None,
+    rowdot=None,
+    delta=None,
+):
+    """The backward kernels.
+
+    rstd, rowdot (megakernel/): d(qkv) stored scaled by rstd per row; rowdot (3, heads, N) float32 gets each row's
+    sum(d(qkv) * qkv) per head for q, k and v (summed over the first two dims, it is the norm's row-dot). delta
+    (megakernel/): rowsum(out * do) per head, (heads, N) float32, if already computed.
+    """
     N, three_hd = qkv.shape
     D = three_hd // (3 * heads)
     bm, bn, stages = _tiles()
     do = do.contiguous()
     grid, grid_k = (tab.shape[0], heads), (tab_k.shape[0], heads)
-    delta = torch.empty(heads, N, device=qkv.device, dtype=torch.float32)
-    _delta[grid](out, do, starts, lens, tab, delta, heads, N, BM=bm, D=D, num_warps=4)
+    if delta is None:
+        delta = torch.empty(heads, N, device=qkv.device, dtype=torch.float32)
+        _delta[grid](
+            out, do, starts, lens, tab, delta, heads, N, BM=bm, D=D, num_warps=4
+        )
     dqkv = torch.empty_like(qkv)
     dwq = torch.empty(D, grid[0] * heads, device=qkv.device, dtype=torch.float32)
     dwk = torch.empty(D, grid_k[0] * heads, device=qkv.device, dtype=torch.float32)
     common = (kv_len, starts, lens)
     rest = (do, lse, delta, dqkv)
+    prime = rstd is not None
+    extra = (rstd, rowdot) if prime else (lse, lse)  # unused without PRIME
     scales = (heads, N, eps, LOG2E / math.sqrt(D), 1 / math.sqrt(D))
-    _bwd_dkdv[grid_k](qkv, qn, kn, wk, cos, sin, *common, tab_k, *rest, dwk, *scales, BM=bm, BN=bn, D=D,
-                      num_warps=4, num_stages=stages)  # fmt: skip
-    _bwd_dq[grid](qkv, qn, kn, wq, cos, sin, *common, tab, *rest, dwq, *scales, BM=bm, BN=bn, D=D,
-                  num_warps=4, num_stages=stages)  # fmt: skip
+    _bwd_dkdv[grid_k](qkv, qn, kn, wk, cos, sin, *common, tab_k, *rest, dwk, *extra, *scales, BM=bm, BN=bn, D=D,
+                      PRIME=prime, num_warps=4, num_stages=stages)  # fmt: skip
+    _bwd_dq[grid](qkv, qn, kn, wq, cos, sin, *common, tab, *rest, dwq, *extra, *scales, BM=bm, BN=bn, D=D,
+                  PRIME=prime, num_warps=4, num_stages=stages)  # fmt: skip
     return dqkv, dwq.sum(1).to(wq.dtype), dwk.sum(1).to(wk.dtype)
 
 
