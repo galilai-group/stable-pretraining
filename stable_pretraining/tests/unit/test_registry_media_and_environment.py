@@ -103,17 +103,38 @@ def test_environment_reports_driver_and_git_without_remote(monkeypatch):
     assert result["commit_hash"] == "abc123" and result["remote_url"] is None
 
 
-@pytest.mark.parametrize(
-    "failure",
-    [subprocess.TimeoutExpired("fake", 1), subprocess.CalledProcessError(1, "fake")],
-)
+_PIP_FAILURES = [
+    subprocess.TimeoutExpired("fake", 1),
+    subprocess.CalledProcessError(1, "fake"),
+]
+
+
+@pytest.mark.parametrize("failure", _PIP_FAILURES)
+@pytest.mark.parametrize("metadata_works", [False, True])
 def test_package_snapshot_records_failure_without_fabricating_versions(
-    monkeypatch, failure
+    monkeypatch, failure, metadata_works
 ):
+    """Package versions come from installed metadata, never invented.
+
+    If ``pip freeze`` fails, the snapshot falls back to
+    ``importlib.metadata``; every version it reports must be the one the
+    installed metadata gives. If both sources fail, the snapshot records the
+    error and zero packages.
+    """
     monkeypatch.setattr(env_info.subprocess, "check_output", Mock(side_effect=failure))
+    if not metadata_works:
+        monkeypatch.setattr(
+            env_info.metadata, "distributions", Mock(side_effect=OSError("fake"))
+        )
     result = env_info.EnvironmentDumpCallback()._get_packages_info()
-    assert result["total_packages"] == 0
-    assert result["pip_freeze"].startswith("Error")
+    if metadata_works:
+        assert result["total_packages"] > 0
+        for name, version in result["key_packages"].items():
+            assert version == env_info.metadata.version(name)
+    else:
+        assert result["total_packages"] == 0
+        assert result["key_packages"] == {}
+        assert result["pip_freeze"].startswith("Error")
 
 
 def test_environment_snapshot_is_serializable_and_does_not_pickle_threads(

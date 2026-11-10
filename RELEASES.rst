@@ -154,6 +154,12 @@ Unreleased
   changes are persisted via ``PATCH /api/run-meta`` with optimistic updates and
   revert on failure.
 
+**Bug fixes**
+
+- ``EnvironmentDumpCallback``: when ``python -m pip freeze`` is unavailable
+  (e.g. ``uv venv`` without pip), fall back to ``importlib.metadata`` instead
+  of recording 0 packages.
+
 **Dependencies**
 
 - ``torchvision>=0.21`` is now required (previously unbounded).
