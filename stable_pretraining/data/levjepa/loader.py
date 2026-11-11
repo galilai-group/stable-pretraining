@@ -38,6 +38,7 @@ from stable_datasets.framestore.resources import (
 )
 from stable_datasets.framestore.store import FrameStore, store_format
 
+from .kernels.order import TILES
 from .recipe import V2
 from .splice import MCU_COLS, PACK_COLS, make_batch
 from .views import TokenViews, ring_slot
@@ -70,6 +71,156 @@ def wait_for(q, procs, what, timeout=900):
                 )
 
 
+# A loader restarts processes that die (each crew of them, over a run) up to RESTARTS times, then fails. When no batch
+# comes for STALL seconds with every process alive, it restarts all of them with new queues (a process killed inside
+# a queue operation can leave that queue unusable for the rest: its lock held, or a message cut in two), up to RESETS
+# times, and fails if it stalls again before a batch. It checks its processes every CHECK seconds.
+RESTARTS, RESETS, STALL, CHECK = 10, 3, 120, 1.0
+
+
+class Stalled(RuntimeError):
+    """No batch for STALL seconds with every loader process alive."""
+
+
+def take(q, parent, stop=None, wait=1.0):
+    """q.get(), or None once `parent` (the loader's process) has gone, or `stop` is set: no orphan outlives it.
+
+    It waits on the queue's pipe and takes items without waiting: a get that waits holds the queue's lock, shared by
+    every process reading it, and a process killed there (say, by the kernel's OOM killer) would leave it held.
+    """
+    while True:
+        try:
+            return q.get_nowait()
+        except queue.Empty:
+            if os.getppid() != parent or (stop is not None and stop.is_set()):
+                return None
+            q._reader.poll(wait)
+
+
+class Crew:
+    """A loader's processes of one kind, started again when one dies.
+
+    Each process keeps its own shared row: the queue items it has taken and not passed on (-1: none), and last, the
+    batches it has passed on. It clears an item before passing it on, so a process that dies between the two leaks
+    that item rather than handing it out twice. reclaim(row) hands a dead process's items back, then the process is
+    started again (spawn(i, row, generation) -> an unstarted Process). One that dies again without passing a batch on
+    since its restart (a crash loop), or a death past `restarts`, raises instead.
+    """
+
+    def __init__(self, what, spawn, reclaim, restarts=RESTARTS, hints=None):
+        self.what, self.spawn, self.reclaim, self.left = what, spawn, reclaim, restarts
+        self.hints = hints or {}
+        self.procs, self.rows, self.gens = [], [], []
+
+    def start(self, n=1):
+        for _ in range(n):
+            self.procs.append(None), self.rows.append(None), self.gens.append(-1)
+            self._start(len(self.procs) - 1)
+
+    def _start(self, i):
+        row = torch.tensor([-1, -1, 0], dtype=torch.int64).share_memory_()
+        self.gens[i] += 1
+        p = self.spawn(i, row, self.gens[i])
+        p.start()
+        self.procs[i], self.rows[i] = p, row
+
+    def check(self):
+        for i, p in enumerate(self.procs):
+            if p.is_alive():
+                continue
+            row = self.rows[i].tolist()
+            self.reclaim(row)
+            self.left -= 1
+            loop = self.gens[i] > 0 and row[-1] == 0
+            msg = f"{self.what} {i} exited ({p.exitcode})" + (
+                f"; {self.hints[p.exitcode]}" if p.exitcode in self.hints else ""
+            )
+            if loop or self.left < 0:
+                raise RuntimeError(
+                    msg
+                    + (
+                        "; again before passing a batch on since its restart"
+                        if loop
+                        else "; no restarts left"
+                    )
+                )
+            print(
+                f"{msg}; restarted ({self.left} restarts left)",
+                file=sys.stderr,
+                flush=True,
+            )
+            self._start(i)
+
+    def stop(self, deadline):
+        for p in self.procs:
+            p.join(timeout=max(0.0, deadline - time.monotonic()))
+        for p in self.procs:
+            if p.is_alive():
+                p.kill()
+
+    def kill(self):
+        for p in self.procs:
+            p.kill()
+        for p in self.procs:
+            p.join()
+
+    def restart(self):
+        """Start every (killed) process again."""
+        for i in range(len(self.procs)):
+            self._start(i)
+
+
+def supervised(q, crews, last, stall=None):
+    """The next item of q, checking `crews` every CHECK seconds.
+
+    last: [time of the last check]. Raises Stalled after `stall` (default STALL) seconds without an item.
+    """
+    stall, t0 = stall or STALL, time.monotonic()
+    while True:
+        if time.monotonic() - last[0] > CHECK:
+            for c in crews:
+                c.check()
+            last[0] = time.monotonic()
+        try:
+            return q.get(timeout=CHECK)
+        except queue.Empty:
+            if time.monotonic() - t0 > stall:
+                raise Stalled(
+                    f"no batch for {stall} s with every loader process alive"
+                ) from None
+
+
+def unwedged(next_batch, reset, resets):
+    """next_batch(), resetting the loader (reset()) when it stalls.
+
+    resets: [resets left, whether one came since the last batch]. Raises when out of resets, or stalled again since
+    the last reset.
+    """
+    while True:
+        try:
+            x = next_batch()
+            resets[1] = False
+            return x
+        except Stalled as e:
+            if resets[0] <= 0 or resets[1]:
+                raise
+            resets[0] -= 1
+            resets[1] = True
+            print(
+                f"{e}: restarting every loader process with new queues ({resets[0]} resets left)",
+                file=sys.stderr,
+                flush=True,
+            )
+            reset()
+
+
+def discard(*qs):
+    """Queues replaced after a stall: nothing this process put on them is waited for at exit."""
+    for q in qs:
+        q.cancel_join_thread()
+        q.close()
+
+
 def slot_spec(B, r, jpeg_bytes=96 << 20, mcus=1 << 20):
     T, V, KG, KL = r.frames, r.num_local * B, r.keep_global, r.keep_local
     return {
@@ -88,9 +239,9 @@ def slot_spec(B, r, jpeg_bytes=96 << 20, mcus=1 << 20):
         "lidx": ((V, T * KL), torch.int16),
         "ljit": ((V, 4), torch.float32),
         "gorder": ((B * T * KG,), torch.int32),
-        "gcount": ((9,), torch.int64),
+        "gcount": ((len(TILES) ** 2,), torch.int64),
         "lorder": ((V * T * KL,), torch.int32),
-        "lcount": ((9,), torch.int64),
+        "lcount": ((len(TILES) ** 2,), torch.int64),
         "pix": (
             (1,),
             torch.int32,
@@ -140,7 +291,14 @@ def worker(
     read,
     cpu=None,
     nice=10,
+    held=None,
+    parent=None,
 ):
+    """A loader worker.
+
+    held: this worker's Crew row (the slot it fills, the pixel slot it decodes into, batches passed on). parent: the
+    loader's process id (passed in: one that dies while this one starts would leave os.getppid() at init's).
+    """
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     lower_priority(
         nice
@@ -152,7 +310,8 @@ def worker(
     if cpu is not None:
         pix, pix_free, least, stalled = cpu[0].numpy(), cpu[1], cpu[2], cpu[3].numpy()
     drop = os.environ.get("FRAMESTORE_DROP_PAGES") == "1"
-    while (s := free.get()) is not None:
+    while (s := take(free, parent)) is not None:
+        held[0] = s
         p = make_batch(
             store, rng, B, view["jpeg"][s], view["mcu"][s], r, stride, decode
         )
@@ -168,9 +327,14 @@ def worker(
             and backlog(ready) >= least
             and not (least and stalled[0])
         ):
-            cpu_decode(view, s, p, B, pix, pix_free, wait=least == 0)
+            cpu_decode(view, s, p, B, pix, pix_free, held, parent, wait=least == 0)
         if drop:
             store.drop_pages()
+        held[0], held[1] = (
+            -1,
+            -1,
+        )  # the pixel slot, if any, goes with the batch slot (view["pix"][s])
+        held[2] += 1
         ready.put(s)
 
 
@@ -182,7 +346,7 @@ def backlog(q):
         return 0
 
 
-def cpu_decode(view, s, p, B, pix, pix_free, wait=False):
+def cpu_decode(view, s, p, B, pix, pix_free, held, parent, wait=False):
     """Decode slot s's packed JPEGs on this CPU into a free pixel slot.
 
     libjpeg-turbo, chroma upsampled per MCU as nvJPEG does; the GPU server then only uploads the images. Workers
@@ -193,9 +357,12 @@ def cpu_decode(view, s, p, B, pix, pix_free, wait=False):
     import simplejpeg
 
     try:
-        q = pix_free.get() if wait else pix_free.get_nowait()
+        q = take(pix_free, parent) if wait else pix_free.get_nowait()
     except queue.Empty:
         return
+    if q is None:
+        return
+    held[1] = q
     buf, o = pix[q], 0
     poff, phw = view["poff"][s], view["phw"][s]
     poff[0] = 0
@@ -204,6 +371,7 @@ def cpu_decode(view, s, p, B, pix, pix_free, wait=False):
         h, w = int(p["prow"][b]) * mh, PACK_COLS * mw
         n = h * w * 3
         if o + n > len(buf):
+            held[1] = -1
             pix_free.put(q)
             return
         simplejpeg.decode_jpeg(
@@ -292,8 +460,18 @@ class TokenLoader:
         self.slots = slot_tensors(
             self.want[1], batch, recipe
         )  # shared memory is touched only by the slots handed out
+        self.slots["pix"][
+            :, 0
+        ] = -1  # no slot holds a pixel slot (Crew reclaims read it)
         self.free, self.ready = self.ctx.Queue(), self.ctx.Queue()
-        self.procs, self.n, self.pix_given = [], 0, 0
+        self.n, self.pix_given, self.last, self.resets = (
+            0,
+            0,
+            [time.monotonic()],
+            [RESETS, False],
+        )
+        self.workers = Crew("loader worker", self._spawn, self._reclaim)
+        self.procs = self.workers.procs
         if (
             cpu_only and n_pix
         ):  # the first worker, measured, waits for a pixel slot for every batch
@@ -312,43 +490,50 @@ class TokenLoader:
 
     def add(self, workers=0, slots=0):
         """Start more workers and hand out more slots."""
-        store, recipe, stride, decode, index, read, seed = self.args
-        # CPU decoders decode while at least one batch per GPU server waits (CPU-only: always)
-        pix = (
-            (
-                self.pix,  # the shared tensor: a numpy view would be pickled as a private copy
-                self.pix_free,
-                0 if self.cpu_only else max(1, self.servers),
-                self.stalled,
-            )
-            if self.pix is not None
-            else None
-        )
         for s in range(self.n, self.n + slots):
             self.free.put(s)
         self.n += slots
-        for _ in range(workers):
-            p = self.ctx.Process(
-                target=worker,
-                args=(
-                    store,
-                    self.B,
-                    recipe,
-                    stride,
-                    self.slots,
-                    self.free,
-                    self.ready,
-                    seed * 1000 + len(self.procs),
-                    decode,
-                    index,
-                    read,
-                    pix if len(self.procs) < self.cpu_decoders else None,
-                    self.nice,
-                ),
-                daemon=True,
-            )
-            p.start()
-            self.procs.append(p)
+        self.workers.start(workers)
+
+    def _spawn(self, i, held, gen):
+        store, recipe, stride, decode, index, read, seed = self.args
+        # CPU decoders decode while at least one batch per GPU server waits (CPU-only: always)
+        pix = (
+            self.pix,  # the shared tensor: a numpy view would be pickled as a private copy
+            self.pix_free,
+            0 if self.cpu_only else max(1, self.servers),
+            self.stalled,
+        )
+        return self.ctx.Process(
+            target=worker,
+            args=(
+                store,
+                self.B,
+                recipe,
+                stride,
+                self.slots,
+                self.free,
+                self.ready,
+                seed * 1000 + i if gen == 0 else [seed * 1000 + i, gen],
+                decode,
+                index,
+                read,
+                pix if self.pix is not None and i < self.cpu_decoders else None,
+                self.nice,
+                held,
+                os.getpid(),
+            ),
+            daemon=True,
+        )
+
+    def _reclaim(self, row):
+        """A dead worker's slot back to the free ones, and its pixel slot (held, or already in the slot's batch)."""
+        s, q = row[0], row[1]
+        for x in {q, int(self.slots["pix"][s][0]) if s >= 0 else -1} - {-1}:
+            self.pix_free.put(x)
+        if s >= 0:
+            self.slots["pix"][s][0] = -1
+            self.free.put(s)
 
     def stages(self):
         """The loader's stages, for Budget.allocate.
@@ -386,19 +571,40 @@ class TokenLoader:
     def __iter__(self):
         return self
 
+    def renew(self):
+        """New queues, every slot free (its workers killed first)."""
+        discard(self.free, self.ready, self.pix_free)
+        self.free, self.ready, self.pix_free = (self.ctx.Queue() for _ in range(3))
+        self.slots["pix"][:, 0] = -1
+        for s in range(self.n):
+            self.free.put(s)
+        for q in range(self.pix_given):
+            self.pix_free.put(q)
+        self.stalled[0] = 0
+        self.last[0] = time.monotonic()
+
+    def reset(self):
+        self.workers.kill()
+        self.renew()
+        self.workers.restart()
+
     def __next__(self):
-        return self.ready.get()
+        return unwedged(
+            lambda: supervised(self.ready, [self.workers], self.last),
+            self.reset,
+            self.resets,
+        )
 
     def release(self, slot):
         self.free.put(slot)
 
     def close(self):
+        if self.n < 0:
+            return
+        self.n = -1
         for _ in self.procs:
             self.free.put(None)
-        for p in self.procs:
-            p.join(timeout=5)
-            if p.is_alive():
-                p.terminate()
+        self.workers.stop(time.monotonic() + 5)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -428,6 +634,8 @@ def token_server(
     stats=None,
     stalled=None,
     defer=0,
+    held=None,
+    parent=None,
 ):
     try:
         _token_server(
@@ -447,6 +655,8 @@ def token_server(
             stats,
             stalled,
             defer,
+            held,
+            parent,
         )
     except torch.OutOfMemoryError:
         print("token server: out of GPU memory", file=sys.stderr, flush=True)
@@ -473,6 +683,8 @@ def _token_server(
     stats=None,
     stalled=None,
     defer=0,
+    held=None,
+    parent=None,
 ):
     import warnings
 
@@ -496,17 +708,23 @@ def _token_server(
         TokenViews(B, r, decode=decode, fused=fused, decoder=decoder),
         torch.cuda.Stream(),
     )
+    # held (this server's Crew row): the host slot and ring slot it works on, batches passed on
     while not stop.is_set():
         try:
             if defer:  # a reserve: take a batch only while `defer` or more wait (the first servers are behind)
                 if backlog(host_ready) < defer:
+                    if os.getppid() != parent:
+                        break
                     time.sleep(0.0005)
                     continue
                 s = host_ready.get_nowait()
-            else:
-                s = host_ready.get(timeout=0.5)
+            elif (s := take(host_ready, parent, stop, wait=0.5)) is None:
+                break  # stopped, or the trainer has gone: no orphan holds the GPU
         except queue.Empty:
+            if os.getppid() != parent:
+                break
             continue
+        held[0] = s
         if s not in locked:
             for t in big:
                 lock(t[s])
@@ -518,7 +736,11 @@ def _token_server(
         except queue.Empty:  # every ring slot is with the consumer: it, not this server, is the bottleneck
             if stalled is not None:
                 stalled[0] = 1
-            v = ring_free.get()
+            v = take(ring_free, parent, stop)
+            if v is None:
+                host_ready.put(s)  # stopping: the batch back where it was
+                break
+        held[1] = v
         q = int(slots["pix"][s][0])
         with torch.cuda.stream(stream):
             imgs = None
@@ -541,14 +763,29 @@ def _token_server(
                 for dst, src in zip(ring, views(slots, s, imgs=imgs)):
                     dst[v].copy_(src)
         stream.synchronize()
-        if q >= 0:
+        if (
+            q >= 0
+        ):  # the pixel slot leaves the batch slot before it is freed (a Crew reclaim reads it there)
+            slots["pix"][s][0] = -1
             pix[1].put(q)
         if (
             stats is not None
         ):  # batches this server decoded itself, and batches a CPU worker decoded
             stats[int(q >= 0)] += 1
+        held[0] = -1
         host_free.put(s)
+        held[1] = -1
+        held[2] += 1
         ring_ready.put(v)
+    for q in (
+        host_ready,
+        host_free,
+        ring_ready,
+        pix[1],
+    ):  # flush what this server put, then exit at once
+        if q is not None:
+            q.close()
+            q.join_thread()
     os._exit(0)
 
 
@@ -589,6 +826,11 @@ class SharedTokenLoader:
     (stable_datasets.framestore.resources; said when they are). fused=True: the GPU stage's Triton kernels (kernels/fused.py).
     decoder: the GPU stage's JPEG decoder, "nvjpeg" (stable_datasets.framestore.decoders; see TokenViews). nice: the CPU workers'
     priority below the consumer's (and I/O priority, stable_datasets.framestore.resources.lower_priority); 0 to run level with it.
+
+    A worker or server that dies is started again and the slots it held handed back (Crew; said on stderr); the loader
+    raises instead on a crash loop, or past RESTARTS deaths of either kind. After STALL seconds without a batch it
+    restarts every process with new queues (up to RESETS times; it raises if it stalls again before a batch). Its
+    processes exit with the trainer, however it ends.
     """
 
     def __init__(
@@ -655,42 +897,46 @@ class SharedTokenLoader:
         self.free, self.ready, self.stop = ctx.Queue(), ctx.Queue(), ctx.Event()
         for v in range(ring):
             self.free.put(v)
-        args = (
-            self.host.slots,
-            self.host.free,
-            self.host.ready,
-            self.ring,
-            self.free,
-            self.ready,
-            batch,
-            r,
-            self.stop,
-            decode,
-            fused,
-        )
-        pix = (self.host.pix, self.host.pix_free)
         self.stats = torch.zeros(len(kinds), 2, dtype=torch.int64).share_memory_()
-        self.servers = []
+        self.ctx, self.resets = ctx, [RESETS, False]
 
-        def start(k):  # server i decodes with kinds[i]
-            for _ in range(k):
-                kind = kinds[len(self.servers)]
-                self.servers.append(
-                    ctx.Process(
-                        target=token_server,
-                        args=(
-                            *args,
-                            kind,
-                            pix,
-                            self.stats[len(self.servers)],
-                            self.host.stalled,
-                            # triton servers beside nvjpeg ones decode only what the JPEG engines fall behind on
-                            kinds.count("nvjpeg") if kind == "triton" else 0,
-                        ),
-                    )
-                )
-                self.servers[-1].start()
+        def spawn(
+            i, held, gen
+        ):  # server i decodes with kinds[i]; the queues as they are now (reset renews them)
+            h = self.host
+            return ctx.Process(
+                target=token_server,
+                args=(
+                    h.slots,
+                    h.free,
+                    h.ready,
+                    self.ring,
+                    self.free,
+                    self.ready,
+                    batch,
+                    r,
+                    self.stop,
+                    decode,
+                    fused,
+                    kinds[i],
+                    (h.pix, h.pix_free),
+                    self.stats[i],
+                    self.host.stalled,
+                    # triton servers beside nvjpeg ones decode only what the JPEG engines fall behind on
+                    kinds.count("nvjpeg") if kinds[i] == "triton" else 0,
+                    held,
+                    os.getpid(),
+                ),
+                daemon=True,  # so an exiting trainer stops them rather than waiting for them
+            )
 
+        self.crew = Crew(
+            "token server",
+            spawn,
+            self._reclaim,
+            hints={OOM_EXIT: "out of GPU memory: run fewer servers"},
+        )
+        self.servers, start = self.crew.procs, self.crew.start
         g0 = gpu_free()
         start(1)  # measured once it has produced a batch
         v = wait_for(self.ready, self.servers, "token server")
@@ -714,15 +960,44 @@ class SharedTokenLoader:
         self.host.add(nw - 1, ns - 2)
         self.host.add_pix(*npix)
         start(n - 1)
-        self.prev = None
+        self.prev, self.closed = None, False
         self._release = queue.Queue()
         threading.Thread(target=self._releaser, daemon=True).start()
+
+    def _reclaim(self, row):
+        """A dead server's host slot and ring slot back to the free ones.
+
+        Its batch is dropped: it may be what killed the server.
+        """
+        s, v = row[0], row[1]
+        if s >= 0:
+            self.host._reclaim([s, -1, 0])
+        if v >= 0:
+            self.free.put(v)
+        self.host.stalled[0] = 0
 
     def _releaser(self):
         while True:
             ev, v = self._release.get()
             ev.synchronize()
             self.free.put(v)
+            self._release.task_done()
+
+    def reset(self):
+        """Every process killed and started again with new queues, every slot free.
+
+        The consumer holds no slot while it waits: __next__ hands its last one to the releaser first.
+        """
+        self.crew.kill()
+        self.host.workers.kill()
+        self.host.renew()
+        self._release.join()  # ring slots the consumer has finished with, into the old queue
+        discard(self.free, self.ready)
+        self.free, self.ready = self.ctx.Queue(), self.ctx.Queue()
+        for v in range(len(self.ring[0])):
+            self.free.put(v)
+        self.crew.restart()
+        self.host.workers.restart()
 
     def __iter__(self):
         return self
@@ -734,28 +1009,20 @@ class SharedTokenLoader:
             ev = torch.cuda.Event()
             ev.record()
             self._release.put((ev, self.prev))
-        while True:
-            try:
-                v = self.ready.get(timeout=5)
-                break
-            except queue.Empty:
-                dead = [p.exitcode for p in self.servers if not p.is_alive()]
-                if dead:
-                    raise RuntimeError(
-                        f"token server exited ({dead})"
-                        + (
-                            "; out of GPU memory: run fewer servers"
-                            if OOM_EXIT in dead
-                            else ""
-                        )
-                    )
+        v = unwedged(
+            lambda: supervised(
+                self.ready, [self.crew, self.host.workers], self.host.last
+            ),
+            self.reset,
+            self.resets,
+        )
         self.prev = v
         return tuple(x[v] for x in self.ring)
 
     def close(self):
+        if self.closed:
+            return
+        self.closed = True
         self.stop.set()
-        for p in self.servers:
-            p.join(timeout=10)
-            if p.is_alive():
-                p.kill()
+        self.crew.stop(time.monotonic() + 10)
         self.host.close()

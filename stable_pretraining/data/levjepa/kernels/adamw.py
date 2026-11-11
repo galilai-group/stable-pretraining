@@ -39,8 +39,9 @@ def _sumsq(g, partial, n, BLOCK: tl.constexpr, P: tl.constexpr):
 
 
 @triton.jit
-def _update(p, g, m, v, decay, t, low, partial, count, n, n_teacher, n_low, lr, b1, b2, eps, wd, max_norm, w,
+def _update(p, g, m, v, decay, t, low, partial, count, n, n_teacher, n_low, lr_t, b1, b2, eps, wd, max_norm, w,
             BLOCK: tl.constexpr, P: tl.constexpr):  # fmt: skip
+    lr = tl.load(lr_t)  # from memory, so a captured CUDA graph follows set_lr()
     total = tl.sqrt(tl.sum(tl.load(partial + tl.arange(0, P))))
     coef = tl.minimum(max_norm / (total + 1e-6), 1.0)
     step = tl.load(count)
@@ -129,14 +130,26 @@ class FusedStep:
         self.count = torch.zeros((), device=dev)
         self.partial = torch.empty(PARTIALS, device=dev)
         self.hyper = (lr, *betas, eps, weight_decay, max_norm, 1 - ema)
+        self.lr, self._lr = (
+            torch.full((), lr, device=dev),
+            lr,
+        )  # the kernel reads the learning rate from self.lr
+
+    def set_lr(self, lr):
+        """The learning rate of the next steps; outside a CUDA graph's capture (graphs read it from self.lr)."""
+        self.hyper = (lr, *self.hyper[1:])
+        self._lr = lr
+        self.lr.fill_(lr)
 
     def step(self):
         """Clip the gradients in self.grads to max_norm, AdamW, then the teacher and the low-precision copies."""
+        if self.hyper[0] != self._lr:  # set through hyper (train_v2's big_step)
+            self.set_lr(self.hyper[0])
         self.count += 1
         _sumsq[(PARTIALS,)](
             self.g, self.partial, self.n, BLOCK=BLOCK, P=PARTIALS, num_warps=8
         )
         _update[(math.ceil(self.n / BLOCK),)](
             self.p, self.g, self.m, self.v, self.decay, self.t, self.low, self.partial, self.count, self.n,
-            self.n_teacher, self.n_low, *self.hyper, BLOCK=BLOCK, P=PARTIALS, num_warps=8,
+            self.n_teacher, self.n_low, self.lr, *self.hyper[1:], BLOCK=BLOCK, P=PARTIALS, num_warps=8,
         )  # fmt: skip

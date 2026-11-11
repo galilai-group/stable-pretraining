@@ -30,6 +30,10 @@ P1 = os.environ.get("FUSED_P1", "split")
 P2 = os.environ.get("FUSED_P2", "tf32x3")
 PR = os.environ.get("FUSED_PR", "tf32x3")
 WARPS = int(os.environ.get("FUSED_WARPS", "2"))
+# tiles above 64 x 128 get more warps: at 2 a 64 x 256 tile spills ~650 registers and a 64 x 512 one ~3,900 (~16 KB of
+# local memory per thread, which CUDA reserves for every resident thread: ~4 GB, an OOM next to training); 4 warps take
+# that to ~17 / ~430 spills (64 / 376 MB reserved) and run ~1.3x / ~4.5x faster (H100, 144 x 1100 / 2304 frames)
+WARPS_BIG = int(os.environ.get("FUSED_WARPS_BIG", "4"))
 MEAN, STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
 
 
@@ -299,7 +303,7 @@ def kept_patches(
 
     Kept patches of one view type into out (rows, S, 768) float32, normalized. canvas (F, 3, HC, WC) uint8;
     hw (F, 2) int32 stored sizes; box (rows, 4), flip (rows,) bool, idx (rows, S) int16 (CUDA); order (rows * S,)
-    int32 (CUDA) and count (9,) (host) from patch_order; bri / jit (rows,) / (rows, 4) for locals.
+    int32 (CUDA) and count (len(TILES) ** 2,) (host) from patch_order; bri / jit (rows,) / (rows, 4) for locals.
     """
     rows, S = idx.shape
     dev = canvas.device
@@ -339,7 +343,9 @@ def kept_patches(
                 P2=P2,
                 PR=PR,
                 OUT=squash,
-                num_warps=WARPS,
+                num_warps=WARPS
+                if TILES[k // len(TILES)] * TILES[k % len(TILES)] <= 64 * 128
+                else WARPS_BIG,
             )
         start += c
     if local:

@@ -18,7 +18,7 @@ import torch
 import triton
 import triton.language as tl
 
-from .order import K
+from .order import K, TILES
 
 
 @triton.jit
@@ -126,16 +126,16 @@ def windows(canvas, hw, frame, r0, c0, out_size=224):
     out = torch.empty(N, 3, K, K, device=canvas.device)
     hs, ws = hw[:, 0].contiguous(), hw[:, 1].contiguous()
     nh, nw = tile_need(hs[frame], ws[frame], r0, c0, out_size)
-    sizes = torch.tensor((64, 128, 256), device=nh.device, dtype=nh.dtype)
+    sizes = torch.tensor(TILES, device=nh.device, dtype=nh.dtype)
     bh, bw = torch.bucketize(nh, sizes), torch.bucketize(nw, sizes)
-    assert int(torch.maximum(bh, bw).max()) < 3, (
-        "a window needs more than 256 stored pixels; frame too large"
+    assert int(torch.maximum(bh, bw).max()) < len(TILES), (
+        f"a window needs more than {TILES[-1]} stored pixels; frame too large"
     )
-    key = bh * 3 + bw
+    key = bh * len(TILES) + bw
     for k in torch.unique(
         key
-    ).tolist():  # tile (rows x cols) per bucket: 64/128/256 each
-        SH, SW = (64, 128, 256)[k // 3], (64, 128, 256)[k % 3]
+    ).tolist():  # tile (rows x cols) per bucket, one of TILES each
+        SH, SW = TILES[k // len(TILES)], TILES[k % len(TILES)]
         idx = torch.nonzero(key == k).flatten()
         sub = torch.empty(len(idx), 3, K, K, device=canvas.device)
         _windows_kernel[(len(idx), 3)](

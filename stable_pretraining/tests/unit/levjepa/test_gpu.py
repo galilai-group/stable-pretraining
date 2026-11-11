@@ -120,6 +120,21 @@ def test_fused_matches_unfused(path):
         assert float(d.max()) < 2.0 and float((d > 0.5).float().mean()) < 1e-3
 
 
+def test_fused_matches_unfused_wide(tmp_path):
+    """Frames wide enough (16:1) that a global crop's window needs the 512 tile."""
+    p = str(tmp_path / "wide.lance")
+    make_store(p, episodes=4, frames=40, size=(144, 2304))
+    convert_store(p, batch=64, memory="4GB", nice=0)
+    store = FrameStore(p)
+    for seed in range(4):
+        _, slots = slots_of(store, seed)
+        r, f = TokenViews(B)(slots, 0), TokenViews(B, fused=True)(slots, 0)
+        assert torch.equal(r[1], f[1]) and torch.equal(r[3], f[3])
+        for x, y in ((r[0], f[0]), (r[2], f[2])):
+            d = (x - y).abs() * 255 * 0.225
+            assert float(d.max()) < 2.0 and float((d > 0.5).float().mean()) < 1e-3
+
+
 def test_shared_token_loader(path):
     from stable_pretraining.data.levjepa.loader import SharedTokenLoader
 
@@ -136,6 +151,119 @@ def test_shared_token_loader(path):
         assert torch.isfinite(gp).all() and torch.isfinite(lp).all()
     finally:
         loader.close()
+
+
+def test_token_loader_restarts_dead_processes(path):
+    """A worker and a server killed mid-run (SIGKILL: no clean-up of their own) are started again; batches go on."""
+    import os
+    import signal
+
+    from stable_pretraining.data.levjepa.loader import RESTARTS, SharedTokenLoader
+
+    loader = SharedTokenLoader(path, B, workers=2, servers=2, ring=4, slots=4)
+    try:
+        for _ in range(3):
+            next(loader)
+        os.kill(loader.host.procs[0].pid, signal.SIGKILL)
+        os.kill(loader.servers[0].pid, signal.SIGKILL)
+        for _ in range(40):
+            gp, _, lp, _ = next(loader)
+            assert torch.isfinite(gp).all() and torch.isfinite(lp).all()
+        assert (
+            loader.crew.left == RESTARTS - 1
+            and loader.host.workers.left == RESTARTS - 1
+        )
+        assert all(p.is_alive() for p in loader.servers + loader.host.procs)
+    finally:
+        loader.close()
+
+
+def test_token_loader_fails_on_a_crash_loop(path):
+    """A server that dies again before passing a batch on since its restart raises, rather than restarting forever."""
+    import os
+    import signal
+
+    import torch.multiprocessing as mp
+
+    from stable_pretraining.data.levjepa.loader import SharedTokenLoader
+
+    loader = SharedTokenLoader(path, B, workers=2, servers=1, ring=2, slots=4)
+    try:
+        next(loader)
+        loader.crew.spawn = lambda i, held, gen: mp.get_context("spawn").Process(
+            target=os._exit, args=(7,), daemon=True
+        )
+        os.kill(loader.servers[0].pid, signal.SIGKILL)
+        with pytest.raises(RuntimeError, match="again before passing a batch on"):
+            for _ in range(100):
+                next(loader)
+    finally:
+        loader.close()
+
+
+def test_token_loader_recovers_a_wedged_queue(path, monkeypatch):
+    """A queue left unusable stalls the loader; it restarts every process with new queues and goes on.
+
+    The queue's read lock is held for good, as a reader killed inside a get leaves it. Raises if restarting does not
+    help.
+    """
+    import stable_pretraining.data.levjepa.loader as L
+
+    monkeypatch.setattr(
+        L, "STALL", 30
+    )  # restarted servers need some seconds (CUDA, Triton) before a batch
+    loader = L.SharedTokenLoader(path, B, workers=2, servers=2, ring=4, slots=4)
+    try:
+        next(loader)
+        loader.free._rlock.acquire()  # the ring's free slots: no server can take one
+        for _ in range(10):
+            next(loader)
+        assert loader.resets == [L.RESETS - 1, False]
+        loader.free._rlock.acquire()  # again, and the reset's queues wedged as well
+        loader.reset = lambda: loader.free._rlock.acquire(block=False)
+        with pytest.raises(L.Stalled):
+            for _ in range(10):
+                next(loader)
+    finally:
+        loader.close()
+
+
+@pytest.mark.parametrize("how", ["raise", "SIGKILL"])
+def test_token_loader_dies_with_the_trainer(path, how):
+    """A trainer that raises exits (its loader's processes do not keep it waiting), and one killed leaves no orphans."""
+    import os
+    import subprocess
+    import sys
+    import time
+
+    script = f"""
+from stable_pretraining.data.levjepa.loader import SharedTokenLoader
+loader = SharedTokenLoader({path!r}, {B}, workers=2, servers=2, ring=4, slots=4)
+next(loader)
+print(*[p.pid for p in loader.servers + loader.host.procs], flush=True)
+{"raise RuntimeError('trainer failed')" if how == "raise" else "import time; time.sleep(600)"}
+"""
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path))
+    p = subprocess.Popen(
+        [sys.executable, "-c", script], stdout=subprocess.PIPE, text=True, env=env
+    )
+    pids = [int(x) for x in p.stdout.readline().split()]
+    assert pids, "the trainer started no loader processes"
+    if how == "SIGKILL":
+        p.kill()
+    assert p.wait(timeout=60) != 0
+
+    def gone(pid):  # exited (an orphan's zombie counts: it holds no memory)
+        try:
+            with open(f"/proc/{pid}/status") as f:
+                return "\tZ" in next(x for x in f if x.startswith("State:"))
+        except FileNotFoundError:
+            return True
+
+    t0 = time.monotonic()
+    while not all(gone(x) for x in pids) and time.monotonic() - t0 < 30:
+        time.sleep(0.5)
+    assert all(gone(x) for x in pids), [x for x in pids if not gone(x)]
 
 
 @pytest.mark.parametrize("spec", ["cpu", "triton:1,cpu"])
