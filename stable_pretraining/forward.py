@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``rcaux`` — reachability-calibrated latent world-model training
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -112,6 +113,79 @@ def _get_views_by_prefix(
 
     all_views = global_views + local_views
     return global_views, local_views, all_views
+
+
+def rcaux(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for RC-aux latent world-model training.
+
+    The world model owns the architecture-specific encoding and rollout logic.
+    It must return ``embedding`` with shape ``(batch, time, dim)`` and, during
+    training, ``prediction`` with shape ``(batch, horizon, dim)``. The first
+    predicted target defaults to the final ``horizon`` states of ``embedding``;
+    set ``module.context_index`` to use another alignment. An optional scalar
+    ``regularization_loss`` is included according to the weight in ``RCauxLoss``.
+
+    Args:
+        self: Module instance with ``world_model`` and ``rcaux_loss`` attributes.
+        batch: Trajectory batch consumed by ``world_model``.
+        stage: Training stage, such as ``"train"``, ``"val"``, or ``"test"``.
+
+    Returns:
+        World-model outputs augmented with the RC-aux loss terms during training
+        and a batch label when one is available.
+
+    Raises:
+        TypeError: If the world model does not return a dictionary.
+        KeyError: If a required world-model output is missing.
+
+    Example:
+        ::
+
+            import stable_pretraining as spt
+            from stable_pretraining.forward import rcaux
+            from stable_pretraining.losses import RCauxLoss
+
+            module = spt.Module(
+                forward=rcaux,
+                world_model=world_model,
+                rcaux_loss=RCauxLoss(embedding_dim=256, max_horizon=5),
+                optim={"optimizer": {"type": "AdamW", "lr": 3e-4}},
+            )
+    """
+    world_output = self.world_model(batch)
+    if not isinstance(world_output, dict):
+        raise TypeError("world_model must return a dictionary")
+    if "embedding" not in world_output:
+        raise KeyError("world_model output must contain 'embedding'")
+
+    out = dict(world_output)
+    if "label" in batch and "label" not in out:
+        out["label"] = batch["label"]
+
+    if self.training:
+        if "prediction" not in world_output:
+            raise KeyError(
+                "world_model output must contain 'prediction' during training"
+            )
+        context_index = getattr(self, "context_index", None)
+        losses = self.rcaux_loss(
+            encoded=world_output["embedding"],
+            predicted=world_output["prediction"],
+            context_index=context_index,
+            regularization_loss=world_output.get("regularization_loss"),
+        )
+        out.update(losses)
+        for name, value in losses.items():
+            self.log(
+                f"{stage}/{name}",
+                value,
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+                prog_bar=name == "loss",
+            )
+
+    return out
 
 
 def supervised(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:

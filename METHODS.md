@@ -24,6 +24,7 @@ Methods come in two forms:
 | NNCLR | `nnclr` | `NNCLR` | `NTXEntLoss` | `OnlineQueue` | [Dwibedi et al., 2021](https://arxiv.org/abs/2104.14548) |
 | DINO | `dino` | `DINO` | `DINOv1Loss` | `TeacherStudent†` | [Caron et al., 2021](https://arxiv.org/abs/2104.14294) |
 | DINOv2 | `dinov2` | `DINOv2` | `DINOv2Loss`, `iBOTPatchLoss` | `TeacherStudent†` | [Oquab et al., 2024](https://arxiv.org/abs/2304.07193) |
+| RC-aux | `rcaux` | — | `RCauxLoss` | — | [Li et al., 2026](https://arxiv.org/abs/2605.07278) |
 | BEiT | — | `BEiT` | — | — | [Bao et al., 2022](https://arxiv.org/abs/2106.08254) |
 | CMAE | — | `CMAE` | — | — | [Huang et al., 2023](https://arxiv.org/abs/2207.13532) |
 | CrossMAE | — | `CrossMAE` | — | — | [Fu et al., 2025](https://arxiv.org/abs/2401.14391) |
@@ -113,4 +114,5 @@ All loss classes are importable from `stable_pretraining.losses`:
 | `iBOTPatchLoss` | DINOv2, iBOT, MIMRefiner |
 | `MAELoss` | MAE |
 | `CLIPLoss` | Multimodal CLIP-style objectives |
+| `RCauxLoss` | RC-aux latent world models |
 | `NegativeCosineSimilarity` | SimSiam, general use |

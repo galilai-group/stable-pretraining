@@ -25,6 +25,9 @@ from .multimodal import CLIPLoss
 # Reconstruction losses
 from .reconstruction import mae, MAELoss
 
+# Latent world-model losses
+from .rcaux import BudgetConditionedReachabilityHead, RCauxLoss
+
 # Utilities
 from .utils import (
     sinkhorn_knopp,
@@ -48,6 +51,9 @@ __all__ = [
     # Reconstruction
     "mae",
     "MAELoss",
+    # Latent world models
+    "BudgetConditionedReachabilityHead",
+    "RCauxLoss",
     # Utils
     "sinkhorn_knopp",
     "off_diagonal",
