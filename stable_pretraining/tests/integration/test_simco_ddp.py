@@ -205,7 +205,9 @@ def test_two_rank_example_trains_validates_and_saves_shared_artifacts(
             )
         )
     }
-    environment.update(OMP_NUM_THREADS="1", MKL_NUM_THREADS="1", PYTHONNOUSERSITE="1")
+    # CI installs dependencies with pip --user. Keep the parent's import policy
+    # so the launcher can import the same packages as the pytest process.
+    environment.update(OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
     command = [
         sys.executable,
         "-m",
