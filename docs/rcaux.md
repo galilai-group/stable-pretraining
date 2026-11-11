@@ -20,6 +20,6 @@ This contribution implements RC-aux in `stable-pretraining`, including:
 
 ## Reference
 
-Wenyuan Li, Guang Li, Keisuke Maeda, Takahiro Ogawa, and Miki Haseyama.  
-“Predictive but Not Plannable: RC-aux for Latent World Models.”  
+Wenyuan Li, Guang Li, Keisuke Maeda, Takahiro Ogawa, and Miki Haseyama.
+“Predictive but Not Plannable: RC-aux for Latent World Models.”
 NeurIPS 2026. [Paper](https://arxiv.org/abs/2605.07278) · [Official code](https://github.com/Guang000/RC-aux)
