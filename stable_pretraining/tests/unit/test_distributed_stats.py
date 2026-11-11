@@ -86,8 +86,9 @@ def test_gloo_statistics_match_reference(
     process_group, same_shape, dtype, unbiased, keepdim, dim
 ):
     x = (torch.arange(24.0).reshape(4, 6) * 8 + 1024).to(dtype).requires_grad_()
+    reference = x.detach().double().requires_grad_()
     reference_var, reference_mean = torch.var_mean(
-        x.double(), dim=dim, keepdim=keepdim, unbiased=unbiased
+        reference, dim=dim, keepdim=keepdim, unbiased=unbiased
     )
     mean, var, count = mean_var(
         x,
@@ -101,7 +102,8 @@ def test_gloo_statistics_match_reference(
     torch.testing.assert_close(mean, reference_mean.to(dtype), rtol=0.01, atol=0.01)
     torch.testing.assert_close(var, reference_var.to(dtype), rtol=0.01, atol=0.01)
     (mean.float().sum() + var.float().sum()).backward()
-    assert x.grad is not None and torch.isfinite(x.grad).all()
+    (reference_mean.sum() + reference_var.sum()).backward()
+    torch.testing.assert_close(x.grad, reference.grad.to(dtype), rtol=0.01, atol=0.01)
 
 
 @pytest.mark.parametrize("sync", [False, True])

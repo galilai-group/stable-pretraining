@@ -2,7 +2,19 @@
 Unreleased
 ----------
 
+**Bug fixes**
+
+- Distributed statistics: compute differentiable averages with ``SUM`` divided
+  by the world size, supporting Gloo as well as NCCL while preserving gradients.
+- Cache directory tests: check resolved paths using temporary home aliases,
+  including symbolic links, without writing to the user's home directory.
+
 **New method**
+
+- ``SimCo``: symmetric cross-view contrastive learning with detached
+  dual-temperature hardness weighting, including a composable forward, loss
+  and method class, a CIFAR-10/100 example with global-batch DDP, and real
+  two-process loss/gradient/update regression tests.
 
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against

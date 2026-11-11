@@ -42,13 +42,15 @@ def mean_var(
         var, mean = torch.var_mean(x, dim=dim, keepdims=keepdim, unbiased=unbiased)
         return mean, var, n_local
     elif same_shape_across_devices:
-        n_global = n_local * dist.get_world_size()
+        world_size = dist.get_world_size()
+        n_global = n_local * world_size
         acc_x = x.float() if x.dtype in (torch.float16, torch.bfloat16) else x
         # E[X²] = Var + Mean²  →  single all_reduce
         mean = acc_x.mean(dim, keepdim=keepdim)
         ssq = acc_x.square().mean(dim, keepdim=keepdim)
         stats = torch.stack([mean, ssq])
-        stats = functional_all_reduce(stats, op=dist.ReduceOp.AVG)
+        # Gloo does not support AVG; division also preserves autograd scaling.
+        stats = functional_all_reduce(stats, op=dist.ReduceOp.SUM) / world_size
         global_mean = stats[0]
         global_var = stats[1] - global_mean.square()
         if unbiased:

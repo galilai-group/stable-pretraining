@@ -186,6 +186,7 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "MAE": ("stable_pretraining.methods.mae", "MAE"),
     "NNCLR": ("stable_pretraining.methods.nnclr", "NNCLR"),
     "SimCLR": ("stable_pretraining.methods.simclr", "SimCLR"),
+    "SimCo": ("stable_pretraining.methods.simco", "SimCo"),
     "SwAV": ("stable_pretraining.methods.swav", "SwAV"),
     "VICReg": ("stable_pretraining.methods.vicreg", "VICReg"),
 }
@@ -489,6 +490,7 @@ __all__ = [
     "MAE",
     "NNCLR",
     "SimCLR",
+    "SimCo",
     "SwAV",
     "VICReg",
     "log",

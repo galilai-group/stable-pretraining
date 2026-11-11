@@ -434,7 +434,33 @@ class TestResolveRunDir:
         with pytest.raises(RuntimeError, match="no longer exists"):
             manager._resolve_run_dir()
 
-    def test_tilde_expanded(self, monkeypatch):
+    @pytest.mark.parametrize("home_layout", ["direct", "parent_components", "symlink"])
+    def test_tilde_expanded(self, tmp_path, monkeypatch, home_layout):
+        physical_home = tmp_path / "physical_home"
+        physical_home.mkdir()
+        logical_home = physical_home
+        if home_layout == "parent_components":
+            alias_parent = tmp_path / "logical_home"
+            alias_parent.mkdir()
+            logical_home = alias_parent / ".." / physical_home.name
+        elif home_layout == "symlink":
+            logical_home = tmp_path / "logical_home"
+            try:
+                logical_home.symlink_to(physical_home, target_is_directory=True)
+            except OSError as error:
+                pytest.skip(f"Directory symlinks unavailable: {error}")
+
+        original_expanduser = os.path.expanduser
+
+        def expanduser(path):
+            # Keep every test write under tmp_path without changing the real HOME.
+            if path == "~":
+                return str(logical_home)
+            if isinstance(path, str) and path.startswith(("~/", "~\\")):
+                return str(logical_home / path[2:])
+            return original_expanduser(path)
+
+        monkeypatch.setattr(os.path, "expanduser", expanduser)
         spt_set(cache_dir="~/spt_test_cache")
         monkeypatch.delenv("SLURM_JOB_ID", raising=False)
         monkeypatch.delenv("TORCHELASTIC_RUN_ID", raising=False)
@@ -445,12 +471,15 @@ class TestResolveRunDir:
             data=BoringDataModule(),
         )
         run_dir = manager._resolve_run_dir()
+        assert get_config().cache_dir == "~/spt_test_cache"
+        assert run_dir.is_absolute()
+        assert run_dir.is_dir()
         assert "~" not in str(run_dir)
-        assert str(run_dir).startswith(os.path.expanduser("~"))
-        import shutil
-
-        if run_dir.exists():
-            shutil.rmtree(run_dir.parent.parent.parent.parent)
+        # Shared filesystems can expose home through an alias with another prefix.
+        resolved_cache_dir = (physical_home / "spt_test_cache").resolve()
+        relative_run_dir = run_dir.relative_to(resolved_cache_dir)
+        assert relative_run_dir.parts[0] == "runs"
+        assert len(relative_run_dir.parts) == 4
 
     def test_sets_run_id_attribute(self, cache_dir, monkeypatch):
         """run_id mirrors the run_dir name (uuid), regardless of SLURM env."""

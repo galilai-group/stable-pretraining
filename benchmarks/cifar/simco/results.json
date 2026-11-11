@@ -1,0 +1,305 @@
+{
+  "method": "SimCo",
+  "recipe": "cifar_adaptation_not_paper_reproduction",
+  "paper": "https://arxiv.org/abs/2203.17248",
+  "author_reference_commit": "e8d5e768255721b23643d948631f80c0b8a0851b",
+  "evaluation": {
+    "metric": "online linear-probe top-1 accuracy",
+    "unit": "fraction",
+    "split": "5000 held-out images from the official training split",
+    "training_examples": 45000,
+    "validation_examples": 5000,
+    "probe_features_detached": true,
+    "official_test_split_used": false,
+    "frozen_encoder_evaluation_performed": false,
+    "best_selection": "maximum reported validation accuracy across training epochs",
+    "final_selection": "last reported validation accuracy"
+  },
+  "configuration": {
+    "seed": 0,
+    "split_seed": 0,
+    "runs_per_dataset": 1,
+    "epochs": 500,
+    "encoder": {
+      "model_name": "resnet18",
+      "low_resolution": true,
+      "weights": null
+    },
+    "projector": {
+      "dimensions": [
+        512,
+        128,
+        128
+      ],
+      "hidden_blocks": "Linear with bias, ReLU",
+      "final_linear_bias": true,
+      "batch_normalization": false
+    },
+    "loss": {
+      "intra_temperature": 0.1,
+      "inter_temperature": 1.0,
+      "positive_pairs": "matching row across views",
+      "negatives": "other rows of opposite view only",
+      "reduction": "mean over global examples and both directions",
+      "hardness_ratio_detached": true
+    },
+    "global_batch_size": 256,
+    "per_device_batch_size": 128,
+    "training_drop_last": true,
+    "batches_per_epoch": 175,
+    "planned_optimizer_steps": 87500,
+    "optimization": {
+      "optimizer": {
+        "type": "SGD",
+        "lr": 0.03,
+        "momentum": 0.9,
+        "weight_decay": 0.0005,
+        "exclude_bias_norm": false
+      },
+      "scheduler": {
+        "type": "LinearWarmupCosineAnnealingLR",
+        "warmup_steps": 1750,
+        "max_steps": 87500,
+        "warmup_start_lr": 0.0,
+        "eta_min": 0.0
+      },
+      "interval": "step"
+    },
+    "warmup_epochs": 10,
+    "probe_optimizer": {
+      "type": "SGD",
+      "lr": 0.1,
+      "momentum": 0.9
+    },
+    "probe_scheduler": {
+      "type": "ConstantLR",
+      "factor": 1.0
+    },
+    "precision": "32-true",
+    "distributed": {
+      "nodes": 1,
+      "world_size": 2,
+      "strategy": "DDPStrategy",
+      "sync_batchnorm": true
+    },
+    "hardware": {
+      "gpu_model": "NVIDIA RTX A5000",
+      "gpu_count": 2
+    },
+    "software": {
+      "python": "3.11.17",
+      "torch": "2.6.0+cu124",
+      "torchvision": "0.21.0+cu124",
+      "lightning": "2.6.6"
+    }
+  },
+  "results": {
+    "cifar10": {
+      "optimizer_steps": 87500,
+      "wall_time_seconds": 9682.415914564393,
+      "best_online_validation_top1_accuracy": 0.8858000040054321,
+      "final_online_validation_top1_accuracy": 0.8817999958992004,
+      "final_epoch_ssl_loss": 1.0838255882263184,
+      "final_epoch_online_probe_cross_entropy": 0.3607090413570404,
+      "protocol_sha256": "d25f0b2735cbb52e9873d449397268f49ab74357e387e5d4f0fdfab93a7d566c",
+      "split_indices_sha256": "abe3b7ec839465e01cc32c40784dafc3e1156b6e08fdbf23a043e57738705888",
+      "reported_distributed": {
+        "world_size": 2,
+        "strategy": "DDPStrategy",
+        "global_batch_size": 256,
+        "per_device_batch_size": 128,
+        "sync_batchnorm": true
+      }
+    },
+    "cifar100": {
+      "optimizer_steps": 87500,
+      "wall_time_seconds": 10357.262417588383,
+      "best_online_validation_top1_accuracy": 0.6075999736785889,
+      "final_online_validation_top1_accuracy": 0.6033999919891357,
+      "final_epoch_ssl_loss": 1.0863661766052246,
+      "final_epoch_online_probe_cross_entropy": 1.3505572080612183,
+      "protocol_sha256": "e99b3224e59524244efe430e7eacf27ace22fd99fbfb3cb8708e4d773a00643a",
+      "split_indices_sha256": "40b55ecab63d92c14fe97aaa0a0fb8c52524a7debf7c6f04586a013d35b8d30f",
+      "reported_distributed": {
+        "world_size": 2,
+        "strategy": "DDPStrategy",
+        "global_batch_size": 256,
+        "per_device_batch_size": 128,
+        "sync_batchnorm": true
+      }
+    }
+  },
+  "provenance": {
+    "source": "user-provided run artifacts and Oscar training/validation logs",
+    "provided_artifact_names": [
+      "config.json",
+      "summary.json",
+      "environment.json",
+      "requirements_frozen.txt",
+      "split_indices.json"
+    ],
+    "provided_log_names": [
+      "simco-ddp-7787670_0.out",
+      "simco-ddp-7787670_0.err",
+      "simco-ddp-7787670_1.out",
+      "simco-ddp-7787670_1.err",
+      "simco-validate-7816077.out",
+      "simco-validate-7816077.err",
+      "simco-validate-7822625.out",
+      "simco-validate-7822625.err"
+    ],
+    "canonical_protocol_hashes_verified": true,
+    "split_hashes_reproduced_from_configured_seed": true,
+    "original_complete_split_files_provided": false,
+    "split_copy_issue": "Both local copies are truncated at 262144 bytes; their bytes match prefixes of the independently reconstructed split JSON. Subsequent Oscar validation stdout reports that both original split files pass their hashes and complete, disjoint partition checks.",
+    "original_artifact_checks_reported_passed": {
+      "evidence": "simco-validate-7816077.out and the validation helper's assertions before its success messages",
+      "datasets": [
+        "cifar10",
+        "cifar100"
+      ],
+      "protocol_and_split_hashes": true,
+      "training_indices_unique_count": 45000,
+      "validation_indices_unique_count": 5000,
+      "partition_disjoint_and_covers_official_training_split": true,
+      "last_checkpoint_epoch": 499,
+      "last_checkpoint_global_step": 87500,
+      "populated_optimizer_states": 2,
+      "online_probe_parameters_saved": true,
+      "metric_csv_present": true,
+      "scope": "Reported checks against the original artifacts on Oscar; those complete files were not transferred for local inspection. CSV contents and prediction-derived accuracy were not checked."
+    },
+    "training_csv_provided": false,
+    "checkpoints_provided": false,
+    "per_example_prediction_records_provided": false,
+    "ddp_test_stdout_provided": true,
+    "training_completion_reported_in_stderr": {
+      "cifar10": "Trainer.fit stopped: max_epochs=500 reached",
+      "cifar100": "Trainer.fit stopped: max_epochs=500 reached"
+    },
+    "pretraining_ddp_tests": {
+      "cifar10": {
+        "passed": 3,
+        "wall_time_seconds": 60.87
+      },
+      "cifar100": {
+        "passed": 3,
+        "wall_time_seconds": 100.65
+      },
+      "scope": "Two-process parity and synthetic end-to-end tests reported passing before each GPU training run."
+    },
+    "validation_job": {
+      "job_id": "7816077",
+      "integration": {
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "wall_time_seconds": 95.77,
+        "exit_code": 0,
+        "scope": "SimCo short training, full-state synthetic checkpoint resume, two-process loss/gradient/update parity, and synthetic distributed end-to-end execution."
+      },
+      "whole_unit_suite": {
+        "passed": 3648,
+        "failed": 140,
+        "skipped": 14,
+        "errors": 24,
+        "deselected": 170,
+        "wall_time_seconds": 624.94,
+        "exit_code": 1,
+        "status": "failed",
+        "note": "Historical invocation with inherited GPU/scheduler state, including failures in SimCo unit tests. Superseded as current unit evidence by clean_unit_validation_job; retained to preserve the reported record."
+      }
+    },
+    "clean_unit_validation_job": {
+      "job_id": "7822625",
+      "evidence": "Supplied stdout/stderr and the unit-comparison.json content printed in stdout and supplied by the user.",
+      "unit_environment": "CPU, no inherited Slurm/elastic/MPI/rank state",
+      "standalone_simco_units": {
+        "passed": 81,
+        "failed": 0,
+        "wall_time_seconds": 27.29,
+        "exit_code": 0
+      },
+      "whole_unit_suite": {
+        "passed": 3820,
+        "failed": 11,
+        "skipped": 20,
+        "errors": 0,
+        "deselected": 170,
+        "wall_time_seconds": 530.97,
+        "exit_code": 1,
+        "status": "failed_with_same_failures_as_upstream_baseline"
+      },
+      "upstream_baseline": {
+        "commit": "ab836bf699a2be712dfcf980a5eb70d36391e876",
+        "passed": 3739,
+        "failed": 11,
+        "skipped": 20,
+        "errors": 0,
+        "deselected": 165,
+        "wall_time_seconds": 533.56,
+        "exit_code": 1
+      },
+      "same_failure_nodeids": true,
+      "additional_failure_nodeids": [],
+      "additional_passing_units": 81,
+      "shared_failure_causes": [
+        {
+          "count": 1,
+          "test": "TestResolveRunDir::test_tilde_expanded",
+          "cause": "The resolved home symlink target does not start with the unresolved home path."
+        },
+        {
+          "count": 10,
+          "test_file": "test_distributed_stats.py",
+          "cause": "PyTorch 2.6.0 Gloo raises Cannot use ReduceOp.AVG with Gloo."
+        }
+      ],
+      "original_artifact_checks_reported_passed_again": true,
+      "integration_tests_rerun": false,
+      "retained_integration_evidence_job_id": "7816077",
+      "full_unit_suite_passed": false,
+      "ci_green_claimed": false
+    },
+    "post_comparison_fixes": {
+      "historical_validation_job_id": "7822625",
+      "historical_results_predate_fixes": true,
+      "changes": [
+        "Replace unsupported Gloo ReduceOp.AVG in mean_var with differentiable ReduceOp.SUM divided by world_size.",
+        "Validate tilde expansion against resolved cache paths with isolated direct, parent-component and symlink home layouts."
+      ],
+      "post_fix_full_oscar_unit_status": "passed_as_reported_in_supplied_comparison_json",
+      "post_fix_ci_status": "unverified",
+      "simco_objective_or_training_recipe_changed": false,
+      "completed_500_epoch_training_rerun_required": false
+    },
+    "post_fix_unit_validation": {
+      "evidence": "User-provided unit-comparison.json content; no new stdout/stderr, source hashes or test summary counts supplied.",
+      "job_id": null,
+      "unit_environment": "CPU, no inherited Slurm/elastic/MPI/rank state",
+      "simco_unit_exit_code": 0,
+      "whole_unit_exit_code": 0,
+      "current_failures": [],
+      "baseline_run": false,
+      "full_unit_suite_passed": true,
+      "test_counts_provided": false,
+      "wall_time_seconds": null,
+      "post_fix_integration_result_provided": false,
+      "retained_integration_evidence_job_id": "7816077",
+      "ci_status": "unverified"
+    },
+    "independent_accuracy_recomputation_completed": false,
+    "checkpoint_resume_verified_from_provided_artifacts": false,
+    "synthetic_checkpoint_resume_test_reported_passed": true,
+    "resume_scope": "The passing integration resume test restores a newly created synthetic checkpoint, not either 500-epoch result checkpoint.",
+    "exact_executed_source_identified": false,
+    "validation_source_hash_files_provided": false,
+    "source_note": "Environment metadata reports a working tree with uncommitted changes; the base commit does not identify the executed implementation.",
+    "limitations": [
+      "Single run per dataset; no uncertainty estimate.",
+      "No matched baseline comparison.",
+      "Online validation results are not frozen-encoder or official-test results.",
+      "No paper-accuracy reproduction claim."
+    ]
+  }
+}

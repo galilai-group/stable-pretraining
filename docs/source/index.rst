@@ -21,6 +21,7 @@
     guides/quickstart
     guides/custom_images
     guides/online_evaluation
+    guides/simco_cifar
     guides/resume
     guides/jet
     guides/agents
