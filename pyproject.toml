@@ -142,10 +142,14 @@ omit = [
     "*/test_*",
     "stable_pretraining/_version.py",
     # GPU-only (Triton kernels and the CUDA stage of the LeVJEPA token loader): CI runners have no GPU; their tests
-    # (tests/unit/levjepa/test_gpu.py, marked gpu) run on a GPU node
+    # (tests/unit/levjepa/test_gpu.py and the kernel tests, marked gpu) run on a GPU node
     "stable_pretraining/data/levjepa/views.py",
     "stable_pretraining/data/levjepa/kernels/fused.py",
     "stable_pretraining/data/levjepa/kernels/squash.py",
+    "stable_pretraining/data/levjepa/kernels/attention.py",
+    "stable_pretraining/data/levjepa/kernels/qk_attention.py",
+    "stable_pretraining/data/levjepa/kernels/swiglu.py",
+    "stable_pretraining/data/levjepa/kernels/adamw.py",
 ]
 relative_files = true
 
