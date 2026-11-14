@@ -34,7 +34,9 @@ val_transform = transforms.Compose(
 )
 
 data_dir = get_data_dir("cifar10")
-cifar_train = torchvision.datasets.CIFAR10(root=str(data_dir), train=True, download=True)
+cifar_train = torchvision.datasets.CIFAR10(
+    root=str(data_dir), train=True, download=True
+)
 cifar_val = torchvision.datasets.CIFAR10(root=str(data_dir), train=False, download=True)
 
 train_dataset = spt.data.FromTorchDataset(
