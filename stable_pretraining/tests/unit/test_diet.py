@@ -72,9 +72,7 @@ def test_reordering_batch_keeps_per_example_index_loss():
 def test_from_torch_dataset_keeps_sample_indices_when_loader_shuffles():
     source = TensorDataset(torch.arange(5), torch.zeros(5, dtype=torch.long))
     dataset = FromTorchDataset(source, names=["image", "label"])
-    batch = next(
-        iter(DataLoader(dataset, batch_size=5, sampler=[3, 1, 4, 0, 2]))
-    )
+    batch = next(iter(DataLoader(dataset, batch_size=5, sampler=[3, 1, 4, 0, 2])))
     assert batch["sample_idx"].tolist() == [3, 1, 4, 0, 2]
 
 

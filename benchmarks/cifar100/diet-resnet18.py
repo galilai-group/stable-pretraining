@@ -143,9 +143,7 @@ def main():
                 input="embedding",
                 target="label",
                 queue_length=10_000,
-                metrics={
-                    "top1": torchmetrics.classification.MulticlassAccuracy(100)
-                },
+                metrics={"top1": torchmetrics.classification.MulticlassAccuracy(100)},
                 input_dim=model.embed_dim,
                 k=20,
             ),

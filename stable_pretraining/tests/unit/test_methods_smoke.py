@@ -181,7 +181,9 @@ def test_diet_forward_backward():
     assert loss.ndim == 0
     assert torch.isfinite(loss)
     loss.backward()
-    grads = [parameter.grad for parameter in model.parameters() if parameter.grad is not None]
+    grads = [
+        parameter.grad for parameter in model.parameters() if parameter.grad is not None
+    ]
     assert grads
     assert any(gradient.abs().sum() > 0 for gradient in grads)
 
