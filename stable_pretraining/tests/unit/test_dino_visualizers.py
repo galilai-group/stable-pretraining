@@ -220,11 +220,13 @@ def _make_vit_stub_module(B, N, D, heads, img_size, C):
         pooled = self.encoder(batch["image"])  # (B, D)
         # Fake token grid + prefix (CLS) token: (B, N+1, D)
         tokens = pooled[:, None, :].expand(B_, N + 1, D).contiguous()
-        tokens = tokens + 0.01 * torch.randn(B_, N + 1, D)
+        tokens = tokens + 0.01 * torch.randn_like(tokens)
         batch["tokens"] = tokens
         # Fake attention (B, heads, T, T), T = N + 1
         T = N + 1
-        batch["attn"] = torch.softmax(torch.randn(B_, heads, T, T), dim=-1)
+        batch["attn"] = torch.softmax(
+            torch.randn(B_, heads, T, T, device=pooled.device), dim=-1
+        )
         return batch
 
     return spt.Module(encoder=encoder, forward=forward, optim=None)
