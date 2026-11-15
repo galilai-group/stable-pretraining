@@ -10,6 +10,13 @@ from torchvision.transforms import v2
 import stable_pretraining as spt
 
 
+def _image_to_tensor(sample):
+    """Keep the DataLoader transform picklable under the spawn start method."""
+    transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)])
+    sample["image"] = transform(sample["image"])
+    return sample
+
+
 @pytest.mark.integration
 class TestDatasetIntegration:
     """Integration tests for datasets with actual data loading."""
@@ -41,14 +48,10 @@ class TestDatasetIntegration:
     @pytest.mark.download
     def test_hf_dataloaders(self):
         """Test HuggingFace datasets with DataLoader."""
-        transform = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)])
-
-        def t(x):
-            x["image"] = transform(x["image"])
-            return x
-
-        # Create dataset with transform
-        dataset = spt.data.HFDataset("ylecun/mnist", split="train", transform=t)
+        # A module-level transform also works with macOS spawn workers.
+        dataset = spt.data.HFDataset(
+            "ylecun/mnist", split="train", transform=_image_to_tensor
+        )
         loader = torch.utils.data.DataLoader(dataset, batch_size=4, num_workers=2)
 
         # Test batch loading

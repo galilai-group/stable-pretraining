@@ -222,13 +222,7 @@ class TestCPUSharding:
     def test_data_parallel_mesh_2d(self):
         H.run_distributed(H.w_data_parallel_mesh_2d, world_size=2, backend="gloo")
 
-    @pytest.mark.xfail(
-        reason="Deferred bug: utils.all_gather/all_reduce discard the functional "
-        "collective's return (no-op under distributed). See project memory / "
-        "the separate collectives fix. Remove this marker once fixed.",
-        strict=True,
-    )
-    def test_collectives_roundtrip_currently_broken(self):
+    def test_collectives_roundtrip(self):
         H.run_distributed(H.w_collectives_roundtrip, world_size=2, backend="gloo")
 
 
