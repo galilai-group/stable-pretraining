@@ -72,8 +72,14 @@ def _open_dataset(path: str):
 # ---------------------------------------------------------------------------
 
 
+_ENCODINGS = {
+    "webp": (".webp", cv2.IMWRITE_WEBP_QUALITY),
+    "jpeg": (".jpg", cv2.IMWRITE_JPEG_QUALITY),
+}
+
+
 def _encode_one_video(task):
-    """Worker payload: decode → maybe resize → WebP-encode a single video.
+    """Worker payload: decode → maybe resize → WebP/JPEG-encode a single video.
 
     Runs in a child process (``spawn``). Decodes the source video with
     :class:`cv2.VideoCapture` (frames come back in BGR uint8), which avoids a
@@ -81,13 +87,15 @@ def _encode_one_video(task):
     the list of WebP-encoded frames, or an error tuple to be logged and
     skipped.
     """
-    video_id, path_str, quality, resize = task
+    video_id, path_str, quality, resize, *rest = task
+    encoding = rest[0] if rest else "webp"  # 4-tuple tasks predate `encoding`
+    ext, quality_flag = _ENCODINGS[encoding]
     cap = None
     try:
         cap = cv2.VideoCapture(path_str)
         if not cap.isOpened():
             return ("error", video_id, path_str, "cv2.VideoCapture failed to open")
-        enc_params = [int(cv2.IMWRITE_WEBP_QUALITY), int(quality)]
+        enc_params = [int(quality_flag), int(quality)]
         blobs: list[bytes] = []
         out_H = out_W = None
         do_resize = None  # decided after we see the first frame's shape
@@ -102,13 +110,13 @@ def _encode_one_video(task):
                 out_W = int(resize) if do_resize else W0
             if do_resize:
                 bgr = cv2.resize(bgr, (out_W, out_H), interpolation=cv2.INTER_AREA)
-            ok, buf = cv2.imencode(".webp", bgr, enc_params)
+            ok, buf = cv2.imencode(ext, bgr, enc_params)
             if not ok:
                 return (
                     "error",
                     video_id,
                     path_str,
-                    f"webp encode failed at t={len(blobs)}",
+                    f"{encoding} encode failed at t={len(blobs)}",
                 )
             blobs.append(buf.tobytes())
         T = len(blobs)
@@ -169,6 +177,7 @@ def build_lance_video_dataset(
     output_path: Union[str, Path],
     *,
     quality: int = 65,
+    encoding: str = "webp",
     resize: Optional[int] = None,
     workers: Optional[int] = None,
     glob: str = "*.mp4",
@@ -178,8 +187,8 @@ def build_lance_video_dataset(
 ) -> Path:
     """Build a random-access Lance video dataset from a folder of video files.
 
-    Each frame is decoded once, optionally downsampled, then WebP-encoded and
-    stored as one row ``(video_id, frame_idx, bytes)``. A side-car file at
+    Each frame is decoded once, optionally downsampled, then WebP- (or JPEG-)
+    encoded and stored as one row ``(video_id, frame_idx, bytes)``. A side-car file at
     ``<output_path>.videos.json`` stores per-video metadata (``path``, ``T``,
     ``H``, ``W``, ``start_row``) so the matching :class:`LanceVideoSegments`
     reader can map ``(video, frame) → row`` without rescanning files.
@@ -193,7 +202,13 @@ def build_lance_video_dataset(
         output_path: Target path for the ``.lance`` dataset directory.
         quality: WebP quality in ``[1, 100]``. The benchmark sweet-spot for
             random segment reads at 224x224 on NFS is 65; raise to 80 if you
-            care about fine texture preservation.
+            care about fine texture preservation. With ``encoding="jpeg"`` it is
+            the JPEG quality.
+        encoding: Frame codec, ``"webp"`` (default, smallest on disk) or
+            ``"jpeg"``. JPEG frames can be decoded on the GPU (nvJPEG): read
+            them with ``LanceVideoSegments(..., decode=False)`` and decode with
+            :class:`~stable_pretraining.data.gpu_transforms.GPUDecodeJPEG`, so
+            DataLoader workers do no image decoding at all.
         resize: If set and a video's ``max(H, W) > resize``, each frame is
             resized to ``(resize, resize)`` with :func:`cv2.resize` (area
             interpolation). Videos whose native resolution is already at or
@@ -212,6 +227,10 @@ def build_lance_video_dataset(
     Returns:
         Path to the ``.lance`` dataset directory that was written.
     """
+    if encoding not in _ENCODINGS:
+        raise ValueError(
+            f"encoding must be one of {sorted(_ENCODINGS)}, got {encoding!r}"
+        )
     source_dir = Path(source_dir)
     output_path = Path(output_path)
 
@@ -242,7 +261,7 @@ def build_lance_video_dataset(
     # internal thread pool ends up in a bad state in the child). Always spawn.
     ctx = mp.get_context("spawn")
 
-    tasks = [(i, str(p), int(quality), resize) for i, p in enumerate(files)]
+    tasks = [(i, str(p), int(quality), resize, encoding) for i, p in enumerate(files)]
     video_records: list[dict] = []
 
     from rich.progress import (
@@ -308,7 +327,7 @@ def build_lance_video_dataset(
             {
                 "quality": int(quality),
                 "resize": int(resize) if resize is not None else None,
-                "encoding": "webp",
+                "encoding": encoding,
                 "total_rows": int(total_frames),
                 "n_videos": n_ok,
                 "n_skipped": n_skipped,
@@ -410,9 +429,15 @@ class LanceVideoSegments(Dataset):
             window span ``(L - 1) * (frame_skip + 1) + 1``.
         transform: Optional callable applied to each sample dict (the library
             standard). Receives a dict, returns a dict.
+        decode: If ``False``, return the encoded frames (``video_bytes``)
+            instead of decoding them in the worker, for GPU decoding with
+            :class:`~stable_pretraining.data.gpu_transforms.GPUDecodeJPEG`
+            (dataset built with ``encoding="jpeg"``). Pass
+            ``collate_fn=LanceVideoSegments.collate`` to the DataLoader.
 
     Returns per item (before optional ``transform``):
-        ``video``          : uint8 tensor ``(L, H, W, 3)`` RGB
+        ``video``          : uint8 tensor ``(L, H, W, 3)`` RGB (``decode=True``)
+        ``video_bytes``    : list of ``L`` encoded frames (``decode=False``)
         ``video_idx``      : index into :attr:`video_paths`
         ``filename``       : source video path for this segment
         ``start_frame``    : starting frame index in the source video
@@ -429,8 +454,10 @@ class LanceVideoSegments(Dataset):
         hop_size: int = 1,
         min_video_frames: Optional[int] = None,
         transform: Optional[Callable] = None,
+        decode: bool = True,
     ):
         super().__init__(transform=transform)
+        self.decode = bool(decode)
 
         self.lance_path = str(lance_path)
         self.window_length = int(window_length)
@@ -453,6 +480,12 @@ class LanceVideoSegments(Dataset):
                 f"Was the dataset built with build_lance_video_dataset?"
             )
         meta = json.loads(sidecar.read_text())
+        self.encoding = meta.get("encoding", "webp")
+        if not self.decode and self.encoding != "jpeg":
+            logging.warning(
+                f"decode=False on a {self.encoding} dataset: GPUDecodeJPEG needs "
+                "frames stored with build_lance_video_dataset(..., encoding='jpeg')."
+            )
         self._videos: list[dict] = list(meta["videos"])
         if not self._videos:
             raise ValueError(f"no videos recorded in {sidecar}")
@@ -460,7 +493,7 @@ class LanceVideoSegments(Dataset):
         # without a user-provided collate_fn). Warn if resolutions vary.
         hs = {v["H"] for v in self._videos}
         ws = {v["W"] for v in self._videos}
-        if len(hs) > 1 or len(ws) > 1:
+        if self.decode and (len(hs) > 1 or len(ws) > 1):
             logging.warning(
                 f"video resolutions differ ({len(hs)} Hs, {len(ws)} Ws). "
                 "Default collate will fail — supply a custom collate_fn."
@@ -535,13 +568,17 @@ class LanceVideoSegments(Dataset):
         ds = _open_dataset(self.lance_path)
         blobs = ds.take(rows, columns=["bytes"]).column("bytes").to_pylist()
 
-        out = np.empty((L, v["H"], v["W"], 3), dtype=np.uint8)
-        for j, b in enumerate(blobs):
-            bgr = cv2.imdecode(np.frombuffer(b, dtype=np.uint8), cv2.IMREAD_COLOR)
-            out[j] = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        if self.decode:
+            out = np.empty((L, v["H"], v["W"], 3), dtype=np.uint8)
+            for j, b in enumerate(blobs):
+                bgr = cv2.imdecode(np.frombuffer(b, dtype=np.uint8), cv2.IMREAD_COLOR)
+                out[j] = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            frames = {"video": torch.from_numpy(out)}
+        else:
+            frames = {"video_bytes": blobs}
 
         sample = {
-            "video": torch.from_numpy(out),
+            **frames,
             "video_idx": vi,
             "filename": v["path"],
             "start_frame": start,
@@ -551,6 +588,44 @@ class LanceVideoSegments(Dataset):
         return self.process_sample(sample)
 
     # --- DataLoader helper ---------------------------------------------------
+
+    @staticmethod
+    def collate(samples: list[dict]) -> dict:
+        """Pass as ``collate_fn=LanceVideoSegments.collate`` with ``decode=False``.
+
+        Packs the batch's encoded frames into one
+        :class:`~stable_pretraining.data.gpu_transforms.PackedJPEG`, whose
+        buffer reaches the main process through shared memory. Lists of
+        ``bytes`` (``default_collate``) are pickled through a pipe instead,
+        which caps the loader at ~1.7k 16-frame clips/s regardless of the
+        worker count (vs. ~6.6k packed with 24 workers on a B200 host).
+        Other keys are default-collated; batches without ``video_bytes``
+        fall through to ``default_collate``.
+
+        Args:
+            samples: Items from this dataset.
+
+        Returns:
+            The collated batch.
+        """
+        from torch.utils.data import default_collate
+
+        if "video_bytes" not in samples[0]:
+            return default_collate(samples)
+        from .gpu_transforms import PackedJPEG
+
+        clips = [s["video_bytes"] for s in samples]
+        lens = torch.tensor([[len(b) for b in c] for c in clips], dtype=torch.int64)
+        ends = lens.flatten().cumsum(0).view_as(lens)
+        offsets = torch.cat([ends - lens, ends[:, -1:]], dim=1)
+        data = torch.frombuffer(
+            bytearray(b"".join(b for c in clips for b in c)), dtype=torch.uint8
+        )
+        batch = default_collate(
+            [{k: v for k, v in s.items() if k != "video_bytes"} for s in samples]
+        )
+        batch["video_bytes"] = PackedJPEG(data, offsets)
+        return batch
 
     @staticmethod
     def worker_init(worker_id: int) -> None:

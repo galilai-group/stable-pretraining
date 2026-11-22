@@ -1,6 +1,6 @@
 import copy
 import inspect
-from typing import Iterable, Optional, Union
+from typing import Callable, Iterable, Optional, Union
 
 import hydra
 import lightning as pl
@@ -35,8 +35,35 @@ class DictFormat(Dataset):
         return sample
 
 
+def _dataset_gpu_transform(dataset) -> Optional[Callable]:
+    """``gpu_transform`` of a dataset, looking through Subset/ConcatDataset wrappers."""
+    while dataset is not None:
+        gt = getattr(dataset, "gpu_transform", None)
+        if gt is not None:
+            return gt
+        inner = getattr(dataset, "dataset", None) or getattr(dataset, "datasets", None)
+        if inner is dataset or inner is None:
+            return None
+        dataset = inner[0] if isinstance(inner, (list, tuple)) else inner
+    return None
+
+
 class DataModule(pl.LightningDataModule):
-    """PyTorch Lightning DataModule for handling train/val/test/predict dataloaders."""
+    """PyTorch Lightning DataModule for handling train/val/test/predict dataloaders.
+
+    Args:
+        train: Train DataLoader, or a DataLoader config dict with a ``dataset``.
+        test: Test DataLoader or config.
+        val: Validation DataLoader or config.
+        predict: Predict DataLoader or config.
+        gpu_prefetch: Wrap the train DataLoader in a
+            :class:`~stable_pretraining.data.gpu_transforms.GPUPrefetcher`, so the
+            host-to-device copy and the train-stage GPU transform (dataset-level
+            ``gpu_transform``, else this DataModule's) of the next batch run on a
+            side CUDA stream while the current step trains.
+        gpu_prefetch_depth: Batches prepared ahead when ``gpu_prefetch`` is set.
+        **kwargs: Stored as attributes (e.g. ``gpu_transform=...``).
+    """
 
     def __init__(
         self,
@@ -44,9 +71,13 @@ class DataModule(pl.LightningDataModule):
         test: Optional[Union[dict, DictConfig, DataLoader]] = None,
         val: Optional[Union[dict, DictConfig, DataLoader]] = None,
         predict: Optional[Union[dict, DictConfig, DataLoader]] = None,
+        gpu_prefetch: bool = False,
+        gpu_prefetch_depth: int = 1,
         **kwargs,
     ):
         super().__init__()
+        self.gpu_prefetch = gpu_prefetch
+        self.gpu_prefetch_depth = gpu_prefetch_depth
         if train is None and test is None and val is None and predict is None:
             raise ValueError("They can't all be none")
         logging.info("Setting up DataModule")
@@ -183,7 +214,28 @@ class DataModule(pl.LightningDataModule):
                 pin_memory_device=loader.pin_memory_device,
                 in_order=loader.in_order,
             )
+        if self.gpu_prefetch:
+            loader = self._wrap_gpu_prefetch(loader)
         return loader
+
+    def _wrap_gpu_prefetch(self, loader):
+        from .gpu_transforms import GPUPrefetcher
+
+        transform = _dataset_gpu_transform(loader.dataset)
+        if transform is None:
+            transform = getattr(self, "gpu_transform", None)
+            if isinstance(transform, dict):
+                transform = transform.get("train")
+        device = None
+        if self.trainer is not None:
+            device = self.trainer.strategy.root_device
+        logging.info(
+            f"  train loader wrapped in GPUPrefetcher (depth {self.gpu_prefetch_depth}, "
+            f"transform {type(transform).__name__ if transform is not None else None})"
+        )
+        return GPUPrefetcher(
+            loader, transform=transform, device=device, depth=self.gpu_prefetch_depth
+        )
 
     def val_dataloader(self):
         """Return the validation DataLoader (or an empty list if unset)."""

@@ -614,5 +614,37 @@ def migrate(
     )
 
 
+# ========== VIDEO PIPELINE ==========
+
+video_app = typer.Typer(help="GPU video data pipeline tools.")
+app.add_typer(video_app, name="video-pipeline")
+
+
+@video_app.command()
+def doctor(
+    store: Optional[str] = typer.Option(
+        None, "--store", help="Lance video store to validate (and benchmark from)"
+    ),
+    bench: bool = typer.Option(
+        False, "--bench", help="Measure decode, multi-crop and loader throughput"
+    ),
+    workers: Optional[int] = typer.Option(
+        None, "--workers", help="DataLoader workers (default: usable CPUs - 2)"
+    ),
+    batch: int = typer.Option(96, "--batch", help="Clips per benchmark batch"),
+    device: int = typer.Option(0, "--device", help="CUDA device index"),
+    as_json: bool = typer.Option(False, "--json", help="Print the report as JSON"),
+):
+    """Check what this machine needs to run the GPU video pipeline at full speed."""
+    from stable_pretraining.data.video_doctor import run_doctor
+
+    report = run_doctor(
+        store=store, bench=bench, workers=workers, batch=batch, device=device
+    )
+    typer.echo(report.to_json() if as_json else report.format())
+    if not report.ok:
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":
     app()

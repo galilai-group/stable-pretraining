@@ -408,6 +408,11 @@ class Module(pl.LightningModule):
         Returns:
             The (possibly augmented) batch dict.
         """
+        from .data.gpu_transforms import _PrefetchedBatch
+
+        if isinstance(batch, _PrefetchedBatch):
+            # GPUPrefetcher already applied this transform on its side stream.
+            return dict(batch)
         gpu_transform = self._resolve_gpu_transform(dataloader_idx)
         if gpu_transform is None:
             return batch
