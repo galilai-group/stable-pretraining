@@ -22,6 +22,7 @@ from .nnclr import NNCLR
 from .pirl import PIRL
 from .pmsn import PMSN
 from .salt import SALT
+from .sce import SCE
 from .simclr import SimCLR
 from .simmim import SimMIM
 from .simsiam import SimSiam
@@ -57,6 +58,7 @@ __all__ = [
     "PIRL",
     "PMSN",
     "SALT",
+    "SCE",
     "SimCLR",
     "SimMIM",
     "SimSiam",

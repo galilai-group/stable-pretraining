@@ -4,6 +4,12 @@ Unreleased
 
 **New method**
 
+- ``SCE`` (Similarity Contrastive Estimation): combines instance
+  discrimination with relational similarity targets from a momentum teacher.
+  Includes ``SCELoss``, a student-teacher encoder, an embedding queue,
+  ``SCEQueueCallback``, unit and integration tests, and usage documentation.
+  Registered in ``stable_pretraining.methods`` and ``METHODS.md``
+  (PR #485).
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,
