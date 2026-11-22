@@ -37,3 +37,5 @@ Specialized Modules
 
    TeacherStudentWrapper
    EvalOnly
+   DIMEmbedding
+   LocalGlobalCritic

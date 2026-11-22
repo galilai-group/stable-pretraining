@@ -4,6 +4,14 @@ Unreleased
 
 **New method**
 
+- Local Deep InfoMax (Hjelm et al., ICLR 2019) with the Jensen-Shannon
+  estimator: forward function ``stable_pretraining.forward.local_dim``,
+  losses ``LocalDIMLoss`` and ``DIMPriorLoss`` (optional adversarial prior
+  matching), and the encode-and-dot-product critic ``LocalGlobalCritic`` /
+  ``DIMEmbedding`` in ``stable_pretraining.backbone``. Only the local
+  objective is implemented (no global DIM). Registered in ``METHODS.md``, with
+  a CIFAR10 pretraining and frozen-encoder evaluation script under
+  ``benchmarks/cifar10/local-dim-dcgan.py``.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

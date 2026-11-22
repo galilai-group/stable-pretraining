@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``local_dim`` — local Deep InfoMax (JSD estimator, optional prior)
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -1259,5 +1260,116 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         sync_dist=True,
         prog_bar=True,
     )
+
+    return out
+
+
+def local_dim(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for local Deep InfoMax (DIM).
+
+    Local DIM maximizes a Jensen-Shannon estimate of the mutual information
+    between the global feature of an image and every location of an
+    intermediate feature map of the same image. Negatives pair the global
+    feature with feature maps of the other images in the batch, so a single
+    un-augmented view per image is enough. An adversarial term can
+    optionally match the global feature to a uniform prior.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: ``HiddenStateExtractor`` wrapping the encoder
+            - local_layer: Name of the hooked layer giving the local feature map
+            - dim_critic: Critic scoring global/local pairs (``LocalGlobalCritic``)
+            - dim_loss: Local DIM loss (``LocalDIMLoss``)
+            - prior_loss (optional): Prior matching loss (``DIMPriorLoss``)
+            - prior_weight (optional): Prior weight ``gamma`` (default 0: no prior)
+        batch: Input batch dictionary containing:
+            - 'image': Tensor of images [N, C, H, W]
+            - 'label': Labels [N] (optional, passed through for callbacks)
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Global features from the backbone
+            - each hooked layer name: its captured hidden state (for probes)
+            - 'loss': Local DIM loss plus prior terms (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in the Deep InfoMax paper :cite:`hjelm2019learningdeeprepresentationsmutual`. Only
+        the local objective (and optional prior) is implemented; the global
+        DIM objective is not. The discriminator loss of the prior term is
+        added to ``loss`` with weight 1, as in the reference implementation;
+        it never reaches the encoder.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import local_dim
+
+            backbone = spt.backbone.HiddenStateExtractor(encoder, ["layer1"])
+            module = spt.Module(
+                forward=local_dim,
+                backbone=backbone,
+                local_layer="layer1",
+                dim_critic=spt.backbone.LocalGlobalCritic(128, 64),
+                dim_loss=spt.losses.LocalDIMLoss(),
+                prior_loss=spt.losses.DIMPriorLoss(
+                    spt.backbone.MLP(64, [1000, 200, 1])
+                ),
+                prior_weight=0.1,
+                optim={
+                    "optimizer": {"type": "Adam", "lr": 1e-4, "betas": (0.5, 0.999)}
+                },
+            )
+    """
+    features = self.backbone(batch["image"])
+    out = dict(features.hidden_states)
+    out["embedding"] = features.last_hidden_state
+    if "label" in batch:
+        out["label"] = batch["label"]
+
+    if self.training:
+        local_features = features.hidden_states[self.local_layer]
+        local_loss = self.dim_loss(self.dim_critic(local_features, out["embedding"]))
+        out["loss"] = local_loss
+
+        prior_weight = getattr(self, "prior_weight", 0.0)
+        if prior_weight > 0:
+            prior = self.prior_loss(out["embedding"])
+            out["loss"] = (
+                out["loss"] + prior_weight * prior["encoder"] + prior["discriminator"]
+            )
+            self.log(
+                f"{stage}/prior_encoder_loss",
+                prior["encoder"],
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+            )
+            self.log(
+                f"{stage}/prior_discriminator_loss",
+                prior["discriminator"],
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+            )
+
+        self.log(
+            f"{stage}/local_dim_loss",
+            local_loss,
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            prog_bar=True,
+        )
 
     return out

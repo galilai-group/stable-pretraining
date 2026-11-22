@@ -275,6 +275,44 @@ Supervised
         in_features: 2048
         out_features: 1000
 
+Local DIM
+~~~~~~~~~
+
+.. autofunction:: local_dim
+
+**Required Module Attributes:**
+
+- ``backbone``: ``HiddenStateExtractor`` wrapping the encoder
+- ``local_layer``: Name of the hooked layer providing the local feature map
+- ``dim_critic``: Critic scoring global/local pairs (``LocalGlobalCritic``)
+- ``dim_loss``: ``LocalDIMLoss``
+- ``prior_loss`` / ``prior_weight`` (optional): ``DIMPriorLoss`` and its weight
+
+**Key Features:**
+
+- Single view per image, no data augmentation required
+- Jensen-Shannon mutual information between the global feature and every local feature
+- Optional adversarial matching of the global feature to a uniform prior
+- Only the local objective of Deep InfoMax; the global objective is not implemented
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.local_dim
+      backbone:
+        _target_: stable_pretraining.backbone.HiddenStateExtractor
+        backbone: ...
+        module_names: [layer1]
+      local_layer: layer1
+      dim_critic:
+        _target_: stable_pretraining.backbone.LocalGlobalCritic
+        local_channels: 128
+        global_dim: 64
+      dim_loss:
+        _target_: stable_pretraining.losses.LocalDIMLoss
+
 Custom Forward Functions
 ------------------------
 

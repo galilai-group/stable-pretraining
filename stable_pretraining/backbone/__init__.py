@@ -1,4 +1,5 @@
 from .convmixer import ConvMixer
+from .dim import DIMEmbedding, LocalGlobalCritic
 from .jet import Jet
 from .mlp import MLP
 from .nn_modules import (
@@ -93,6 +94,8 @@ __all__ = [
     FeaturesConcat,
     set_embedding_dim,
     ConvMixer,
+    DIMEmbedding,
+    LocalGlobalCritic,
     vit_hf,
     MultiHeadAttentiveProbe,
     LinearProbe,

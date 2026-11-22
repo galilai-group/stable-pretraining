@@ -18,6 +18,7 @@ Methods come in two forms:
 | Supervised | `supervised` | — | any | — | — |
 | SimCLR | `simclr` | `SimCLR` | `NTXEntLoss` | — | [Chen et al., 2020](https://arxiv.org/abs/2002.05709) |
 | BYOL | `byol` | `BYOL` | `BYOLLoss` | `TeacherStudent†` | [Grill et al., 2020](https://arxiv.org/abs/2006.07733) |
+| Local DIM (JSD) | `local_dim` | — | `LocalDIMLoss`, `DIMPriorLoss` | — | [Hjelm et al., 2019](https://arxiv.org/abs/1808.06670) |
 | VICReg | `vicreg` | `VICReg` | `VICRegLoss` | — | [Bardes et al., 2022](https://arxiv.org/abs/2105.04906) |
 | Barlow Twins | `barlow_twins` | `BarlowTwins` | `BarlowTwinsLoss` | — | [Zbontar et al., 2021](https://arxiv.org/abs/2103.03230) |
 | SwAV | `swav` | `SwAV` | `SwAVLoss` | `OnlineQueue` | [Caron et al., 2020](https://arxiv.org/abs/2006.09882) |
@@ -112,5 +113,7 @@ All loss classes are importable from `stable_pretraining.losses`:
 | `DINOv2Loss` | DINOv2, DINOv3 |
 | `iBOTPatchLoss` | DINOv2, iBOT, MIMRefiner |
 | `MAELoss` | MAE |
+| `LocalDIMLoss` | Local DIM |
+| `DIMPriorLoss` | Local DIM (optional prior matching) |
 | `CLIPLoss` | Multimodal CLIP-style objectives |
 | `NegativeCosineSimilarity` | SimSiam, general use |
