@@ -17,6 +17,17 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``SigLIP``: language-image pretraining with a pairwise sigmoid loss instead
+  of CLIP's batch softmax, per Zhai et al., "Sigmoid Loss for Language Image
+  Pre-Training" (ICCV 2023). Adds ``SigLIPLoss`` (learnable logit scale and
+  bias; under DDP, scores local images against texts gathered from all ranks),
+  the ``siglip`` forward function, and the ``SigLIP`` method class, which
+  builds Hugging Face SigLIP towers (random init or ``pretrained=True``,
+  loading the checkpoint's logit scale and bias) or wraps custom
+  vision/text encoders. Registered in ``stable_pretraining.methods``, the
+  top-level namespace, and ``METHODS.md``, with a Flickr30k retrieval
+  benchmark under ``benchmarks/flickr30k/siglip-vitb.py`` (results in
+  ``benchmarks/flickr30k/RESULTS.md``).
 
 **Discoverability improvements**
 

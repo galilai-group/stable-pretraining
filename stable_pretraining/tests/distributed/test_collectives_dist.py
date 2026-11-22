@@ -40,3 +40,13 @@ class TestCollectives:
         H.run_distributed(
             H.w_clip_crossgpu_matches_global, world_size=2, backend="gloo"
         )
+
+    def test_siglip_cross_gpu_negatives_match_global(self):
+        H.run_distributed(
+            H.w_siglip_crossgpu_matches_global, world_size=2, backend="gloo"
+        )
+
+    def test_siglip_ddp_grads_match_single_process(self):
+        H.run_distributed(
+            H.w_siglip_ddp_grads_match_single_process, world_size=2, backend="gloo"
+        )

@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``siglip`` — SigLIP image-text pretraining with a pairwise sigmoid loss
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -1259,5 +1260,72 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         sync_dist=True,
         prog_bar=True,
     )
+
+    return out
+
+
+def _pooled_embedding(outputs: Any, key: str) -> torch.Tensor:
+    """Extract a [B, D] embedding from a tensor or a Hugging Face model output."""
+    if isinstance(outputs, torch.Tensor):
+        return outputs
+    for name in (key, "pooler_output"):
+        value = getattr(outputs, name, None)
+        if value is not None:
+            return value
+    raise ValueError(
+        f"Expected model output to be a tensor or expose '{key}' or 'pooler_output'."
+    )
+
+
+def siglip(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for SigLIP image-text pretraining.
+
+    SigLIP :cite:`zhai2023sigmoid` learns aligned image-text representations
+    with an independent sigmoid loss over every image-text pair in the batch.
+    Matching pairs are expected to be aligned along the batch diagonal.
+
+    Args:
+        self: Module instance with ``vision_model``, ``text_model``, and
+            ``siglip_loss`` attributes. Each encoder must return a ``[B, D]``
+            tensor or an output exposing ``image_embeds`` / ``text_embeds`` or
+            ``pooler_output``.
+        batch: Paired image-text batch dictionary. Must contain ``image`` and
+            ``tokenized_prompt``. May contain ``attention_mask``.
+        stage: Training stage ('fit', 'validate', 'test', or 'predict').
+
+    Returns:
+        Dictionary with ``embedding`` (pooled image features before
+        normalization, for probes and k-NN callbacks), L2-normalized
+        ``image_embeds`` and ``text_embeds``, and the SigLIP ``loss`` (in every
+        stage except predict).
+
+    Note:
+        Under DDP, :class:`~stable_pretraining.losses.SigLIPLoss` gathers text
+        features from all ranks, so every rank must run this forward on
+        equally sized batches.
+    """
+    out = {}
+
+    image_embeds = _pooled_embedding(self.vision_model(batch["image"]), "image_embeds")
+    out["embedding"] = image_embeds
+    out["image_embeds"] = torch.nn.functional.normalize(image_embeds, dim=-1)
+
+    mask = batch.get("attention_mask")
+    kwargs = {} if mask is None else {"attention_mask": mask}
+    text_embeds = _pooled_embedding(
+        self.text_model(batch["tokenized_prompt"], **kwargs), "text_embeds"
+    )
+    out["text_embeds"] = torch.nn.functional.normalize(text_embeds, dim=-1)
+
+    if stage != "predict":
+        out["loss"] = self.siglip_loss(out["image_embeds"], out["text_embeds"])
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=self.training,
+            on_epoch=True,
+            sync_dist=True,
+            prog_bar=True,
+        )
 
     return out
