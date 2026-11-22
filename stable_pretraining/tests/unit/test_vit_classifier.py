@@ -176,6 +176,43 @@ class TestViTForwardShapes:
         assert logits.shape == (2, 10)
 
 
+def _series_vit():
+    return ViT(
+        img_size=(1, 256),
+        patch_size=(1, 32),
+        in_chans=1,
+        embed_dim=64,
+        depth=2,
+        num_heads=2,
+        class_token=False,
+        global_pool="avg",
+    ).eval()
+
+
+@pytest.mark.unit
+class TestViTTimeSeries:
+    """A ``[B, C, L]`` series is encoded as a ``1 x L`` image."""
+
+    def test_series_matches_one_row_image(self):
+        m = _series_vit()
+        x = torch.randn(4, 1, 256)
+        with torch.no_grad():
+            assert m.forward_features(x).shape == (4, 8, 64)
+            assert torch.equal(m(x), m(x.unsqueeze(2)))
+
+    def test_onnx_export_with_instance_norm(self, tmp_path):
+        ort = pytest.importorskip("onnxruntime")
+        pytest.importorskip("onnx")
+        m = torch.nn.Sequential(torch.nn.InstanceNorm1d(1), _series_vit()).eval()
+        x = torch.randn(4, 1, 256) * 50 + 3  # raw, unnormalized scale
+        path = tmp_path / "series.onnx"
+        torch.onnx.export(m, (x,), str(path), opset_version=17, dynamo=False)
+        session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        got = session.run(None, {session.get_inputs()[0].name: x.numpy()})[0]
+        with torch.no_grad():
+            torch.testing.assert_close(torch.from_numpy(got), m(x), atol=1e-4, rtol=0)
+
+
 @pytest.mark.unit
 class TestViTValidation:
     """Tests for :class:`ViT` constructor input validation."""

@@ -664,7 +664,7 @@ class StackedMultiView(nn.Module):
     DINO student/teacher) use :class:`MultiView` instead.
 
     Output schema matches the existing CPU :class:`MultiViewTransform`:
-    ``batch[views_key]`` becomes a list of N dicts, each with ``{"image":
+    ``batch[views_key]`` becomes a list of N dicts, each with ``{source:
     view_tensor, "label": label}``. The original ``batch[source]`` key
     is removed to free GPU memory.
 
@@ -698,7 +698,7 @@ class StackedMultiView(nn.Module):
         out = self.chain({self.source: stacked})[self.source]
         views_list = list(torch.split(out, B, dim=0))
         label = batch.get(self.label_key)
-        batch[self.views_key] = [{"image": v, "label": label} for v in views_list]
+        batch[self.views_key] = [{self.source: v, "label": label} for v in views_list]
         del batch[self.source]
         return batch
 
@@ -737,7 +737,7 @@ class MultiView(nn.Module):
         views = []
         for chain in self.chains:
             out = chain({self.source: src})[self.source]
-            views.append({"image": out, "label": label})
+            views.append({self.source: out, "label": label})
         batch[self.views_key] = views
         del batch[self.source]
         return batch
