@@ -257,6 +257,19 @@ def test_visreg_forward_backward():
     _assert_loss_and_backward(model, output)
 
 
+def test_lambda_jepa_forward_backward():
+    model = M.LambdaJEPA(
+        encoder_name=TINY_VIT,
+        h_slice_dim=128,
+        z_queue_length=0,
+        h_queue_length=0,
+    )
+    model.train()
+    v1, v2 = _two_views()
+    output = model.forward(global_views=[v1, v2])
+    _assert_loss_and_backward(model, output)
+
+
 def test_mim_refiner_forward_backward():
     """MIM-Refiner takes a pre-built encoder; just pass a fresh timm ViT."""
     import timm
