@@ -25,6 +25,9 @@ from .multimodal import CLIPLoss
 # Reconstruction losses
 from .reconstruction import mae, MAELoss
 
+# SimDINOv2
+from .simdinov2 import SimDINOv2Loss
+
 # Utilities
 from .utils import (
     sinkhorn_knopp,
@@ -48,6 +51,8 @@ __all__ = [
     # Reconstruction
     "mae",
     "MAELoss",
+    # SimDINOv2
+    "SimDINOv2Loss",
     # Utils
     "sinkhorn_knopp",
     "off_diagonal",

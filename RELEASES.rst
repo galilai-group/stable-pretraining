@@ -17,6 +17,12 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``SimDINOv2``: simple self-distillation without prototypes or clustering
+  (cosine compression + Gaussian coding-rate expansion + masked patch cosine similarity),
+  per Zhang et al., "SimDINO: Simple Self-Distillation for Vision Foundation Models"
+  (arXiv:2502.10385). Registered in ``stable_pretraining.methods``, ``stable_pretraining.losses``,
+  and ``METHODS.md``, with an Imagenette ViT-S/16 benchmark under
+  ``benchmarks/imagenet10/simdinov2-vit-small.py``.
 
 **Discoverability improvements**
 

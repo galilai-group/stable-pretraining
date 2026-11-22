@@ -4,7 +4,7 @@ stable_pretraining.methods
 .. module:: stable_pretraining.methods
 .. currentmodule:: stable_pretraining.methods
 
-The methods module provides 30 ready-to-use ``LightningModule`` subclasses, one
+The methods module provides 31 ready-to-use ``LightningModule`` subclasses, one
 per SSL algorithm. Each class pre-wires the backbone, loss function, optimizer,
 and any required callbacks so you can start training with minimal boilerplate.
 
@@ -68,6 +68,7 @@ online clustering to learn representations without negative pairs.
    DINO
    DINOv2
    DINOv3
+   SimDINOv2
    iBOT
    SwAV
    MSN

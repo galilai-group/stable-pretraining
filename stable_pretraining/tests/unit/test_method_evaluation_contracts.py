@@ -50,6 +50,7 @@ def _encoder(**kwargs):
         ),
         ("iBOT", {"n_cls_prototypes": 8, "n_patch_prototypes": 8}),
         ("SwAV", {"n_prototypes": 8, "projector_dims": (16, 8)}),
+        ("SimDINOv2", {}),
     ],
 )
 def test_evaluation_with_prebuilt_encoder_returns_finite_features_and_zero_loss(
@@ -67,7 +68,7 @@ def test_evaluation_with_prebuilt_encoder_returns_finite_features_and_zero_loss(
     with torch.no_grad():
         output = (
             model(images=images)
-            if name in ("DINO", "DINOv2", "DINOv3", "iBOT", "SwAV")
+            if name in ("DINO", "DINOv2", "DINOv3", "iBOT", "SwAV", "SimDINOv2")
             else model(images)
         )
     assert output.embedding.shape == (2, 24)
@@ -76,15 +77,19 @@ def test_evaluation_with_prebuilt_encoder_returns_finite_features_and_zero_loss(
     assert not output.embedding.requires_grad
 
 
-@pytest.mark.parametrize("name", ["DINO", "DINOv2", "DINOv3"])
+@pytest.mark.parametrize("name", ["DINO", "DINOv2", "DINOv3", "SimDINOv2"])
 def test_local_crops_receive_gradients_and_teacher_remains_detached(name):
-    kwargs = (
-        {"n_prototypes": 8}
-        if name == "DINO"
-        else {"n_cls_prototypes": 8, "n_patch_prototypes": 8, "mask_ratio": 0.5}
-    )
-    if name != "DINO":
-        kwargs["image_size"] = 32
+    if name == "DINO":
+        kwargs = {"n_prototypes": 8}
+    elif name in ("DINOv2", "DINOv3"):
+        kwargs = {
+            "n_cls_prototypes": 8,
+            "n_patch_prototypes": 8,
+            "mask_ratio": 0.5,
+            "image_size": 32,
+        }
+    else:
+        kwargs = {"image_size": 32}
     model = getattr(methods, name)(
         encoder_name=_encoder(dynamic_img_size=True), **kwargs
     )
