@@ -1,0 +1,77 @@
+Using device: cuda
+Collecting initial random exploration data...
+Random policy: mean return over 200 steps = -54.3 (+/- 39.1), buffer = 2000
+
+--- Starting Episode 1/15 ---
+Retraining probabilistic ensemble...
+Episode 1 Completed | Steps: 200 | Total Reward: -3.66 | random baseline -54.3
+
+--- Starting Episode 2/15 ---
+  held-out one-step RMSE/std: mean over dims 0.98 | vel (obs[8]) 0.63 | worst dim 5.12
+Retraining probabilistic ensemble...
+Episode 2 Completed | Steps: 200 | Total Reward: -47.32 | random baseline -54.3
+
+--- Starting Episode 3/15 ---
+  held-out one-step RMSE/std: mean over dims 0.32 | vel (obs[8]) 0.28 | worst dim 1.11
+Retraining probabilistic ensemble...
+Episode 3 Completed | Steps: 200 | Total Reward: -24.34 | random baseline -54.3
+
+--- Starting Episode 4/15 ---
+  held-out one-step RMSE/std: mean over dims 0.21 | vel (obs[8]) 0.20 | worst dim 0.48
+Retraining probabilistic ensemble...
+Episode 4 Completed | Steps: 200 | Total Reward: 7.35 | random baseline -54.3
+
+--- Starting Episode 5/15 ---
+  held-out one-step RMSE/std: mean over dims 0.21 | vel (obs[8]) 0.15 | worst dim 0.70
+Retraining probabilistic ensemble...
+Episode 5 Completed | Steps: 200 | Total Reward: 110.32 | random baseline -54.3
+
+--- Starting Episode 6/15 ---
+  held-out one-step RMSE/std: mean over dims 0.22 | vel (obs[8]) 0.15 | worst dim 0.40
+Retraining probabilistic ensemble...
+Episode 6 Completed | Steps: 200 | Total Reward: 24.52 | random baseline -54.3
+
+--- Starting Episode 7/15 ---
+  held-out one-step RMSE/std: mean over dims 0.38 | vel (obs[8]) 0.48 | worst dim 1.13
+Retraining probabilistic ensemble...
+Episode 7 Completed | Steps: 200 | Total Reward: 47.03 | random baseline -54.3
+
+--- Starting Episode 8/15 ---
+  held-out one-step RMSE/std: mean over dims 0.20 | vel (obs[8]) 0.20 | worst dim 0.62
+Retraining probabilistic ensemble...
+Episode 8 Completed | Steps: 200 | Total Reward: 23.54 | random baseline -54.3
+
+--- Starting Episode 9/15 ---
+  held-out one-step RMSE/std: mean over dims 0.25 | vel (obs[8]) 0.34 | worst dim 0.63
+Retraining probabilistic ensemble...
+Episode 9 Completed | Steps: 200 | Total Reward: 22.64 | random baseline -54.3
+
+--- Starting Episode 10/15 ---
+  held-out one-step RMSE/std: mean over dims 0.17 | vel (obs[8]) 0.21 | worst dim 0.45
+Retraining probabilistic ensemble...
+Episode 10 Completed | Steps: 200 | Total Reward: 71.78 | random baseline -54.3
+
+--- Starting Episode 11/15 ---
+  held-out one-step RMSE/std: mean over dims 0.18 | vel (obs[8]) 0.23 | worst dim 0.37
+Retraining probabilistic ensemble...
+Episode 11 Completed | Steps: 200 | Total Reward: 37.72 | random baseline -54.3
+
+--- Starting Episode 12/15 ---
+  held-out one-step RMSE/std: mean over dims 0.19 | vel (obs[8]) 0.24 | worst dim 0.42
+Retraining probabilistic ensemble...
+Episode 12 Completed | Steps: 200 | Total Reward: 34.51 | random baseline -54.3
+
+--- Starting Episode 13/15 ---
+  held-out one-step RMSE/std: mean over dims 0.16 | vel (obs[8]) 0.25 | worst dim 0.36
+Retraining probabilistic ensemble...
+Episode 13 Completed | Steps: 200 | Total Reward: 60.69 | random baseline -54.3
+
+--- Starting Episode 14/15 ---
+  held-out one-step RMSE/std: mean over dims 0.16 | vel (obs[8]) 0.21 | worst dim 0.40
+Retraining probabilistic ensemble...
+Episode 14 Completed | Steps: 200 | Total Reward: 52.05 | random baseline -54.3
+
+--- Starting Episode 15/15 ---
+  held-out one-step RMSE/std: mean over dims 0.16 | vel (obs[8]) 0.21 | worst dim 0.40
+Retraining probabilistic ensemble...
+Episode 15 Completed | Steps: 200 | Total Reward: 103.69 | random baseline -54.3

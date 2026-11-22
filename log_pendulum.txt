@@ -1,0 +1,77 @@
+Using device: cuda
+Collecting initial random exploration data...
+
+--- Starting Episode 1/15 ---
+Retraining probabilistic ensemble...
+start theta = 0.13
+Episode 1 Completed | Steps: 200 | Total Reward: -2.38
+
+--- Starting Episode 2/15 ---
+Retraining probabilistic ensemble...
+start theta = 0.71
+Episode 2 Completed | Steps: 200 | Total Reward: -126.27
+
+--- Starting Episode 3/15 ---
+Retraining probabilistic ensemble...
+start theta = -0.75
+Episode 3 Completed | Steps: 200 | Total Reward: -122.85
+
+--- Starting Episode 4/15 ---
+Retraining probabilistic ensemble...
+start theta = -1.96
+Episode 4 Completed | Steps: 200 | Total Reward: -119.90
+
+--- Starting Episode 5/15 ---
+Retraining probabilistic ensemble...
+start theta = -3.14
+Episode 5 Completed | Steps: 200 | Total Reward: -342.84
+
+--- Starting Episode 6/15 ---
+Retraining probabilistic ensemble...
+start theta = 0.13
+Episode 6 Completed | Steps: 200 | Total Reward: -0.38
+
+--- Starting Episode 7/15 ---
+Retraining probabilistic ensemble...
+start theta = 0.71
+Episode 7 Completed | Steps: 200 | Total Reward: -129.24
+
+--- Starting Episode 8/15 ---
+Retraining probabilistic ensemble...
+start theta = -0.75
+Episode 8 Completed | Steps: 200 | Total Reward: -123.13
+
+--- Starting Episode 9/15 ---
+Retraining probabilistic ensemble...
+start theta = -1.96
+Episode 9 Completed | Steps: 200 | Total Reward: -118.72
+
+--- Starting Episode 10/15 ---
+Retraining probabilistic ensemble...
+start theta = -3.14
+Episode 10 Completed | Steps: 200 | Total Reward: -346.79
+
+--- Starting Episode 11/15 ---
+Retraining probabilistic ensemble...
+start theta = 0.13
+Episode 11 Completed | Steps: 200 | Total Reward: -0.37
+
+--- Starting Episode 12/15 ---
+Retraining probabilistic ensemble...
+start theta = 0.71
+Episode 12 Completed | Steps: 200 | Total Reward: -127.05
+
+--- Starting Episode 13/15 ---
+Retraining probabilistic ensemble...
+start theta = -0.75
+Episode 13 Completed | Steps: 200 | Total Reward: -123.00
+
+--- Starting Episode 14/15 ---
+Retraining probabilistic ensemble...
+start theta = -1.96
+Episode 14 Completed | Steps: 200 | Total Reward: -122.59
+
+--- Starting Episode 15/15 ---
+Retraining probabilistic ensemble...
+start theta = -3.14
+Episode 15 Completed | Steps: 200 | Total Reward: -348.32

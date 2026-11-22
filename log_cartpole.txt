@@ -1,0 +1,62 @@
+Using device: cuda
+Collecting initial random exploration data...
+Random policy: mean return over 200 steps = 0.5 (+/- 0.4), buffer = 1000
+
+--- Starting Episode 1/15 ---
+Episode 1 Completed | Steps: 200 | Total Reward: 3.35 | random baseline 0.5 | 239s
+
+--- Starting Episode 2/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.36 0.52 0.55 0.52 0.25]
+Episode 2 Completed | Steps: 200 | Total Reward: 59.84 | random baseline 0.5 | 290s
+
+--- Starting Episode 3/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.29 0.25 1.01 0.49 0.76]
+Episode 3 Completed | Steps: 200 | Total Reward: 40.33 | random baseline 0.5 | 382s
+
+--- Starting Episode 4/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.27 0.3  1.17 0.5  0.86]
+Episode 4 Completed | Steps: 200 | Total Reward: 119.86 | random baseline 0.5 | 387s
+
+--- Starting Episode 5/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.04 0.04 0.16 0.09 0.23]
+Episode 5 Completed | Steps: 200 | Total Reward: 175.29 | random baseline 0.5 | 390s
+
+--- Starting Episode 6/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.04 0.02 0.09 0.05 0.06]
+Episode 6 Completed | Steps: 200 | Total Reward: 162.00 | random baseline 0.5 | 397s
+
+--- Starting Episode 7/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.02 0.04 0.02 0.03 0.03]
+Episode 7 Completed | Steps: 200 | Total Reward: 176.66 | random baseline 0.5 | 399s
+
+--- Starting Episode 8/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.02 0.01 0.01 0.01 0.01]
+Episode 8 Completed | Steps: 200 | Total Reward: 0.86 | random baseline 0.5 | 405s
+
+--- Starting Episode 9/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.07 0.07 0.03 0.04 0.02]
+Episode 9 Completed | Steps: 200 | Total Reward: 172.74 | random baseline 0.5 | 363s
+
+--- Starting Episode 10/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.01 0.01 0.07 0.02 0.01]
+Episode 10 Completed | Steps: 200 | Total Reward: 162.79 | random baseline 0.5 | 286s
+
+--- Starting Episode 11/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.03 0.01 0.02 0.02 0.01]
+Episode 11 Completed | Steps: 200 | Total Reward: 174.83 | random baseline 0.5 | 188s
+
+--- Starting Episode 12/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.06 0.01 0.02 0.02 0.01]
+Episode 12 Completed | Steps: 200 | Total Reward: 163.28 | random baseline 0.5 | 197s
+
+--- Starting Episode 13/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.02 0.01 0.01 0.01 0.01]
+Episode 13 Completed | Steps: 200 | Total Reward: 172.05 | random baseline 0.5 | 198s
+
+--- Starting Episode 14/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.01 0.01 0.01 0.03 0.01]
+Episode 14 Completed | Steps: 200 | Total Reward: 172.94 | random baseline 0.5 | 200s
+
+--- Starting Episode 15/15 ---
+  held-out one-step RMSE/std per dim [x, x_dot, sin, cos, th_dot]: [0.01 0.   0.02 0.02 0.  ]
+Episode 15 Completed | Steps: 200 | Total Reward: 0.99 | random baseline 0.5 | 201s

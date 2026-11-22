@@ -1,0 +1,61 @@
+Using device: cuda
+Random policy: mean return over 100 steps = -148.9 (+/- 6.4), buffer = 2000, object ever moved in 0/20 episodes
+
+--- Starting Episode 1/15 ---
+Episode 1 Completed | Return: -44.81 | random baseline -148.9 | object moved 0.000 m | 197s
+
+--- Starting Episode 2/15 ---
+  held-out one-step RMSE/std: mean 0.70 | joint vel 0.91 | tip 0.77 | object n/a (static)
+Episode 2 Completed | Return: -42.31 | random baseline -148.9 | object moved 0.000 m | 197s
+
+--- Starting Episode 3/15 ---
+  held-out one-step RMSE/std: mean 0.75 | joint vel 0.87 | tip 1.01 | object n/a (static)
+Episode 3 Completed | Return: -52.09 | random baseline -148.9 | object moved 0.000 m | 195s
+
+--- Starting Episode 4/15 ---
+  held-out one-step RMSE/std: mean 0.59 | joint vel 0.84 | tip 0.86 | object n/a (static)
+Episode 4 Completed | Return: -44.94 | random baseline -148.9 | object moved 0.006 m | 204s
+
+--- Starting Episode 5/15 ---
+  held-out one-step RMSE/std: mean 4.51 | joint vel 0.76 | tip 1.22 | object 36.87
+Episode 5 Completed | Return: -43.09 | random baseline -148.9 | object moved 0.000 m | 199s
+
+--- Starting Episode 6/15 ---
+  held-out one-step RMSE/std: mean 0.77 | joint vel 0.96 | tip 1.36 | object n/a (static)
+Episode 6 Completed | Return: -40.75 | random baseline -148.9 | object moved 0.010 m | 210s
+
+--- Starting Episode 7/15 ---
+  held-out one-step RMSE/std: mean 0.99 | joint vel 0.60 | tip 0.60 | object 5.65
+Episode 7 Completed | Return: -36.14 | random baseline -148.9 | object moved 0.017 m | 201s
+
+--- Starting Episode 8/15 ---
+  held-out one-step RMSE/std: mean 1.45 | joint vel 0.43 | tip 0.49 | object 11.01
+Episode 8 Completed | Return: -38.06 | random baseline -148.9 | object moved 0.000 m | 206s
+
+--- Starting Episode 9/15 ---
+  held-out one-step RMSE/std: mean 0.27 | joint vel 0.36 | tip 0.28 | object n/a (static)
+Episode 9 Completed | Return: -35.32 | random baseline -148.9 | object moved 0.061 m | 209s
+
+--- Starting Episode 10/15 ---
+  held-out one-step RMSE/std: mean 0.47 | joint vel 0.41 | tip 0.41 | object 1.85
+Episode 10 Completed | Return: -40.38 | random baseline -148.9 | object moved 0.041 m | 210s
+
+--- Starting Episode 11/15 ---
+  held-out one-step RMSE/std: mean 0.79 | joint vel 0.31 | tip 0.34 | object 5.38
+Episode 11 Completed | Return: -44.28 | random baseline -148.9 | object moved 0.013 m | 214s
+
+--- Starting Episode 12/15 ---
+  held-out one-step RMSE/std: mean 1.12 | joint vel 0.37 | tip 0.38 | object 8.41
+Episode 12 Completed | Return: -38.00 | random baseline -148.9 | object moved 0.073 m | 213s
+
+--- Starting Episode 13/15 ---
+  held-out one-step RMSE/std: mean 0.59 | joint vel 0.43 | tip 0.34 | object 3.07
+Episode 13 Completed | Return: -34.92 | random baseline -148.9 | object moved 0.042 m | 185s
+
+--- Starting Episode 14/15 ---
+  held-out one-step RMSE/std: mean 0.42 | joint vel 0.34 | tip 0.22 | object 2.18
+Episode 14 Completed | Return: -37.06 | random baseline -148.9 | object moved 0.034 m | 156s
+
+--- Starting Episode 15/15 ---
+  held-out one-step RMSE/std: mean 0.45 | joint vel 0.29 | tip 0.22 | object 2.53
+Episode 15 Completed | Return: -31.86 | random baseline -148.9 | object moved 0.045 m | 153s

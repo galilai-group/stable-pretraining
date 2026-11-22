@@ -179,3 +179,12 @@ Version 0.1
 - RankMe, LiDAR metrics to monitor training.
 - Examples of extracting run data from WandB and utilizing it to create figures.
 - Fixed a bug in the logging functionality.
+
+
+* **Added PETS (Probabilistic Ensembles with Trajectory Sampling)**:
+  Implemented a model-based reinforcement learning planner in `stable-pretraining`, featuring:
+
+  - A probabilistic ensemble dynamics model (`probabilistic_ensembles.py`) with bootstrapped Gaussian MLPs and learnable variance bounds.
+  - Trajectory sampling particle propagation (`propogation_ts.py`).
+  - A Cross-Entropy Method (CEM) MPC optimizer (`cem_optim.py`).
+  - Training and experiment scripts for Cartpole, HalfCheetah, and Pusher.
