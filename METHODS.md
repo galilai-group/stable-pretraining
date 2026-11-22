@@ -38,6 +38,7 @@ Methods come in two forms:
 | MIMRefiner | — | `MIMRefiner` | `DINOv1Loss`, `iBOTPatchLoss` | — | [Lehner et al., 2024](https://arxiv.org/abs/2402.10093) |
 | MoCov2 | — | `MoCov2` | `NTXEntLoss` | — | [Chen et al., 2020](https://arxiv.org/abs/2003.04297) |
 | MoCov3 | — | `MoCov3` | `NTXEntLoss` | — | [Chen et al., 2021](https://arxiv.org/abs/2104.02057) |
+| PCL | — | `PCL` | `ProtoNCELoss` (plus instance InfoNCE) | `TeacherStudentCallback`, `PCLClusteringCallback` | [Li et al., 2021](https://arxiv.org/abs/2005.04966) |
 | MSN | — | `MSN` | — | — | [Assran et al., 2022](https://arxiv.org/abs/2204.07141) |
 | NEPA | — | `NEPA` | — | — | — |
 | PIRL | — | `PIRL` | — | — | [Misra & van der Maaten, 2020](https://arxiv.org/abs/1912.01991) |
