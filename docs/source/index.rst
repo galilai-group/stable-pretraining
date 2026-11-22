@@ -24,6 +24,7 @@
     guides/resume
     guides/jet
     guides/agents
+    flip
     cache_dir
     cli
 

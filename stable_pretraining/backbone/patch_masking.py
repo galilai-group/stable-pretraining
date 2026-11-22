@@ -383,7 +383,7 @@ class PatchMasking(nn.Module):
         noise = torch.rand(B, N, device=device)
 
         # Apply crop masking where selected
-        if use_crop.any():
+        if self.crop_ratio > 0 and use_crop.any():
             crop_noise = self._generate_crop_noise(B, grid_h, grid_w, num_keep, device)
             noise = torch.where(use_crop.view(B, 1), crop_noise, noise)
 

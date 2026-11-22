@@ -4,6 +4,11 @@ Unreleased
 
 **New method**
 
+- ``FLIP``: image-text contrastive learning with image patches removed before
+  transformer attention. Provides ``spt.FLIP`` and ``spt.forward.flip``, reuses
+  ``MaskedEncoder`` and ``CLIPLoss``, and accepts an independent text encoder.
+  Includes a reduced-scale COCO 2017 training/retrieval example and masking,
+  gradient, checkpoint, and distributed tests.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

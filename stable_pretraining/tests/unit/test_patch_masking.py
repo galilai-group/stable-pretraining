@@ -10,6 +10,19 @@ from stable_pretraining.backbone.patch_masking import MaskingOutput
 
 pytestmark = pytest.mark.unit
 
+
+def test_random_masking_does_not_read_tensor_values_on_host():
+    masking = PatchMasking(mask_ratio=0.5)
+    x = torch.randn(2, 16, 8)
+    with torch.profiler.profile(
+        activities=[torch.profiler.ProfilerActivity.CPU]
+    ) as profile:
+        masking(x, grid_h=4, grid_w=4)
+    assert "aten::_local_scalar_dense" not in {
+        event.key for event in profile.key_averages()
+    }
+
+
 # =============================================================================
 # Fixtures
 # =============================================================================
