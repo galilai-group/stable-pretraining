@@ -178,7 +178,7 @@ data:
               - _target_: stable_pretraining.data.transforms.RandomGrayscale
                 p: 0.2
               - _target_: stable_pretraining.data.transforms.RandomSolarize
-                threshold: 0.5
+                threshold: 128
                 p: 0.2
               - _target_: stable_pretraining.data.transforms.ToImage
                 mean: [0.485, 0.456, 0.406]
