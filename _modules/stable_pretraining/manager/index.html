@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+gab836bf69 documentation</title>
+    <title>stable_pretraining.manager &#8212; stable-pretraining 0.1.dev1+ge10d4279c documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
-    <script src="../../../_static/documentation_options.js?v=6f67d992"></script>
+    <script src="../../../_static/documentation_options.js?v=efe9d119"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -176,7 +176,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gab836bf69 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+ge10d4279c documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -1046,7 +1046,9 @@
         <span class="c1"># Flips to True if `_resolve_run_dir` detects the "SLURM says</span>
         <span class="c1"># requeue but no index exists" early-preempt scenario and falls</span>
         <span class="c1"># back to fresh-run resolution. `_resolve_load_path` reads it so</span>
-        <span class="c1"># it doesn't insist on a non-existent ``last.ckpt``.</span>
+        <span class="c1"># it doesn't insist on a non-existent ``last.ckpt``. Non-zero DDP</span>
+        <span class="c1"># ranks copy rank-0's value from the handoff record: every rank</span>
+        <span class="c1"># must resolve the same load path.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_early_preempt_fallback</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">compile</span> <span class="o">=</span> <span class="nb">compile</span>
@@ -1327,6 +1329,10 @@
                 <span class="n">log_header</span><span class="p">(</span><span class="sa">f</span><span class="s2">"RunDirectory (rank </span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">, adopted from rank-0)"</span><span class="p">)</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  run_dir: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  run_id:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"  early_preempt_fallback: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_early_preempt_fallback</span><span class="si">}</span><span class="s2"> "</span>
+                    <span class="s2">"(rank-0's decision)"</span>
+                <span class="p">)</span>
                 <span class="c1"># Non-rank-0 doesn't write the index (rank-0 owns that); we</span>
                 <span class="c1"># just record what we adopted.</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_dir</span>
@@ -1656,12 +1662,23 @@
 <span class="sd">        Atomic via temp+``replace`` so a rank-N reader never observes a</span>
 <span class="sd">        partially-written file. The target path is naturally idempotent: if a</span>
 <span class="sd">        previous launch with the same key crashed, this rewrite stomps it.</span>
+
+<span class="sd">        The JSON record also carries rank-0's early-preempt decision and the</span>
+<span class="sd">        ``SLURM_RESTART_COUNT`` it was made under. Non-zero ranks copy that</span>
+<span class="sd">        decision rather than re-deriving it from what *they* see on disk: a</span>
+<span class="sd">        rank that decided alone could start fresh while rank-0 resumes, and</span>
+<span class="sd">        DDP only syncs weights, not optimizer, scheduler or step state.</span>
 <span class="sd">        """</span>
         <span class="n">handoff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handoff_path</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">)</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"run_dir"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">),</span>
+            <span class="s2">"restart_count"</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"SLURM_RESTART_COUNT"</span><span class="p">,</span> <span class="s2">"0"</span><span class="p">),</span>
+            <span class="s2">"early_preempt_fallback"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_early_preempt_fallback</span><span class="p">,</span>
+        <span class="p">}</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">handoff</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="n">tmp</span> <span class="o">=</span> <span class="n">handoff</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="n">handoff</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">".tmp"</span><span class="p">)</span>
-            <span class="n">tmp</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">run_dir</span><span class="p">))</span>
+            <span class="n">tmp</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">record</span><span class="p">))</span>
             <span class="n">tmp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">handoff</span><span class="p">)</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  rank-0 published handoff → </span><span class="si">{</span><span class="n">handoff</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
@@ -1672,22 +1689,37 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">"""Block (poll) until rank-0 has published a usable ``run_dir``.</span>
 
-<span class="sd">        Returns the published path, or ``None`` on timeout. The validity check</span>
+<span class="sd">        Returns the published path, or ``None`` on timeout, and adopts</span>
+<span class="sd">        rank-0's ``_early_preempt_fallback`` with it. The validity check</span>
 <span class="sd">        (``is_dir()``) means rank-N never adopts a dangling pointer left over</span>
-<span class="sd">        from a stale prior launch with the same key.</span>
+<span class="sd">        from a stale prior launch with the same key, and the restart-count</span>
+<span class="sd">        check that it never adopts the record of an earlier attempt of the</span>
+<span class="sd">        same SLURM job, which shares the launch key.</span>
 <span class="sd">        """</span>
         <span class="n">handoff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handoff_path</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="n">launch_key</span><span class="p">)</span>
+        <span class="n">restart_count</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"SLURM_RESTART_COUNT"</span><span class="p">,</span> <span class="s2">"0"</span><span class="p">)</span>
         <span class="n">deadline</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">+</span> <span class="n">_RANK_HANDOFF_TIMEOUT_S</span>
         <span class="n">logged_waiting</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">while</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">deadline</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">handoff</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-                    <span class="n">candidate</span> <span class="o">=</span> <span class="n">handoff</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                    <span class="k">if</span> <span class="n">candidate</span> <span class="ow">and</span> <span class="n">Path</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                    <span class="n">record</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">handoff</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+                    <span class="n">candidate</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"run_dir"</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="p">(</span>
+                        <span class="n">candidate</span>
+                        <span class="ow">and</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"restart_count"</span><span class="p">)</span> <span class="o">==</span> <span class="n">restart_count</span>
+                        <span class="ow">and</span> <span class="n">Path</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
+                    <span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_early_preempt_fallback</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span>
+                            <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"early_preempt_fallback"</span><span class="p">)</span>
+                        <span class="p">)</span>
                         <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span>
-                    <span class="c1"># Pointer present but invalid (rank-0 still mid-write or</span>
-                    <span class="c1"># stale crashed launch). Keep polling — rank-0 may rewrite.</span>
-            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                    <span class="c1"># Record present but unusable (rank-0 still mid-write, stale</span>
+                    <span class="c1"># crashed launch, or an earlier attempt of this job). Keep</span>
+                    <span class="c1"># polling — rank-0 rewrites it for this attempt.</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
                 <span class="k">pass</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">logged_waiting</span><span class="p">:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>

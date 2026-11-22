@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>random_split &#8212; stable-pretraining 0.1.dev1+gab836bf69 documentation</title>
+    <title>random_split &#8212; stable-pretraining 0.1.dev1+ge10d4279c documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
-    <script src="../../../_static/documentation_options.js?v=6f67d992"></script>
+    <script src="../../../_static/documentation_options.js?v=efe9d119"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -181,7 +181,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gab836bf69 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+ge10d4279c documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -510,7 +510,7 @@
 <h1>random_split<a class="headerlink" href="#random-split" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="stable_pretraining.data.random_split">
-<span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">random_split</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">dataset:</span> <span class="pre">~stable_pretraining.data.datasets.Dataset,</span> <span class="pre">lengths:</span> <span class="pre">~collections.abc.Sequence[int</span> <span class="pre">|</span> <span class="pre">float],</span> <span class="pre">generator:</span> <span class="pre">~torch._C.Generator</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;torch._C.Generator</span> <span class="pre">object&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../stable_pretraining.data.Subset/#stable_pretraining.data.Subset" title="stable_pretraining.data.datasets.Subset"><span class="pre">Subset</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/stable_pretraining/data/utils/#random_split"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.random_split" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">stable_pretraining.data.</span></span><span class="sig-name descname"><span class="pre">random_split</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">dataset:</span> <span class="pre">~stable_pretraining.data.datasets.Dataset,</span> <span class="pre">lengths:</span> <span class="pre">~collections.abc.Sequence[int</span> <span class="pre">|</span> <span class="pre">float],</span> <span class="pre">generator:</span> <span class="pre">~torch._C.Generator</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;torch._C.Generator</span> <span class="pre">object&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../stable_pretraining.data.Subset/#stable_pretraining.data.Subset" title="stable_pretraining.data.datasets.Subset"><span class="pre">Subset</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/stable_pretraining/data/utils/#random_split"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stable_pretraining.data.random_split" title="Link to this definition">#</a></dt>
 <dd><p>Randomly split a dataset into non-overlapping new datasets of given lengths.</p>
 <p>If a list of fractions that sum up to 1 is given,
 the lengths will be computed automatically as
@@ -536,7 +536,7 @@ until there are no remainders left.</p>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If lengths are invalid fractions, are not non-negative
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – If lengths are invalid fractions, are not non-negative
     integers, or do not cover the dataset.</p>
 </dd>
 </dl>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+gab836bf69 documentation</title>
+    <title>stable-pretraining &#8212; stable-pretraining 0.1.dev1+ge10d4279c documentation</title>
   
   
   
@@ -43,7 +43,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
-    <script src="_static/documentation_options.js?v=6f67d992"></script>
+    <script src="_static/documentation_options.js?v=efe9d119"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/sg-tags.js?v=d80f6fa4"></script>
@@ -182,7 +182,7 @@
   
   
   
-    <p class="title logo__title">stable-pretraining 0.1.dev1+gab836bf69 documentation</p>
+    <p class="title logo__title">stable-pretraining 0.1.dev1+ge10d4279c documentation</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -524,7 +524,7 @@
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#global-configuration">Global Configuration</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#output-directory-cache-dir">Output Directory (<code class="docutils literal notranslate"><span class="pre">cache_dir</span></code>)</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#output-directory-cache_dir">Output Directory (<code class="docutils literal notranslate"><span class="pre">cache_dir</span></code>)</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#enabling-cache-dir">Enabling <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-the-run-id-is-generated">How the run ID is generated</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ckpt-path-is-for-loading-only"><code class="docutils literal notranslate"><span class="pre">ckpt_path</span></code> is for loading only</a></li>
@@ -655,7 +655,7 @@ For an editable experiment, copy <a class="reference external" href="https://git
 <p><a id="30s-tour"></a></p>
 </section>
 <section id="second-tour">
-<h2>30-second tour<a class="headerlink" href="#second-tour" title="Link to this heading">#</a></h2>
+<span id="30-second-tour"></span><h2>30-second tour<a class="headerlink" href="#second-tour" title="Link to this heading">#</a></h2>
 <p>The <a class="reference external" href="https://github.com/galilai-group/stable-pretraining/blob/main/stable_pretraining/quickstart.py">quickstart source</a> is an executable
 example tested through the same <code class="docutils literal notranslate"><span class="pre">Module</span></code>, <code class="docutils literal notranslate"><span class="pre">DataModule</span></code>, <code class="docutils literal notranslate"><span class="pre">OnlineProbe</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">Manager</span></code> interfaces used for larger runs:</p>
@@ -743,7 +743,7 @@ callbacks. Contributions welcome.</p>
 <p><code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code> simplifies complex ML workflows into 4 intuitive components:</p>
 <p><a id="data"></a></p>
 <section id="data">
-<h3>1 - Data<a class="headerlink" href="#data" title="Link to this heading">#</a></h3>
+<span id="1---data"></span><h3>1 - Data<a class="headerlink" href="#data" title="Link to this heading">#</a></h3>
 <p>Your dataset must follow a dictionary-structured format where each sample is a dictionary with named fields (e.g., <code class="docutils literal notranslate"><span class="pre">{&quot;image&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;label&quot;:</span> <span class="pre">...}</span></code>). This ensures consistent behavior across all components. You have multiple options for creating datasets:</p>
 <ul class="simple">
 <li><p><strong>HuggingFace datasets</strong> (if available on the Hub):</p></li>
@@ -910,7 +910,7 @@ DataLoader workers never serialise the nn.Module.</p>
 </section>
 </section>
 <section id="module">
-<h3>2 - Module<a class="headerlink" href="#module" title="Link to this heading">#</a></h3>
+<span id="2---module"></span><h3>2 - Module<a class="headerlink" href="#module" title="Link to this heading">#</a></h3>
 <p>The key differentiator from PyTorch Lightning - <strong>you only define the <code class="docutils literal notranslate"><span class="pre">forward</span></code> function</strong>, not <code class="docutils literal notranslate"><span class="pre">training_step</span></code>! This unified approach computes losses and generates useful quantities that can be retrieved for monitoring and analysis:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use the pre-built forward functions from stable_pretraining</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="kn">import</span> <span class="n">forward</span>
@@ -958,7 +958,7 @@ DataLoader workers never serialise the nn.Module.</p>
 <p><a id="callbacks"></a></p>
 </section>
 <section id="callbacks">
-<h3>3 - Callbacks<a class="headerlink" href="#callbacks" title="Link to this heading">#</a></h3>
+<span id="3---callbacks"></span><h3>3 - Callbacks<a class="headerlink" href="#callbacks" title="Link to this heading">#</a></h3>
 <p>Monitor and evaluate your models in real-time during training. Callbacks are key ingredients of <code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code>, providing rich insights without interrupting your training flow.</p>
 <section id="evaluation-monitoring">
 <h4>Evaluation &amp; Monitoring<a class="headerlink" href="#evaluation-monitoring" title="Link to this heading">#</a></h4>
@@ -1114,7 +1114,7 @@ DataLoader workers never serialise the nn.Module.</p>
 </section>
 </section>
 <section id="trainer">
-<h3>4 - Trainer<a class="headerlink" href="#trainer" title="Link to this heading">#</a></h3>
+<span id="4---trainer"></span><h3>4 - Trainer<a class="headerlink" href="#trainer" title="Link to this heading">#</a></h3>
 <p>Orchestrate everything together with PyTorch Lightning’s <code class="docutils literal notranslate"><span class="pre">Trainer</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span>
     <span class="n">max_epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
@@ -1131,7 +1131,7 @@ DataLoader workers never serialise the nn.Module.</p>
 <p>Once configured, the <code class="docutils literal notranslate"><span class="pre">Manager</span></code> connects all components and handles the training loop with precise logging and monitoring (optional).</p>
 </section>
 <section id="sharded-training-fsdp2-deepspeed">
-<h3>Sharded training: FSDP2 &amp; DeepSpeed<a class="headerlink" href="#sharded-training-fsdp2-deepspeed" title="Link to this heading">#</a></h3>
+<span id="sharded-training-fsdp2--deepspeed"></span><h3>Sharded training: FSDP2 &amp; DeepSpeed<a class="headerlink" href="#sharded-training-fsdp2-deepspeed" title="Link to this heading">#</a></h3>
 <p>For large models, shard parameters/gradients/optimizer state across GPUs by flipping a single trainer switch — no changes to your method, forward, or model. <strong>FSDP2</strong> (<code class="docutils literal notranslate"><span class="pre">strategy=&quot;fsdp2&quot;</span></code>) is the recommended path: it supports the full library (including teacher/student EMA and the online-probe callbacks) and is verified numerically equivalent to DDP. <strong>DeepSpeed</strong> ZeRO-3 (<code class="docutils literal notranslate"><span class="pre">strategy=&quot;deepspeed_stage_3&quot;</span></code>, install <code class="docutils literal notranslate"><span class="pre">&quot;.[deepspeed]&quot;</span></code>) is <em>partially</em> supported — single-optimizer methods only; it hard-errors with multiple optimizers, so it can’t be used with EMA methods or the online probes (use FSDP2 there). See <a class="reference internal" href="#docs/source/fsdp2.rst"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">docs/source/fsdp2.rst</span></code></span></a>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s2">"fsdp2"</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="s2">"bf16-mixed"</span><span class="p">,</span> <span class="n">accelerator</span><span class="o">=</span><span class="s2">"gpu"</span><span class="p">,</span> <span class="n">devices</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
 </pre></div>
@@ -1277,8 +1277,8 @@ DataLoader workers never serialise the nn.Module.</p>
 <p>Settings apply immediately and persist for the process lifetime. <code class="docutils literal notranslate"><span class="pre">spt.set()</span></code> can be called multiple times; only the settings you pass are updated.</p>
 <p><a id="output-directory"></a></p>
 </section>
-<section id="output-directory-cache-dir">
-<span id="id1"></span><h2>Output Directory (<code class="docutils literal notranslate"><span class="pre">cache_dir</span></code>)<a class="headerlink" href="#output-directory-cache-dir" title="Link to this heading">#</a></h2>
+<section id="output-directory-cache_dir">
+<span id="output-directory-cache-dir"></span><span id="id1"></span><h2>Output Directory (<code class="docutils literal notranslate"><span class="pre">cache_dir</span></code>)<a class="headerlink" href="#output-directory-cache_dir" title="Link to this heading">#</a></h2>
 <p>By default, Lightning and Hydra scatter training outputs (checkpoints, logs, wandb data) based on the current working directory or Hydra’s <code class="docutils literal notranslate"><span class="pre">run.dir</span></code>. This causes collisions when multiple sweep jobs start at the same time and resolve to the same path.</p>
 <p><code class="docutils literal notranslate"><span class="pre">stable-pretraining</span></code> solves this with a centralized <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code>. When set, <strong>every run gets its own unique directory</strong> and all outputs are routed there automatically:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>{cache_dir}/runs/{YYYYMMDD}/{HHMMSS}/{run_id}/
@@ -1290,7 +1290,7 @@ DataLoader workers never serialise the nn.Module.</p>
 </pre></div>
 </div>
 <section id="enabling-cache-dir">
-<h3>Enabling <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code><a class="headerlink" href="#enabling-cache-dir" title="Link to this heading">#</a></h3>
+<span id="enabling-cache_dir"></span><h3>Enabling <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code><a class="headerlink" href="#enabling-cache-dir" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">stable_pretraining</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">spt</span>
 
 <span class="c1"># Option 1: in Python</span>
@@ -1346,7 +1346,7 @@ DataLoader workers never serialise the nn.Module.</p>
 </div>
 </section>
 <section id="ckpt-path-is-for-loading-only">
-<h3><code class="docutils literal notranslate"><span class="pre">ckpt_path</span></code> is for loading only<a class="headerlink" href="#ckpt-path-is-for-loading-only" title="Link to this heading">#</a></h3>
+<span id="ckpt_path-is-for-loading-only"></span><h3><code class="docutils literal notranslate"><span class="pre">ckpt_path</span></code> is for loading only<a class="headerlink" href="#ckpt-path-is-for-loading-only" title="Link to this heading">#</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">ckpt_path</span></code> and <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code> serve different purposes:</p>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">ckpt_path</span></code></strong> = where to <strong>load</strong> weights from (one-time, read-only).</p></li>
@@ -1583,7 +1583,7 @@ spt<span class="w"> </span>registry<span class="w"> </span>migrate<span class="w
 <p><a id="optimizers-schedulers"></a></p>
 </section>
 <section id="optimizers-schedulers">
-<h2>Optimizers &amp; Schedulers<a class="headerlink" href="#optimizers-schedulers" title="Link to this heading">#</a></h2>
+<span id="optimizers--schedulers"></span><h2>Optimizers &amp; Schedulers<a class="headerlink" href="#optimizers-schedulers" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Component</p></th>
@@ -1921,7 +1921,7 @@ PY
 <p><a id="benchmarks"></a></p>
 </section>
 <section id="benchmarks-imagenette-vit-s-16-200-epochs">
-<h2>Benchmarks — Imagenette ViT-S/16, 200 epochs<a class="headerlink" href="#benchmarks-imagenette-vit-s-16-200-epochs" title="Link to this heading">#</a></h2>
+<span id="benchmarks--imagenette-vit-s16-200-epochs"></span><h2>Benchmarks — Imagenette ViT-S/16, 200 epochs<a class="headerlink" href="#benchmarks-imagenette-vit-s-16-200-epochs" title="Link to this heading">#</a></h2>
 <blockquote>
 <div><p><strong>Caveat.</strong> These are <strong>out-of-the-box</strong> results on Imagenette
 (10-class subset of ImageNet, 224×224) at 200 epochs with ViT-S/16,
@@ -2195,7 +2195,7 @@ loading, <code class="docutils literal notranslate"><span class="pre">Module</sp
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#global-configuration">Global Configuration</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#output-directory-cache-dir">Output Directory (<code class="docutils literal notranslate"><span class="pre">cache_dir</span></code>)</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#output-directory-cache_dir">Output Directory (<code class="docutils literal notranslate"><span class="pre">cache_dir</span></code>)</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#enabling-cache-dir">Enabling <code class="docutils literal notranslate"><span class="pre">cache_dir</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-the-run-id-is-generated">How the run ID is generated</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ckpt-path-is-for-loading-only"><code class="docutils literal notranslate"><span class="pre">ckpt_path</span></code> is for loading only</a></li>
