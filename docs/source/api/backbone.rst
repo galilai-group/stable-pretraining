@@ -36,4 +36,5 @@ Specialized Modules
    :template: myclass_template.rst
 
    TeacherStudentWrapper
+   DirectPredictor
    EvalOnly

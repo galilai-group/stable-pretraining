@@ -8,6 +8,7 @@ Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
     - ``byol`` — BYOL momentum self-distillation
+    - ``directpred`` — DirectPred, BYOL with a directly set linear predictor
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
     - ``swav`` — SwAV online clustering
@@ -373,6 +374,122 @@ def byol(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         with torch.no_grad():
             target_only_features = self.backbone.forward_teacher(images)
         out["embedding"] = target_only_features.detach()
+
+    return out
+
+
+def directpred(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for DirectPred (BYOL with a directly set predictor).
+
+    DirectPred trains like BYOL (online network, EMA target network, symmetric
+    normalized MSE), but its linear predictor is not learned: it is set in
+    closed form from a running correlation estimate of the online projections,
+    sharing its eigenvectors with square-root eigenvalues. After the
+    predictions of a step are computed, the predictor is refreshed with that
+    step's projections and the new weight is used from the next step on.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: TeacherStudentWrapper for feature extraction
+            - projector: TeacherStudentWrapper for projection head
+            - predictor: :class:`~stable_pretraining.backbone.DirectPredictor`
+            - byol_loss: BYOL loss function
+        batch: Either a list of view dicts (from MultiViewTransform) or
+            a single dict (for validation/single-view)
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Feature representations from teacher backbone
+            - 'loss': DirectPred (BYOL) loss (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in :cite:`tian2021understanding`. Like BYOL, it requires
+        the ``TeacherStudentCallback`` to update the EMA target network.
+
+    Example:
+        ::
+
+            import stable_pretraining as spt
+            from stable_pretraining.forward import directpred
+
+            module = spt.Module(
+                forward=directpred,
+                backbone=spt.backbone.TeacherStudentWrapper(backbone),
+                projector=spt.backbone.TeacherStudentWrapper(projector),
+                predictor=spt.backbone.DirectPredictor(128, rho=0.3, eps=0.1),
+                byol_loss=spt.losses.BYOLLoss(),
+                optim={"optimizer": {"type": "SGD", "lr": 0.03, "momentum": 0.9}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is not None:
+        # Multi-view training - DirectPred requires exactly 2 views
+        if len(views) != 2:
+            raise ValueError(
+                f"DirectPred requires exactly 2 views, got {len(views)}. "
+                "For other configurations, please implement a custom forward function."
+            )
+
+        images = [view["image"] for view in views]
+
+        # Concatenate labels for callbacks
+        if "label" in views[0]:
+            out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+        if not self.training:
+            with torch.no_grad():
+                target_only_features = self.backbone.forward_teacher(
+                    torch.cat(images, dim=0)
+                )
+            return {"embedding": target_only_features.detach(), **out}
+
+        # Online network: backbone -> projector -> directly set predictor
+        online_features = [self.backbone.forward_student(img) for img in images]
+        online_proj = [self.projector.forward_student(feat) for feat in online_features]
+        online_pred = [self.predictor(proj) for proj in online_proj]
+
+        # Target network (EMA, no gradient)
+        with torch.no_grad():
+            target_features = [self.backbone.forward_teacher(img) for img in images]
+            target_proj = [
+                self.projector.forward_teacher(feat) for feat in target_features
+            ]
+
+        if not hasattr(self, "byol_loss"):
+            raise ValueError(
+                "directpred requires 'byol_loss' to be provided (e.g., spt.losses.BYOLLoss()). "
+                "Pass it when constructing the Module: Module(..., byol_loss=spt.losses.BYOLLoss(), ...)"
+            )
+
+        loss = (
+            self.byol_loss(online_pred[0], target_proj[1])
+            + self.byol_loss(online_pred[1], target_proj[0])
+        ) / 2
+
+        # Refresh the predictor from this step's projections (used next step)
+        self.predictor.update(torch.cat(online_proj, dim=0))
+
+        out["embedding"] = torch.cat(target_features, dim=0).detach()
+        out["loss"] = loss
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            prog_bar=True,
+        )
+
+    else:
+        # Single-view validation
+        if "label" in batch:
+            out["label"] = batch["label"]
+        with torch.no_grad():
+            out["embedding"] = self.backbone.forward_teacher(batch["image"]).detach()
 
     return out
 

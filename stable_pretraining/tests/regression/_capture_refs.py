@@ -102,6 +102,17 @@ METHODS = {
         ),
         data=make_data(True),
     ),
+    "directpred": lambda: dict(
+        module=spt.Module(
+            backbone=spt.backbone.TeacherStudentWrapper(make_backbone()),
+            projector=spt.backbone.TeacherStudentWrapper(make_projector()),
+            predictor=spt.backbone.DirectPredictor(PROJ_DIM),
+            forward=forward.directpred,
+            byol_loss=losses.BYOLLoss(),
+            optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+        ),
+        data=make_data(True),
+    ),
     "vicreg": lambda: dict(
         module=spt.Module(
             backbone=make_backbone(),
