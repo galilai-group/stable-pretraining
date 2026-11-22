@@ -7,6 +7,7 @@ logic for each method and can be specified in YAML configs or Python code.
 Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
+    - ``bayesncl`` — Bayesian gated nonnegative contrastive learning
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
@@ -40,8 +41,10 @@ Example:
 from typing import Any
 
 import torch
+import torch.nn.functional as F
 
 from .callbacks.queue import find_or_create_queue_callback, OnlineQueue
+from .losses.bayesncl import straight_through_gate
 
 
 def _get_views_list(batch: dict):
@@ -253,6 +256,113 @@ def simclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         if "label" in batch:
             out["label"] = batch["label"]
 
+    return out
+
+
+def bayesncl(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for BayesNCL.
+
+    BayesNCL learns nonnegative representations with binary feature gates and
+    a contrastive objective regularized by a Bernoulli KL penalty.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: Feature extraction network
+            - projector: Projection head mapping features to latent space
+            - gating_head: Head predicting binary feature gate probabilities
+            - bayesncl_loss: Contrastive loss with Bernoulli KL regularization
+            - gate_temperature: Sigmoid temperature for the feature gates
+            - gate_threshold: Probability threshold for opening a gate
+        batch: Dictionary of two views (from MultiViewTransform), each containing
+            'image' and optionally 'label', or a single image dictionary for evaluation
+        stage: Runtime stage name used as the logging prefix.
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Feature representations from backbone
+            - 'loss': Contrastive loss plus weighted KL penalty (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+            - 'projection': Normalized gated projections (during training only)
+            - 'gate_probabilities': Sigmoid gate probabilities (during training only)
+
+        Multi-view embeddings, labels, projections, and gate probabilities are
+        concatenated in view order.
+
+    Note:
+        Follows the reference's default STE and rep_relu configuration. The
+        nonnegative projection uses ReLU values with GELU gradients. Gates
+        receive detached encoder features. Both views must have the same size.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+
+            backbone = spt.backbone.from_torchvision("resnet50")
+            module = spt.Module(
+                forward=spt.forward.bayesncl,
+                backbone=backbone,
+                projector=torch.nn.Sequential(
+                    torch.nn.Linear(2048, 2048),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(2048, 256),
+                ),
+                gating_head=torch.nn.Sequential(
+                    torch.nn.Linear(2048, 2048),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(2048, 256),
+                ),
+                bayesncl_loss=spt.losses.BayesNCLLoss(),
+                gate_temperature=1.0,
+                gate_threshold=0.5,
+                optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is None:
+        out["embedding"] = self.backbone(batch["image"])
+        if "label" in batch:
+            out["label"] = batch["label"]
+        return out
+
+    if len(views) != 2:
+        raise ValueError(f"BayesNCL requires exactly 2 views, got {len(views)}")
+    if views[0]["image"].size(0) != views[1]["image"].size(0):
+        raise ValueError("BayesNCL views must have matching batch sizes")
+
+    embeddings = torch.cat([self.backbone(view["image"]) for view in views], dim=0)
+    out["embedding"] = embeddings
+    if "label" in views[0]:
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+    if self.training:
+        projected = self.projector(embeddings)
+        smooth = F.gelu(projected)
+        nonnegative = F.relu(projected).detach() + (smooth - smooth.detach())
+        projections = F.normalize(nonnegative, dim=-1)
+        gates, probabilities = straight_through_gate(
+            self.gating_head(embeddings.detach()),
+            temperature=self.gate_temperature,
+            threshold=self.gate_threshold,
+        )
+        projections = F.normalize(projections * gates.float(), dim=-1)
+        z_i, z_j = projections.chunk(2)
+        p_i, p_j = probabilities.chunk(2)
+        out["projection"] = projections
+        out["gate_probabilities"] = probabilities
+        out["loss"] = self.bayesncl_loss(z_i, z_j, p_i, p_j)
+        if self._trainer is not None:
+            self.log(
+                f"{stage}/loss",
+                out["loss"],
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+                batch_size=views[0]["image"].size(0),
+            )
     return out
 
 
