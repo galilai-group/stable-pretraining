@@ -658,3 +658,53 @@ def w_clip_crossgpu_matches_global(rank, world_size):
 
     ref = _ref_clip_global(feats_i_global, feats_j_global, 0.07)
     assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+# ---------------------------------------------------------------------------
+# RotNet
+# ---------------------------------------------------------------------------
+
+
+def _tiny_rotnet(seed: int):
+    """A 3-block NIN RotNet with weights fixed by ``seed``."""
+    from stable_pretraining.methods import RotNet
+
+    torch.manual_seed(seed)
+    return RotNet(encoder_name="nin", num_blocks=3, feature_block=2)
+
+
+def _rotnet_images(seed: int, n: int) -> torch.Tensor:
+    """``n`` random 16x16 RGB images drawn from ``seed``."""
+    g = torch.Generator().manual_seed(seed)
+    return torch.randn(n, 3, 16, 16, generator=g)
+
+
+def w_rotnet_ddp_step_keeps_ranks_in_sync(rank, world_size):
+    """A DDP-wrapped RotNet step leaves identical parameters on every rank.
+
+    Each rank rotates a different local batch; after backward + optimizer step
+    the gradient all-reduce must have kept the replicas in lockstep, and every
+    parameter (backbone and rotation head) must have received a gradient so
+    DDP's reducer never waits on an unused one.
+    """
+    from torch.nn.parallel import DistributedDataParallel
+
+    from stable_pretraining.utils import all_gather
+
+    model = _tiny_rotnet(seed=0).train()
+    ddp = DistributedDataParallel(model)
+    opt = torch.optim.SGD(model.parameters(), lr=0.1)
+
+    out = ddp(_rotnet_images(seed=rank + 1, n=4))  # different data per rank
+    assert out.loss.ndim == 0 and torch.isfinite(out.loss), out.loss
+    out.loss.backward()
+    missing = [
+        n for n, p in model.named_parameters() if p.requires_grad and p.grad is None
+    ]
+    assert not missing, missing
+    opt.step()
+
+    flat = torch.cat([p.detach().flatten() for p in model.parameters()])
+    gathered = all_gather(flat.clone())
+    for other in gathered:
+        assert torch.allclose(other, flat, atol=1e-6)

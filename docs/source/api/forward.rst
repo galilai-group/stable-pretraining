@@ -275,6 +275,35 @@ Supervised
         in_features: 2048
         out_features: 1000
 
+RotNet
+~~~~~~
+
+.. autofunction:: rotnet
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extractor (may return a feature map)
+- ``rotation_head``: Maps backbone features to one logit per rotation
+- ``rotnet_loss``: Rotation-classification loss, e.g. ``torch.nn.CrossEntropyLoss()``
+- ``rotations`` (optional): Angles in degrees, default ``(0, 90, 180, 270)``
+
+**Key Features:**
+
+- Single view per image; the four rotations are built inside the forward
+  function, so the data pipeline only needs crop and flip
+- Probes see features of the unrotated images only
+- No cross-sample loss terms, so nothing is gathered under DDP
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      _target_: stable_pretraining.methods.RotNet
+      encoder_name: nin
+      num_blocks: 4
+      feature_block: 2
+
 Custom Forward Functions
 ------------------------
 

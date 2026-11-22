@@ -40,3 +40,8 @@ class TestCollectives:
         H.run_distributed(
             H.w_clip_crossgpu_matches_global, world_size=2, backend="gloo"
         )
+
+    def test_rotnet_ddp_step_keeps_ranks_in_sync(self):
+        H.run_distributed(
+            H.w_rotnet_ddp_step_keeps_ranks_in_sync, world_size=2, backend="gloo"
+        )

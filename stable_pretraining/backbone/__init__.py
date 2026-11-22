@@ -8,6 +8,7 @@ from .nn_modules import (
     L2Norm,
     Normalize,
 )
+from .nin import NetworkInNetwork, nin_block
 from .resnet9 import Resnet9
 from .probe import (
     MultiHeadAttentiveProbe,
@@ -82,6 +83,8 @@ __all__ = [
     TensorAggregator,
     TeacherStudentWrapper,
     Resnet9,
+    NetworkInNetwork,
+    nin_block,
     BatchNorm1dNoBias,
     EMA,
     ImageToVideoEncoder,

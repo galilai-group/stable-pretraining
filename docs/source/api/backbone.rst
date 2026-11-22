@@ -14,6 +14,7 @@ Architectures
 
    MLP
    Resnet9
+   NetworkInNetwork
    ConvMixer
    Jet
 
