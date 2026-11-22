@@ -37,3 +37,12 @@ Specialized Modules
 
    TeacherStudentWrapper
    EvalOnly
+   PointTokenizer
+   PointSequencer
+   PointTokenTransformer
+
+.. autosummary::
+   :toctree: gen_modules/
+   :template: myfunc_template.rst
+
+   farthest_point_indices

@@ -44,6 +44,93 @@ import torch
 from .callbacks.queue import find_or_create_queue_callback, OnlineQueue
 
 
+def point_jepa(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Predict EMA teacher point-patch features from target-free context.
+
+    Args:
+        self: Module with Point-JEPA tokenizer, sequencer, encoder, and predictor.
+        batch: Dictionary containing ``points`` with shape [B,N,3].
+        stage: Lightning stage; ``fit`` and ``validate`` predict masked patches.
+
+    Returns:
+        Dictionary with pooled ``embedding`` and, during training, prediction loss.
+
+    Note:
+        Target blocks share index locations across the batch and may overlap.
+        Each block is predicted separately so its queries cannot attend to
+        queries belonging to another target block.
+    """
+    import torch.nn.functional as F
+
+    tokens, centers = self.tokenizer(batch["points"])
+    if stage not in ("fit", "validate"):
+        encoded = self.encoder.forward_student(tokens, self.encoder_position(centers))
+        return {
+            "embedding": torch.cat([encoded.max(1).values, encoded.mean(1)], dim=-1),
+            "token_embedding": encoded,
+            "loss": encoded.new_zeros(()),
+        }
+
+    tokens, centers = self.sequencer(tokens, centers)
+    mask = self.masking(tokens.shape[1], tokens.device)
+    context = self.encoder.forward_student(
+        tokens[:, mask.context_idx], self.encoder_position(centers[:, mask.context_idx])
+    )
+    self.encoder.teacher.eval()
+    with torch.no_grad():
+        teacher = self.encoder.forward_teacher(
+            tokens.detach(), self.encoder_position(centers), normalize=False
+        )
+        teacher = F.layer_norm(teacher, (teacher.shape[-1],))
+        targets = teacher[:, mask.target_idx]
+    batch_size, _, length, width = targets.shape
+    context_positions = self.predictor_position(centers[:, mask.context_idx])
+    predictions = torch.stack(
+        [
+            self.predictor(
+                context=context,
+                queries=context.new_zeros(batch_size, length, width),
+                query_mask=torch.ones(
+                    batch_size, length, dtype=torch.bool, device=tokens.device
+                ),
+                context_pos=context_positions,
+                query_pos=self.predictor_position(centers[:, target_idx]),
+            )
+            for target_idx in mask.target_idx
+        ],
+        dim=1,
+    )
+    loss = F.smooth_l1_loss(predictions, targets, beta=2.0)
+    predictor_std = predictions.detach().reshape(-1, width).std(dim=0).mean()
+    target_std = targets.detach().reshape(-1, width).std(dim=0).mean()
+    if self._trainer is not None:
+        prefix = "train" if stage == "fit" else "val"
+        self.log(f"{prefix}/loss", loss, on_step=True, on_epoch=True, sync_dist=True)
+        self.log(
+            f"{prefix}/predictor_std",
+            predictor_std,
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        self.log(
+            f"{prefix}/target_std",
+            target_std,
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+        )
+    return {
+        "loss": loss,
+        "embedding": torch.cat([context.max(1).values, context.mean(1)], dim=-1),
+        "predictions": predictions,
+        "targets": targets,
+        "predictor_std": predictor_std,
+        "target_std": target_std,
+        "num_context": torch.tensor(mask.context_idx.numel(), device=tokens.device),
+    }
+
+
 def _get_views_list(batch: dict):
     """Convert multi-view batch to list of views."""
     if "views" in batch:

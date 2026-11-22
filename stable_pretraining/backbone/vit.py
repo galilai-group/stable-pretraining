@@ -1551,6 +1551,8 @@ class FlexibleTransformer(nn.Module):
         context_mask: Optional[torch.Tensor] = None,
         query_mask: Optional[torch.Tensor] = None,
         attn_mask: Optional[torch.Tensor] = None,
+        context_pos: Optional[torch.Tensor] = None,
+        query_pos: Optional[torch.Tensor] = None,
     ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """Forward pass.
 
@@ -1579,6 +1581,10 @@ class FlexibleTransformer(nn.Module):
             For leave-one-out prediction, use `torch.eye(T, dtype=torch.bool)`.
             Only applies to joint attention mode (cross_attn=False).
             The mask is automatically expanded to account for registers.
+        :param context_pos: Explicit context position embeddings [B, N_ctx, hidden_dim].
+            If None, use context_idx with generated grid-based positional embeddings.
+        :param query_pos: Explicit query position embeddings [B, N_qry, hidden_dim].
+            If None, use query_idx with generated grid-based positional embeddings.
         :return: Output embeddings. Shape depends on mode:
             - cross_attn=True: [B, N_qry, output_dim]
             - cross_attn=False, return_all=False: [B, N_qry, output_dim]
@@ -1620,14 +1626,20 @@ class FlexibleTransformer(nn.Module):
         if context_mask is not None:
             mask_tokens = self.mask_token.expand_as(context)
             context = torch.where(context_mask.unsqueeze(-1), mask_tokens, context)
-        context = context + self._gather_pos(context_idx, num_prefix)
+        context = context + (
+            context_pos
+            if context_pos is not None
+            else self._gather_pos(context_idx, num_prefix)
+        )
 
         # Project queries and optionally replace masked positions with [MASK] token
         queries = self.query_proj(queries)
         if query_mask is not None:
             mask_tokens = self.mask_token.expand_as(queries)
             queries = torch.where(query_mask.unsqueeze(-1), mask_tokens, queries)
-        queries = queries + self._gather_pos(query_idx)
+        queries = queries + (
+            query_pos if query_pos is not None else self._gather_pos(query_idx)
+        )
 
         n_context_orig = context.shape[1]  # before adding registers
         n_queries = queries.shape[1]

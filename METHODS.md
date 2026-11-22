@@ -32,6 +32,7 @@ Methods come in two forms:
 | iBOT | — | `iBOT` | `DINOv1Loss`, `iBOTPatchLoss` | `TeacherStudent†` | [Zhou et al., 2022](https://arxiv.org/abs/2111.07832) |
 | iGPT | — | `iGPT` | — | — | [El-Nouby et al., 2024](https://arxiv.org/abs/2401.08541) |
 | IJEPA | — | `IJEPA` | — | — | [Assran et al., 2023](https://arxiv.org/abs/2301.08243) |
+| Point-JEPA | `point_jepa` | `PointJEPA` | Smooth-L1 (beta 2) | `TeacherStudent†` | [Saito et al., 2025](https://arxiv.org/abs/2404.16432) |
 | LeJEPA | — | `LeJEPA` | — | — | [Balestriero & LeCun, 2025](https://arxiv.org/abs/2511.08544) |
 | MAE | — | `MAE` | `MAELoss` | — | [He et al., 2022](https://arxiv.org/abs/2111.06377) |
 | MaskFeat | — | `MaskFeat` | — | — | [Wei et al., 2022](https://arxiv.org/abs/2112.09133) |
