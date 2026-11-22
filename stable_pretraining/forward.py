@@ -8,6 +8,7 @@ Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
     - ``byol`` — BYOL momentum self-distillation
+    - ``sfrik`` — SFRIK spherical distribution matching
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
     - ``swav`` — SwAV online clustering
@@ -374,6 +375,60 @@ def byol(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
             target_only_features = self.backbone.forward_teacher(images)
         out["embedding"] = target_only_features.detach()
 
+    return out
+
+
+def sfrik(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Encode paired views and apply SFRIK's spherical distribution objective.
+
+    Args:
+        self: Module with ``backbone``, ``projector`` and ``sfrik_loss``.
+        batch: Two view dictionaries under ``views`` (a list or named mapping),
+            a direct mapping of two named views, or one ``image`` dictionary
+            for evaluation. Each view may include ``label`` for callbacks.
+        stage: Stage name used for logging, e.g. ``fit``, ``validate``, ``test``.
+
+    Returns:
+        Backbone ``embedding`` and optional ``label`` concatenated in view
+        order. Training also returns raw ``projection`` and scalar ``loss``.
+
+    Raises:
+        ValueError: Training receives a single view, or a multi-view batch
+            does not contain exactly two views.
+
+    Note:
+        Training is determined by ``self.training``, as in the other forward
+        functions. Evaluation bypasses both the projector and distributed loss.
+        See Zheng et al., https://arxiv.org/abs/2208.00789.
+    """
+    views = _get_views_list(batch)
+    if views is None:
+        if self.training:
+            raise ValueError("SFRIK training requires exactly two views")
+        out = {"embedding": self.backbone(batch["image"])}
+        if "label" in batch:
+            out["label"] = batch["label"]
+        return out
+    if isinstance(views, dict):
+        views = list(views.values())
+    if len(views) != 2:
+        raise ValueError(f"SFRIK requires exactly two views, got {len(views)}")
+    embeddings = [self.backbone(view["image"]) for view in views]
+    out = {"embedding": torch.cat(embeddings, dim=0)}
+    if all("label" in view for view in views):
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+    if self.training:
+        projections = [self.projector(embedding) for embedding in embeddings]
+        out["projection"] = torch.cat(projections, dim=0)
+        out["loss"] = self.sfrik_loss(*projections)
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=embeddings[0].shape[0],
+        )
     return out
 
 

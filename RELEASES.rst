@@ -4,6 +4,8 @@ Unreleased
 
 **New method**
 
+- ``SFRIK``: two-view self-supervised learning with rotation-invariant kernels
+  (Zheng et al., ICLR 2023), with a CIFAR-10 benchmark and usage documentation.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

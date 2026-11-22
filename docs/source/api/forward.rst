@@ -187,6 +187,20 @@ BYOL
             in_features: 4096
             out_features: 256
 
+SFRIK
+~~~~~
+
+.. autofunction:: sfrik
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: Projection head
+- ``sfrik_loss``: SFRIKLoss spherical kernel objective
+
+See :doc:`../guides/sfrik` for the objective, configuration and benchmark.
+
+
 VICReg
 ~~~~~~
 
