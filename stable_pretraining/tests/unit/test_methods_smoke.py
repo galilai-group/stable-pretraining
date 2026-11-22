@@ -67,6 +67,7 @@ TWO_VIEW_METHODS = [
         {"projector_dims": (256, 64), "queue_length": 32, "predictor_hidden_dim": 256},
     ),
     ("PIRL", {"projector_dim": 32, "queue_length": 32, "jigsaw_grid": 4}),
+    ("ReSA", {"projector_dims": (256, 256, 64)}),
     ("SimCLR", {"projector_dims": (256, 256, 64)}),
     ("SimSiam", {"projector_dim": 256, "predictor_hidden_dim": 64}),
     ("TiCO", {"projector_dims": (256, 64)}),
@@ -283,6 +284,7 @@ def test_mim_refiner_forward_backward():
         ("SimCLR", {"projector_dims": (256, 256, 64)}),
         ("BYOL", {"projector_dims": (256, 64), "predictor_dims": (256, 64)}),
         ("VICReg", {"projector_dims": (256, 256, 256)}),
+        ("ReSA", {"projector_dims": (256, 256, 64)}),
     ],
 )
 def test_eval_mode_no_loss(method_name: str, kwargs: dict) -> None:

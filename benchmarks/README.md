@@ -45,6 +45,16 @@ python benchmarks/cifar10/barlow-resnet18.py
 
 # NNCLR
 python benchmarks/cifar10/nnclr-resnet18.py
+
+# ReSA
+python benchmarks/cifar10/resa-resnet18.py
+```
+
+### CIFAR-100 Benchmarks
+
+```bash
+# ReSA (the CIFAR-10 recipe with --dataset cifar100)
+python benchmarks/cifar100/resa-resnet18.py
 ```
 
 ## Notes

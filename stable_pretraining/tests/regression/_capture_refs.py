@@ -102,6 +102,16 @@ METHODS = {
         ),
         data=make_data(True),
     ),
+    "resa": lambda: dict(
+        module=spt.Module(
+            backbone=spt.backbone.TeacherStudentWrapper(make_backbone()),
+            projector=spt.backbone.TeacherStudentWrapper(make_projector()),
+            forward=forward.resa,
+            resa_loss=losses.ReSALoss(),
+            optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+        ),
+        data=make_data(True),
+    ),
     "vicreg": lambda: dict(
         module=spt.Module(
             backbone=make_backbone(),

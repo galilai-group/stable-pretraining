@@ -21,6 +21,7 @@ from .nepa import NEPA
 from .nnclr import NNCLR
 from .pirl import PIRL
 from .pmsn import PMSN
+from .resa import ReSA
 from .salt import SALT
 from .simclr import SimCLR
 from .simmim import SimMIM
@@ -56,6 +57,7 @@ __all__ = [
     "NNCLR",
     "PIRL",
     "PMSN",
+    "ReSA",
     "SALT",
     "SimCLR",
     "SimMIM",

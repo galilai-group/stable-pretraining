@@ -17,6 +17,14 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``ReSA`` (Representation Self-Assignment): contrastive learning whose targets
+  are soft labels built by Sinkhorn-Knopp from the encoder's own
+  student-teacher similarities, per Weng et al., "Clustering Properties of
+  Self-Supervised Learning" (ICML 2025). Adds ``ReSALoss``, the ``resa``
+  forward function and the ``ReSA`` method class, registered in
+  ``stable_pretraining.methods`` and ``METHODS.md``, with ResNet-18 benchmarks
+  under ``benchmarks/cifar10/resa-resnet18.py`` and
+  ``benchmarks/cifar100/resa-resnet18.py``.
 
 **Discoverability improvements**
 

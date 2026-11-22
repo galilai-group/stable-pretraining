@@ -171,6 +171,19 @@ def build_byol():
     )
 
 
+def build_resa():
+    return dict(
+        module=spt.Module(
+            backbone=spt.backbone.TeacherStudentWrapper(make_backbone()),
+            projector=spt.backbone.TeacherStudentWrapper(make_projector()),
+            forward=forward.resa,
+            resa_loss=losses.ReSALoss(),
+            optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+        ),
+        data=make_data(multi_view=True),
+    )
+
+
 def build_vicreg():
     return dict(
         module=spt.Module(
@@ -217,6 +230,7 @@ def build_supervised():
 METHOD_BUILDERS = {
     "simclr": build_simclr,
     "byol": build_byol,
+    "resa": build_resa,
     "vicreg": build_vicreg,
     "barlow_twins": build_barlow_twins,
     "supervised": build_supervised,
@@ -228,6 +242,7 @@ METHOD_BUILDERS = {
 REFERENCE_LOSSES = {
     "simclr": ("fit/loss_epoch", 1.645321011543274),
     "byol": ("fit/loss_epoch", 1.822302222251892),
+    "resa": ("fit/loss_epoch", 2.295149326324463),  # captured on 2026-10-21
     "vicreg": ("fit/loss_epoch", 18.119741439819336),
     "barlow_twins": ("fit/loss_epoch", 1.7105509042739868),
     "supervised": ("validate/loss_step", 2.3338754177093506),

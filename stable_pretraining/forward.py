@@ -8,6 +8,7 @@ Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
     - ``byol`` — BYOL momentum self-distillation
+    - ``resa`` — ReSA contrastive learning with Sinkhorn self-assignment
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
     - ``swav`` — SwAV online clustering
@@ -373,6 +374,121 @@ def byol(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         with torch.no_grad():
             target_only_features = self.backbone.forward_teacher(images)
         out["embedding"] = target_only_features.detach()
+
+    return out
+
+
+def resa(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for ReSA (Representation Self-Assignment).
+
+    ReSA trains the student to predict soft targets built from its own
+    similarity structure. Sinkhorn-Knopp balances the cosine similarities
+    between the student's and the teacher's backbone features of the first
+    view, and each student projection is compared with the teacher projections
+    of the other views (see :class:`~stable_pretraining.losses.ReSALoss`).
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: TeacherStudentWrapper for feature extraction
+            - projector: TeacherStudentWrapper for the projection head
+            - resa_loss: ReSALoss instance
+        batch: Either a list of view dicts (from MultiViewTransform) or a single
+            dict (for validation/single-view). The first view is the assignment
+            view (weakly augmented in the paper); the teacher sees the first two
+            views.
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Teacher backbone features (EMA target)
+            - 'loss': ReSA loss (during training only)
+            - 'resa_assignment': Detached soft targets, for monitoring callbacks
+              (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in the ReSA paper :cite:`weng2025clustering`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import resa
+
+            backbone = spt.TeacherStudentWrapper(
+                spt.backbone.from_torchvision("resnet18", low_resolution=True)
+            )
+            projector = spt.TeacherStudentWrapper(torch.nn.Linear(512, 512))
+            module = spt.Module(
+                forward=resa,
+                backbone=backbone,
+                projector=projector,
+                resa_loss=spt.losses.ReSALoss(),
+                optim={"optimizer": {"type": "SGD", "lr": 0.3, "momentum": 0.9}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is not None:
+        if len(views) < 2:
+            raise ValueError(
+                f"ReSA requires at least 2 views (the assignment view first), "
+                f"got {len(views)}."
+            )
+        images = [view["image"] for view in views]
+
+        if not self.training:
+            if "label" in views[0]:
+                out["label"] = torch.cat([view["label"] for view in views], dim=0)
+            with torch.no_grad():
+                features = [self.backbone.forward_teacher(img) for img in images]
+            out["embedding"] = torch.cat(features, dim=0).detach()
+            return out
+
+        if not hasattr(self, "resa_loss"):
+            raise ValueError(
+                "resa requires 'resa_loss' to be provided (e.g., spt.losses.ReSALoss()). "
+                "Pass it when constructing the Module: "
+                "Module(..., resa_loss=spt.losses.ReSALoss(), ...)"
+            )
+
+        # One backbone call per view keeps BatchNorm statistics per view.
+        student_features = [self.backbone.forward_student(img) for img in images]
+        student_proj = [self.projector.forward_student(f) for f in student_features]
+        with torch.no_grad():
+            teacher_features = [
+                self.backbone.forward_teacher(img) for img in images[:2]
+            ]
+            teacher_proj = [self.projector.forward_teacher(f) for f in teacher_features]
+
+        assignment = self.resa_loss.assignment(student_features[0], teacher_features[0])
+        out["loss"] = self.resa_loss(
+            student_features[0],
+            teacher_features[0],
+            student_proj,
+            teacher_proj,
+            assignment=assignment,
+        )
+        out["resa_assignment"] = assignment
+        out["embedding"] = torch.cat(teacher_features, dim=0).detach()
+        if "label" in views[0]:
+            out["label"] = torch.cat([view["label"] for view in views[:2]], dim=0)
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            prog_bar=True,
+        )
+    else:
+        # Single-view validation
+        if "label" in batch:
+            out["label"] = batch["label"]
+        with torch.no_grad():
+            out["embedding"] = self.backbone.forward_teacher(batch["image"]).detach()
 
     return out
 

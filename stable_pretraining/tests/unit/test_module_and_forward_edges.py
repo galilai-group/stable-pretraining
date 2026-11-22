@@ -13,11 +13,13 @@ from stable_pretraining.backbone.utils import TeacherStudentWrapper
 pytestmark = pytest.mark.unit
 
 
-@pytest.mark.parametrize("name", ["byol", "vicreg", "barlow_twins", "swav", "nnclr"])
+@pytest.mark.parametrize(
+    "name", ["byol", "vicreg", "barlow_twins", "swav", "nnclr", "resa"]
+)
 @pytest.mark.parametrize("multiple", [False, True])
 def test_ssl_evaluation_preserves_labels_and_does_not_require_loss(name, multiple):
     backbone = nn.Linear(3, 4)
-    wrapped = TeacherStudentWrapper(backbone) if name == "byol" else backbone
+    wrapped = TeacherStudentWrapper(backbone) if name in ("byol", "resa") else backbone
     model = SimpleNamespace(backbone=wrapped, training=False)
     views = [
         {"image": torch.randn(2, 3), "label": torch.tensor([0, 1])} for _ in range(2)
