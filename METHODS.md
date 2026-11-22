@@ -49,7 +49,7 @@ Methods come in two forms:
 | VICRegL | — | `VICRegL` | `VICRegLoss` | — | [Bardes et al., 2022](https://arxiv.org/abs/2210.01571) |
 | VISReg | — | `VISReg` | — | — | [Wu et al., 2026](https://arxiv.org/abs/2606.02572) |
 | WMSE | — | `WMSE` | — | — | [Ermolov et al., 2021](https://arxiv.org/abs/2007.06346) |
-
+| RINCE | `simclr` | `RINCE` | `RINCELoss` | — | [Chuang et al., 2022](https://arxiv.org/abs/2201.04309) |
 ---
 
 ## Using Forward Functions

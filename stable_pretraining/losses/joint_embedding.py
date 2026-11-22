@@ -5,6 +5,7 @@ of the same image close together in representation space. Includes both contrast
 (NTXentLoss) and non-contrastive (BYOL, VICReg, Barlow Twins) methods.
 """
 
+import math
 from typing import Optional
 
 import torch
@@ -343,3 +344,57 @@ class NTXEntLoss(InfoNCELoss):
         mask[local_idx, offset + local_idx] = True
 
         return self._compute(anchors, candidates, targets, mask=mask)
+
+
+class RINCELoss(NTXEntLoss):
+    """Robust InfoNCE loss (RINCE)."""
+
+    def __init__(
+        self,
+        temperature: float = 0.5,
+        q: float = 1.0,
+        lam: float = 0.5,
+    ):
+        if temperature <= 0:
+            raise ValueError("temperature must be positive")
+        if not 0 < q <= 1:
+            raise ValueError("q must be in (0, 1]")
+        if lam <= 0:
+            raise ValueError("lam must be positive")
+
+        super().__init__(temperature=temperature)
+        self.q = q
+        self.lam = lam
+
+    def _compute(
+        self,
+        anchors: torch.Tensor,
+        candidates: torch.Tensor,
+        targets: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
+        logit_scale: Optional[torch.Tensor | float] = None,
+    ) -> torch.Tensor:
+        temperature = self.temperature if logit_scale is None else logit_scale
+
+        anchors = F.normalize(anchors, dim=-1)
+        candidates = F.normalize(candidates, dim=-1)
+
+        logits = (anchors @ candidates.T) / temperature
+
+        if mask is not None:
+            logits = logits.masked_fill(mask, -torch.inf)
+
+        # Positive logit for each anchor
+        pos = logits.gather(1, targets.unsqueeze(1)).squeeze(1)
+
+        # Log of the sum of exponentiated valid logits
+        log_s = torch.logsumexp(logits, dim=1)
+
+        # RINCE objective, using expm1 for numerical stability
+        loss = (
+            torch.exp(self.q * pos)
+            * torch.expm1(self.q * (math.log(self.lam) + log_s - pos))
+            / self.q
+        )
+
+        return loss.mean()
