@@ -128,7 +128,12 @@ The configuration supplies a single normalized 224-pixel crop per image;
 labels are available to evaluation callbacks but are not used by the SSL loss.
 Its architecture and schedules use author-scale defaults, which require
 substantial GPU memory. For a reduced-scale example and frozen-feature
-evaluation, see ``benchmarks/imagenet10/capi-vit-small.py``. That script runs
-inside a Slurm allocation and downloads Imagenette and CIFAR-10 if needed.
+evaluation, run the following command from the repository root.
+
+.. code-block:: bash
+
+   python benchmarks/imagenet10/capi-vit-small.py
+
+The benchmark downloads Imagenette and CIFAR-10 if needed.
 
 .. autoclass:: stable_pretraining.callbacks.CAPIEMA

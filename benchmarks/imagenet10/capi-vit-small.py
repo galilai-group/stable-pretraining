@@ -1,6 +1,6 @@
-"""Serial reduced-scale CAPI/MAE validation inside one Slurm allocation.
+"""Serial reduced-scale CAPI/MAE validation.
 
-Run inside a Slurm allocation with repository-local cache environment variables.
+From the repository root, run `python benchmarks/imagenet10/capi-vit-small.py`.
 Datasets, checkpoints, feature caches and full logs remain under .cache/capi/runs.
 """
 
@@ -8,7 +8,6 @@ import argparse
 import hashlib
 import json
 import math
-import os
 import platform
 import time
 import types
@@ -440,8 +439,6 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--evaluate-only", action="store_true")
     args = parser.parse_args()
-    if not os.environ.get("SLURM_JOB_ID"):
-        raise RuntimeError("Run this campaign inside Slurm")
     OUT.mkdir(parents=True, exist_ok=True)
     REPORT.mkdir(parents=True, exist_ok=True)
     if args.evaluate_only:
