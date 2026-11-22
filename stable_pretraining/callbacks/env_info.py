@@ -1,6 +1,7 @@
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -8,8 +9,11 @@ import tempfile
 import threading
 import time
 from datetime import datetime
+from importlib import metadata
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 import lightning as pl
 from lightning.pytorch.callbacks import Callback
@@ -318,7 +322,18 @@ class EnvironmentDumpCallback(Callback):
         }
 
     def _get_packages_info(self) -> Dict[str, Any]:
-        """Get installed packages information."""
+        """Get installed packages information.
+
+        ``python -m pip freeze`` is the primary source, so its output format
+        (including ``-e git+...`` lines) is kept unchanged. If it fails or
+        lists nothing (e.g. a virtual environment created with ``uv venv``,
+        which does not ship ``pip``), the installed distributions are read
+        with :mod:`importlib.metadata` instead of recording 0 packages.
+
+        Returns:
+            Dict with ``pip_freeze`` (requirements-style text),
+            ``key_packages`` (name -> version) and ``total_packages``.
+        """
         try:
             logger.debug("  Running 'pip freeze'...")
             pip_freeze = subprocess.check_output(
@@ -331,7 +346,7 @@ class EnvironmentDumpCallback(Callback):
         except subprocess.TimeoutExpired:
             logger.warning("! pip freeze timed out after 30 seconds")
             pip_freeze = "Error: pip freeze timed out"
-        except subprocess.CalledProcessError as e:
+        except (subprocess.CalledProcessError, OSError) as e:
             logger.warning(f"! pip freeze failed: {e}")
             pip_freeze = f"Error getting pip freeze: {str(e)}"
 
@@ -343,11 +358,101 @@ class EnvironmentDumpCallback(Callback):
                     pkg, ver = line.split("==", 1)
                     key_packages[pkg.strip()] = ver.strip()
 
+        if not key_packages:
+            fallback, lines = self._get_packages_from_metadata()
+            if fallback:
+                logger.info(
+                    f"  falling back to importlib.metadata ({len(fallback)} packages)"
+                )
+                key_packages = fallback
+                pip_freeze = "".join(f"{line}\n" for line in lines)
+
         return {
             "pip_freeze": pip_freeze,
             "key_packages": key_packages,
             "total_packages": len(key_packages),
         }
+
+    def _get_packages_from_metadata(self) -> Tuple[Dict[str, str], List[str]]:
+        """List installed distributions with importlib.metadata.
+
+        Names are deduplicated after normalisation (lowercase, runs of
+        ``-``, ``_`` and ``.`` collapsed to ``-``), so an ``.egg-info`` next
+        to a ``.dist-info`` of the same project is listed once. A
+        distribution whose metadata cannot be read, or that has no name or
+        version, is skipped.
+
+        Returns:
+            Tuple ``(packages, lines)``: ``packages`` maps name -> version,
+            sorted case-insensitively by name; ``lines`` holds one
+            requirements line per package, in the same order. Both are
+            empty if the distributions cannot be listed.
+        """
+        try:
+            dists = list(metadata.distributions())
+        except Exception as e:
+            logger.warning(f"! importlib.metadata failed: {e}")
+            return {}, []
+        entries = {}
+        for dist in dists:
+            try:
+                name = dist.metadata.get("Name")
+                version = dist.version
+                if not name or not version:
+                    continue
+                key = re.sub(r"[-_.]+", "-", name).lower()
+                if key not in entries:
+                    line = self._format_requirement(name, version, dist)
+                    entries[key] = (name, version, line)
+            except Exception as e:
+                logger.debug(f"  skipping unreadable distribution: {e}")
+        ordered = sorted(entries.values(), key=lambda entry: entry[0].lower())
+        packages = {name: version for name, version, _ in ordered}
+        return packages, [line for _, _, line in ordered]
+
+    @staticmethod
+    def _format_requirement(name: str, version: str, dist: Any) -> str:
+        """Render a distribution as a requirements line.
+
+        Uses the PEP 610 ``direct_url.json`` file when present: a VCS install
+        gives ``name @ vcs+url@commit``, an editable local directory gives
+        ``-e /path`` and any other direct URL gives ``name @ url``. Anything
+        else, or an unreadable file, gives ``name==version``.
+
+        Args:
+            name: Distribution name.
+            version: Distribution version.
+            dist: ``importlib.metadata.Distribution``.
+
+        Returns:
+            One requirements line.
+        """
+        plain = f"{name}=={version}"
+        try:
+            direct_url = json.loads(dist.read_text("direct_url.json") or "")
+        except Exception:
+            return plain
+        if not isinstance(direct_url, dict):
+            return plain
+        url = direct_url.get("url")
+        if not isinstance(url, str) or not url:
+            return plain
+        vcs_info = direct_url.get("vcs_info")
+        if isinstance(vcs_info, dict):
+            vcs = vcs_info.get("vcs")
+            commit = vcs_info.get("commit_id")
+            if isinstance(vcs, str) and isinstance(commit, str):
+                return f"{name} @ {vcs}+{url}@{commit}"
+            return plain
+        dir_info = direct_url.get("dir_info")
+        parsed = urlparse(url)
+        if (
+            isinstance(dir_info, dict)
+            and dir_info.get("editable") is True
+            and parsed.scheme == "file"
+        ):
+            return f"-e {url2pathname(parsed.path)}"
+        return f"{name} @ {url}"
 
     def _get_cuda_info(self) -> Optional[Dict[str, Any]]:
         """Get CUDA information from nvidia-smi if available."""

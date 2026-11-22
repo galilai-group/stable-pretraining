@@ -16,6 +16,7 @@ import tempfile
 import time
 import threading
 import gc
+from importlib import metadata
 from pathlib import Path
 from unittest.mock import patch
 import subprocess
@@ -26,7 +27,10 @@ import torch
 from lightning.pytorch import LightningModule, Trainer
 from torch.utils.data import DataLoader, TensorDataset
 
-pytestmark = pytest.mark.unit
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.filterwarnings("ignore::DeprecationWarning"),
+]
 
 from stable_pretraining.callbacks import EnvironmentDumpCallback  # noqa: E402
 
@@ -36,10 +40,6 @@ from stable_pretraining.callbacks import EnvironmentDumpCallback  # noqa: E402
 HAS_GPU = torch.cuda.is_available()
 GPU_COUNT = torch.cuda.device_count() if HAS_GPU else 0
 SKIP_GPU_TESTS = not HAS_GPU
-
-# Markers
-pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
-
 
 # ==================== Helper Functions ====================
 
@@ -667,6 +667,116 @@ class TestInformationCollection:
         finally:
             del callback
 
+    def test_falls_back_to_importlib_when_pip_missing(self):
+        """Test the importlib.metadata fallback when pip freeze fails."""
+        callback = EnvironmentDumpCallback()
+
+        with patch(
+            "subprocess.check_output",
+            side_effect=subprocess.CalledProcessError(1, "pip"),
+        ):
+            try:
+                info = callback._get_packages_info()
+
+                assert info["total_packages"] > 0
+                assert info["total_packages"] == len(info["key_packages"])
+                assert info["key_packages"]["torch"] == metadata.version("torch")
+                lines = info["pip_freeze"].splitlines()
+                assert len(lines) == info["total_packages"]
+                names = list(info["key_packages"])
+                assert names == sorted(names, key=str.lower)
+            finally:
+                del callback
+
+    def test_fallback_keeps_direct_url_provenance(self):
+        """Test PEP 610 direct_url.json rendering in the fallback."""
+
+        class FakeDist:
+            def __init__(self, name, direct_url):
+                self.version = "0.1.9"
+                self.metadata = {"Name": name}
+                self._direct_url = direct_url
+
+            def read_text(self, filename):
+                if filename != "direct_url.json":
+                    return None
+                return self._direct_url
+
+        vcs_install = FakeDist(
+            "my-fork",
+            '{"url": "https://github.com/user/my-fork.git",'
+            ' "vcs_info": {"vcs": "git", "commit_id": "abc123"}}',
+        )
+        editable_dir = FakeDist(
+            "local-pkg",
+            '{"url": "file:///abs/path", "dir_info": {"editable": true}}',
+        )
+        egg_info_duplicate = FakeDist("Local_Pkg", None)
+        callback = EnvironmentDumpCallback()
+
+        with (
+            patch(
+                "subprocess.check_output",
+                side_effect=subprocess.CalledProcessError(1, "pip"),
+            ),
+            patch(
+                "importlib.metadata.distributions",
+                return_value=[vcs_install, editable_dir, egg_info_duplicate],
+            ),
+        ):
+            try:
+                info = callback._get_packages_info()
+
+                assert info["key_packages"] == {
+                    "local-pkg": "0.1.9",
+                    "my-fork": "0.1.9",
+                }
+                assert info["pip_freeze"].splitlines() == [
+                    "-e /abs/path",
+                    "my-fork @ git+https://github.com/user/my-fork.git@abc123",
+                ]
+            finally:
+                del callback
+
+    def test_fallback_skips_unreadable_distribution(self):
+        """Test that one broken distribution does not empty the fallback."""
+
+        class BrokenDist:
+            @property
+            def metadata(self):
+                raise OSError("unreadable METADATA")
+
+        class NoVersionDist:
+            version = None
+            metadata = {"Name": "no-version"}
+
+        class GoodDist:
+            version = "1.0"
+            metadata = {"Name": "good"}
+
+            def read_text(self, filename):
+                return None
+
+        callback = EnvironmentDumpCallback()
+
+        with (
+            patch(
+                "subprocess.check_output",
+                side_effect=subprocess.CalledProcessError(1, "pip"),
+            ),
+            patch(
+                "importlib.metadata.distributions",
+                return_value=[BrokenDist(), NoVersionDist(), GoodDist()],
+            ),
+        ):
+            try:
+                info = callback._get_packages_info()
+
+                assert info["key_packages"] == {"good": "1.0"}
+                assert info["pip_freeze"] == "good==1.0\n"
+            finally:
+                del callback
+
     def test_git_info_with_repo(self, mock_subprocess_success):
         """Test _get_git_info when in a git repository."""
         callback = EnvironmentDumpCallback()
@@ -757,13 +867,19 @@ class TestInformationCollection:
 class TestErrorHandling:
     """Test error handling and edge cases."""
 
-    def test_handles_pip_freeze_failure(self):
-        """Test that callback handles pip freeze failures gracefully."""
+    def test_handles_package_listing_failure(self):
+        """Test graceful handling when importlib.metadata and pip both fail."""
         callback = None
 
-        with patch(
-            "subprocess.check_output",
-            side_effect=subprocess.CalledProcessError(1, "pip"),
+        with (
+            patch(
+                "importlib.metadata.distributions",
+                side_effect=RuntimeError("broken metadata"),
+            ),
+            patch(
+                "subprocess.check_output",
+                side_effect=subprocess.CalledProcessError(1, "pip"),
+            ),
         ):
             try:
                 callback = EnvironmentDumpCallback()
