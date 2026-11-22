@@ -4,6 +4,16 @@ Unreleased
 
 **New method**
 
+- ``CMC`` (Contrastive Multiview Coding): contrasts the L (luminance) and ab
+  (chrominance) channels of CIE Lab color space as two views of the same
+  image, using two differently-channeled ResNet encoders (1-channel and
+  2-channel ``conv1`` via ``from_torchvision``) and ``CLIPLoss`` for the
+  bidirectional InfoNCE objective between views, per Tian et al., "Contrastive
+  Multiview Coding" (ECCV 2020). New ``RGBToLabViews`` transform
+  (``stable_pretraining.data.transforms``) and ``cmc`` forward function
+  (``stable_pretraining/forward.py``). Registered in
+  ``stable_pretraining.methods`` and ``METHODS.md``, with a CIFAR-10 ResNet-18
+  benchmark under ``benchmarks/cifar10/cmc-resnet18.py``.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

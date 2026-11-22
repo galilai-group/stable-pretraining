@@ -1006,3 +1006,48 @@ class TestMultiViewTransform:
             view = output[key]
             assert isinstance(view, dict)
             assert "image" in view
+
+
+@pytest.mark.unit
+class TestRGBToLabViews:
+    """Test suite for RGBToLabViews."""
+
+    @pytest.fixture
+    def sample(self):
+        img = Image.new("RGB", (32, 32), color=(255, 128, 64))
+        return {"image": img, "label": 1}
+
+    def test_returns_two_views_with_expected_channels_and_range(self, sample):
+        pipeline = transforms.Compose(
+            transforms.RGB(),
+            transforms.ToImage(),
+            transforms.RGBToLabViews(),
+        )
+        output = pipeline(sample.copy())
+
+        assert "views" in output
+        views = output["views"]
+        assert len(views) == 2
+
+        l_view, ab_view = views
+        assert l_view["image"].shape == (1, 32, 32)
+        assert ab_view["image"].shape == (2, 32, 32)
+        assert torch.isfinite(l_view["image"]).all()
+        assert torch.isfinite(ab_view["image"]).all()
+        assert l_view["image"].min() >= -1.0 and l_view["image"].max() <= 1.0
+        assert ab_view["image"].min() >= -1.0 and ab_view["image"].max() <= 1.0
+
+    def test_both_views_preserve_label_and_share_spatial_content(self, sample):
+        pipeline = transforms.Compose(
+            transforms.RGB(),
+            transforms.ToImage(),
+            transforms.RGBToLabViews(),
+        )
+        output = pipeline(sample.copy())
+        l_view, ab_view = output["views"]
+
+        assert l_view["label"] == 1
+        assert ab_view["label"] == 1
+        # Same solid-color input => uniform L/ab across all pixels.
+        assert torch.allclose(l_view["image"], l_view["image"][:, :1, :1])
+        assert torch.allclose(ab_view["image"], ab_view["image"][:, :1, :1])
