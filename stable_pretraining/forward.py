@@ -7,6 +7,7 @@ logic for each method and can be specified in YAML configs or Python code.
 Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
+    - ``adnce`` — adaptive negative weighting for contrastive learning
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
@@ -253,6 +254,102 @@ def simclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         if "label" in batch:
             out["label"] = batch["label"]
 
+    return out
+
+
+def adnce(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Run ADNCE on two augmented views, or extract single-view features.
+
+    Args:
+        self: Bound Module with ``backbone``, ``projector``, and ``adnce_loss``.
+            The backbone must return a tensor of shape ``[B, D]`` and the
+            projector must return a tensor of shape ``[B, P]``.
+        batch: Dictionary containing ``views`` as a list, tuple, or dictionary
+            of two view dictionaries, or two directly named view dictionaries.
+            Each view contains ``image`` and optionally ``label``. A shared
+            top-level ``label`` is also supported. Evaluation additionally
+            accepts a single dictionary containing ``image``. Other top-level
+            metadata, including the runtime's ``batch_idx``, is ignored.
+        stage: Runtime stage: ``fit``, ``validate``, ``test``, or ``predict``.
+            The aliases ``train`` and ``val`` are also accepted.
+
+    Returns:
+        Encoder ``embedding`` and optional aligned ``label``. For two views,
+        outputs are concatenated in view order, with shape ``[2B, D]`` for
+        embeddings. Training additionally returns the scalar ``loss``.
+
+    Raises:
+        ValueError: If the stage, views, or labels do not follow this contract.
+
+    Note:
+        Labels are provided only for evaluation callbacks and never enter the
+        contrastive loss. The encoder and projector both learn during training.
+    """
+    if stage not in ("fit", "train", "validate", "val", "test", "predict"):
+        raise ValueError(f"ADNCE received an unsupported stage: {stage!r}")
+    if not isinstance(batch, dict):
+        raise ValueError("ADNCE expects a dictionary batch.")
+    training = self.training and stage in ("fit", "train")
+    single_view = "image" in batch and "views" not in batch
+    if single_view:
+        views = [batch]
+    else:
+        views = batch.get("views", batch)
+        if isinstance(views, dict):
+            views = [
+                view
+                for view in views.values()
+                if isinstance(view, dict) and "image" in view
+            ]
+        if not isinstance(views, (list, tuple)) or len(views) != 2:
+            raise ValueError("ADNCE requires exactly two view dictionaries.")
+    if training and single_view:
+        raise ValueError("ADNCE training requires exactly two views.")
+    if any(not isinstance(view, dict) or "image" not in view for view in views):
+        raise ValueError("Each ADNCE view must be a dictionary containing 'image'.")
+    images = [view["image"] for view in views]
+    if any(not isinstance(image, torch.Tensor) or image.ndim < 2 for image in images):
+        raise ValueError("ADNCE images must be batched tensors.")
+    batch_size = images[0].shape[0]
+    if any(image.shape[0] != batch_size for image in images):
+        raise ValueError("ADNCE views must have equal batch sizes.")
+
+    labels = [view.get("label", batch.get("label")) for view in views]
+    has_labels = any(label is not None for label in labels)
+    if has_labels and any(
+        not isinstance(label, torch.Tensor)
+        or label.ndim == 0
+        or label.shape[0] != batch_size
+        for label in labels
+    ):
+        raise ValueError(
+            "ADNCE labels must be present and batch-aligned for every view."
+        )
+
+    embeddings = [self.backbone(image) for image in images]
+    if any(
+        not isinstance(embedding, torch.Tensor)
+        or embedding.ndim != 2
+        or embedding.shape[0] != batch_size
+        for embedding in embeddings
+    ):
+        raise ValueError(
+            "ADNCE backbone must return a [batch_size, feature_dim] tensor."
+        )
+    out = {"embedding": torch.cat(embeddings, dim=0)}
+    if has_labels:
+        out["label"] = torch.cat(labels, dim=0)
+    if training:
+        projections = [self.projector(embedding) for embedding in embeddings]
+        out["loss"] = self.adnce_loss(*projections)
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=batch_size,
+        )
     return out
 
 

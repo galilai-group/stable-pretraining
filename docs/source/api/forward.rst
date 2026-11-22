@@ -83,6 +83,22 @@ SimCLR
         _target_: stable_pretraining.losses.NTXEntLoss
         temperature: 0.5
 
+ADNCE
+~~~~~
+
+.. autofunction:: adnce
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network returning ``[B, D]`` tensors
+- ``projector``: Projection head returning ``[B, P]`` tensors
+- ``adnce_loss``: :class:`~stable_pretraining.losses.ADNCELoss`
+
+The two-view batch contract matches SimCLR. During evaluation, a single
+``image`` batch returns encoder features. Labels, when supplied, are carried
+through for evaluation callbacks and never used by the SSL loss. See
+:doc:`../guides/adnce` for the reference conventions and a complete example.
+
 NNCLR
 ~~~~~
 
