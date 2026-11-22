@@ -44,6 +44,133 @@ import torch
 from .callbacks.queue import find_or_create_queue_callback, OnlineQueue
 
 
+def _costar_encode(
+    encoder: torch.nn.Module,
+    pooling: torch.nn.Module,
+    history: torch.Tensor,
+    static: torch.Tensor,
+    mask: torch.Tensor | None,
+    endpoints: bool = False,
+) -> dict[str, torch.Tensor]:
+    """Select endpoints or batch/time-ordered valid prefix representations."""
+    from .methods.costar import select_last_valid_representations
+
+    tokens, _ = encoder(history, static, mask)
+    representations = pooling(tokens, mask)
+    if endpoints:
+        return select_last_valid_representations(representations, mask)
+    # Boolean indexing visits batch then time, identically for every view/stream.
+    return {
+        name: value.flatten(0, 1) if mask is None else value[mask]
+        for name, value in representations.items()
+    }
+
+
+def costar_forward(
+    self, batch: dict[str, Any], stage: str = "fit"
+) -> dict[str, torch.Tensor]:
+    """Compute COSTAR SSL or clean observed-history representations.
+
+    Args:
+        self: Module with encoder, momentum_encoder, pooling, predictor,
+            augmentation and costar_loss.
+        batch: dynamic_history[B,T,X+A+Y], static_features[B,V], optional boolean
+            valid_mask[B,T]. Treatments are already shifted; future labels are
+            ignored. Optional views supplies two augmented histories, bypassing
+            internal augmentation while retaining the same static inputs/mask.
+        stage: "fit"/"train" computes SSL; "validate"/"val"/"test"/"predict"
+            returns clean online endpoints without augmentation.
+
+    Returns:
+        embedding[B,D] and scalar loss. Training adds component losses,
+        prediction[2N,D] and detached target[2N,D], where N is the number of
+        valid prefixes. Callback embeddings remain [B,D].
+
+    Note:
+        Eqs. (2)-(6): one head serves both views/all streams; X=0 omits covariates
+        and averages only treatment/outcome losses. EMA is never updated here.
+        Plain Module composition must initialize, freeze and update its teacher.
+        Both views share batch/time row order; other valid times, even within
+        one sequence, are negatives. Padding is excluded.
+
+    Raises:
+        TypeError: Batch is not a dictionary.
+        ValueError: Invalid stage or explicit views.
+    """
+    if not isinstance(batch, dict):
+        raise TypeError("COSTAR batches must be dictionaries.")
+    if stage not in ("fit", "train", "validate", "val", "test", "predict"):
+        raise ValueError("Unsupported COSTAR stage.")
+    history = batch["dynamic_history"]
+    static = batch["static_features"]
+    mask = batch.get("valid_mask")
+    if stage not in ("fit", "train"):
+        representations = _costar_encode(
+            self.encoder, self.pooling, history, static, mask, endpoints=True
+        )
+        return {
+            "embedding": representations["history"],
+            "loss": representations["history"].new_zeros(()),
+            **{f"embedding_{name}": value for name, value in representations.items()},
+        }
+
+    if "views" in batch:
+        views = batch["views"]
+        if not isinstance(views, (tuple, list)) or len(views) != 2:
+            raise ValueError("views must be a pair of augmented history tensors.")
+        if any(
+            not isinstance(view, torch.Tensor) or view.shape != history.shape
+            for view in views
+        ):
+            raise ValueError("Each augmented view must match dynamic_history's shape.")
+        first_view, second_view = views
+    else:
+        first_view = self.augmentation(history, mask)
+        second_view = self.augmentation(history, mask)
+
+    online_first = _costar_encode(self.encoder, self.pooling, first_view, static, mask)
+    online_second = _costar_encode(
+        self.encoder, self.pooling, second_view, static, mask
+    )
+    predictions_first = {
+        name: self.predictor(value) for name, value in online_first.items()
+    }
+    predictions_second = {
+        name: self.predictor(value) for name, value in online_second.items()
+    }
+    with torch.no_grad():
+        target_pooling = getattr(self, "momentum_pooling", self.pooling)
+        targets_first = _costar_encode(
+            self.momentum_encoder, target_pooling, first_view, static, mask
+        )
+        targets_second = _costar_encode(
+            self.momentum_encoder, target_pooling, second_view, static, mask
+        )
+    losses = self.costar_loss(
+        predictions_first, predictions_second, targets_first, targets_second
+    )
+    lengths = (
+        torch.full(
+            (history.shape[0],),
+            history.shape[1],
+            dtype=torch.long,
+            device=history.device,
+        )
+        if mask is None
+        else mask.sum(dim=1, dtype=torch.long)
+    )
+    # Cumulative valid counts locate endpoints without re-encoding.
+    embedding = online_first["history"][lengths.cumsum(dim=0) - 1]
+    return {
+        **losses,
+        "embedding": embedding,
+        "prediction": torch.cat(
+            [predictions_first["history"], predictions_second["history"]]
+        ),
+        "target": torch.cat([targets_first["history"], targets_second["history"]]),
+    }
+
+
 def _get_views_list(batch: dict):
     """Convert multi-view batch to list of views."""
     if "views" in batch:
