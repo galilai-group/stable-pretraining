@@ -7,6 +7,7 @@ logic for each method and can be specified in YAML configs or Python code.
 Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
+    - ``flatnce`` — FlatNCE self-normalized contrastive learning
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
@@ -219,14 +220,48 @@ def simclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
                 optim={"optimizer": {"type": "LARS", "lr": 5}},
             )
     """
-    out = {}
+    return _two_view_contrastive(self, batch, stage, "simclr_loss", "SimCLR")
 
+
+def flatnce(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Learn two-view representations using the FlatNCE objective.
+
+    Args:
+        self: Module with ``backbone``, ``projector``, and ``flatnce_loss``
+            attributes, normally a :class:`~stable_pretraining.losses.FlatNCELoss`.
+        batch: Two view dicts under ``views`` (a list or named dict), or a
+            single ``image`` dict for evaluation. Views may include ``label``.
+        stage: Logging stage, e.g. ``fit``, ``validate``, or ``test``.
+
+    Returns:
+        Dict with backbone ``embedding``, optional ``label``, and a scalar
+        ``loss`` for two-view training. Embeddings and labels are concatenated
+        in view order.
+
+    Note:
+        Reuses SimCLR's encoder/projector and callback contract. The loss is
+        numerically one even while gradients train the model; use probes to
+        measure representation quality. Single-view evaluation skips the loss.
+    """
+    return _two_view_contrastive(self, batch, stage, "flatnce_loss", "FlatNCE")
+
+
+def _two_view_contrastive(
+    self,
+    batch: dict[str, Any],
+    stage: str,
+    loss_name: str,
+    method_name: str,
+) -> dict[str, torch.Tensor]:
+    """Share two-view encoding and callback outputs across contrastive objectives."""
+    out = {}
     views = _get_views_list(batch)
     if views is not None:
-        # Multi-view training - SimCLR requires exactly 2 views
+        if isinstance(views, dict):
+            views = list(views.values())
         if len(views) != 2:
             raise ValueError(
-                f"SimCLR requires exactly 2 views, got {len(views)}. "
+                f"{method_name} requires exactly 2 views, got {len(views)}. "
                 "For other configurations, please implement a custom forward function."
             )
 
@@ -239,7 +274,7 @@ def simclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
 
         if self.training:
             projections = [self.projector(emb) for emb in embeddings]
-            out["loss"] = self.simclr_loss(projections[0], projections[1])
+            out["loss"] = getattr(self, loss_name)(projections[0], projections[1])
             self.log(
                 f"{stage}/loss",
                 out["loss"],

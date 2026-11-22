@@ -4,6 +4,14 @@ Unreleased
 
 **New method**
 
+- ``FlatNCE``: symmetric two-view contrastive learning with a negative-only
+  partition and detached self-normalization (Chen et al., 2021). Includes
+  ``FlatNCELoss``, ``forward.flatnce``, and a SimCLR-based ``FlatNCE`` method
+  supporting dict batches and direct tensor calls, with differentiable
+  distributed candidates and float32 loss arithmetic under autocast. Adds a
+  matched CIFAR-10 FlatNCE/SimCLR runner, gradient-reference tests, training and
+  resume checks, and CPU/Gloo distributed validation
+  (`PR #494 <https://github.com/galilai-group/stable-pretraining/pull/494>`_).
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

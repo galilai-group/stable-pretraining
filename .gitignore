@@ -158,7 +158,7 @@ docs/source/modules.rst
 
 outputs/
 multirun/
-./data/
+/data/
 mock_runs/
 examples/data/
 wandb/
