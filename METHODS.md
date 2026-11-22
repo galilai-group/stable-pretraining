@@ -29,6 +29,7 @@ Methods come in two forms:
 | CrossMAE | — | `CrossMAE` | — | — | [Fu et al., 2025](https://arxiv.org/abs/2401.14391) |
 | Data2Vec | — | `Data2Vec` | — | `TeacherStudent†` | [Baevski et al., 2022](https://arxiv.org/abs/2202.03555) |
 | DINOv3 | — | `DINOv3` | `DINOv2Loss` | `TeacherStudent†` | [Siméoni et al., 2025](https://arxiv.org/abs/2309.16588) |
+| HCL | `simclr` | `HCL` | `HCLLoss` | — | [Robinson et al., 2021](https://arxiv.org/abs/2010.04592) |
 | iBOT | — | `iBOT` | `DINOv1Loss`, `iBOTPatchLoss` | `TeacherStudent†` | [Zhou et al., 2022](https://arxiv.org/abs/2111.07832) |
 | iGPT | — | `iGPT` | — | — | [El-Nouby et al., 2024](https://arxiv.org/abs/2401.08541) |
 | IJEPA | — | `IJEPA` | — | — | [Assran et al., 2023](https://arxiv.org/abs/2301.08243) |
