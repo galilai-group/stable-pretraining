@@ -3,6 +3,7 @@ from .beit import BEiT
 from .byol import BYOL
 from .cmae import CMAE
 from .cross_mae import CrossMAE
+from .clumut import CluMuT
 from .data2vec import Data2Vec
 from .dino import DINO
 from .dinov2 import DINOv2
@@ -38,6 +39,7 @@ __all__ = [
     "BYOL",
     "CMAE",
     "CrossMAE",
+    "CluMuT",
     "Data2Vec",
     "DINO",
     "DINOv2",
