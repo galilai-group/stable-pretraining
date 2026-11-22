@@ -19,6 +19,8 @@ from .joint_embedding import (
     SwAVLoss,
 )
 
+from .spectral import SpectralContrastiveLoss
+
 # Multimodal losses
 from .multimodal import CLIPLoss
 
@@ -44,6 +46,7 @@ __all__ = [
     "BarlowTwinsLoss",
     "NTXEntLoss",
     "SwAVLoss",
+    "SpectralContrastiveLoss",
     "CLIPLoss",
     # Reconstruction
     "mae",

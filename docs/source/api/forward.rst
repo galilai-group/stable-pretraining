@@ -49,6 +49,26 @@ Or in Python code:
 Available Forward Functions
 ---------------------------
 
+Spectral Contrastive Learning
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autofunction:: spectral
+
+Compose the same dictionary training interface used by ``spt.SpectralCL`` with
+custom components:
+
+.. code-block:: python
+
+    import stable_pretraining as spt
+
+    module = spt.Module(
+        forward=spt.forward.spectral,
+        backbone=backbone,
+        projector=projector,
+        spectral_loss=spt.losses.SpectralContrastiveLoss(mu=10.0),
+        optim={"optimizer": {"type": "SGD", "lr": 0.06}},
+    )
+
 SimCLR
 ~~~~~~
 

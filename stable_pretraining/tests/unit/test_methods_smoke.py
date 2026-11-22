@@ -69,6 +69,7 @@ TWO_VIEW_METHODS = [
     ("PIRL", {"projector_dim": 32, "queue_length": 32, "jigsaw_grid": 4}),
     ("SimCLR", {"projector_dims": (256, 256, 64)}),
     ("SimSiam", {"projector_dim": 256, "predictor_hidden_dim": 64}),
+    ("SpectralCL", {"projector_dims": (256, 64)}),
     ("TiCO", {"projector_dims": (256, 64)}),
     ("VICReg", {"projector_dims": (256, 256, 256)}),
     ("VICRegL", {"projector_dim": 256}),

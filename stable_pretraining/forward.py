@@ -7,6 +7,7 @@ logic for each method and can be specified in YAML configs or Python code.
 Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
+    - ``spectral`` — spectral contrastive learning
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
@@ -253,6 +254,65 @@ def simclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         if "label" in batch:
             out["label"] = batch["label"]
 
+    return out
+
+
+def spectral(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Compute spectral contrastive learning outputs from a batch dictionary.
+
+    Args:
+        self: Module instance with ``backbone``, ``projector``, and
+            ``spectral_loss`` attributes. The loss is typically
+            :class:`~stable_pretraining.losses.SpectralContrastiveLoss`.
+        batch: Two view dictionaries under ``"views"`` or arbitrary named keys
+            during training. Evaluation accepts a single ``"image"`` batch or
+            multiple views. Each view may carry a ``"label"`` tensor.
+        stage: Lightning stage, used to name the loss metric.
+
+    Returns:
+        Dictionary with concatenated ``"embedding"`` tensors, ``"label"`` when
+        supplied, and a scalar ``"loss"`` during training.
+
+    Raises:
+        ValueError: If training does not receive exactly two views, or an
+            evaluation batch contains no images.
+
+    Note:
+        Non-view metadata such as the ``batch_idx`` injected by Module is
+        ignored. Evaluation uses only the backbone, without a projector or
+        distributed loss collective. This function also implements the batch
+        dictionary interface of :class:`~stable_pretraining.SpectralCL`.
+    """
+    if "views" in batch:
+        views = list(batch["views"])
+    elif "image" in batch:
+        views = [batch]
+    else:
+        views = [v for v in batch.values() if isinstance(v, dict) and "image" in v]
+
+    if self.training and len(views) != 2:
+        raise ValueError(
+            f"SpectralCL training needs exactly 2 views per sample, got {len(views)}"
+        )
+    if not views:
+        raise ValueError("SpectralCL evaluation needs at least one image view")
+
+    embeddings = [self.backbone(view["image"]) for view in views]
+    out = {"embedding": torch.cat(embeddings, dim=0)}
+    if "label" in views[0]:
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+    if self.training:
+        projections = [self.projector(embedding) for embedding in embeddings]
+        out["loss"] = self.spectral_loss(projections[0], projections[1])
+        if self._trainer is not None:
+            self.log(
+                f"{stage}/loss",
+                out["loss"],
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+                batch_size=embeddings[0].size(0),
+            )
     return out
 
 

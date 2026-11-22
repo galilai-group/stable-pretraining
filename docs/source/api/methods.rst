@@ -39,6 +39,7 @@ or by bootstrapping without explicit negatives.
    SimSiam
    PIRL
    TiCO
+   SpectralCL
 
 Feature Redundancy Reduction
 -----------------------------
