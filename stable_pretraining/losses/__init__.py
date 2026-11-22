@@ -25,6 +25,9 @@ from .multimodal import CLIPLoss
 # Reconstruction losses
 from .reconstruction import mae, MAELoss
 
+# ReSSL loss
+from .ressl import ReSSLLoss
+
 # Utilities
 from .utils import (
     sinkhorn_knopp,
@@ -53,4 +56,6 @@ __all__ = [
     "off_diagonal",
     "NegativeCosineSimilarity",
     "VCRegLoss",
+    # ReSSL
+    "ReSSLLoss",
 ]

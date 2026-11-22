@@ -17,6 +17,15 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+  - ``ReSSL`` (Relational Self-Supervised Learning): student-teacher self-supervised
+    learning that matches relational similarity distributions over a queue of
+    teacher embeddings using weak teacher and strong student augmentations.
+    Implements temperature-scaled relational cross-entropy, parameter-only EMA
+    teacher updates, SplitBatchNorm, and DDP-compatible queue synchronization,
+    per Zheng et al., "ReSSL: Relational Self-Supervised Learning with Weak
+    Augmentation" (NeurIPS 2021). Registered in ``stable_pretraining.methods``
+    and ``METHODS.md``, with a CIFAR-10 ResNet-18 benchmark under
+    ``benchmarks/cifar10/ressl-resnet18.py.``
 
 **Discoverability improvements**
 

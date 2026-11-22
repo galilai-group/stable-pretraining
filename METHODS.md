@@ -43,6 +43,7 @@ Methods come in two forms:
 | PIRL | — | `PIRL` | — | — | [Misra & van der Maaten, 2020](https://arxiv.org/abs/1912.01991) |
 | PMSN | — | `PMSN` | — | — | [Assran et al., 2023](https://arxiv.org/abs/2210.07277) |
 | SALT | — | `SALT` | — | — | [Li et al., 2025](https://arxiv.org/pdf/2509.24317) |
+| ReSSL | — | `ReSSL` | `ReSSLLoss` | `TeacherStudent†`, `OnlineQueue` | [Zheng et al., 2021](https://arxiv.org/abs/2107.09282) |
 | SimMIM | — | `SimMIM` | — | — | [Xie et al., 2022](https://arxiv.org/abs/2111.09886) |
 | SimSiam | — | `SimSiam` | — | — | [Chen & He, 2021](https://arxiv.org/abs/2011.10566) |
 | TiCO | — | `TiCO` | — | — | [Zhu et al., 2022](https://arxiv.org/abs/2206.10698) |
@@ -112,5 +113,6 @@ All loss classes are importable from `stable_pretraining.losses`:
 | `DINOv2Loss` | DINOv2, DINOv3 |
 | `iBOTPatchLoss` | DINOv2, iBOT, MIMRefiner |
 | `MAELoss` | MAE |
+| `ReSSLLoss` | ReSSL |
 | `CLIPLoss` | Multimodal CLIP-style objectives |
 | `NegativeCosineSimilarity` | SimSiam, general use |
