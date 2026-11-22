@@ -13,6 +13,7 @@ regressions in the method classes (shape mismatches, missing kwargs,
 broken loss imports, etc.).
 """
 
+from types import SimpleNamespace
 from typing import Tuple
 
 import pytest
@@ -255,6 +256,22 @@ def test_visreg_forward_backward():
     local1 = torch.randn(B, C, 96, 96, generator=g)
     output = model.forward(global_views=[v1, v2], local_views=[local1])
     _assert_loss_and_backward(model, output)
+
+
+def test_lfr_forward_backward():
+    """LFR uses the dict ``forward(batch, stage)`` contract on a single view."""
+    model = M.LFR(
+        encoder_name=TINY_VIT,
+        num_projectors=2,
+        target_dim=32,
+        predictor_hidden_dim=16,
+    )
+    model.train()
+    v, _ = _two_views()
+    output = model({"image": v}, stage="fit")
+    assert output["embedding"].shape == (B, 192)
+    _assert_loss_and_backward(model, SimpleNamespace(**output))
+    assert all(p.grad is None for p in model.projectors.parameters())
 
 
 def test_mim_refiner_forward_backward():

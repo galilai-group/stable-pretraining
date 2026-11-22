@@ -4,6 +4,13 @@ Unreleased
 
 **New method**
 
+- ``LFR`` (Learning From Randomness): learns from a single unaugmented view by
+  predicting frozen random projections with per-projector heads, the new
+  sample-wise ``BatchwiseBarlowTwinsLoss`` (global negatives under DDP), and the
+  paper's alternating encoder/predictor epochs. Includes Beta-initialized
+  image projectors with weight dropout, DPP projector selection, a CIFAR-10
+  benchmark with a same-seed random-init baseline, a multi-seed CPU digits
+  example, and unit, regression and two-process DDP tests.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

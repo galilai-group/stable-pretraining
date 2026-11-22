@@ -18,6 +18,7 @@ from .joint_embedding import (
     NTXEntLoss,
     SwAVLoss,
 )
+from .lfr import BatchwiseBarlowTwinsLoss
 
 # Multimodal losses
 from .multimodal import CLIPLoss
@@ -42,6 +43,7 @@ __all__ = [
     "BYOLLoss",
     "VICRegLoss",
     "BarlowTwinsLoss",
+    "BatchwiseBarlowTwinsLoss",
     "NTXEntLoss",
     "SwAVLoss",
     "CLIPLoss",
