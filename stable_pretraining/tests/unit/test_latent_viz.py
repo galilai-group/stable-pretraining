@@ -412,16 +412,9 @@ class _DistributedAudit(pl.Callback):
         )
 
 
-@pytest.mark.skipif(
-    not torch.distributed.is_gloo_available(), reason="Gloo unavailable"
-)
-def test_two_rank_cpu_ddp_handles_warmup_and_idle_projection(tmp_path, monkeypatch):
-    import os
+def _run_two_rank_cpu_ddp(tmp_path):
     from lightning.pytorch.strategies import DDPStrategy
 
-    for name in list(os.environ):
-        if name.startswith("SLURM_"):
-            monkeypatch.delenv(name)
     model = _model()
     cb = _callback(model, warmup_epochs=1, update_interval=2, plot_interval=1)
     trainer = pl.Trainer(
@@ -441,6 +434,34 @@ def test_two_rank_cpu_ddp_handles_warmup_and_idle_projection(tmp_path, monkeypat
         max_steps=4,
     )
     trainer.fit(model, _loader(), _loader())
+
+
+@pytest.mark.skipif(
+    not torch.distributed.is_gloo_available(), reason="Gloo unavailable"
+)
+def test_two_rank_cpu_ddp_handles_warmup_and_idle_projection(tmp_path):
+    import os
+    import subprocess
+    import sys
+
+    # A fresh interpreter avoids forking autograd threads created by earlier
+    # tests. Fork remains necessary for the framework's non-picklable callbacks.
+    env = {
+        key: value for key, value in os.environ.items() if not key.startswith("SLURM_")
+    }
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; "
+            "from stable_pretraining.tests.unit.test_latent_viz import _run_two_rank_cpu_ddp; "
+            "import sys; _run_two_rank_cpu_ddp(Path(sys.argv[1]))",
+            str(tmp_path),
+        ],
+        env=env,
+        check=True,
+        timeout=120,
+    )
     with np.load(tmp_path / "latent_viz_map" / "epoch_0001.npz") as archive:
         assert archive["coordinates"].shape == (16, 2)
         assert np.isfinite(archive["coordinates"]).all()

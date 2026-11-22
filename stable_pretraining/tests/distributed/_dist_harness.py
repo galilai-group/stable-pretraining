@@ -12,6 +12,8 @@ are only invoked by tests gated on ``>=2`` visible CUDA devices.
 
 import os
 import socket
+import time
+from queue import Empty
 import traceback
 
 import torch
@@ -59,7 +61,7 @@ def run_distributed(fn, world_size: int = 2, backend: str = "gloo", timeout: int
         fn: A picklable module-level callable ``(rank, world_size) -> None``.
         world_size: Number of processes to spawn.
         backend: ``"gloo"`` (CPU) or ``"nccl"`` (GPU).
-        timeout: Per-process join timeout in seconds.
+        timeout: Overall worker completion timeout in seconds.
 
     Raises:
         AssertionError: If any rank raised, with the rank-sorted tracebacks.
@@ -76,16 +78,28 @@ def run_distributed(fn, world_size: int = 2, backend: str = "gloo", timeout: int
     ]
     for p in procs:
         p.start()
+    deadline = time.monotonic() + timeout
     for p in procs:
-        p.join(timeout)
+        p.join(max(0, deadline - time.monotonic()))
 
     errors = []
-    while not error_queue.empty():
-        errors.append(error_queue.get())
-    for p in procs:
+    for rank, p in enumerate(procs):
         if p.is_alive():
             p.terminate()
-            p.join()
+            p.join(5)
+            if p.is_alive():
+                p.kill()
+                p.join(5)
+            errors.append((rank, f"worker exceeded {timeout}s timeout"))
+        elif p.exitcode != 0:
+            errors.append((rank, f"worker exited with code {p.exitcode}"))
+    while True:
+        try:
+            errors.append(error_queue.get_nowait())
+        except Empty:
+            break
+    error_queue.close()
+    error_queue.join_thread()
 
     if errors:
         errors.sort(key=lambda rt: rt[0])
@@ -389,6 +403,17 @@ def w_custom_parallelize_fn(rank, world_size):
         backbone=TinyBackbone(dim=8, depth=2),
         parallelize_fn=custom,
     )
+    # configure_model is a Trainer lifecycle hook; provide its normal owner.
+    from lightning.pytorch import Trainer
+
+    module.trainer = Trainer(
+        accelerator="cpu",
+        devices=1,
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+    )
     module._device_mesh = _mesh("cpu", world_size)
     module.configure_model()
     assert calls.get("used") is True, "custom parallelize_fn was not called"
@@ -484,18 +509,20 @@ def w_ddp_vs_fsdp2_equivalence(rank, world_size):
 
     per = total_batch // world_size
     local_x = full_x[rank * per : (rank + 1) * per]
-    # divide by world_size so the SUM of per-rank mean-losses == full-batch mean
-    (model(local_x).pow(2).mean() / world_size).backward()
+    # FSDP already averages gradients across ranks; local mean losses therefore
+    # reproduce the full-batch mean without a second world-size division.
+    model(local_x).pow(2).mean().backward()
     opt.step()
 
-    if rank == 0:
-        for name, p in model.named_parameters():
-            full = p.full_tensor()
-            expected = ref_after[name]
-            assert torch.allclose(full, expected, atol=1e-4, rtol=1e-4), (
-                f"FSDP2 param '{name}' diverged from full-batch reference: "
-                f"max|Δ|={(full - expected).abs().max().item():.3e}"
-            )
+    # full_tensor performs an all-gather: every rank must participate, rather
+    # than sending rank 1 into the harness barrier while rank 0 gathers.
+    for name, p in model.named_parameters():
+        full = p.full_tensor()
+        expected = ref_after[name]
+        assert torch.allclose(full, expected, atol=1e-4, rtol=1e-4), (
+            f"FSDP2 param '{name}' diverged from full-batch reference: "
+            f"max|Δ|={(full - expected).abs().max().item():.3e}"
+        )
 
 
 # ---------------------------------------------------------------------------

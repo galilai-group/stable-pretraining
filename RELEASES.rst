@@ -4,6 +4,20 @@ Unreleased
 
 **New method**
 
+- ``LeVLJEPA``: bidirectional vision-language prediction with stop-gradient
+  targets and per-modality SIGReg. Includes injectable encoders, a composable
+  forward function, training/resume tests, and a reduced Flickr8k example with
+  a paired CLIP control and optional five-caption sampling. Real ViT/GPT-2
+  encoders with BatchNorm heads are covered by CPU gloo and two-GPU NCCL
+  loss/gradient checks, including SyncBatchNorm, native two-GPU resume and
+  two-node NCCL/TCP numerical checks, plus Apple MPS optimizer tests. Documents
+  real-data two-GPU training/resume, single-GPU
+  CUDA training and a frozen, overlap-filtered Flickr30k transfer evaluation,
+  including weak retrieval results and remaining limitations. Also records a
+  fixed CC3M-subset comparison and frozen STL-10/ADE20K probes, with
+  random-encoder controls and the observed gaps to CLIP. Adds a reproducible
+  frozen ADE20K linear-probe example with native/author/random checkpoint
+  controls, host-RAM caching, and original-resolution confusion metrics.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,
