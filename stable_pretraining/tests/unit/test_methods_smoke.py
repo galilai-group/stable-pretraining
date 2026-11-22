@@ -160,6 +160,16 @@ def test_msn_forward_backward():
     _assert_loss_and_backward(model, output)
 
 
+@pytest.mark.parametrize("loss", ["geometric", "arithmetic", "sufficient_statistics"])
+def test_poly_view_forward_backward(loss: str):
+    model = M.PolyView(encoder_name=TINY_VIT, projector_dims=(256, 256, 64), loss=loss)
+    model.train()
+    v1, v2 = _two_views()
+    output = model(v1, v2, v1.flip(-1))
+    assert output.embedding.shape[0] == 3 * B
+    _assert_loss_and_backward(model, output)
+
+
 def test_pmsn_forward_backward():
     model = M.PMSN(
         encoder_name=TINY_VIT,
@@ -281,6 +291,7 @@ def test_mim_refiner_forward_backward():
     "method_name,kwargs",
     [
         ("SimCLR", {"projector_dims": (256, 256, 64)}),
+        ("PolyView", {"projector_dims": (256, 256, 64)}),
         ("BYOL", {"projector_dims": (256, 64), "predictor_dims": (256, 64)}),
         ("VICReg", {"projector_dims": (256, 256, 256)}),
     ],

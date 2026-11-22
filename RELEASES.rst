@@ -17,6 +17,12 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``PolyView`` (Poly-View Contrastive Learning): generalizes SimCLR from 2 to
+  ``M`` views per sample, per Shidani et al., "Poly-View Contrastive Learning"
+  (ICLR 2024). Adds the ``poly_view`` forward function and two losses:
+  ``PVCLoss`` with ``aggregation="geometric"`` or ``"arithmetic"``, and
+  ``SufficientStatisticsLoss``. All three reduce to ``NTXEntLoss`` with two
+  views. Registered in ``stable_pretraining.methods`` and ``METHODS.md``.
 
 **Discoverability improvements**
 

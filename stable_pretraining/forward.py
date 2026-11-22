@@ -7,6 +7,7 @@ logic for each method and can be specified in YAML configs or Python code.
 Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
+    - ``poly_view`` — Poly-View contrastive learning with M views
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
@@ -240,6 +241,90 @@ def simclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         if self.training:
             projections = [self.projector(emb) for emb in embeddings]
             out["loss"] = self.simclr_loss(projections[0], projections[1])
+            self.log(
+                f"{stage}/loss",
+                out["loss"],
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+            )
+    else:
+        # Single-view validation
+        out["embedding"] = self.backbone(batch["image"])
+        if "label" in batch:
+            out["label"] = batch["label"]
+
+    return out
+
+
+def poly_view(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for Poly-View contrastive learning.
+
+    Generalizes :func:`simclr` from 2 to ``M`` augmented views per sample. Every
+    view is encoded and projected, and the ``M`` projections are passed together
+    to a poly-view loss.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: Feature extraction network
+            - projector: Projection head mapping features to latent space
+            - poly_view_loss: :class:`~stable_pretraining.losses.PVCLoss` or
+              :class:`~stable_pretraining.losses.SufficientStatisticsLoss`
+        batch: Either ``M >= 2`` views (from MultiViewTransform, as a list or a
+            dict of named views) or a single dict (for validation/single-view)
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Backbone features of all views, ``[M * B, D]``,
+              view-major (all samples of view 0, then view 1, ...)
+            - 'loss': Poly-view contrastive loss (during training only)
+            - 'label': Labels aligned with 'embedding' (if present)
+
+    Raises:
+        ValueError: If a multi-view batch has fewer than 2 views.
+
+    Note:
+        Introduced in the Poly-View paper :cite:`shidani2024polyview`. With two
+        views every poly-view loss equals NT-Xent, so this matches
+        :func:`simclr`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import poly_view
+
+            backbone = spt.backbone.from_torchvision("resnet50")
+            module = spt.Module(
+                forward=poly_view,
+                backbone=backbone,
+                projector=torch.nn.Linear(2048, 128),
+                poly_view_loss=spt.losses.PVCLoss(temperature=0.1),
+                optim={"optimizer": {"type": "LARS", "lr": 5}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is not None:
+        if len(views) < 2:
+            raise ValueError(
+                f"Poly-view requires at least 2 views, got {len(views)}. "
+                "Use MultiViewTransform with M >= 2 transforms."
+            )
+
+        embeddings = [self.backbone(view["image"]) for view in views]
+        out["embedding"] = torch.cat(embeddings, dim=0)
+
+        # Concatenate labels for callbacks (probes need this)
+        if "label" in views[0]:
+            out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+        if self.training:
+            projections = [self.projector(emb) for emb in embeddings]
+            out["loss"] = self.poly_view_loss(projections)
             self.log(
                 f"{stage}/loss",
                 out["loss"],

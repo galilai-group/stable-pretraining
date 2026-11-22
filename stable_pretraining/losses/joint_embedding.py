@@ -5,7 +5,8 @@ of the same image close together in representation space. Includes both contrast
 (NTXentLoss) and non-contrastive (BYOL, VICReg, Barlow Twins) methods.
 """
 
-from typing import Optional
+import math
+from typing import Literal, Optional, Sequence
 
 import torch
 import torch.nn.functional as F
@@ -342,4 +343,183 @@ class NTXEntLoss(InfoNCELoss):
         mask = torch.zeros(two_n, candidates.size(0), dtype=torch.bool, device=device)
         mask[local_idx, offset + local_idx] = True
 
+        return self._compute(anchors, candidates, targets, mask=mask)
+
+
+class _PolyViewLoss(InfoNCELoss):
+    """Shared view handling for the poly-view losses of :cite:`shidani2024polyview`.
+
+    Subclasses take ``M >= 2`` views of shape ``[K, D]`` and flatten them to an
+    ``[M * K, D]`` layout where row ``r`` is view ``r // k`` of sample ``r % k``.
+    """
+
+    def _stack_views(self, views: Sequence[torch.Tensor]) -> torch.Tensor:
+        """Validate ``M`` views of shape ``[K, D]`` and stack them L2-normalized.
+
+        Args:
+            views (Sequence[torch.Tensor]): ``M >= 2`` tensors of shape ``[K, D]``.
+
+        Returns:
+            torch.Tensor: Normalized views of shape ``[M, K, D]``.
+        """
+        if len(views) < 2:
+            raise ValueError(
+                f"{type(self).__name__} needs at least 2 views, got {len(views)}"
+            )
+        if any(v.shape != views[0].shape for v in views):
+            raise ValueError("All views must have the same shape [K, D]")
+        return F.normalize(torch.stack(list(views)), dim=-1)
+
+    @staticmethod
+    def _same_sample_mask(
+        n: int, k: int, num_candidates: int, offset: int, device: torch.device
+    ) -> torch.Tensor:
+        """Mark candidates that come from the anchor's own sample.
+
+        Candidates gathered from other ranks are never the same sample.
+
+        Args:
+            n (int): Number of local anchors, ``M * K``.
+            k (int): Number of samples per rank.
+            num_candidates (int): Number of gathered candidates, ``n * world_size``.
+            offset (int): Index of this rank's block within the candidates.
+            device (torch.device): Device of the returned mask.
+
+        Returns:
+            torch.Tensor: Boolean mask of shape ``[n, num_candidates]``.
+        """
+        rows = torch.arange(n, device=device)
+        local_col = torch.arange(num_candidates, device=device) - offset
+        same_rank = (local_col >= 0) & (local_col < n)
+        return same_rank[None, :] & (local_col[None, :] % k == rows[:, None] % k)
+
+
+class PVCLoss(_PolyViewLoss):
+    """Poly-view contrastive (PVC) loss :cite:`shidani2024polyview`.
+
+    Generalizes :class:`NTXEntLoss` from 2 to ``M`` views per sample. For every
+    pair of distinct views ``(alpha, beta)`` of a sample, a cross-entropy picks
+    view ``alpha`` out of all views of every *other* sample, queried by view
+    ``beta``. The sample's remaining views are masked, so they never compete
+    with each other. The ``M - 1`` likelihoods per held-out view are combined by
+    the paper's aggregation function:
+
+    * ``"geometric"`` (Eq. 10 and 13, Algorithm 1): mean of the log-likelihoods.
+    * ``"arithmetic"`` (Eq. 9 and 12): log of the mean likelihood. Follows the
+      equations, not Algorithm 1, whose arithmetic branch takes ``logsumexp``
+      of the cross-entropies (a mean of *inverse* likelihoods), normalizes by
+      ``log(K)`` instead of ``log(M - 1)``, and averages over targets with the
+      query fixed. Eq. 14 fixes the target ``alpha`` and averages over queries
+      ``beta``; unlike for ``"geometric"``, the grouping changes the result.
+
+    Both reduce to :class:`NTXEntLoss` when ``M == 2``. Under DDP the
+    negatives span all ranks, using the same rank-offset scheme as
+    :class:`NTXEntLoss`.
+
+    Args:
+        temperature (float, optional): The temperature scaling factor.
+            Default is 0.5.
+        aggregation (str, optional): ``"geometric"`` or ``"arithmetic"``.
+            Default is ``"geometric"``.
+    """
+
+    def __init__(
+        self,
+        temperature: float = 0.5,
+        aggregation: Literal["geometric", "arithmetic"] = "geometric",
+    ):
+        super().__init__(temperature=temperature)
+        if aggregation not in ("geometric", "arithmetic"):
+            raise ValueError(
+                f"aggregation must be 'geometric' or 'arithmetic', got {aggregation!r}"
+            )
+        self.aggregation = aggregation
+
+    def forward(self, views: Sequence[torch.Tensor]) -> torch.Tensor:
+        """Compute the poly-view contrastive loss.
+
+        Args:
+            views (Sequence[torch.Tensor]): ``M >= 2`` projections, each of
+                shape ``[K, D]``. Row ``i`` of every tensor must come from the
+                same sample.
+
+        Returns:
+            torch.Tensor: Scalar loss.
+        """
+        z = self._stack_views(views)  # [M, K, D]
+        m, k = z.shape[:2]
+        n = m * k
+        anchors = z.reshape(n, -1)
+        candidates = torch.cat(all_gather(anchors), dim=0)
+
+        # Views are already normalized, so the logits are built here rather
+        # than in _compute, which re-normalizes and takes one target per row.
+        logits = anchors @ candidates.T / self.temperature  # [M * K, C]
+
+        offset = get_rank() * n
+        rows = torch.arange(n, device=z.device)
+        same_sample = self._same_sample_mask(n, k, candidates.size(0), offset, z.device)
+        # The negatives (views of other samples) are the same for every sibling
+        # target of a query, so one masked logsumexp serves all M - 1 of them.
+        lse_neg = logits.masked_fill(same_sample, -torch.inf).logsumexp(dim=-1)
+
+        # Column s pairs view a with view (a + s) % m, so the m - 1 columns
+        # visit every (query, target) pair exactly once.
+        shifts = torch.arange(1, m, device=z.device)
+        targets = ((rows[:, None] // k + shifts) % m) * k + rows[:, None] % k
+        pos = logits.gather(1, offset + targets)  # [M * K, M - 1]
+        nll = torch.logaddexp(pos, lse_neg[:, None]) - pos  # -log l, by query
+
+        if self.aggregation == "geometric":
+            return nll.mean()
+        # Eq. 14 holds the target view alpha fixed and varies the query beta,
+        # so file each loss under its target for the arithmetic mean. Each
+        # column of ``targets`` is a permutation of the rows.
+        nll = torch.zeros_like(nll).scatter(0, targets, nll)
+        return (math.log(m - 1) - torch.logsumexp(-nll, dim=-1)).mean()
+
+
+class SufficientStatisticsLoss(_PolyViewLoss):
+    """Sufficient-statistics poly-view contrastive loss :cite:`shidani2024polyview`.
+
+    Each of a sample's ``M`` views is contrasted against the normalized mean of
+    that sample's other ``M - 1`` views (Eq. 22 and 24, Algorithm 2). The
+    leave-one-out means of every other sample are the negatives. The sample's
+    other leave-one-out means are masked.
+
+    Reduces to :class:`NTXEntLoss` when ``M == 2``. Under DDP the negatives span
+    all ranks, using the same rank-offset scheme as :class:`NTXEntLoss`.
+
+    Args:
+        temperature (float, optional): The temperature scaling factor.
+            Default is 0.5.
+    """
+
+    def __init__(self, temperature: float = 0.5):
+        super().__init__(temperature=temperature)
+
+    def forward(self, views: Sequence[torch.Tensor]) -> torch.Tensor:
+        """Compute the sufficient-statistics contrastive loss.
+
+        Args:
+            views (Sequence[torch.Tensor]): ``M >= 2`` projections, each of
+                shape ``[K, D]``. Row ``i`` of every tensor must come from the
+                same sample.
+
+        Returns:
+            torch.Tensor: Scalar loss.
+        """
+        z = self._stack_views(views)  # [M, K, D]
+        m, k = z.shape[:2]
+        n = m * k
+        # _compute re-normalizes the mean, as in the paper's Algorithm 2.
+        rest = (z.sum(dim=0, keepdim=True) - z) / (m - 1)
+        anchors = z.reshape(n, -1)
+        candidates = torch.cat(all_gather(rest.reshape(n, -1)), dim=0)
+
+        offset = get_rank() * n
+        rows = torch.arange(n, device=z.device)
+        targets = offset + rows
+        mask = self._same_sample_mask(n, k, candidates.size(0), offset, z.device)
+        mask[rows, targets] = False
         return self._compute(anchors, candidates, targets, mask=mask)

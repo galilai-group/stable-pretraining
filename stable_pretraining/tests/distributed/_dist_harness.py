@@ -658,3 +658,39 @@ def w_clip_crossgpu_matches_global(rank, world_size):
 
     ref = _ref_clip_global(feats_i_global, feats_j_global, 0.07)
     assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+def w_poly_view_crossgpu_matches_global(rank, world_size):
+    """Mean of per-rank DDP poly-view losses == single-process loss on the global batch.
+
+    Same argument as :func:`w_ntxent_crossgpu_matches_global`, with ``M = 3``
+    views per sample. The single-process path is checked against the paper's
+    algorithms and equations by the unit tests, so it serves as the reference.
+    """
+    from unittest.mock import patch
+
+    from stable_pretraining.losses import PVCLoss, SufficientStatisticsLoss
+    from stable_pretraining.utils import all_reduce
+
+    target = "stable_pretraining.losses.joint_embedding"
+
+    torch.manual_seed(0)  # identical GLOBAL batch on every rank
+    m, k, d = 3, 4, 16
+    views_global = [torch.randn(k * world_size, d) for _ in range(m)]
+    views = [v[rank * k : (rank + 1) * k] for v in views_global]
+
+    for loss_fn in (
+        PVCLoss(temperature=0.5, aggregation="geometric"),
+        PVCLoss(temperature=0.5, aggregation="arithmetic"),
+        SufficientStatisticsLoss(temperature=0.5),
+    ):
+        local = loss_fn(views)
+        avg = all_reduce(local.detach().clone()) / world_size
+        # Inside a process group the loss would gather again; the reference
+        # must see only the global batch it is given.
+        with (
+            patch(f"{target}.all_gather", lambda x: [x]),
+            patch(f"{target}.get_rank", lambda: 0),
+        ):
+            ref = loss_fn(views_global)
+        assert torch.allclose(avg, ref, atol=1e-5), (type(loss_fn).__name__, avg, ref)

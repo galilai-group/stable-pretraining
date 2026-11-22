@@ -40,3 +40,8 @@ class TestCollectives:
         H.run_distributed(
             H.w_clip_crossgpu_matches_global, world_size=2, backend="gloo"
         )
+
+    def test_poly_view_cross_gpu_negatives_match_global(self):
+        H.run_distributed(
+            H.w_poly_view_crossgpu_matches_global, world_size=2, backend="gloo"
+        )
