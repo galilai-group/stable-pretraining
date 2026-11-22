@@ -146,6 +146,8 @@ logging.basicConfig(handlers=[_InterceptHandler()], level="INFO")
 # Accessing any of these triggers a one-time submodule import + the deferred
 # init below.
 _LAZY_ATTRS: dict[str, tuple[str, str]] = {
+    "CAPI": ("stable_pretraining.methods.capi", "CAPI"),
+    "CAPIEMA": ("stable_pretraining.callbacks.capi", "CAPIEMA"),
     # Core
     "Manager": ("stable_pretraining.manager", "Manager"),
     "Module": ("stable_pretraining.module", "Module"),
@@ -192,6 +194,7 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
 
 # Sub-packages exposed as attributes of `stable_pretraining`.
 _LAZY_SUBMODULES: set[str] = {
+    "forward",
     "backbone",
     "callbacks",
     "data",
@@ -441,6 +444,8 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "CAPI",
+    "CAPIEMA",
     # Availability flags
     "SKLEARN_AVAILABLE",
     "WANDB_AVAILABLE",
@@ -470,6 +475,7 @@ __all__ = [
     "data",
     "jax",
     "methods",
+    "forward",
     "module",
     "static",
     "optim",

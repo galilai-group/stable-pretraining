@@ -286,6 +286,7 @@ ORDER_SENSITIVE_CALLBACKS: Dict[str, str] = {
         "reads predictions in on_validation_batch_end — place AFTER "
         "OnlineImageDecoder or other callbacks that write predictions in that hook"
     ),
+    "CAPIEMA": "Updates teacher in student optimizer post-step hook, before on_train_batch_end readers",
     "TeacherStudentCallback": (
         "EMA update fires in on_train_batch_end; place AFTER any callback "
         "that reads the teacher's parameters in that same hook"

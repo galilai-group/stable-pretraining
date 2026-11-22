@@ -1,0 +1,60 @@
+# Full author-scale architecture and optimizer schedule; no dataset downloads here.
+module:
+  _target_: stable_pretraining.CAPI
+  embed_dim: 1024
+  depth: 24
+  num_heads: 16
+  predictor_depth: 12
+  patch_size: 14
+  n_registers: 16
+  drop_path_rate: 0.2
+  num_clusters: 16384
+  mask_ratio: 0.65
+  prediction_subsampling: 0.05
+  student_temp: 0.12
+  target_temp: 0.06
+  clustering_temp: 0.12
+  lr: 0.001
+  clustering_lr: 0.0005
+  weight_decay: 0.1
+  total_steps: 500000
+  warmup_steps: 50000
+  ema_momentum: 0.999
+  accumulation_steps: 1
+  representation: teacher
+trainer:
+  _target_: lightning.Trainer
+  accelerator: gpu
+  devices: 1
+  precision: bf16-mixed
+  max_steps: 500000
+  num_sanity_val_steps: 0
+  logger: false
+# Set CAPI_TRAIN_DIRECTORY to an existing ImageFolder before invoking spt.
+data:
+  _target_: stable_pretraining.data.DataModule
+  train:
+    _target_: torch.utils.data.DataLoader
+    dataset:
+      _target_: stable_pretraining.data.FromTorchDataset
+      names: [image, label]
+      dataset:
+        _target_: torchvision.datasets.ImageFolder
+        root: ${oc.env:CAPI_TRAIN_DIRECTORY}
+        transform:
+          _target_: torchvision.transforms.Compose
+          transforms:
+            - _target_: torchvision.transforms.RandomResizedCrop
+              size: 224
+              scale: [0.6, 1.0]
+            - _target_: torchvision.transforms.RandomHorizontalFlip
+            - _target_: torchvision.transforms.ToTensor
+            - _target_: torchvision.transforms.Normalize
+              mean: [0.485, 0.456, 0.406]
+              std: [0.229, 0.224, 0.225]
+    batch_size: 512
+    shuffle: true
+    drop_last: true
+    num_workers: 6
+    pin_memory: true
+seed: 0

@@ -311,3 +311,37 @@ def test_method_matches_reference(method_name, tmp_path):
         "If this is intentional, re-run _capture_refs.py to update."
     )
     reg.close()
+
+
+def test_capi_trains_and_registers(tmp_path):
+    """The dict CAPI API trains and records a completed registry run."""
+    import lightning as pl
+
+    pl.seed_everything(42, workers=True)
+    model = spt.CAPI(
+        embed_dim=32,
+        depth=1,
+        num_heads=4,
+        predictor_depth=1,
+        patch_size=8,
+        n_registers=4,
+        num_clusters=8,
+        total_steps=8,
+        warmup_steps=1,
+        drop_path_rate=0,
+    )
+    manager = Manager(
+        trainer=make_trainer_cfg(),
+        module=model,
+        data=make_data(multi_view=False),
+        seed=42,
+    )
+    manager()
+    from stable_pretraining._config import get_config
+
+    registry = open_registry(cache_dir=get_config().cache_dir)
+    runs = registry.query(status="completed")
+    assert runs
+    assert int(model.capi_updates) == 4
+    assert runs[-1].hparams["num_clusters"] == 8
+    registry.close()

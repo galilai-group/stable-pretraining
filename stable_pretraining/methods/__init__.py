@@ -1,4 +1,5 @@
 from .barlow_twins import BarlowTwins
+from .capi import CAPI
 from .beit import BEiT
 from .byol import BYOL
 from .cmae import CMAE
@@ -33,6 +34,7 @@ from .visreg import VISReg
 from .wmse import WMSE
 
 __all__ = [
+    "CAPI",
     "BarlowTwins",
     "BEiT",
     "BYOL",
