@@ -368,7 +368,55 @@ class TestRotaryPositionEmbedding1D:
         cos1, _ = rope.get_freqs(8, torch.device("cpu"))
         cos2, _ = rope.get_freqs(16, torch.device("cpu"))
         assert cos1.shape != cos2.shape
-        assert rope._cached_seq_len == 16
+        assert torch.allclose(cos1, cos2[:8])
+
+    def test_get_freqs_casts_to_requested_dtype(self):
+        rope = RotaryPositionEmbedding1D(head_dim=32)
+        rope.get_freqs(8, torch.device("cpu"))
+        cos, sin = rope.get_freqs(8, torch.device("cpu"), dtype=torch.bfloat16)
+        assert cos.dtype == sin.dtype == torch.bfloat16
+
+    def test_freqs_follow_loaded_inv_freq(self):
+        a = RotaryPositionEmbedding1D(head_dim=32, base=10000.0)
+        b = RotaryPositionEmbedding1D(head_dim=32, base=500.0)
+        a.get_freqs(16, torch.device("cpu"))
+        a.load_state_dict(b.state_dict())
+        torch.testing.assert_close(
+            a.get_freqs(16, torch.device("cpu")), b.get_freqs(16, torch.device("cpu"))
+        )
+
+    def test_meta_init_to_empty_then_load(self):
+        ref = RotaryPositionEmbedding1D(head_dim=32)
+        with torch.device("meta"):
+            rope = RotaryPositionEmbedding1D(head_dim=32)
+        rope = rope.to_empty(device="cpu")
+        rope.load_state_dict(ref.state_dict())
+        torch.testing.assert_close(
+            rope.get_freqs(16, torch.device("cpu")),
+            ref.get_freqs(16, torch.device("cpu")),
+        )
+
+    def test_onnx_export(self, tmp_path):
+        ort = pytest.importorskip("onnxruntime")
+        pytest.importorskip("onnx")
+        rope = RotaryPositionEmbedding1D(head_dim=16)
+        q = torch.randn(2, 4, 33, 16)
+
+        class Rotate(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.rope = rope
+
+            def forward(self, q):
+                return self.rope(q, q)[0]
+
+        path = tmp_path / "rope.onnx"
+        torch.onnx.export(Rotate(), (q,), str(path), opset_version=17, dynamo=False)
+        sess = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        got = sess.run(None, {sess.get_inputs()[0].name: q.numpy()})[0]
+        torch.testing.assert_close(
+            torch.from_numpy(got), Rotate()(q), atol=1e-5, rtol=0
+        )
 
     def test_get_freqs_deterministic(self):
         rope = RotaryPositionEmbedding1D(head_dim=32)

@@ -154,6 +154,17 @@ Unreleased
   changes are persisted via ``PATCH /api/run-meta`` with optimistic updates and
   revert on failure.
 
+**Bug fixes**
+
+- ``RotaryPositionEmbedding1D``: the sin/cos tables are now computed from
+  ``inv_freq`` on every call instead of cached in non-persistent buffers. The
+  cache was not rebuilt when ``load_state_dict`` replaced ``inv_freq``, so a
+  restored module rotated with its old frequencies, and after meta-device
+  construction and ``to_empty()`` it could hold uninitialized values while
+  still marked valid. The table also traces to a plain
+  ``Range``/``Mul``/``Cos``/``Sin`` subgraph, so models using 1-D RoPE export
+  to ONNX and load in onnxruntime (the lazily built cache did not).
+
 **Dependencies**
 
 - ``torchvision>=0.21`` is now required (previously unbounded).
