@@ -5,6 +5,7 @@ of the same image close together in representation space. Includes both contrast
 (NTXentLoss) and non-contrastive (BYOL, VICReg, Barlow Twins) methods.
 """
 
+import math
 from typing import Optional
 
 import torch
@@ -77,6 +78,147 @@ class VICRegLoss(torch.nn.Module):
         repr_loss = F.mse_loss(z_i, z_j)
 
         loss = self.sim_coeff * repr_loss + self.vcreg_loss(z_i) + self.vcreg_loss(z_j)
+        return loss
+
+
+class CorInfoMaxLoss(torch.nn.Module):
+    """Agreement and running-covariance log-determinant objective.
+
+    Args:
+        projection_dim: Width of both projected views.
+        sim_coeff: Weight of the mean squared agreement loss.
+        cov_coeff: Weight of the covariance log-determinant loss.
+        mean_momentum: Weight of the previous running mean, in ``[0, 1)``.
+        covariance_momentum: Weight of the previous covariance, in ``[0, 1)``.
+        initial_covariance: Positive initial covariance diagonal.
+        epsilon: Positive diagonal regularizer used only inside the determinant.
+        normalize: L2-normalize projections before both objective terms.
+        statistics_dtype: Float64 (reference default) or float32 running state.
+
+    Note:
+        Current statistics remain differentiable; only retained history is
+        detached. Evaluation computes candidate statistics without storing them.
+        DDP gathers global projections and requires equal local batch sizes and
+        synchronized calls. History is checkpointed as persistent buffers.
+        Explicit ``.float()`` changes the statistics precision; ``.half()`` and
+        ``.bfloat16()`` history are unsupported. Use mixed precision instead.
+    """
+
+    def __init__(
+        self,
+        projection_dim: int,
+        sim_coeff: float = 250.0,
+        cov_coeff: float = 1.0,
+        mean_momentum: float = 0.01,
+        covariance_momentum: float = 0.01,
+        initial_covariance: float = 1.0,
+        epsilon: float = 1e-8,
+        normalize: bool = True,
+        statistics_dtype: torch.dtype = torch.float64,
+    ) -> None:
+        super().__init__()
+        if not isinstance(projection_dim, int) or projection_dim < 1:
+            raise ValueError("projection_dim must be a positive integer")
+        for name, value in (("sim_coeff", sim_coeff), ("cov_coeff", cov_coeff)):
+            if not math.isfinite(value) or value < 0:
+                raise ValueError(f"{name} must be finite and nonnegative")
+        for name, value in (
+            ("mean_momentum", mean_momentum),
+            ("covariance_momentum", covariance_momentum),
+        ):
+            if not 0 <= value < 1:
+                raise ValueError(f"{name} must be in [0, 1)")
+        for name, value in (
+            ("initial_covariance", initial_covariance),
+            ("epsilon", epsilon),
+        ):
+            if not math.isfinite(value) or value <= 0:
+                raise ValueError(f"{name} must be finite and positive")
+        if statistics_dtype not in (torch.float32, torch.float64):
+            raise ValueError("statistics_dtype must be torch.float32 or torch.float64")
+        self.projection_dim = projection_dim
+        self.sim_coeff = sim_coeff
+        self.cov_coeff = cov_coeff
+        self.mean_momentum = mean_momentum
+        self.covariance_momentum = covariance_momentum
+        self.epsilon = epsilon
+        self.normalize = normalize
+        for view in (1, 2):
+            self.register_buffer(
+                f"mean_{view}", torch.zeros(projection_dim, dtype=statistics_dtype)
+            )
+            self.register_buffer(
+                f"covariance_{view}",
+                initial_covariance * torch.eye(projection_dim, dtype=statistics_dtype),
+            )
+
+    def forward(self, z_i: torch.Tensor, z_j: torch.Tensor) -> torch.Tensor:
+        """Compute the objective and retain detached history during training.
+
+        Args:
+            z_i: Raw first-view projections, shape ``[N, projection_dim]``.
+            z_j: Paired second-view projections, with matching shape and dtype.
+
+        Returns:
+            Scalar weighted CorInfoMax loss.
+
+        Raises:
+            ValueError: Inputs or running-state precision are incompatible.
+        """
+        if (
+            z_i.ndim != 2
+            or z_j.shape != z_i.shape
+            or z_i.shape[0] == 0
+            or z_i.shape[1] != self.projection_dim
+        ):
+            raise ValueError("Expected matching nonempty [N, projection_dim] views")
+        if (
+            not z_i.is_floating_point()
+            or z_i.dtype != z_j.dtype
+            or z_i.device != z_j.device
+            or z_i.device != self.mean_1.device
+        ):
+            raise ValueError("Views must have matching floating dtype and loss device")
+        dtype = self.mean_1.dtype
+        if dtype not in (torch.float32, torch.float64):
+            raise ValueError("CorInfoMax history requires float32 or float64; use AMP")
+        if get_world_size() > 1:
+            shape = torch.tensor(z_i.shape, device=z_i.device)
+            if any(not torch.equal(shape, other) for other in all_gather(shape)):
+                raise ValueError("CorInfoMax DDP requires equal local view shapes")
+            z_i = torch.cat(all_gather(z_i), dim=0)
+            z_j = torch.cat(all_gather(z_j), dim=0)
+
+        # Autocast must not lower the precision of covariance matrix products.
+        with torch.autocast(device_type=z_i.device.type, enabled=False):
+            if z_i.dtype in (torch.float16, torch.bfloat16):
+                z_i, z_j = z_i.float(), z_j.float()
+            if self.normalize:
+                z_i, z_j = F.normalize(z_i, dim=-1), F.normalize(z_j, dim=-1)
+            similarity = F.mse_loss(z_i, z_j)
+            identity = torch.eye(self.projection_dim, device=z_i.device, dtype=dtype)
+            updates = []
+            determinants = []
+            for view, z in enumerate((z_i, z_j), start=1):
+                old_mean = getattr(self, f"mean_{view}")
+                old_covariance = getattr(self, f"covariance_{view}")
+                mean = self.mean_momentum * old_mean + (
+                    1 - self.mean_momentum
+                ) * z.mean(dim=0).to(dtype)
+                centered = z.to(dtype) - mean
+                covariance = self.covariance_momentum * old_covariance + (
+                    1 - self.covariance_momentum
+                ) * (centered.T @ centered / z.shape[0])
+                determinants.append(torch.logdet(covariance + self.epsilon * identity))
+                updates.append((mean, covariance))
+            covariance_loss = -sum(determinants) / self.projection_dim
+            loss = self.sim_coeff * similarity + self.cov_coeff * covariance_loss
+
+        if self.training:
+            for view, (mean, covariance) in enumerate(updates, start=1):
+                # Replacing buffers preserves tensors saved by the current graph.
+                setattr(self, f"mean_{view}", mean.detach().clone())
+                setattr(self, f"covariance_{view}", covariance.detach().clone())
         return loss
 
 
