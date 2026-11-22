@@ -25,8 +25,8 @@ dict; attach online probes and representation diagnostics; run through
 [Jet invertible encoder](https://galilai-group.github.io/stable-pretraining/guides/jet/) ·
 [Using AI agents](https://galilai-group.github.io/stable-pretraining/guides/agents/) · [Discord](https://discord.gg/adzpqWKM25)
 
-The method catalog includes SimCLR, DINO, MAE, BYOL, VICReg, LeJEPA, and more.
-The experimental [JAX backend](#jax-backend) is opt-in.
+The method catalog includes SimCLR, DINO, MAE, BYOL, VICReg, DIET, LeJEPA,
+and more. The experimental [JAX backend](#jax-backend) is opt-in.
 
 ## Table of Contents
 
