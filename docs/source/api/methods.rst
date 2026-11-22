@@ -34,6 +34,7 @@ or by bootstrapping without explicit negatives.
    SimCLR
    BYOL
    NNCLR
+   All4One
    MoCov2
    MoCov3
    SimSiam

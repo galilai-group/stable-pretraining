@@ -147,6 +147,14 @@ NNCLR
         queue_length: ${module.hparams.support_set_size}
         dim: ${module.hparams.projection_dim}
 
+All4One
+~~~~~~~
+
+.. autofunction:: all4one
+
+See :doc:`../guides/all4one` for the runnable example, required components,
+training configuration, and evaluation scope.
+
 BYOL
 ~~~~
 

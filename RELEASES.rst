@@ -4,6 +4,11 @@ Unreleased
 
 **New method**
 
+- ``All4One``: neighbour, centroid, and feature contrast with parameter-only
+  momentum teachers and a shared neighbour-attention encoder. Includes a
+  composable forward, reusable loss and queue components, pretraining and
+  frozen linear evaluation examples.
+
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,
