@@ -216,6 +216,20 @@ def test_ijepa_forward_backward():
     _assert_loss_and_backward(model, output)
 
 
+def test_iwm_forward_backward():
+    model = M.IWM(
+        model_or_model_name=TINY_VIT,
+        predictor_embed_dim=64,
+        predictor_depth=2,
+        num_targets=2,
+    )
+    model.train()
+    source, target = _two_views()
+    action = torch.randn(B, 7, generator=torch.Generator().manual_seed(2))
+    output = model(source, target, action)
+    _assert_loss_and_backward(model, output)
+
+
 def test_mae_forward_backward():
     model = M.MAE(
         model_or_model_name=TINY_VIT,

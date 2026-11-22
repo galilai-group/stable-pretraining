@@ -17,6 +17,16 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``IWM`` (Image World Models): builds on I-JEPA so the predictor learns to
+  apply photometric transformations in latent space, predicting a target view
+  from a masked, corrupted source view conditioned on the action between them,
+  per Garrido et al., "Learning and Leveraging World Models in Visual
+  Representation Learning" (2024). Adds the ``IWMAction`` transform, which
+  encodes that action from the parameters recorded by the augmentations, and a
+  ``query_cond_net`` option on ``FlexibleTransformer`` to condition query
+  tokens on a per-sample vector. Registered in ``stable_pretraining.methods``
+  and ``METHODS.md``, with an Imagenette ViT-S/16 benchmark under
+  ``benchmarks/imagenet10/iwm-vit-small.py``.
 
 **Discoverability improvements**
 

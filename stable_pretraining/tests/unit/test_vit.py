@@ -613,6 +613,59 @@ class TestFlexibleTransformerForward:
         out = model(context, queries, context_idx, query_idx, num_prefix=0)
         assert out.shape == (batch_size, n_qry, 128)
 
+    def test_query_cond(self, batch_size, model_config):
+        """Test query conditioning keeps the output shape and changes predictions."""
+        model = FlexibleTransformer(
+            **model_config,
+            cross_attn=False,
+            use_adaln=False,
+            add_mask_token=True,
+            query_cond_net=nn.Linear(
+                model_config["hidden_dim"] + 7, model_config["hidden_dim"]
+            ),
+            zero_init_output=False,
+        )
+
+        n_ctx, n_qry = 20, 10
+        context = torch.randn(batch_size, n_ctx, model_config["input_dim"])
+        queries = torch.zeros(batch_size, n_qry, model_config["input_dim"])
+        context_idx = torch.randint(0, model_config["num_patches"], (batch_size, n_ctx))
+        query_idx = torch.randint(0, model_config["num_patches"], (batch_size, n_qry))
+        context_idx[:, 0] = 0
+        query_mask = torch.ones(batch_size, n_qry, dtype=torch.bool)
+
+        out_a, out_b = (
+            model(
+                context,
+                queries,
+                context_idx,
+                query_idx,
+                query_mask=query_mask,
+                query_cond=cond,
+            )
+            for cond in (torch.zeros(batch_size, 7), torch.ones(batch_size, 7))
+        )
+        assert out_a.shape == (batch_size, n_qry, model_config["output_dim"])
+        assert not torch.allclose(out_a, out_b)
+
+    def test_query_cond_and_net_used_together(self, batch_size, model_config):
+        """Test query_cond and query_cond_net must be given together."""
+        plain = FlexibleTransformer(**model_config, use_adaln=False)
+        conditioned = FlexibleTransformer(
+            **model_config,
+            use_adaln=False,
+            query_cond_net=nn.Linear(
+                model_config["hidden_dim"] + 7, model_config["hidden_dim"]
+            ),
+        )
+        context = torch.randn(batch_size, 20, model_config["input_dim"])
+        queries = torch.randn(batch_size, 10, model_config["input_dim"])
+
+        with pytest.raises(ValueError, match="used together"):
+            plain(context, queries, query_cond=torch.zeros(batch_size, 7))
+        with pytest.raises(ValueError, match="used together"):
+            conditioned(context, queries)
+
 
 @pytest.mark.unit
 class TestFlexibleTransformerGradients:

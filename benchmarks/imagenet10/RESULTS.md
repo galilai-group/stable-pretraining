@@ -31,19 +31,20 @@ methods are flagged with the reason they collapse.
 | 13 | **MoCo v2**        | momentum + queue               | 70.0% | 70.8% | ✓ |
 | 14 | **BYOL**           | EMA target + predictor         | 56.0% | 63.9% | ✓ |
 | 15 | **SimSiam**        | siamese + stop-grad            | 54.9% | 62.8% | ✓ |
-| 16 | **iBOT**           | DINO + masked-patch loss       | 43.3% | 57.9% | ✓ |
-| 17 | **MSN**            | masked-siamese                 | 50.6% | 57.6% | ✓ |
-| 18 | **DINOv3**         | DINOv2 + registers + KoLeo     | 35.9% | 41.4% | running (mc restart, ep 37) |
-| 19 | **DINOv2**         | DINO + iBOT + Sinkhorn         | 29.6% | 37.2% | running (mc restart, ep 37) |
-| 20 | **TiCO**           | EMA-cov contrast (LARS)        | 23.7% | 33.7% | ✓ |
-| 21 | **IJEPA**          | predictive (joint embedding)   | 33.2% | 34.0% | ✓ |
-| 22 | **Data2Vec**       | EMA contextual features        | 31.0% | 26.3% | ✓ |
-| 23 | **MaskFeat**       | masked HOG features            | 27.8% | 25.6% | ✓ |
-| 24 | **SimMIM**         | masked pixel modeling          | 30.9% | 22.5% | ✓ |
-| 25 | **W-MSE**          | whitening + MSE                | 16.9% | 15.9% | ✓ |
-| 26 | **PIRL**           | jigsaw + memory bank           | 17.4% | 15.6% | ✓ |
-| 27 | **BEiT**           | discrete-token masking         | 22.0% | 15.3% | ✓ (placeholder tokenizer) |
-| 28 | **iGPT**           | autoregressive (AIM-style)     | 18.8% | 12.8% | ✓ |
+| 16 | **IWM**            | predictive + action-conditioned | 48.1% | 60.3% | ✓ |
+| 17 | **iBOT**           | DINO + masked-patch loss       | 43.3% | 57.9% | ✓ |
+| 18 | **MSN**            | masked-siamese                 | 50.6% | 57.6% | ✓ |
+| 19 | **DINOv3**         | DINOv2 + registers + KoLeo     | 35.9% | 41.4% | running (mc restart, ep 37) |
+| 20 | **DINOv2**         | DINO + iBOT + Sinkhorn         | 29.6% | 37.2% | running (mc restart, ep 37) |
+| 21 | **TiCO**           | EMA-cov contrast (LARS)        | 23.7% | 33.7% | ✓ |
+| 22 | **IJEPA**          | predictive (joint embedding)   | 33.2% | 34.0% | ✓ |
+| 23 | **Data2Vec**       | EMA contextual features        | 31.0% | 26.3% | ✓ |
+| 24 | **MaskFeat**       | masked HOG features            | 27.8% | 25.6% | ✓ |
+| 25 | **SimMIM**         | masked pixel modeling          | 30.9% | 22.5% | ✓ |
+| 26 | **W-MSE**          | whitening + MSE                | 16.9% | 15.9% | ✓ |
+| 27 | **PIRL**           | jigsaw + memory bank           | 17.4% | 15.6% | ✓ |
+| 28 | **BEiT**           | discrete-token masking         | 22.0% | 15.3% | ✓ (placeholder tokenizer) |
+| 29 | **iGPT**           | autoregressive (AIM-style)     | 18.8% | 12.8% | ✓ |
 
 ✓ = run completed at epoch 199/200. *running* = run still climbing at the
 listed epoch; the numbers shown are the best so far, will improve.
@@ -70,6 +71,7 @@ size used in this sweep. Key choices:
 | iGPT (AIM-style) | AdamW, causal ViT | 1e-3 | classical pixel-cluster iGPT not impl. |
 | iBOT | AdamW + masked patch | 5e-4 | paper exact |
 | IJEPA | AdamW, predictor depth 12 | 1e-3 | paper exact |
+| IWM | AdamW, predictor depth 12, action-conditioned | 1e-3 | I-JEPA recipe (paper: betas 0.999, wd 0.04→0.4) |
 | TiCO | LARS                         | 0.3 · bs/256 | paper exact |
 | W-MSE | AdamW, ZCA whitening | 2e-3 | paper exact |
 | PIRL | AdamW + jigsaw + memory bank | 5e-4 | paper SGD; jigsaw incompatible w/ ViT pos-embed |

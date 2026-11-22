@@ -1222,6 +1222,66 @@ class ContextTargetsMultiBlockMask(Transform):
         return x
 
 
+class IWMAction(Transform):
+    """Encode the photometric action mapping a source view to a target view.
+
+    Image World Models (Garrido et al. 2024) condition their predictor on the
+    transformation ``a_{x->y}`` between views. Reads the parameters recorded by
+    :class:`ColorJitter` in both views, and by :class:`RandomGrayscale`,
+    :class:`GaussianBlur` and :class:`RandomSolarize` in the source, and writes::
+
+        [brightness, contrast, saturation, hue, grayscale, blur, solarize]
+
+    Brightness, contrast and saturation are multiplicative, so they are encoded
+    as target / source factor ratios; hue is additive, so as target - source
+    (matching the actions shown in the paper's Fig. 1). A skipped or absent
+    jitter counts as the identity and an absent destructive augmentation as not
+    applied, so ``[1, 1, 1, 0, 0, 0, 0]`` means no transformation. The random
+    order in which ColorJitter applies its four adjustments is not encoded.
+
+    Args:
+        source_view: Key of the source view.
+        target_view: Key of the target view.
+        target: Key the action is written to.
+    """
+
+    _IDENTITY_JITTER = (1.0, 1.0, 1.0, 0.0)
+
+    def __init__(
+        self,
+        source_view: str = "source",
+        target_view: str = "target",
+        target: str = "action",
+    ):
+        super().__init__()
+        self.source_view = source_view
+        self.target_view = target_view
+        self.target = target
+
+    def _jitter(self, view):
+        params = view.get("ColorJitter")
+        if params is None or not params.any():
+            return torch.tensor(self._IDENTITY_JITTER)
+        return params[:4]
+
+    def __call__(self, x):
+        source = self.nested_get(x, self.source_view)
+        target = self.nested_get(x, self.target_view)
+        jitter_s, jitter_t = self._jitter(source), self._jitter(target)
+        blur = source.get("GaussianBlur")
+        destructive = torch.tensor(
+            [
+                float(source.get("RandomGrayscale", False)),
+                float(blur is not None and bool(blur.any())),
+                float(source.get("RandomSolarize", False)),
+            ]
+        )
+        x[self.target] = torch.cat(
+            [jitter_t[:3] / jitter_s[:3], jitter_t[3:] - jitter_s[3:], destructive]
+        )
+        return x
+
+
 class RandomMask(Transform):
     r"""Creates a random MAE-style mask for an image.
 

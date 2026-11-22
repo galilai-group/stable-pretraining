@@ -1006,3 +1006,52 @@ class TestMultiViewTransform:
             view = output[key]
             assert isinstance(view, dict)
             assert "image" in view
+
+
+@pytest.mark.unit
+class TestIWMAction:
+    """Test suite for transforms.IWMAction transform."""
+
+    def test_no_transformation_is_identity(self):
+        """Test skipped jitters and no destructive augmentations give the identity."""
+        sample = {"source": {"ColorJitter": torch.zeros(8)}, "target": {}}
+        action = transforms.IWMAction()(sample)["action"]
+        assert torch.equal(action, torch.tensor([1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]))
+
+    def test_jitter_ratio_and_flags(self):
+        """Test b/c/s are target/source ratios, hue a difference, flags from source."""
+        source = {
+            "ColorJitter": torch.tensor([1.2, 0.8, 1.0, 0.05, 0, 1, 2, 3]),
+            "RandomGrayscale": True,
+            "GaussianBlur": torch.tensor([0.5, 0.5]),
+            "RandomSolarize": False,
+        }
+        target = {"ColorJitter": torch.tensor([0.9, 1.2, 1.1, -0.05, 3, 2, 1, 0])}
+        action = transforms.IWMAction()({"source": source, "target": target})["action"]
+        expected = torch.tensor([0.75, 1.5, 1.1, -0.1, 1.0, 1.0, 0.0])
+        assert torch.allclose(action, expected)
+
+    def test_recorded_params(self):
+        """Test the action reads the parameters recorded by real transforms."""
+        t = transforms.Compose(
+            transforms.MultiViewTransform(
+                {
+                    "target": transforms.ColorJitter(0.4, 0.4, 0.2, 0.1, p=1.0),
+                    "source": transforms.Compose(
+                        transforms.ColorJitter(0.4, 0.4, 0.2, 0.1, p=1.0),
+                        transforms.RandomGrayscale(p=1.0),
+                        transforms.GaussianBlur(kernel_size=3, p=1.0),
+                        transforms.RandomSolarize(threshold=0.5, p=1.0),
+                    ),
+                }
+            ),
+            transforms.IWMAction(),
+        )
+        sample = t({"image": torch.rand(3, 32, 32)})
+        jitter_s = sample["source"]["ColorJitter"][:4]
+        jitter_t = sample["target"]["ColorJitter"][:4]
+        action = sample["action"]
+        assert action.shape == (7,)
+        assert torch.allclose(action[:3], jitter_t[:3] / jitter_s[:3])
+        assert torch.allclose(action[3], jitter_t[3] - jitter_s[3])
+        assert torch.equal(action[4:], torch.ones(3))

@@ -10,6 +10,7 @@ from .dinov3 import DINOv3
 from .ibot import iBOT
 from .igpt import iGPT
 from .ijepa import IJEPA
+from .iwm import IWM
 from .mae import MAE
 from .lejepa import LeJEPA
 from .maskfeat import MaskFeat
@@ -45,6 +46,7 @@ __all__ = [
     "iBOT",
     "iGPT",
     "IJEPA",
+    "IWM",
     "MAE",
     "LeJEPA",
     "MaskFeat",
