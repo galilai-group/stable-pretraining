@@ -4,6 +4,11 @@ Unreleased
 
 **New method**
 
+- ``MMCR``: maximum manifold capacity representations with an explicit
+  ``[batch, views, features]`` loss, FP32-or-higher SVD, differentiable
+  distributed gathering, dict-based forward function and method class.
+  Includes a CIFAR-10/ResNet-18 example and numerical/gradient tests.
+
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

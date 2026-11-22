@@ -49,6 +49,14 @@ Or in Python code:
 Available Forward Functions
 ---------------------------
 
+MMCR
+~~~~
+
+.. autofunction:: mmcr
+
+See :doc:`../guides/mmcr` for the loss, batch layout and example.
+
+
 SimCLR
 ~~~~~~
 

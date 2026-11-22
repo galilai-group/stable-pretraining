@@ -50,6 +50,7 @@ feature dimensions rather than using explicit contrastive pairs.
    :toctree: gen_modules/
    :template: myclass_template.rst
 
+   MMCR
    VICReg
    VICRegL
    BarlowTwins

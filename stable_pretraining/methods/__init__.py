@@ -17,6 +17,7 @@ from .mim_refiner import MIMRefiner
 from .mocov2 import MoCov2
 from .mocov3 import MoCov3
 from .msn import MSN
+from .mmcr import MMCR
 from .nepa import NEPA
 from .nnclr import NNCLR
 from .pirl import PIRL
@@ -52,6 +53,7 @@ __all__ = [
     "MoCov2",
     "MoCov3",
     "MSN",
+    "MMCR",
     "NEPA",
     "NNCLR",
     "PIRL",

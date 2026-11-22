@@ -123,13 +123,17 @@ def _describe_handler(handler) -> str:
 
 
 def print_signal_info(label: str = "current"):
-    """Dump the currently-bound signal handlers for the four signals we care about.
+    """Dump supported signal handlers, noting unavailable platform signals.
 
     ``label`` is folded into the section header so successive dumps are easy to
     distinguish in the log (e.g. ``"pre-fit"``, ``"post-fit"``).
     """
     log_header(f"SignalHandlers ({label})")
-    for sig in (signal.SIGUSR1, signal.SIGUSR2, signal.SIGCONT, signal.SIGTERM):
+    for name in ("SIGUSR1", "SIGUSR2", "SIGCONT", "SIGTERM"):
+        sig = getattr(signal, name, None)
+        if sig is None:
+            logging.info(f"  {name:<8} → unavailable on this platform")
+            continue
         logging.info(f"  {sig.name:<8} → {_describe_handler(signal.getsignal(sig))}")
 
 
