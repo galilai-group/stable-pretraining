@@ -24,6 +24,7 @@ from .multimodal import CLIPLoss
 
 # Reconstruction losses
 from .reconstruction import mae, MAELoss
+from .dae_net import DAENetLoss
 
 # Utilities
 from .utils import (
@@ -48,6 +49,7 @@ __all__ = [
     # Reconstruction
     "mae",
     "MAELoss",
+    "DAENetLoss",
     # Utils
     "sinkhorn_knopp",
     "off_diagonal",

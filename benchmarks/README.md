@@ -47,6 +47,12 @@ python benchmarks/cifar10/barlow-resnet18.py
 python benchmarks/cifar10/nnclr-resnet18.py
 ```
 
+### DAE-Net on ShapeNet Part
+
+See [the full-category DAE-Net benchmark](dae_net/README.md) for data preparation,
+four category recipes, training/checkpoint recovery and semantic part scoring.
+The recipe uses single-device FP32 training through `spt.Manager` and local logs.
+
 ## Notes
 
 - The data directory will be created automatically if it doesn't exist

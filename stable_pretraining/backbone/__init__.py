@@ -1,4 +1,5 @@
 from .convmixer import ConvMixer
+from .dae_net import DAENetBackbone
 from .jet import Jet
 from .mlp import MLP
 from .nn_modules import (
@@ -77,6 +78,7 @@ from .decoders import CNNImageDecoder, ViTImageDecoder, build_image_decoder
 from . import video  # noqa: F401  — video encoders live under sp.backbone.video.*
 
 __all__ = [
+    DAENetBackbone,
     Jet,
     MLP,
     TensorAggregator,

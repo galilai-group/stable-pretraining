@@ -31,6 +31,7 @@ from .vicreg import VICReg
 from .vicregl import VICRegL
 from .visreg import VISReg
 from .wmse import WMSE
+from .dae_net import DAENet
 
 __all__ = [
     "BarlowTwins",
@@ -66,4 +67,5 @@ __all__ = [
     "VICRegL",
     "VISReg",
     "WMSE",
+    "DAENet",
 ]

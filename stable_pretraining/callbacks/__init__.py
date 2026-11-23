@@ -30,6 +30,7 @@ from .env_info import EnvironmentDumpCallback
 from .registry import ModuleRegistryCallback
 from .unused_parameters import LogUnusedParametersOnce
 from .hf_models import HuggingFaceCheckpointCallback
+from .dae_net import DAENetRevival
 
 __all__ = [
     OnlineProbe,
@@ -66,4 +67,5 @@ __all__ = [
     SwanLabCheckpoint,
     OrderedQueue,
     UnsortedQueue,
+    "DAENetRevival",
 ]

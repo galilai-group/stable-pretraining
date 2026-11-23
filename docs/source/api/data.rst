@@ -16,6 +16,39 @@ Core Components
    Collator
    Dataset
 
+DAE-Net Data Loading
+--------------------
+
+.. autosummary::
+   :toctree: gen_modules/
+   :template: myclass_template.rst
+
+   DAENetDataModule
+   DAENetDataset
+   DAENetExposureSampler
+   DAENetDistributedBatchSampler
+
+DAE-Net owns manifest-backed HDF5 loading, deterministic query offsets and
+exposure sampling. Shapes are read directly from HDF5; no open file handles
+are shared between workers. The usage loader visits training records once
+with voxels only, independently of repeated query training.
+
+``DAENetDataModule`` constructs its own DataLoaders. General ``DataModule``
+defaults for pinned memory and persistent workers apply to dictionary loader
+configurations; prebuilt DataLoaders retain their existing settings.
+
+For single-node DDP, set ``distributed=True`` and use
+``Trainer(use_distributed_sampler=False)``. ``batch_size`` is global;
+``DAENetDistributedBatchSampler`` partitions each ordered global exposure batch
+without padding or dropping its tail. All ranks must receive at least one shape
+per step. The current DDP controller requires ``num_workers=0`` and derives the
+training loader generator state from the sampler seed and epoch. Usage remains
+a full traversal performed by rank zero. See the full-category benchmark for
+launch and completed-epoch recovery commands.
+
+Offline surface-label loading and occupancy/semantic scoring live in
+``benchmarks/dae_net/`` alongside the evaluation entry point.
+
 Real Data Wrappers
 ------------------
 

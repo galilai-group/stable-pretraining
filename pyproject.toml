@@ -106,6 +106,7 @@ swanlab = ["swanlab>=0.8.0"]
 deepspeed = ["deepspeed"]
 # Development and documentation tools
 dev = [
+    "h5py",
     "pytest",
     "pytest-split",
     "coverage",
