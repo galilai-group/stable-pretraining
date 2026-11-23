@@ -28,6 +28,11 @@ class TestCollectives:
     def test_barlow_twins_matches_single_process(self):
         H.run_distributed(H.w_barlow_matches_single_proc, world_size=2, backend="gloo")
 
+    def test_twist_diversity_uses_global_batch(self):
+        H.run_distributed(
+            H.w_twist_diversity_uses_global_batch, world_size=2, backend="gloo"
+        )
+
     def test_contrastive_losses_run_under_ddp(self):
         H.run_distributed(H.w_contrastive_runs_under_ddp, world_size=2, backend="gloo")
 

@@ -12,3 +12,4 @@ stable_pretraining.losses
    NegativeCosineSimilarity
    VICRegLoss
    BarlowTwinsLoss
+   TWISTLoss

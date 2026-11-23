@@ -777,6 +777,7 @@ spt.set(default_loggers={"registry": False})
 | VICReg | `forward.vicreg` | `VICRegLoss` | Variance-invariance-covariance regularization |
 | Barlow Twins | `forward.barlow_twins` | `BarlowTwinsLoss` | Cross-correlation matrix alignment to identity |
 | SwAV | `forward.swav` | `SwAVLoss` | Online clustering with Sinkhorn-Knopp normalization |
+| TWIST | `forward.twist` | `TWISTLoss` | Twin class distributions: consistency + sharpness − diversity |
 | NNCLR | `forward.nnclr` | `NTXEntLoss` | Nearest-neighbor contrastive learning |
 | DINO | `forward.dino` | `DINOv1Loss` | Self-distillation with multi-crop and centering |
 | DINOv2 | `forward.dinov2` | `DINOv2Loss`, `iBOTPatchLoss` | DINO + iBOT masked patch prediction |

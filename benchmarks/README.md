@@ -45,6 +45,12 @@ python benchmarks/cifar10/barlow-resnet18.py
 
 # NNCLR
 python benchmarks/cifar10/nnclr-resnet18.py
+
+# TWIST
+python benchmarks/cifar10/twist-resnet18.py
+
+# TWIST on Imagenette (ViT-S/16)
+MAX_EPOCHS=200 python benchmarks/imagenet10/twist-vit-small.py
 ```
 
 ## Notes

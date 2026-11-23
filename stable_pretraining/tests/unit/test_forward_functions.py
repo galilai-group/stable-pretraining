@@ -241,6 +241,25 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         assert "embedding" in result
         assert "loss" in result
 
+    def test_twist_forward_with_benchmark_transforms(self):
+        """Test twist with benchmark transforms."""
+        sample = {"image": _create_dummy_pil_image()}
+
+        transform = _simclr_transforms()
+        batch = transform(sample)
+
+        module = Mock()
+        module.backbone = lambda x: torch.randn(x.shape[0], 512)
+        module.projector = lambda x: torch.randn(x.shape[0], 64)
+        module.twist_loss = spt.losses.TWISTLoss()
+        module.training = True
+        module.log = Mock()
+
+        result = forward_module.twist(module, batch, "train")
+
+        assert "embedding" in result
+        assert "loss" in result
+
     def test_nnclr_forward_with_benchmark_transforms(self):
         """Test nnclr with benchmark transforms."""
         sample = {"image": _create_dummy_pil_image()}

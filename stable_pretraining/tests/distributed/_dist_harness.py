@@ -570,6 +570,60 @@ def w_barlow_matches_single_proc(rank, world_size):
     assert torch.allclose(loss, ref, atol=1e-5), (loss.item(), ref.item())
 
 
+def w_twist_diversity_uses_global_batch(rank, world_size):
+    """TWIST's diversity term is the entropy of the GLOBAL mean distribution.
+
+    Every rank holds different data. The per-sample terms (consistency,
+    sharpness) stay local, but the diversity term must equal the entropy of the
+    class distribution averaged over all ranks' samples. Its local gradient is
+    ``world_size`` times the single-process one, because the functional
+    collective sums the (identical) per-rank gradients; DDP's gradient
+    averaging then recovers exactly the single-process update.
+    """
+    import torch.nn.functional as F
+
+    from stable_pretraining.losses import TWISTLoss
+
+    def _data(r):
+        g = torch.Generator().manual_seed(100 + r)
+        return torch.randn(8, 16, generator=g), torch.randn(8, 16, generator=g)
+
+    def _entropy_of_mean(z):
+        mean = F.softmax(z, dim=-1).mean(dim=0)
+        return -(mean * mean.log()).sum()
+
+    z_i, z_j = _data(rank)
+    z_i.requires_grad_(True)
+    terms = TWISTLoss().terms(z_i, z_j)
+
+    all_i, all_j = zip(*[_data(r) for r in range(world_size)])
+    all_i = [z_i if r == rank else z for r, z in enumerate(all_i)]
+    ref = 0.5 * (
+        _entropy_of_mean(torch.cat(all_i)) + _entropy_of_mean(torch.cat(all_j))
+    )
+    assert torch.allclose(terms["diversity"], ref, atol=1e-5), (terms["diversity"], ref)
+
+    local_only = 0.5 * (_entropy_of_mean(z_i) + _entropy_of_mean(z_j))
+    assert not torch.allclose(terms["diversity"], local_only, atol=1e-4)
+
+    # The per-sample terms are local-batch quantities.
+    p_i, p_j = F.softmax(z_i, dim=-1), F.softmax(z_j, dim=-1)
+    kl = 0.5 * (
+        (p_i * (p_i.log() - p_j.log())).sum(-1).mean()
+        + (p_j * (p_j.log() - p_i.log())).sum(-1).mean()
+    )
+    assert torch.allclose(terms["consistency"], kl, atol=1e-5)
+    assert torch.allclose(
+        terms["loss"],
+        terms["consistency"] + terms["sharpness"] - terms["diversity"],
+        atol=1e-6,
+    )
+
+    (grad,) = torch.autograd.grad(terms["diversity"], z_i, retain_graph=True)
+    (ref_grad,) = torch.autograd.grad(ref, z_i)
+    assert torch.allclose(grad, world_size * ref_grad, atol=1e-6), (grad, ref_grad)
+
+
 def w_contrastive_runs_under_ddp(rank, world_size):
     """NTXEnt (masked) and CLIP (unmasked) contrastive losses run under DDP.
 

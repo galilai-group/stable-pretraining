@@ -122,6 +122,18 @@ METHODS = {
         ),
         data=make_data(True),
     ),
+    "twist": lambda: dict(
+        module=spt.Module(
+            backbone=make_backbone(),
+            projector=nn.Sequential(
+                make_projector(), nn.BatchNorm1d(PROJ_DIM, affine=False)
+            ),
+            forward=forward.twist,
+            twist_loss=losses.TWISTLoss(),
+            optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+        ),
+        data=make_data(True),
+    ),
     "supervised": lambda: dict(
         module=spt.Module(
             backbone=make_backbone(),
