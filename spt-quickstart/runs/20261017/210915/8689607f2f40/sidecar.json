@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "run_id": "8689607f2f40",
+  "run_dir": "/Users/ethanlin/stable-pretraining/spt-quickstart/runs/20261017/210915/8689607f2f40",
+  "status": "completed",
+  "created_at": 1792285755.816674,
+  "ended_at": 1792285755.9201071,
+  "updated_at": 1792285755.920691,
+  "tags": [],
+  "notes": "",
+  "hparams": {
+    "method": "simclr",
+    "temperature": 0.5,
+    "system.working_dir": "/Users/ethanlin/stable-pretraining"
+  },
+  "summary": {
+    "fit/loss_step": 2.7069711685180664,
+    "train/probe_loss_step": 0.6956136226654053,
+    "hparams/lr_default_0": 0.0,
+    "hparams/lr_probe": 0.0010000000474974513,
+    "hardware/cpu_percent": 0.0,
+    "hardware/ram_used_pct": 76.5,
+    "hardware/ram_used_gb": 6.4359893798828125,
+    "hardware/disk_read_mb_s": 0.0,
+    "hardware/disk_write_mb_s": 0.0,
+    "hardware/net_recv_mb_s": 0.0,
+    "hardware/net_sent_mb_s": 0.0,
+    "epoch": 0.0,
+    "eval/probe_accuracy_step": 0.5,
+    "eval/probe_accuracy_epoch": 0.5,
+    "fit/loss_epoch": 2.7074124813079834,
+    "train/probe_loss_epoch": 0.7181565165519714
+  },
+  "checkpoint_path": "/Users/ethanlin/stable-pretraining/spt-quickstart/runs/20261017/210915/8689607f2f40/checkpoints/epoch=0-step=4.ckpt"
+}
