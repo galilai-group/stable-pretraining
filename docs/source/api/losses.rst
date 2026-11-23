@@ -8,8 +8,8 @@ stable_pretraining.losses
    :toctree: gen_modules/
    :template: myclass_template.rst
 
+   CLIPLoss
    NTXEntLoss
-   DirectCLRLoss
    NegativeCosineSimilarity
    VICRegLoss
    BarlowTwinsLoss

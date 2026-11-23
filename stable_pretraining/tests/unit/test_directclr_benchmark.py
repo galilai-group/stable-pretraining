@@ -104,7 +104,7 @@ def test_refuses_accidental_run_overwrite(tmp_path):
 
 def test_full_control_uses_all_features_without_a_projector(tmp_path, monkeypatch):
     widths = []
-    loss_class = benchmark.spt.losses.DirectCLRLoss
+    loss_class = benchmark.spt.losses.CLIPLoss
     original_forward = loss_class.forward
 
     def record_width(self, first, second):

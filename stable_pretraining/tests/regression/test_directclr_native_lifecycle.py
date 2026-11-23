@@ -23,26 +23,21 @@ class _StopAfterEpoch(pl.Callback):
 def _module():
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(47)
-        backbone = nn.Sequential(nn.Linear(4, 3), nn.BatchNorm1d(3))
-    options = dict(
-        backbone=backbone,
-        subspace_dim=2,
-        optim={
-            "optimizer": {"type": "SGD", "lr": 0.03, "momentum": 0.9},
-            "scheduler": {"type": "ExponentialLR", "gamma": 0.9},
-            "interval": "step",
-        },
-    )
-    return spt.Module(
-        forward=spt.forward.directclr,
-        directclr_loss=spt.losses.DirectCLRLoss(0.2),
-        **options,
-    )
+        backbone = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(3, 3), nn.BatchNorm1d(3)
+        )
+    model = spt.DirectCLR(backbone, subspace_dim=2, temperature=0.2)
+    model.optim = {
+        "optimizer": {"type": "SGD", "lr": 0.03, "momentum": 0.9},
+        "scheduler": {"type": "ExponentialLR", "gamma": 0.9},
+        "interval": "step",
+    }
+    return model
 
 
 def _run(module, directory, stop=False, checkpoint=None):
     generator = torch.Generator().manual_seed(19)
-    images = torch.randn(12, 4, generator=generator)
+    images = torch.randn(12, 3, 4, 4, generator=generator)
     paired = [
         {
             "views": [

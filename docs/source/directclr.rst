@@ -7,10 +7,10 @@ an encoder's output, without a trainable projector. It implements Jing et al.,
 <https://arxiv.org/abs/2110.09348>`_ (ICLR 2022).
 The complete encoder representation remains available for downstream evaluation.
 
-Tensor interface
+Method interface
 ----------------
 
-The method class follows the same two-view interface as SimCLR:
+The method accepts the same batch and stage as the training manager:
 
 .. code-block:: python
 
@@ -22,15 +22,15 @@ The method class follows the same two-view interface as SimCLR:
    )
    view1 = torch.randn(2, 3, 224, 224)
    view2 = torch.randn_like(view1)
-   output = model(view1, view2)
-   output.loss.backward()
-   # output.embedding: [4, 2048]; output.projection: [4, 360]
+   batch = {"views": [{"image": view1}, {"image": view2}]}
+   output = model(batch, stage="fit")
+   output["loss"].backward()
+   # output["embedding"]: [4, 2048], output["projection"]: [4, 360]
 
    model.eval()
    with torch.no_grad():
-       features = model(view1)
-   # features.embedding: [2, 2048]; features.loss: scalar zero
-   # features.projection is None
+       features = model({"image": view1}, stage="validate")["embedding"]
+   # features.shape == (2, 2048)
 
 ``encoder_name`` also accepts a prebuilt image encoder returning flat features.
 ``low_resolution`` and ``pretrained`` configure timm encoders. Construction
@@ -40,8 +40,8 @@ shape discovery preserves BatchNorm buffers and the encoder's training modes.
 Composable training interface
 -----------------------------
 
-For dict batches, callbacks and the Module/Manager lifecycle, use the composable
-forward function. Each view contains ``image`` and optionally ``label``:
+To configure a custom optimizer or supply your own backbone, use the same
+forward function directly. Each view contains ``image`` and optionally ``label``:
 
 .. code-block:: python
 
@@ -50,7 +50,7 @@ forward function. Each view contains ``image`` and optionally ``label``:
        forward=spt.forward.directclr,
        backbone=backbone,
        subspace_dim=360,
-       directclr_loss=spt.losses.DirectCLRLoss(temperature=0.1),
+       directclr_loss=spt.losses.CLIPLoss(temperature=0.1),
        optim={"optimizer": {"type": "SGD", "lr": 0.03, "momentum": 0.9}},
    )
 
@@ -79,7 +79,7 @@ updates, read the checkpoint path from ``training_summary.json``, and rerun with
 ``--resume <checkpoint> --max-steps 8`` on the same two-epoch schedule.
 Generated-image accuracy is an execution check rather than a representation score.
 
-ImageNet-100 results, training curves, measured settings and fresh-run commands
+ImageNet-100 results, measured settings and fresh-run commands
 are in `benchmarks/imagenet100/RESULTS.md
 <https://github.com/galilai-group/stable-pretraining/blob/main/benchmarks/imagenet100/RESULTS.md>`_.
 The reference defaults are 360 dimensions and temperature 0.1; the recorded

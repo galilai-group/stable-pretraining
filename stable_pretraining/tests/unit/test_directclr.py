@@ -9,7 +9,7 @@ import torch
 from torch import nn
 
 import stable_pretraining as spt
-from stable_pretraining.losses import DirectCLRLoss, NTXEntLoss
+from stable_pretraining.losses import CLIPLoss, NTXEntLoss
 
 pytestmark = pytest.mark.unit
 
@@ -30,7 +30,7 @@ def test_reference_values_and_gradients(temperature):
     generator = torch.Generator().manual_seed(17)
     a = torch.randn(5, 7, generator=generator, dtype=torch.float64, requires_grad=True)
     b = torch.randn(5, 7, generator=generator, dtype=torch.float64, requires_grad=True)
-    actual = DirectCLRLoss(temperature)(a, b)
+    actual = CLIPLoss(temperature)(a, b)
     expected = reference(a, b, temperature)
     torch.testing.assert_close(actual, expected)
     for grad, ref_grad in zip(
@@ -43,17 +43,23 @@ def test_gradcheck():
     torch.manual_seed(11)
     a = torch.randn(3, 4, dtype=torch.float64, requires_grad=True)
     b = torch.randn(3, 4, dtype=torch.float64, requires_grad=True)
-    assert torch.autograd.gradcheck(DirectCLRLoss(0.3), (a, b))
+    assert torch.autograd.gradcheck(CLIPLoss(0.3), (a, b))
 
 
 def test_closed_form_and_same_view_negatives_are_absent():
-    z = torch.eye(4, dtype=torch.float64)
+    z = torch.eye(4, dtype=torch.float64, requires_grad=True)
+    other = z.detach().clone().requires_grad_()
     expected = torch.log1p(3 * torch.exp(torch.tensor(-10.0, dtype=z.dtype)))
-    torch.testing.assert_close(DirectCLRLoss()(z, z), expected)
-    assert not torch.isclose(DirectCLRLoss()(z, z), NTXEntLoss(0.1)(z, z))
-    collapsed = torch.ones(4, 3)
-    torch.testing.assert_close(
-        DirectCLRLoss()(collapsed, collapsed), torch.tensor(4.0).log()
+    loss = CLIPLoss(0.1)(z, other)
+    torch.testing.assert_close(loss, expected)
+    assert all(g.isfinite().all() for g in torch.autograd.grad(loss, (z, other)))
+    assert not torch.isclose(CLIPLoss(0.1)(z, z), NTXEntLoss(0.1)(z, z))
+    collapsed = torch.ones(4, 3, requires_grad=True)
+    other = collapsed.detach().clone().requires_grad_()
+    loss = CLIPLoss(0.1)(collapsed, other)
+    torch.testing.assert_close(loss, torch.tensor(4.0).log())
+    assert all(
+        g.isfinite().all() for g in torch.autograd.grad(loss, (collapsed, other))
     )
 
 
@@ -61,7 +67,7 @@ def test_view_symmetry_and_joint_sample_permutation():
     torch.manual_seed(13)
     a, b = torch.randn(5, 6), torch.randn(5, 6)
     permutation = torch.tensor([2, 4, 1, 0, 3])
-    loss = DirectCLRLoss()
+    loss = CLIPLoss(0.1)
     torch.testing.assert_close(loss(a, b), loss(b, a))
     torch.testing.assert_close(loss(a, b), loss(a[permutation], b[permutation]))
 
@@ -69,7 +75,7 @@ def test_view_symmetry_and_joint_sample_permutation():
 @pytest.mark.parametrize("temperature", [0, -1, float("inf"), float("nan")])
 def test_invalid_temperature(temperature):
     with pytest.raises(ValueError, match="temperature"):
-        DirectCLRLoss(temperature)
+        CLIPLoss(temperature)
 
 
 @pytest.mark.parametrize(
@@ -78,31 +84,32 @@ def test_invalid_temperature(temperature):
 )
 def test_invalid_shapes(shapes):
     with pytest.raises(ValueError, match="shapes"):
-        DirectCLRLoss()(torch.randn(shapes[0]), torch.randn(shapes[1]))
+        CLIPLoss(0.1)(torch.randn(shapes[0]), torch.randn(shapes[1]))
 
 
 def test_invalid_dtype():
     with pytest.raises(ValueError, match="floating point"):
-        DirectCLRLoss()(
+        CLIPLoss(0.1)(
             torch.ones(2, 3, dtype=torch.long), torch.ones(2, 3, dtype=torch.long)
         )
-    with pytest.raises(ValueError, match="dtypes"):
-        DirectCLRLoss()(torch.ones(2, 3), torch.ones(2, 3, dtype=torch.float64))
 
 
 @pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
-def test_half_precision_is_promoted_and_zero_features_are_finite(dtype):
+@pytest.mark.parametrize("other", [torch.ones(3, 4), torch.eye(3, 4)])
+def test_half_precision_is_promoted_and_zero_features_are_finite(dtype, other):
     a = torch.zeros(3, 4, dtype=dtype, requires_grad=True)
-    b = torch.ones(3, 4, dtype=dtype, requires_grad=True)
+    b = other.to(dtype).detach().requires_grad_()
     with torch.autocast("cpu", dtype=torch.bfloat16):
-        loss = DirectCLRLoss()(a, b)
+        loss = CLIPLoss(0.1)(a, b)
     assert loss.dtype == torch.float32
     torch.testing.assert_close(loss, reference(a.float(), b.float()))
-    # Zero-vector normalization has a very large derivative in half precision;
-    # test the loss here, and gradients on nondegenerate half inputs below.
+    grads = torch.autograd.grad(loss, (a, b))
+    assert all(g.isfinite().all() for g in grads)
+    if other.unique().numel() > 1:
+        assert grads[0].abs().max() > 0
     a = torch.randn(3, 4, dtype=dtype, requires_grad=True)
     b = torch.randn(3, 4, dtype=dtype, requires_grad=True)
-    DirectCLRLoss()(a, b).backward()
+    CLIPLoss(0.1)(a, b).backward()
     assert torch.isfinite(a.grad).all() and torch.isfinite(b.grad).all()
 
 
@@ -111,7 +118,7 @@ def make_model(dim=3):
         forward=spt.forward.directclr,
         backbone=nn.Linear(4, 6, bias=False),
         subspace_dim=dim,
-        directclr_loss=DirectCLRLoss(),
+        directclr_loss=CLIPLoss(0.1),
     )
     model.log = Mock()
     return model
@@ -199,39 +206,35 @@ def test_composable_forward_matches_method_class():
         forward=spt.forward.directclr,
         backbone=copy.deepcopy(model.backbone),
         subspace_dim=3,
-        directclr_loss=DirectCLRLoss(),
+        directclr_loss=CLIPLoss(0.1),
     )
     module.log = Mock()
     first, second = torch.randn(4, 3, 8, 8), torch.randn(4, 3, 8, 8)
     batch = {"views": [{"image": first}, {"image": second}]}
-    tensor_output, dict_output = model(first, second), module(batch, stage="fit")
-    assert isinstance(
-        tensor_output,
-        import_module("stable_pretraining.methods.directclr").DirectCLROutput,
-    )
+    model.log = Mock()
+    class_output, dict_output = model(batch, stage="fit"), module(batch, stage="fit")
+    assert isinstance(class_output, dict)
     assert model.embed_dim == 6
     for key in ("loss", "embedding", "projection"):
-        torch.testing.assert_close(getattr(tensor_output, key), dict_output[key])
-    assert tensor_output.embedding.shape == (8, 6)
-    assert tensor_output.projection.shape == (8, 3)
+        torch.testing.assert_close(class_output[key], dict_output[key])
+    assert class_output["embedding"].shape == (8, 6)
+    assert class_output["projection"].shape == (8, 3)
     for actual, expected in zip(
-        torch.autograd.grad(tensor_output.loss, model.backbone.parameters()),
+        torch.autograd.grad(class_output["loss"], model.backbone.parameters()),
         torch.autograd.grad(dict_output["loss"], module.backbone.parameters()),
     ):
         torch.testing.assert_close(actual, expected)
 
 
-def test_method_class_single_view_returns_full_features_and_zero_loss():
+def test_method_class_single_view_returns_full_features():
     model = spt.DirectCLR(image_encoder().double(), subspace_dim=2).eval()
     images = torch.randn(4, 3, 8, 8, dtype=torch.float64)
     with torch.no_grad():
-        output = model(images)
-        torch.testing.assert_close(output.embedding, model.backbone(images))
-    assert output.embedding.shape == (4, 6)
-    assert output.loss.shape == () and output.loss.item() == 0
-    assert output.loss.dtype == output.embedding.dtype
-    assert output.loss.device == output.embedding.device
-    assert output.projection is None and not output.embedding.requires_grad
+        output = model({"image": images}, stage="validate")
+        torch.testing.assert_close(output["embedding"], model.backbone(images))
+    assert set(output) == {"embedding"}
+    assert output["embedding"].shape == (4, 6)
+    assert not output["embedding"].requires_grad
 
 
 @pytest.mark.parametrize("dimension", [0, -1, 1.5, True, 7])
@@ -282,7 +285,7 @@ def test_cuda_autocast_matches_float32():
     a = torch.randn(8, 16, device="cuda", requires_grad=True)
     b = torch.randn_like(a, requires_grad=True)
     with torch.autocast("cuda", dtype=torch.float16):
-        actual = DirectCLRLoss()(a, b)
+        actual = CLIPLoss(0.1)(a, b)
     torch.testing.assert_close(actual, reference(a, b))
     actual.backward()
     assert torch.isfinite(a.grad).all() and torch.isfinite(b.grad).all()

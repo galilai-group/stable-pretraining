@@ -27,7 +27,6 @@ def _encoder(**kwargs):
 @pytest.mark.parametrize(
     "name,kwargs",
     [
-        ("DirectCLR", {"subspace_dim": 8}),
         ("CMAE", {"projector_dim": 8}),
         ("MoCov2", {"projector_dims": (16, 8), "queue_length": 8}),
         ("MoCov3", {"projector_dims": (16, 8), "predictor_hidden_dim": 16}),

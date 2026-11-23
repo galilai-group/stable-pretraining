@@ -381,7 +381,7 @@ def train(args: argparse.Namespace) -> pl.Trainer:
             forward=_linear_contrastive,
             backbone=backbone,
             projector=nn.Linear(width, args.dim, bias=False),
-            directclr_loss=spt.losses.DirectCLRLoss(args.temperature),
+            directclr_loss=spt.losses.CLIPLoss(args.temperature),
             optim=optim,
             hparams=metadata,
         )
@@ -391,7 +391,7 @@ def train(args: argparse.Namespace) -> pl.Trainer:
             forward=spt.forward.directclr,
             backbone=backbone,
             subspace_dim=dimension,
-            directclr_loss=spt.losses.DirectCLRLoss(args.temperature),
+            directclr_loss=spt.losses.CLIPLoss(args.temperature),
             optim=optim,
             hparams={
                 **metadata,

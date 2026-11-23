@@ -28,11 +28,9 @@ def encoder(has_cls=True):
     )
 
 
-@pytest.mark.parametrize(
-    "name", ["BarlowTwins", "SimCLR", "VICReg", "WMSE", "BYOL", "DirectCLR"]
-)
+@pytest.mark.parametrize("name", ["BarlowTwins", "SimCLR", "VICReg", "WMSE", "BYOL"])
 def test_joint_embedding_methods_accept_existing_encoder_for_evaluation(name):
-    kwargs = {"subspace_dim": 8} if name == "DirectCLR" else {"projector_dims": (16, 8)}
+    kwargs = {"projector_dims": (16, 8)}
     if name == "BYOL":
         kwargs["predictor_dims"] = (16, 8)
     model = getattr(methods, name)(encoder_name=encoder(), **kwargs).eval()

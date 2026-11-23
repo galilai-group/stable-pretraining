@@ -4,14 +4,10 @@ Unreleased
 
 **DirectCLR**
 
-- Add a two-view ``DirectCLR`` method class and ``DirectCLROutput``, alongside
-  a composable forward and symmetric cross-view distributed InfoNCE loss.
-- Preserve complete backbone features for downstream evaluation and expose
-  the method through public runtime and static typing interfaces.
-- Add staged data preparation/training/frozen evaluation, CPU/DDP correctness
-  tests, and documented ImageNet-100 validation with training curves.
-- Document separate CIFAR-10 supervised transfer, dev-only selection and
-  single-seed interpretation limits.
+- Add DirectCLR with a dict-based method and composable forward using the
+  shared CLIP loss on a fixed encoder subspace.
+- Add a ResNet-50 ImageNet-100 benchmark with frozen linear evaluation,
+  matched projector controls and documented results.
 
 **New method**
 

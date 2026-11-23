@@ -10,7 +10,7 @@ import torch.multiprocessing as mp
 from torch import nn
 from torch.nn.parallel import DistributedDataParallel
 
-from stable_pretraining.losses import DirectCLRLoss
+from stable_pretraining.losses import CLIPLoss
 from stable_pretraining.tests.unit.test_directclr import reference
 
 pytestmark = pytest.mark.unit
@@ -36,7 +36,7 @@ def _parity_worker(rank, rendezvous):
         ref_encoder.load_state_dict(encoder.state_dict())
         encoder = DistributedDataParallel(encoder)
         indices = slice(rank * 3, (rank + 1) * 3)
-        local = DirectCLRLoss()(encoder(inputs1[indices]), encoder(inputs2[indices]))
+        local = CLIPLoss(0.1)(encoder(inputs1[indices]), encoder(inputs2[indices]))
         expected = reference(ref_encoder(inputs1), ref_encoder(inputs2))
         mean_loss = local.detach().clone()
         dist.all_reduce(mean_loss)
@@ -45,7 +45,7 @@ def _parity_worker(rank, rendezvous):
         expected.backward()
         torch.testing.assert_close(encoder.module.weight.grad, ref_encoder.weight.grad)
         with pytest.raises(ValueError, match="every rank"):
-            DirectCLRLoss()(torch.ones(rank + 1, 3), torch.ones(rank + 1, 3))
+            CLIPLoss(0.1)(torch.ones(rank + 1, 3), torch.ones(rank + 1, 3))
     finally:
         dist.destroy_process_group()
 

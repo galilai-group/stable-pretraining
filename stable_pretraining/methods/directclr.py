@@ -3,31 +3,16 @@
 Reference: Jing et al., ICLR 2022. https://arxiv.org/abs/2110.09348
 """
 
-from dataclasses import dataclass
 from itertools import chain
+from typing import Any
 
 import torch
 from torch import nn
-from transformers.utils import ModelOutput
 
 from ..backbone import from_timm
-from ..losses import DirectCLRLoss
+from ..forward import directclr
+from ..losses import CLIPLoss
 from ..module import Module
-
-
-@dataclass
-class DirectCLROutput(ModelOutput):
-    """Outputs of the tensor-based DirectCLR interface.
-
-    Attributes:
-        loss: Scalar contrastive loss, or zero for a single view.
-        embedding: Full encoder features, ``[2B, D]`` for two views or ``[B, D]``.
-        projection: Leading feature coordinates ``[2B, subspace_dim]``, or None.
-    """
-
-    loss: torch.Tensor | None = None
-    embedding: torch.Tensor | None = None
-    projection: torch.Tensor | None = None
 
 
 class DirectCLR(Module):
@@ -41,9 +26,8 @@ class DirectCLR(Module):
         pretrained: Load pretrained timm encoder weights.
 
     Note:
-        Single-view calls return complete features and zero loss. Call ``eval()``
-        and use ``torch.no_grad()`` for frozen evaluation. Training through the
-        library's dict-based Manager uses ``Module(forward=forward.directclr)``.
+        Training uses two views under ``batch["views"]``. Single-view evaluation
+        returns the full embedding for downstream callbacks.
     """
 
     def __init__(
@@ -61,7 +45,7 @@ class DirectCLR(Module):
         if not isinstance(encoder_name, (str, nn.Module)):
             raise TypeError("encoder_name must be a timm name or torch.nn.Module")
         super().__init__()
-        self.directclr_loss = DirectCLRLoss(temperature)
+        self.directclr_loss = CLIPLoss(temperature)
         self.backbone = (
             from_timm(
                 encoder_name,
@@ -108,28 +92,14 @@ class DirectCLR(Module):
             raise ValueError("subspace_dim must not exceed the encoder feature width")
         self.subspace_dim = subspace_dim
 
-    def forward(
-        self, view1: torch.Tensor, view2: torch.Tensor | None = None
-    ) -> DirectCLROutput:
-        """Return full features and, for two views, a fixed-subspace loss.
+    def forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+        """Run the shared DirectCLR forward for a training or evaluation batch.
 
         Args:
-            view1: First image view, or the only view during evaluation.
-            view2: Optional aligned second image view.
+            batch: Two training views or a single evaluation image batch.
+            stage: Stage name supplied by the training manager.
 
         Returns:
-            Full embeddings, selected coordinates and scalar loss. Single-view
-            output has ``projection=None`` and a zero loss on the feature device.
+            Full embeddings and, during training, the loss and selected subspace.
         """
-        first = self.backbone(view1)
-        if view2 is None:
-            return DirectCLROutput(
-                loss=first.new_zeros(()), embedding=first, projection=None
-            )
-        second = self.backbone(view2)
-        z1, z2 = first[:, : self.subspace_dim], second[:, : self.subspace_dim]
-        return DirectCLROutput(
-            loss=self.directclr_loss(z1, z2),
-            embedding=torch.cat((first, second)),
-            projection=torch.cat((z1, z2)),
-        )
+        return directclr(self, batch, stage)

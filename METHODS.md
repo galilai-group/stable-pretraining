@@ -17,7 +17,7 @@ Methods come in two forms:
 |--------|-----------|--------------|----------------|---------------|-------|
 | Supervised | `supervised` | — | any | — | — |
 | SimCLR | `simclr` | `SimCLR` | `NTXEntLoss` | — | [Chen et al., 2020](https://arxiv.org/abs/2002.05709) |
-| DirectCLR | `directclr` | `DirectCLR` | `DirectCLRLoss` | — | [Jing et al., 2022](https://arxiv.org/abs/2110.09348) |
+| DirectCLR | `directclr` | `DirectCLR` | `CLIPLoss` | — | [Jing et al., 2022](https://arxiv.org/abs/2110.09348) |
 | BYOL | `byol` | `BYOL` | `BYOLLoss` | `TeacherStudent†` | [Grill et al., 2020](https://arxiv.org/abs/2006.07733) |
 | VICReg | `vicreg` | `VICReg` | `VICRegLoss` | — | [Bardes et al., 2022](https://arxiv.org/abs/2105.04906) |
 | Barlow Twins | `barlow_twins` | `BarlowTwins` | `BarlowTwinsLoss` | — | [Zbontar et al., 2021](https://arxiv.org/abs/2103.03230) |
@@ -105,7 +105,6 @@ All loss classes are importable from `stable_pretraining.losses`:
 | Loss | Methods that use it |
 |------|-------------------|
 | `NTXEntLoss` | SimCLR, NNCLR, MoCov2, MoCov3 |
-| `DirectCLRLoss` | DirectCLR |
 | `BYOLLoss` | BYOL |
 | `VICRegLoss` | VICReg, VICRegL |
 | `BarlowTwinsLoss` | Barlow Twins |
@@ -114,5 +113,5 @@ All loss classes are importable from `stable_pretraining.losses`:
 | `DINOv2Loss` | DINOv2, DINOv3 |
 | `iBOTPatchLoss` | DINOv2, iBOT, MIMRefiner |
 | `MAELoss` | MAE |
-| `CLIPLoss` | Multimodal CLIP-style objectives |
+| `CLIPLoss` | CLIP and DirectCLR |
 | `NegativeCosineSimilarity` | SimSiam, general use |
