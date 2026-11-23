@@ -367,9 +367,11 @@ def _entropy_of_global_mean(p: torch.Tensor) -> torch.Tensor:
     # A class whose mean probability underflowed to exactly 0 contributes
     # 0 * log(0) = 0 to the entropy, but the derivative of ``x * log(x)`` at 0
     # is -inf, and -inf times the (zero) gradient of such a probability is
-    # NaN. Flooring the argument of the log at the smallest positive float
-    # leaves every representable probability untouched and makes the
-    # derivative finite there, so the chain rule yields the correct 0.
+    # NaN. Flooring the argument of the log at ``finfo.tiny`` (the smallest
+    # positive normal float, about 1e-38 in float32) only affects
+    # probabilities below that value, where it changes the entropy by a
+    # negligible amount, and makes the derivative finite there, so the chain
+    # rule yields the correct 0.
     tiny = torch.finfo(mean.dtype).tiny
     return -(mean * torch.log(mean.clamp_min(tiny))).sum()
 
@@ -411,13 +413,18 @@ class TWISTLoss(torch.nn.Module):
           this loss.
         - Under DDP the diversity term uses the mean distribution of the
           **global** batch (all ranks), as in the reference implementation. In
-          a single process the collective is a no-op.
+          a single process the collective is a no-op. The consistency and
+          sharpness terms are averages over the local batch.
+        - The loss takes logits, so the statistics of the batch normalisation
+          before the softmax are those of the head that produced them: per
+          process (per GPU) under DDP for ``BatchNorm1d``, global for
+          ``SyncBatchNorm`` (``sync_batchnorm=True`` on the Trainer).
         - Terms are computed in float32 (or the input precision if higher) and
           without an additive epsilon on the probabilities: ``log_softmax``
           handles vanishing probabilities exactly, and the only guard is a
-          floor at the smallest positive float inside the ``log`` of the
-          diversity term, which keeps its gradient finite when a class
-          receives no mass at all.
+          floor at ``torch.finfo(dtype).tiny`` (the smallest positive normal
+          float) inside the ``log`` of the diversity term, which keeps its
+          gradient finite when a class receives no mass at all.
         - The official code also has a sharpening temperature on the two
           entropy terms; it is 1 (a no-op) in every released recipe and is
           therefore not exposed.

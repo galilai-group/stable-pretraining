@@ -21,7 +21,6 @@ from pathlib import Path
 import torch
 import torchvision
 from two_view import (
-    attach_forward_and_optim,
     standard_callbacks,
     standard_trainer,
     two_view_train_transform,
@@ -85,23 +84,19 @@ def main():
     )
     # ViT-S/16: AdamW as in the paper's ViT recipe (LARS + lr 0.5 is the
     # ResNet50 recipe). Weight decay is held at the paper's starting value.
-    attach_forward_and_optim(
-        module,
-        TWIST,
-        optim={
-            "optimizer": {
-                "type": "AdamW",
-                "lr": base_lr * batch_size / 256,
-                "weight_decay": 0.06,
-            },
-            "scheduler": {
-                "type": "LinearWarmupCosineAnnealing",
-                "peak_step": WARMUP_EPOCHS * steps_per_epoch,
-                "total_steps": max_epochs * steps_per_epoch,
-            },
-            "interval": "step",
+    module.optim = {
+        "optimizer": {
+            "type": "AdamW",
+            "lr": base_lr * batch_size / 256,
+            "weight_decay": 0.06,
         },
-    )
+        "scheduler": {
+            "type": "LinearWarmupCosineAnnealing",
+            "peak_step": WARMUP_EPOCHS * steps_per_epoch,
+            "total_steps": max_epochs * steps_per_epoch,
+        },
+        "interval": "step",
+    }
 
     callbacks = standard_callbacks(module, embed_dim=module.embed_dim)
     trainer = standard_trainer(

@@ -645,6 +645,12 @@ def twist(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         ``{stage}/twist_consistency``, ``{stage}/twist_sharpness`` and
         ``{stage}/twist_diversity``.
 
+        Under DDP the diversity term of the loss uses the global batch, but
+        plain ``BatchNorm1d`` layers in ``projector``, including the one
+        before the softmax, use the statistics of their own process (per
+        GPU). Create the Trainer with ``sync_batchnorm=True`` to make those
+        statistics global.
+
     Example:
         ::
 

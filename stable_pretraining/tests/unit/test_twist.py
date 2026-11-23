@@ -1,18 +1,21 @@
 """Unit tests for TWIST (Self-Supervised Learning by Estimating Twin Class Distributions)."""
 
 import math
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import lightning as pl
 import pytest
 import torch
 import torch.nn.functional as F
 from timm.models.vision_transformer import VisionTransformer
+from torch.utils.data import DataLoader
 
 import stable_pretraining as spt
 from stable_pretraining import forward as forward_module
 from stable_pretraining.losses import TWISTLoss
-from stable_pretraining.methods.twist import TWIST, TWISTOutput, _build_twist_projector
+from stable_pretraining.methods.twist import TWIST, _build_twist_projector
 
 pytestmark = pytest.mark.unit
 
@@ -204,8 +207,8 @@ def test_twist_loss_every_term_is_differentiable():
 @pytest.mark.parametrize("term", ["consistency", "sharpness", "diversity", "loss"])
 def test_twist_loss_gradients_match_finite_differences(term):
     # Finite-difference check of the analytic gradient of each term, including
-    # the eps-free ``xlogy`` path in the diversity entropy. float64 so the
-    # numerical derivative is accurate to the gradcheck tolerance.
+    # the floored-log path in the diversity entropy. float64 so the numerical
+    # derivative is accurate to the gradcheck tolerance.
     torch.manual_seed(9)
     z1 = torch.randn(4, 6, dtype=torch.float64, requires_grad=True)
     z2 = torch.randn(4, 6, dtype=torch.float64, requires_grad=True)
@@ -432,83 +435,98 @@ def test_twist_projector_without_norm_before_softmax_ends_with_linear():
     assert isinstance(model.projector[-1], torch.nn.Linear)
 
 
-def test_twist_training_forward_matches_loss_on_concatenated_pass():
-    torch.manual_seed(0)
+def test_twist_class_uses_the_twist_forward_function():
     model = TWIST(
         _encoder(), projector_dims=(16, 8), sharpness_weight=0.4, diversity_weight=1.2
     )
-    model.train()
+    assert isinstance(model, spt.Module)
+    # The class has no forward code of its own.
+    assert model.forward.__func__ is forward_module.twist
     assert model.embed_dim == VIT_DIM and model.n_classes == 8
-    assert model.twist_loss.sharpness_weight == 0.4
-    assert model.twist_loss.diversity_weight == 1.2
-
-    v1, v2 = _views()
-    out = model(v1, v2)
-    assert isinstance(out, TWISTOutput)
-    assert out.embedding.shape == (8, VIT_DIM)
-    assert out.logits.shape == (8, 8)
-
-    # The ViT has no batch statistics, so per-view passes give the same rows.
-    assert torch.allclose(out.embedding[:4], model.backbone(v1), atol=1e-5)
-    assert torch.allclose(out.embedding[4:], model.backbone(v2), atol=1e-5)
-
-    expected = model.twist_loss.terms(*model.projector(out.embedding).chunk(2))
-    assert torch.allclose(out.loss, expected["loss"], atol=1e-6)
-    for name in ("consistency", "sharpness", "diversity"):
-        assert torch.allclose(out[name], expected[name], atol=1e-6)
-        assert not out[name].requires_grad
-
-    out.loss.backward()
-    grads = [p.grad for p in model.parameters() if p.grad is not None]
-    assert grads and any(g.abs().sum() > 0 for g in grads)
+    assert model.twist_loss.sharpness_weight == model.hparams["sharpness_weight"] == 0.4
+    assert model.twist_loss.diversity_weight == model.hparams["diversity_weight"] == 1.2
+    assert model.hparams["projector_dims"] == [16, 8]
+    assert model.hparams["encoder_name"] == "VisionTransformer"
 
 
-def test_twist_eval_forward_returns_embedding_and_zero_loss():
-    model = TWIST(_encoder(), projector_dims=(16, 8)).eval()
-    v1, _ = _views()
-    with torch.no_grad():
-        out = model(v1)
-    assert out.embedding.shape == (4, VIT_DIM)
-    assert out.loss.item() == 0
-    assert out.logits is None and out.consistency is None
-    assert out.sharpness is None and out.diversity is None
+def test_twist_class_builds_its_encoder_from_a_timm_name():
+    # Same tiny ViT and input size as the shared method smoke tests.
+    model = TWIST(encoder_name="vit_tiny_patch16_224", projector_dims=(256, 256, 64))
+    model.log = Mock()
+    assert model.embed_dim == 192 and model.n_classes == 64
+    assert model.hparams["encoder_name"] == "vit_tiny_patch16_224"
+
+    generator = torch.Generator().manual_seed(0)
+    views = [
+        {"image": torch.randn(2, 3, 224, 224, generator=generator)} for _ in range(2)
+    ]
+    out = model({"views": views}, stage="fit")
+    assert out["embedding"].shape == (4, 192)
+    assert out["loss"].ndim == 0 and torch.isfinite(out["loss"])
+    out["loss"].backward()
+    grads = [p.grad for p in model.backbone.parameters() if p.grad is not None]
+    assert grads and any(grad.abs().sum() > 0 for grad in grads)
 
 
 def test_twist_class_accepts_module_batch_and_stage():
     # Regression: ``Module.training_step`` calls ``forward(batch, stage="fit")``
-    # with a batch dict, which the tensor-only signature used to reject.
+    # with a batch dict that also carries ``batch_idx``.
     torch.manual_seed(0)
-    model = TWIST(_encoder(), projector_dims=(16, 8))
-    v1, v2 = torch.randn(4, 3, 32, 32), torch.randn(4, 3, 32, 32)
+    model = TWIST(
+        _encoder(), projector_dims=(16, 8), sharpness_weight=0.4, diversity_weight=1.2
+    )
+    model.log = Mock()
+    v1, v2 = _views()
     labels = torch.tensor([0, 1, 2, 3])
     batch = {
         "views": [{"image": v1, "label": labels}, {"image": v2, "label": labels}],
         "batch_idx": 0,
     }
     out = model(batch, stage="fit")
-    assert isinstance(out, dict)
-    assert out["loss"].ndim == 0 and torch.isfinite(out["loss"])
+
+    assert isinstance(out, dict) and set(out) == {"embedding", "label", "loss"}
     assert out["embedding"].shape == (8, VIT_DIM)
     assert out["label"].tolist() == labels.tolist() * 2
-    torch.manual_seed(0)
-    torch.testing.assert_close(out["loss"], model(v1, v2).loss)
+    # The ViT has no batch statistics, so per-view passes give the same rows.
+    assert torch.allclose(out["embedding"][:4], model.backbone(v1), atol=1e-5)
+    assert torch.allclose(out["embedding"][4:], model.backbone(v2), atol=1e-5)
 
-    named = {"view_a": {"image": v1}, "view_b": {"image": v2}, "batch_idx": 3}
-    assert "label" not in model(named, stage="fit")
+    expected = model.twist_loss.terms(*model.projector(out["embedding"]).chunk(2))
+    assert out["loss"].ndim == 0
+    assert torch.allclose(out["loss"], expected["loss"], atol=1e-6)
+    logged = {call.args[0]: call.args[1] for call in model.log.call_args_list}
+    assert set(logged) == {
+        "fit/loss",
+        "fit/twist_consistency",
+        "fit/twist_sharpness",
+        "fit/twist_diversity",
+    }
+    for name in ("consistency", "sharpness", "diversity"):
+        assert torch.allclose(logged[f"fit/twist_{name}"], expected[name], atol=1e-6)
 
-    model.eval()
-    out = model({"image": v1, "label": labels}, stage="validate")
-    assert out["embedding"].shape == (4, VIT_DIM)
-    assert out["label"] is labels and out["loss"] == 0
+    out["loss"].backward()
+    grads = [p.grad for p in model.parameters() if p.grad is not None]
+    assert grads and any(g.abs().sum() > 0 for g in grads)
 
     with pytest.raises(ValueError, match="exactly 2"):
         model({"views": [{"image": v1}]}, stage="fit")
 
 
+def test_twist_class_evaluation_returns_embedding_and_label_without_loss():
+    model = TWIST(_encoder(), projector_dims=(16, 8)).eval()
+    model.log = Mock()
+    v1, _ = _views()
+    labels = torch.tensor([0, 1, 2, 3])
+    with torch.no_grad():
+        out = model({"image": v1, "label": labels, "batch_idx": 0}, stage="validate")
+    assert set(out) == {"embedding", "label"}
+    assert out["embedding"].shape == (4, VIT_DIM)
+    assert out["label"] is labels
+    model.log.assert_not_called()
+
+
 def test_twist_class_trains_with_a_lightning_trainer(tmp_path):
     # Regression: the class must be usable directly as the LightningModule.
-    import lightning as pl
-
     class _TwoViewDataset(torch.utils.data.Dataset):
         def __len__(self):
             return 8
@@ -536,6 +554,73 @@ def test_twist_class_trains_with_a_lightning_trainer(tmp_path):
     trainer.fit(model, torch.utils.data.DataLoader(_TwoViewDataset(), batch_size=4))
     after = list(model.projector.parameters())
     assert any(not torch.equal(b, a) for b, a in zip(before, after))
+
+
+def test_twist_class_trains_and_resumes_through_manager(tmp_path):
+    """Resuming from a checkpoint reproduces uninterrupted training."""
+    generator = torch.Generator().manual_seed(23)
+    first = torch.randn(8, 3, 32, 32, generator=generator)
+    second = first + 0.25 * torch.randn(8, 3, 32, 32, generator=generator)
+    samples = [
+        {"views": [{"image": a, "label": i % 4}, {"image": b, "label": i % 4}]}
+        for i, (a, b) in enumerate(zip(first, second))
+    ]
+
+    def fit(name, epochs, ckpt_path=None):
+        # A resumed model starts from different weights, so it can only match
+        # the uninterrupted run by restoring the checkpoint.
+        torch.manual_seed(31 if ckpt_path else 29)
+        model = TWIST(_encoder(), projector_dims=(16, 8))
+        model.optim = {
+            "optimizer": {"type": "SGD", "lr": 0.05, "momentum": 0.9},
+            "scheduler": {"type": "CosineAnnealingLR", "T_max": 4},
+            "interval": "step",
+        }
+        trainer = pl.Trainer(
+            accelerator="cpu",
+            devices=1,
+            max_epochs=epochs,
+            limit_val_batches=0,
+            logger=False,
+            enable_model_summary=False,
+            enable_progress_bar=False,
+            callbacks=[
+                pl.pytorch.callbacks.ModelCheckpoint(
+                    dirpath=tmp_path / name, save_last=True, save_top_k=0
+                )
+            ],
+        )
+        data = spt.data.DataModule(train=DataLoader(samples, batch_size=4))
+        spt.Manager(
+            trainer=trainer,
+            module=model,
+            data=data,
+            ckpt_path=ckpt_path,
+            weights_only=False,
+            seed=29,
+        )()
+        return trainer, model
+
+    first_trainer, interrupted = fit("first", epochs=1)
+    assert first_trainer.global_step == 2
+    checkpoint = first_trainer.checkpoint_callback.last_model_path
+    assert Path(checkpoint).is_file()
+
+    resumed_trainer, resumed = fit("resumed", epochs=2, ckpt_path=checkpoint)
+    full_trainer, full = fit("full", epochs=2)
+
+    assert resumed_trainer.global_step == full_trainer.global_step == 4
+    torch.testing.assert_close(resumed.state_dict(), full.state_dict())
+    torch.testing.assert_close(
+        resumed_trainer.optimizers[0].state_dict()["state"],
+        full_trainer.optimizers[0].state_dict()["state"],
+    )
+    # The second epoch trained past the checkpoint, and the loss was logged.
+    assert any(
+        not torch.equal(a, b)
+        for a, b in zip(interrupted.projector.parameters(), full.projector.parameters())
+    )
+    assert torch.isfinite(full_trainer.callback_metrics["fit/loss"])
 
 
 def test_twist_is_exported_at_top_level():
