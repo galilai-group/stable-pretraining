@@ -184,6 +184,15 @@ class _Host(nn.Module):
         self.local_projector = nn.Conv2d(k, d, kernel_size=1)
         self.densecl_loss = DenseCLLoss(TEMP, 0.5)
         self.momentum = momentum
+        self.logged = {}  # records whatever densecl logs
+
+    def log(self, name, value, *args, **kwargs):
+        """Stand-in for LightningModule.log (a plain nn.Module has no `log`)."""
+        self.logged[name] = value
+
+    def log_dict(self, metrics, *args, **kwargs):
+        """Stand-in for LightningModule.log_dict."""
+        self.logged.update(metrics)
 
     @torch.no_grad()
     def update_momentum_encoder(self):

@@ -36,6 +36,11 @@
 #     trainer=trainer,
 #     module=module,
 #     data=datamodule,
+#     ckpt_path=(
+#         "/oscar/home/eslin/.cache/stable-pretraining/runs/"
+#         "20261023/190402/4557cc54edbe/checkpoints/last.ckpt"
+#     ),
+#     weights_only=False,
 # )
 
 # manager()
@@ -135,7 +140,7 @@ ckpt_path = (
     "20261023/200045/94a9a7998594/checkpoints/last.ckpt"
 )
 
-manager = Manager(
+manager = spt.Manager(
     trainer=trainer,
     module=module,
     data=datamodule,
