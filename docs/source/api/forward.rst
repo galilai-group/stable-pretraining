@@ -227,7 +227,7 @@ FroSSL
 ``frossl_loss`` (:class:`~stable_pretraining.losses.FroSSLLoss`). Training
 uses at least two aligned views. Single-view validation returns backbone
 embeddings for callbacks such as ``OnlineProbe``. See
-``examples/frossl_cifar10.py`` for a runnable setup.
+``benchmarks/cifar10/frossl-resnet18.py`` for the CIFAR-10 benchmark.
 
 Barlow Twins
 ~~~~~~~~~~~~

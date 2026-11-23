@@ -58,6 +58,7 @@ class FroSSLLoss(torch.nn.Module):
         device = projections[0].device
         dtype = projections[0].dtype
         normalized = []
+        eps = 1e-12
         for view in projections:
             if (
                 view.shape != shape
@@ -71,20 +72,31 @@ class FroSSLLoss(torch.nn.Module):
             if not torch.isfinite(view).all():
                 raise ValueError("FroSSL views must contain only finite values")
             z = view if view.dtype == torch.float64 else view.float()
-            normalized.append(F.normalize(z, p=2, dim=0))
+            # Rescaling bounds the norm calculation while preserving the original
+            # epsilon floor and its gradient in projection units.
+            scale = z.detach().abs().amax(dim=0, keepdim=True).clamp_min(eps)
+            z = z / scale
+            norm = torch.linalg.vector_norm(z, dim=0, keepdim=True)
+            normalized.append(z / norm.clamp_min(eps / scale))
 
         mean_view = torch.stack(normalized).mean(dim=0)
         num_views = len(normalized)
         feature_dim = shape[1]
         loss = mean_view.new_zeros(())
         for z in normalized:
+            # Trace normalization cancels a common scale. Rescale before the
+            # product so tiny views retain nonzero Gram entries.
+            scale = z.detach().abs().amax()
+            if scale == 0:
+                raise ValueError("FroSSL views must have nonzero projection energy")
+            scaled = z / scale
             # The two Gram matrices have the same nonzero spectrum; use the
             # smaller one to avoid quadratic work in the larger dimension.
-            gram = z.T @ z if feature_dim <= shape[0] else z @ z.T
-            trace = gram.diagonal().sum()
-            if trace <= 0:
-                raise ValueError("FroSSL views must have nonzero projection energy")
-            regularizer = torch.log(gram.square().sum() / trace.square())
+            with torch.autocast(device_type=device.type, enabled=False):
+                gram = (
+                    scaled.T @ scaled if feature_dim <= shape[0] else scaled @ scaled.T
+                )
+            regularizer = (gram / gram.diagonal().sum()).square().sum().log()
             invariance = num_views * feature_dim * F.mse_loss(z, mean_view)
             loss = loss + regularizer + self.invariance_weight * invariance
         return loss

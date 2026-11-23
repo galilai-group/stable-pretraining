@@ -1,10 +1,13 @@
 """Forward and public API contracts for multiview FroSSL."""
 
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import lightning.pytorch as pl
 import pytest
 import torch
+from torch.utils.data import DataLoader
 
 import stable_pretraining as spt
 from stable_pretraining.forward import frossl
@@ -123,3 +126,62 @@ def test_public_method_backpropagates_through_backbone_and_projector():
     assert model.projector.weight.grad is not None
     assert torch.isfinite(model.backbone.weight.grad).all()
     assert torch.isfinite(model.projector.weight.grad).all()
+
+
+def test_manager_training_resumes_from_checkpoint() -> None:
+    """Check that resuming FroSSL reproduces uninterrupted CPU training."""
+    generator = torch.Generator().manual_seed(23)
+    images = torch.randn(8, 3, generator=generator)
+    other_view = images + 0.25 * torch.randn(8, 3, generator=generator)
+    samples = [
+        {"views": [{"image": first}, {"image": second}]}
+        for first, second in zip(images, other_view, strict=True)
+    ]
+
+    def fit(epochs: int, ckpt_path: str | None = None) -> tuple[pl.Trainer, spt.FroSSL]:
+        torch.manual_seed(31 if ckpt_path else 29)
+        model = spt.FroSSL(
+            backbone=torch.nn.Linear(3, 4),
+            projector=torch.nn.Linear(4, 2),
+            optim={
+                "optimizer": {"type": "SGD", "lr": 0.05, "momentum": 0.9},
+                "scheduler": {"type": "CosineAnnealingLR", "T_max": 4},
+                "interval": "step",
+            },
+        )
+        trainer = pl.Trainer(
+            accelerator="cpu",
+            devices=1,
+            max_epochs=epochs,
+            limit_val_batches=0,
+            logger=False,
+            enable_model_summary=False,
+            enable_progress_bar=False,
+            log_every_n_steps=1,
+            callbacks=[pl.callbacks.ModelCheckpoint(save_last=True, save_top_k=0)],
+        )
+        data = spt.data.DataModule(train=DataLoader(samples, batch_size=4))
+        spt.Manager(
+            trainer=trainer,
+            module=model,
+            data=data,
+            ckpt_path=ckpt_path,
+            weights_only=False,
+            seed=29,
+        )()
+        return trainer, model
+
+    first_trainer, _ = fit(epochs=1)
+    assert first_trainer.global_step == 2
+    checkpoint = first_trainer.checkpoint_callback.last_model_path
+    assert Path(checkpoint).is_file()
+
+    resumed_trainer, resumed = fit(epochs=2, ckpt_path=checkpoint)
+    full_trainer, full = fit(epochs=2)
+
+    assert resumed_trainer.global_step == full_trainer.global_step == 4
+    torch.testing.assert_close(resumed.state_dict(), full.state_dict())
+    torch.testing.assert_close(
+        resumed_trainer.optimizers[0].state_dict()["state"],
+        full_trainer.optimizers[0].state_dict()["state"],
+    )

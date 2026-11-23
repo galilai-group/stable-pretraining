@@ -109,6 +109,46 @@ def test_gradients_and_half_precision():
     assert torch.isfinite(loss)
 
 
+@pytest.mark.parametrize(
+    ("dtype", "scale"),
+    [
+        (torch.float32, 1e38),
+        (torch.float32, 1e-24),
+        (torch.float64, 1e300),
+        (torch.float64, 1e-100),
+        (torch.bfloat16, 1e20),
+    ],
+)
+def test_extreme_projections_have_finite_loss_and_gradients(
+    dtype: torch.dtype, scale: float
+) -> None:
+    """Exercise large and small finite projections through forward and backward."""
+    base = torch.tensor([[1.0, -0.5, 0.0], [0.5, 1.0, 0.0], [-1.0, 0.25, 0.0]])
+    base = base.to(dtype)
+    views = [(view * scale).requires_grad_() for view in (base, base.roll(1, dims=0))]
+
+    loss = FroSSLLoss()(views)
+    assert torch.isfinite(loss)
+    for gradient in torch.autograd.grad(loss, views):
+        assert torch.isfinite(gradient).all()
+        assert torch.count_nonzero(gradient) > 0
+
+    if scale > 1:
+        torch.testing.assert_close(loss, FroSSLLoss()([base, base.roll(1, dims=0)]))
+
+
+def test_autocast_preserves_float32_loss() -> None:
+    """Keep mixed-precision Gram products in the loss's working dtype."""
+    base = torch.tensor([[1.0, -0.5], [0.5, 1.0], [-1.0, 0.25]]) * 1e20
+    views = [base, base.roll(1, dims=0)]
+    loss_fn = FroSSLLoss()
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        loss = loss_fn(views)
+
+    torch.testing.assert_close(loss, loss_fn(views))
+
+
 @pytest.mark.parametrize("weight", [-1.0, float("nan"), float("inf")])
 def test_invalid_weight(weight):
     with pytest.raises(ValueError, match="invariance_weight"):

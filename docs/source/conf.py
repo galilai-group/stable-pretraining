@@ -96,9 +96,7 @@ sphinx_gallery_conf = {
     "gallery_dirs": "auto_examples",  # path to where to save gallery generated output
     "filename_pattern": "/demo_",
     "run_stale_examples": True,
-    # FroSSL's normal example downloads CIFAR-10; document its source path in
-    # the API page without generating a gallery page for it.
-    "ignore_pattern": r"(__init__|frossl_cifar10)\.py",
+    "ignore_pattern": r"__init__\.py",
     "reference_url": {
         # The module you locally document uses None
         "sphinx_gallery": None

@@ -1,13 +1,13 @@
 """Train FroSSL on CIFAR-10 with an online linear probe.
 
-This is an integration example, not a reproduction of the paper's full recipe.
+This benchmark measures the online linear probe with a CIFAR-10 ResNet-18 recipe.
 It uses a held-out split of the CIFAR-10 training set for probe validation.
 The official test set is evaluated only after training.
 
 Examples::
 
-    python examples/frossl_cifar10.py --smoke
-    python examples/frossl_cifar10.py --epochs 100 --num-views 4
+    python benchmarks/cifar10/frossl-resnet18.py --smoke
+    python benchmarks/cifar10/frossl-resnet18.py --epochs 100 --num-views 4
 """
 
 import argparse
@@ -30,7 +30,7 @@ def build_data(
     """Build aligned training views and disjoint evaluation datasets.
 
     Args:
-        args: Parsed example settings.
+        args: Parsed benchmark settings.
 
     Returns:
         DataModule, held-out test loader, and split information to save.

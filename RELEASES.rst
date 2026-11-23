@@ -7,8 +7,9 @@ Unreleased
 - ``FroSSL`` (Skean et al., ECCV 2024): multiview joint-embedding learning
   with a trace-normalized Gram Frobenius regularizer and mean-view invariance.
   Includes ``FroSSLLoss``, the dictionary-based ``forward.frossl`` function,
-  a pre-wired ``FroSSL`` module, unit and two-process CPU DDP tests, and a
-  CIFAR-10/ResNet-18 example with an online probe and training-curve plotter.
+  a pre-wired ``FroSSL`` module, tests for checkpoint resume and two-process
+  CPU DDP, and a CIFAR-10/ResNet-18 benchmark with an online probe and
+  training-curve plotter.
   The loss follows the authors' released multiview
   normalization, which does not mean-center projections.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
