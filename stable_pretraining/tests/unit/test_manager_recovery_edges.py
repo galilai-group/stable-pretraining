@@ -1,5 +1,6 @@
 """Recovery never silently starts a different run when metadata is ambiguous."""
 
+import json
 import os
 from datetime import datetime
 from pathlib import Path
@@ -25,6 +26,7 @@ def manager(tmp_path, monkeypatch):
     model = Manager.__new__(Manager)
     model.ckpt_path = None
     model.weights_only = False
+    model._early_preempt_fallback = False
     return model
 
 
@@ -75,8 +77,9 @@ def test_handoff_read_failure_retries_without_changing_identity(
     previous.mkdir()
     handoff = manager._handoff_path(tmp_path, "key")
     handoff.parent.mkdir()
-    handoff.write_text(str(previous))
-    read = Mock(side_effect=[OSError("not ready"), str(previous)])
+    record = json.dumps({"run_dir": str(previous), "restart_count": "0"})
+    handoff.write_text(record)
+    read = Mock(side_effect=[OSError("not ready"), record])
     monkeypatch.setattr(Path, "read_text", read)
     assert manager._wait_for_rank_zero_handoff(tmp_path, "key") == previous
     assert read.call_count == 2
