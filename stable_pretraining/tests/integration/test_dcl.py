@@ -135,6 +135,57 @@ def test_cpu_training_and_validation_update_backbone(
         torch.testing.assert_close(output["label"], torch.arange(2))
 
 
+def test_manager_resumes_dcl_from_checkpoint(tmp_path, disable_default_callbacks):
+    torch.manual_seed(0)
+    batches = [_batch(), _batch()]
+
+    def train(module, max_epochs, *, ckpt_path=None, callbacks=()):
+        trainer = pl.Trainer(
+            accelerator="cpu",
+            devices=1,
+            max_epochs=max_epochs,
+            limit_val_batches=0,
+            logger=False,
+            enable_checkpointing=False,
+            enable_progress_bar=False,
+            enable_model_summary=False,
+            default_root_dir=tmp_path,
+            callbacks=list(callbacks),
+        )
+        data = spt.data.DataModule(train=DataLoader(batches, batch_size=None))
+        spt.Manager(
+            trainer=trainer,
+            module=module,
+            data=data,
+            seed=0,
+            ckpt_path=ckpt_path,
+            weights_only=False,
+        )()
+        return trainer
+
+    first = spt.DCL(encoder_name=_backbone(), projector_dims=(16, 4))
+    first_trainer = train(first, max_epochs=1)
+    assert first_trainer.global_step == 2
+    checkpoint = tmp_path / "dcl.ckpt"
+    first_trainer.save_checkpoint(checkpoint)
+
+    class CheckRestoredState(pl.Callback):
+        def on_train_start(self, trainer, pl_module):
+            assert trainer.global_step == 2
+            torch.testing.assert_close(pl_module.state_dict(), first.state_dict())
+            torch.testing.assert_close(
+                trainer.optimizers[0].state_dict(),
+                first_trainer.optimizers[0].state_dict(),
+            )
+
+    resumed = spt.DCL(encoder_name=_backbone(), projector_dims=(16, 4))
+    resumed_trainer = train(
+        resumed, max_epochs=2, ckpt_path=checkpoint, callbacks=[CheckRestoredState()]
+    )
+    assert resumed_trainer.global_step == 4
+    assert not torch.equal(resumed.backbone[-1].weight, first.backbone[-1].weight)
+
+
 def _ddp_matches_global_reference(rank, world_size, local_batch_size, result_dir):
     torch.set_num_threads(1)
     torch.manual_seed(3)
