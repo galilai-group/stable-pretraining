@@ -21,7 +21,7 @@ from stable_pretraining.methods.simclr import SimCLR
 
 def main():
     sys.path.append(str(Path(__file__).parent.parent))
-    from utils import get_data_dir
+    from utils import imagenette
 
     num_gpus = torch.cuda.device_count() or 1
     batch_size = 256
@@ -63,15 +63,10 @@ def main():
         transforms.ToImage(**spt.data.static.ImageNet),
     )
 
-    data_dir = str(get_data_dir("imagenet10"))
-
     data = spt.data.DataModule(
         train=torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                "frgfm/imagenette",
-                split="train",
-                revision="refs/convert/parquet",
-                cache_dir=data_dir,
+            dataset=imagenette(
+                "train",
                 transform=train_transform,
             ),
             batch_size=batch_size,
@@ -81,11 +76,8 @@ def main():
             shuffle=True,
         ),
         val=torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                "frgfm/imagenette",
-                split="validation",
-                revision="refs/convert/parquet",
-                cache_dir=data_dir,
+            dataset=imagenette(
+                "validation",
                 transform=val_transform,
             ),
             batch_size=batch_size,

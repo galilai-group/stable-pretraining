@@ -16,7 +16,7 @@ from stable_pretraining.methods.ijepa import IJEPA
 
 def main():
     sys.path.append(str(Path(__file__).parent.parent))
-    from utils import get_data_dir
+    from utils import imagenette
 
     num_gpus = torch.cuda.device_count() or 1
     batch_size = 64
@@ -36,14 +36,10 @@ def main():
             **({"label": batch["label"].long()} if "label" in batch else {}),
         }
 
-    data_dir = str(get_data_dir("imagenet10"))
     data = spt.data.DataModule(
         train=torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                "frgfm/imagenette",
-                split="train",
-                revision="refs/convert/parquet",
-                cache_dir=data_dir,
+            dataset=imagenette(
+                "train",
                 transform=transforms.Compose(
                     transforms.RGB(),
                     transforms.RandomResizedCrop((224, 224), scale=(0.3, 1.0)),
@@ -57,11 +53,8 @@ def main():
             shuffle=True,
         ),
         val=torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                "frgfm/imagenette",
-                split="validation",
-                revision="refs/convert/parquet",
-                cache_dir=data_dir,
+            dataset=imagenette(
+                "validation",
                 transform=transforms.Compose(
                     transforms.RGB(),
                     transforms.Resize((256, 256)),

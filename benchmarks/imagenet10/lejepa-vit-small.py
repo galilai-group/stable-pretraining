@@ -110,7 +110,7 @@ def lejepa_forward(self, batch, stage):
 
 def main():
     sys.path.append(str(Path(__file__).parent.parent))
-    from utils import get_data_dir
+    from utils import imagenette
 
     num_gpus = 1
     batch_size = 128
@@ -118,8 +118,6 @@ def main():
     max_epochs = 600
     global_views = 2
     all_views = 8
-
-    data_dir = str(get_data_dir("imagenet10"))
 
     # 2 global views (blur p=1.0, p=0.1) + 6 local views
     train_transform = transforms.MultiViewTransform(
@@ -141,11 +139,8 @@ def main():
 
     data = spt.data.DataModule(
         train=torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                "frgfm/imagenette",
-                split="train",
-                revision="refs/convert/parquet",
-                cache_dir=data_dir,
+            dataset=imagenette(
+                "train",
                 transform=train_transform,
             ),
             batch_size=batch_size,
@@ -155,11 +150,8 @@ def main():
             shuffle=True,
         ),
         val=torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                "frgfm/imagenette",
-                split="validation",
-                revision="refs/convert/parquet",
-                cache_dir=data_dir,
+            dataset=imagenette(
+                "validation",
                 transform=val_transform,
             ),
             batch_size=batch_size,

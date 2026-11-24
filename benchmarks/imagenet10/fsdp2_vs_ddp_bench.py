@@ -88,7 +88,7 @@ def main():
     args = parser.parse_args()
 
     sys.path.append(str(Path(__file__).parent.parent))
-    from utils import get_data_dir
+    from utils import imagenette
 
     two_view = transforms.MultiViewTransform(
         [
@@ -107,13 +107,9 @@ def main():
         ]
     )
 
-    data_dir = str(get_data_dir("imagenet10"))
     train_loader = torch.utils.data.DataLoader(
-        dataset=spt.data.HFDataset(
-            "frgfm/imagenette",
-            split="train",
-            revision="refs/convert/parquet",
-            cache_dir=data_dir,
+        dataset=imagenette(
+            "train",
             transform=two_view,
         ),
         batch_size=args.batch_size,
