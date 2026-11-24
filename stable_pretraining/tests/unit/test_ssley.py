@@ -1,5 +1,6 @@
 """SSL-EY mathematical and framework contract tests."""
 
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -89,10 +90,8 @@ def test_forward_contract(layout):
     assert "label" not in model(unlabeled, stage="fit")
 
 
-def test_manager_training_and_checkpoint(tmp_path):
-    pl.seed_everything(7)
-    model = _model()
-    initial = model.backbone.weight.detach().clone()
+def _run_manager(tmp_path, name, model, max_steps, ckpt_path=None):
+    torch.manual_seed(11)
     samples = [
         {"views": [{"image": torch.randn(3)}, {"image": torch.randn(3)}]}
         for _ in range(8)
@@ -101,30 +100,64 @@ def test_manager_training_and_checkpoint(tmp_path):
     trainer = pl.Trainer(
         accelerator="cpu",
         devices=1,
-        max_steps=2,
+        max_steps=max_steps,
         logger=False,
         enable_checkpointing=False,
         enable_progress_bar=False,
         enable_model_summary=False,
-        default_root_dir=tmp_path,
+        default_root_dir=tmp_path / name,
     )
     # Manager writes its registry into the configured cache directory.
     previous = spt.get_config().cache_dir
-    spt.set(cache_dir=str(tmp_path))
+    spt.set(cache_dir=str(tmp_path / name))
     try:
-        spt.Manager(trainer=trainer, module=model, data=data)()
+        spt.Manager(trainer=trainer, module=model, data=data, ckpt_path=ckpt_path)()
     finally:
         spt.set(cache_dir=previous)
+    return trainer
+
+
+def _constant_lr_model():
+    # A constant schedule keeps the LR independent of each run's max_steps.
+    return spt.SSLEY(
+        backbone=nn.Linear(3, 4),
+        projector=nn.Linear(4, 2),
+        optim={
+            "optimizer": {"type": "AdamW", "lr": 1e-3},
+            "scheduler": {"type": "ConstantLR", "factor": 1.0},
+        },
+    )
+
+
+def test_manager_training_checkpoint_and_resume(tmp_path):
+    pl.seed_everything(7)
+    reference = _constant_lr_model()
+    initial = {k: v.clone() for k, v in reference.state_dict().items()}
+    _run_manager(tmp_path, "reference", reference, max_steps=4)
+
+    first = _constant_lr_model()
+    first.load_state_dict(initial)
+    trainer = _run_manager(tmp_path, "first", first, max_steps=2)
     assert trainer.global_step == 2
-    assert not torch.equal(initial, model.backbone.weight)
-    path = tmp_path / "ssley.ckpt"
+    assert not torch.equal(initial["backbone.weight"], first.backbone.weight)
+    path = (tmp_path / "ssley.ckpt").resolve()
     trainer.save_checkpoint(path)
-    restored = _model()
-    restored.load_state_dict(torch.load(path, weights_only=False)["state_dict"])
-    model.eval()
-    restored.eval()
+
+    # Resume from the checkpoint in a fresh model and finish the 4-step run.
+    resumed = _constant_lr_model()
+    trainer = _run_manager(tmp_path, "resumed", resumed, max_steps=4, ckpt_path=path)
+    assert trainer.global_step == 4
+    for key, value in reference.state_dict().items():
+        torch.testing.assert_close(resumed.state_dict()[key], value, msg=key)
+    resumed.eval()
+    reference.eval()
     batch = {"image": torch.randn(3, 3)}
     torch.testing.assert_close(
-        model(batch, stage="test")["embedding"],
-        restored(batch, stage="test")["embedding"],
+        resumed(batch, stage="test")["embedding"],
+        reference(batch, stage="test")["embedding"],
     )
+
+
+def test_ssley_listed_in_type_stub():
+    stub = Path(spt.__file__).with_name("__init__.pyi").read_text()
+    assert "from .methods.ssley import SSLEY as SSLEY" in stub

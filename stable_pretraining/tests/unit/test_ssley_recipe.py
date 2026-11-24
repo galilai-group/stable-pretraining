@@ -1,5 +1,6 @@
 """Paper recipe tests independent of a live CUDA device."""
 
+import copy
 import importlib
 import json
 import math
@@ -10,6 +11,7 @@ from unittest.mock import Mock
 import pytest
 import torch
 from PIL import Image
+from torch.nn import functional as F
 
 pytestmark = pytest.mark.unit
 ROOT = Path(__file__).resolve().parents[3]
@@ -124,6 +126,54 @@ def test_classifier_does_not_train_backbone(recipe_module):
         assert model.backbone.conv1.weight.grad is not None
     finally:
         torch.set_num_threads(old_threads)
+
+
+def _reported_run_loss(model, batch):
+    """Joint loss as computed by the forward that produced the reported run.
+
+    Frozen copy of the pre-refactor script-local forward (one loop per view:
+    backbone, detached classifier, projector), kept to show the refactored
+    benchmark, which delegates to ``spt.forward.ssley``, is numerically the same.
+    """
+    projections, losses = [], []
+    for view in batch["views"]:
+        embedding = model.backbone(view["image"].to(memory_format=torch.channels_last))
+        logit = model.classifier(embedding.detach())
+        projections.append(model.projector(embedding))
+        losses.append(F.cross_entropy(logit, view["label"], ignore_index=-1))
+    return model.ssley_loss(*projections) + sum(losses) / len(losses)
+
+
+@pytest.mark.parametrize("name", ["paper", "stable"])
+def test_benchmark_forward_matches_reported_run(recipe_module, name):
+    config = json.loads((ROOT / f"benchmarks/cifar10/ssley-{name}.json").read_text())
+    config["projector_dims"] = [16, 16, 8]
+    torch.manual_seed(3)
+    model = recipe_module.PaperSSLEY(config, steps_per_epoch=2)
+    model.log = Mock()
+    reference = copy.deepcopy(model)
+    batch = {
+        "views": [
+            {"image": torch.randn(4, 3, 32, 32), "label": torch.tensor([0, 1, 2, 3])}
+            for _ in range(2)
+        ]
+    }
+    old_threads = torch.get_num_threads()
+    torch.set_num_threads(1)
+    try:
+        loss = model(batch, stage="fit")["loss"]
+        expected = _reported_run_loss(reference, batch)
+        loss.backward()
+        expected.backward()
+    finally:
+        torch.set_num_threads(old_threads)
+    torch.testing.assert_close(loss, expected, rtol=0, atol=0)
+    for (key, param), ref in zip(
+        model.named_parameters(), reference.parameters(), strict=True
+    ):
+        torch.testing.assert_close(param.grad, ref.grad, rtol=0, atol=0, msg=key)
+    for key, buffer in model.state_dict().items():
+        torch.testing.assert_close(buffer, reference.state_dict()[key], msg=key)
 
 
 def test_new_allocation_resets_wall_time(recipe_module):

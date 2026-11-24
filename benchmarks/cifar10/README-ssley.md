@@ -23,19 +23,18 @@ model = spt.SSLEY(
 The example above demonstrates the generic API, not the complete experiment recipe. For custom composition use `spt.Module(forward=spt.forward.ssley, ssley_loss=spt.losses.SSLEYLoss(), backbone=..., projector=..., optim=...)`.
 Training accepts exactly two views as a list or named mapping, with `image` tensors in each view. Labels are optional and never enter the SSL objective. Evaluation returns backbone embeddings without running the projector.
 
-For centered projections X and Y, the loss is `-2 trace(C) + trace(V @ V)`, where `C = 2 X.T @ Y / (N - 1)` and `V = (X.T @ X + Y.T @ Y) / (N - 1)`. Negative losses are expected. The generic loss promotes half/bfloat16 covariance arithmetic to FP32 by default and retains float64 inputs. Autograd-aware gathering requires equal local batch shapes; use `drop_last=True`. Multi-GPU runtime validation is not claimed.
+For centered projections X and Y, the loss is `-2 trace(C) + trace(V @ V)`, where `C = 2 X.T @ Y / (N - 1)` and `V = (X.T @ X + Y.T @ Y) / (N - 1)`. Negative losses are expected. The generic loss promotes half/bfloat16 covariance arithmetic to FP32 by default and retains float64 inputs. Autograd-aware gathering requires equal local batch shapes; use `drop_last=True`. A two-process (gloo, CPU) test checks that the gathered loss and gradients match the single-process global batch; multi-GPU training runs are not claimed.
 
 ## Benchmark files
 
 | File | Purpose |
 |---|---|
 | `ssley-paper.py` | Training entry point: data, Manager, logging, numerical guards, resume |
-| `ssley_recipe.py` | Model, augmentations, optimizer and stability options |
+| `ssley_recipe.py` | Model, augmentations, optimizer and stability options; the training forward calls `spt.forward.ssley` and adds the detached online classifier |
 | `ssley_reference_lars.py`, `ssley_reference_scheduler.py` | Author-fork LARS and warmup/cosine schedule, with attribution |
 | `ssley-paper.json` | Released author arithmetic (ambient autocast, no clipping); default config |
 | `ssley-stable.json` | FP32 loss + vector-gradient clipping; the successful 1000-epoch run |
 | `ssley-fp32-only.json` | FP32 loss without clipping; controlled ablation |
-| `results/ssley-cifar10.json`, `results/ssley-cifar10.png` | Machine-readable results and raw epoch curves |
 
 The three configurations share every setting except the two stability options and their name/revision metadata; `test_ssley_recipe.py` checks this.
 
@@ -100,13 +99,13 @@ Each run directory contains `resolved.json` (actual recipe, arguments and versio
 
 Scores are the final recorded epoch on the CIFAR-10 test split, not best-epoch selections. The stable run reached 79.03%, 84.12%, 86.55%, 88.60% and 89.46% at epochs 50, 100, 200, 500 and 1000; the last 100 epochs ranged from 89.38% to 89.70%.
 
-![Raw epoch metrics](results/ssley-cifar10.png)
-
 The ablation scored 71.36% at epoch 27, then collapsed to 10.62% at epoch 28 with mean SSL loss about 4.2e15, while the stable run scored 73.32% at the same epoch. The guard then raised `FloatingPointError: Non-finite model state` on backbone/projector BatchNorm running statistics. This is stability evidence for this seed and environment, not a matched-duration accuracy comparison. No run with `ssley-paper.json` completed successfully in our environment.
 
 All 1000 stable epoch records are contiguous and finite, with zero non-finite loss batches. AMP recorded 95 gradient-overflow skips (13 in the first 50 epochs), so 195000 framework steps are not 195000 parameter updates; the final AMP scale was 32768 and the final mean SSL loss -210.34. The final checkpoint matched the recipe and step count, all tensors were finite, strict state loading passed, and the exported backbone exactly matched the checkpoint.
 
-The stable run trained 50 epochs fresh (19m28s) and then resumed from the epoch-50 checkpoint with optimizer, scheduler and scaler state through epoch 1000 (5h15m26s). Recorded environment: Python 3.12.3, torch 2.8.0+cu126, torchvision 0.23.0+cu126, Lightning 2.6.6, one RTX A6000, 8 CPUs and 32 GB host RAM. The [machine-readable summary](results/ssley-cifar10.json) is derived from the epoch histories, run status and final verification output; no dataset or model weights are included.
+The stable run trained 50 epochs fresh (19m28s) and then resumed from the epoch-50 checkpoint with optimizer, scheduler and scaler state through epoch 1000 (5h15m26s). Recorded environment: Python 3.12.3, torch 2.8.0+cu126, torchvision 0.23.0+cu126, Lightning 2.6.6, one RTX A6000, 8 CPUs and 32 GB host RAM. No dataset, model weights or generated result files are included.
+
+The reported run used an earlier script-local forward that performed the same operations per view. The benchmark now delegates the SSL objective to `spt.forward.ssley`; `test_benchmark_forward_matches_reported_run` checks that the current forward gives bit-identical losses, gradients and BatchNorm statistics to that earlier forward for the paper and stable configurations.
 
 **Limits.** FP32 loss and vector-gradient clipping change the released arithmetic and optimization, so this is a stability variant, not a strict reproduction. The paper's Table 1 reports 91.43% top-1, 1.97 points above this result; historical software, seeds and checkpoint selection are not fully recovered, and the gap should not be attributed to unverified author practices. This is one seed on one GPU, without confidence intervals or multi-GPU validation.
 
@@ -114,6 +113,7 @@ The stable run trained 50 epochs fresh (19m28s) and then resumed from the epoch-
 
 ```bash
 python -m pytest stable_pretraining/tests/unit/test_ssley*.py stable_pretraining/tests/unit/test_methods_smoke.py -k ssley -q
+python -m pytest stable_pretraining/tests/distributed/test_collectives_dist.py -k ssley -q
 ```
 
-Coverage includes mathematical values/gradients and invariances, invalid inputs, low precision, label-free training, forward layouts, Manager/checkpoint integration, recipe and configuration semantics, detached classification, vector clipping, AMP recovery and failure guards. Pinned fixtures check author loss/gradient parity, initialization, two optimizer updates and the complete 195000-step learning-rate schedule. CUDA-specific cases skip without CUDA. Source parity does not establish identical historical training trajectories.
+Coverage includes mathematical values/gradients and invariances, invalid inputs, low precision, label-free training, forward layouts, Manager checkpoint save and resume, two-process gathering, recipe and configuration semantics, equivalence with the forward used for the reported run, detached classification, vector clipping, AMP recovery and failure guards. Pinned fixtures check author loss/gradient parity, initialization, two optimizer updates and the complete 195000-step learning-rate schedule. CUDA-specific cases skip without CUDA. Source parity does not establish identical historical training trajectories.

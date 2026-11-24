@@ -77,8 +77,12 @@ def augmentations(recipe: dict) -> tuple[Any, Any]:
     return spt.data.transforms.MultiViewTransform(views), validation
 
 
+def _channels_last(view: dict) -> dict:
+    return {**view, "image": view["image"].to(memory_format=torch.channels_last)}
+
+
 def paper_forward(self: Any, batch: dict, stage: str) -> dict[str, torch.Tensor]:
-    """Run SSL-EY plus a detached online classifier in one optimization step.
+    """Run ``spt.forward.ssley`` plus a detached online classifier.
 
     Args:
         self: Module with SSL-EY components and an online classifier.
@@ -89,34 +93,36 @@ def paper_forward(self: Any, batch: dict, stage: str) -> dict[str, torch.Tensor]
         SSL outputs and joint loss in training; classification metrics in eval.
 
     Note:
-        The classifier receives detached features, as in solo-learn; its
+        The SSL objective comes unchanged from the library forward. The
+        classifier receives detached features, as in solo-learn; its
         supervised loss never updates the encoder or projector.
     """
     views = batch["views"] if self.training else [batch]
     if self.training and len(views) != 2:
         raise ValueError("The CIFAR reference recipe requires two views")
-    embeddings, projections, logits, losses, labels = [], [], [], [], []
-    for view in views:
-        embedding = self.backbone(view["image"].to(memory_format=torch.channels_last))
-        logit = self.classifier(embedding.detach())
-        if self.training:
-            projections.append(self.projector(embedding))
-        losses.append(F.cross_entropy(logit, view["label"], ignore_index=-1))
-        embeddings.append(embedding)
-        logits.append(logit)
-        labels.append(view["label"])
+    if self.training:
+        ssl_batch = {"views": [_channels_last(view) for view in views]}
+    else:
+        ssl_batch = _channels_last(batch)
+    out = spt.forward.ssley(self, ssl_batch, stage)
+    labels = [view["label"] for view in views]
+    logits = [
+        self.classifier(embedding)
+        for embedding in out["embedding"].detach().chunk(len(views))
+    ]
+    losses = [
+        F.cross_entropy(logit, label, ignore_index=-1)
+        for logit, label in zip(logits, labels)
+    ]
     classification_loss = sum(losses) / len(losses)
-    out = {
-        "embedding": torch.cat(embeddings),
-        "label": torch.cat(labels),
-        "classification_loss": classification_loss,
-    }
+    out["label"] = torch.cat(labels)
+    out["classification_loss"] = classification_loss
     batch_size = len(labels[0])
     if self.training:
-        ssl_loss = self.ssley_loss(*projections)
+        ssl_loss = out["loss"]
         out["loss"] = ssl_loss + classification_loss
         self.log("fit/ssl_loss", ssl_loss, on_epoch=True, batch_size=batch_size)
-        self.log("fit/loss", out["loss"], on_epoch=True, batch_size=batch_size)
+        self.log("fit/total_loss", out["loss"], on_epoch=True, batch_size=batch_size)
         self.log(
             "fit/classification_loss",
             classification_loss,
