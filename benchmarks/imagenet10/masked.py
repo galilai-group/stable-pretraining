@@ -13,7 +13,7 @@ import stable_pretraining as spt
 from stable_pretraining.data import transforms
 
 sys.path.append(str(Path(__file__).parent.parent))
-from utils import get_data_dir  # noqa: E402
+from utils import imagenette  # noqa: E402
 
 
 def masked_train_transform():
@@ -36,14 +36,10 @@ def val_transform():
 
 
 def make_imagenette_data(batch_size: int = 128, num_workers: int = 8):
-    data_dir = str(get_data_dir("imagenet10"))
     return spt.data.DataModule(
         train=torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                "frgfm/imagenette",
-                split="train",
-                revision="refs/convert/parquet",
-                cache_dir=data_dir,
+            dataset=imagenette(
+                "train",
                 transform=masked_train_transform(),
             ),
             batch_size=batch_size,
@@ -53,11 +49,8 @@ def make_imagenette_data(batch_size: int = 128, num_workers: int = 8):
             shuffle=True,
         ),
         val=torch.utils.data.DataLoader(
-            dataset=spt.data.HFDataset(
-                "frgfm/imagenette",
-                split="validation",
-                revision="refs/convert/parquet",
-                cache_dir=data_dir,
+            dataset=imagenette(
+                "validation",
                 transform=val_transform(),
             ),
             batch_size=batch_size,

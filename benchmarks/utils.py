@@ -45,3 +45,38 @@ def get_data_dir(dataset_name: str = None) -> Path:
         data_dir = base_dir
 
     return data_dir
+
+
+IMAGENETTE_REVISION = "4b23ffb92a8029db9958bdfdbd6978427d09b1a0"
+
+
+def imagenette(split: str, **kwargs):
+    """Imagenette at 320 px from Parquet files committed to the Hub.
+
+    The Hub deleted the generated ``refs/convert/parquet`` branch of
+    ``frgfm/imagenette``, and ``datasets`` no longer runs the repository's
+    loading script, so the files are read at a fixed revision, as in the
+    integration tests.
+
+    Args:
+        split: ``"train"`` or ``"validation"``.
+        **kwargs: Forwarded to :func:`stable_pretraining.data.HFDataset`
+            (e.g. ``transform``, ``gpu_transform``).
+
+    Returns:
+        The split as a ``stable_pretraining`` dataset of ``{"image", "label"}``
+        samples.
+    """
+    import stable_pretraining as spt
+
+    url = (
+        f"https://huggingface.co/datasets/frgfm/imagenette/resolve/"
+        f"{IMAGENETTE_REVISION}/320px/{split}-00000-of-00001.parquet"
+    )
+    return spt.data.HFDataset(
+        "parquet",
+        data_files={split: url},
+        split=split,
+        cache_dir=str(get_data_dir("imagenet10")),
+        **kwargs,
+    )

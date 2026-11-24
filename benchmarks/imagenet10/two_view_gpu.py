@@ -36,7 +36,7 @@ import stable_pretraining as spt
 from stable_pretraining.data import gpu_transforms as gt, transforms
 
 sys.path.append(str(Path(__file__).parent.parent))
-from utils import get_data_dir  # noqa: E402
+from utils import imagenette  # noqa: E402
 
 
 def cpu_train_transform():
@@ -130,20 +130,13 @@ def make_imagenette_data_gpu(
     batch_size: int = 256, num_workers: int = 8, gpu_transform=None
 ):
     """DataModule with minimal CPU transforms; ``gpu_transform`` is attached to the train dataset."""
-    data_dir = str(get_data_dir("imagenet10"))
-    train_ds = spt.data.HFDataset(
-        "frgfm/imagenette",
-        split="train",
-        revision="refs/convert/parquet",
-        cache_dir=data_dir,
+    train_ds = imagenette(
+        "train",
         transform=cpu_train_transform(),
         gpu_transform=gpu_transform,
     )
-    val_ds = spt.data.HFDataset(
-        "frgfm/imagenette",
-        split="validation",
-        revision="refs/convert/parquet",
-        cache_dir=data_dir,
+    val_ds = imagenette(
+        "validation",
         transform=val_transform(),
     )
     return spt.data.DataModule(
