@@ -24,6 +24,7 @@ Methods come in two forms:
 | NNCLR | `nnclr` | `NNCLR` | `NTXEntLoss` | `OnlineQueue` | [Dwibedi et al., 2021](https://arxiv.org/abs/2104.14548) |
 | DINO | `dino` | `DINO` | `DINOv1Loss` | `TeacherStudent†` | [Caron et al., 2021](https://arxiv.org/abs/2104.14294) |
 | DINOv2 | `dinov2` | `DINOv2` | `DINOv2Loss`, `iBOTPatchLoss` | `TeacherStudent†` | [Oquab et al., 2024](https://arxiv.org/abs/2304.07193) |
+| JEM | `jem` | `JEM` | `JEMLoss` | `TeacherStudent†` | [Seitzer et al., 2026](https://arxiv.org/abs/2610.10013) |
 | BEiT | — | `BEiT` | — | — | [Bao et al., 2022](https://arxiv.org/abs/2106.08254) |
 | CMAE | — | `CMAE` | — | — | [Huang et al., 2023](https://arxiv.org/abs/2207.13532) |
 | CrossMAE | — | `CrossMAE` | — | — | [Fu et al., 2025](https://arxiv.org/abs/2401.14391) |
@@ -111,6 +112,7 @@ All loss classes are importable from `stable_pretraining.losses`:
 | `DINOv1Loss` | DINO, iBOT, MIMRefiner |
 | `DINOv2Loss` | DINOv2, DINOv3 |
 | `iBOTPatchLoss` | DINOv2, iBOT, MIMRefiner |
+| `JEMLoss` | JEM |
 | `MAELoss` | MAE |
 | `CLIPLoss` | Multimodal CLIP-style objectives |
 | `NegativeCosineSimilarity` | SimSiam, general use |

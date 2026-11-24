@@ -1,3 +1,4 @@
+import math
 from itertools import islice
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
@@ -1339,3 +1340,94 @@ class RandomMask(Transform):
 #         else:
 #             sample[self.new_key] = sample[self.label_key]
 #         return sample
+
+
+class AlignedMultiCrop(Transform):
+    """Square crops of one image whose patches fall on a shared grid.
+
+    The image is cropped once (random aspect ratio, as large as it allows),
+    resized to a square whose side is a multiple of ``patch_size`` and flipped
+    half of the time. Every view is then cut from that square at a random
+    position on the patch grid, without resizing, so that where two views
+    overlap their patches cover the same pixels. This is the view construction
+    of JEM (Seitzer et al., 2026).
+
+    Args:
+        sizes: Side in pixels of each view by name; ``"teacher"`` is required
+            and every side is a multiple of ``patch_size``.
+        transform: Applied to each view on its own, after the crop (e.g.
+            photometric augmentations and ``ToImage``).
+        patch_size: Side of a patch in pixels.
+        scale: Range of the share of the cropped image that the teacher view covers.
+        ratio: Range of the aspect ratio of the crop taken from the image.
+        min_overlap: Least share of a view's patches that lies in the teacher view.
+
+    Returns:
+        Dict of views by name. Each is a copy of the sample with its own
+        ``"image"`` and with ``"offset"``, the patch row and column of the
+        view's top left corner on the grid.
+    """
+
+    def __init__(
+        self,
+        sizes: dict[str, int],
+        transform=None,
+        patch_size: int = 16,
+        scale: Tuple[float, float] = (0.32, 1.0),
+        ratio: Tuple[float, float] = (3.0 / 4.0, 4.0 / 3.0),
+        min_overlap: float = 0.1,
+    ):
+        super().__init__()
+        if "teacher" not in sizes or any(s % patch_size for s in sizes.values()):
+            raise ValueError(
+                f"sizes needs a 'teacher' view and multiples of {patch_size}, got {sizes}"
+            )
+        self.sizes = sizes
+        self.view_transform = transform
+        self.patch_size = patch_size
+        self.scale = scale
+        self.ratio = ratio
+        self.min_overlap = min_overlap
+
+    def __call__(self, x):
+        image = x["image"]
+        _, height, width = query_chw([image])
+        patch, teacher = self.patch_size, self.sizes["teacher"]
+
+        aspect = math.exp(torch.empty(1).uniform_(*map(math.log, self.ratio)).item())
+        crop_width = min(width, round(height * aspect))
+        crop_height = min(height, round(crop_width / aspect))
+        top = torch.randint(height - crop_height + 1, (1,)).item()
+        left = torch.randint(width - crop_width + 1, (1,)).item()
+        share = torch.empty(1).uniform_(*self.scale).item()
+        side = max(teacher, round(teacher / math.sqrt(share) / patch) * patch)
+        image = F.resized_crop(
+            image, top, left, crop_height, crop_width, [side, side], antialias=True
+        )
+        if torch.rand(1) < 0.5:
+            image = F.horizontal_flip(image)
+
+        def place(size: int) -> torch.Tensor:
+            return torch.randint((side - size) // patch + 1, (2,))
+
+        offsets = {"teacher": place(teacher)}
+        teacher_end = offsets["teacher"] + teacher // patch
+        for name, size in self.sizes.items():
+            while name not in offsets:
+                offset = place(size)
+                shared = torch.minimum(offset + size // patch, teacher_end)
+                shared = (shared - torch.maximum(offset, offsets["teacher"])).clamp(0)
+                if shared.prod() >= self.min_overlap * (size // patch) ** 2:
+                    offsets[name] = offset
+
+        views = {}
+        for name, offset in offsets.items():
+            top, left = (offset * patch).tolist()
+            size = self.sizes[name]
+            view = {
+                **x,
+                "image": F.crop(image, top, left, size, size),
+                "offset": offset,
+            }
+            views[name] = self.view_transform(view) if self.view_transform else view
+        return views

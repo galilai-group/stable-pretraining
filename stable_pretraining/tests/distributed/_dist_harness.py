@@ -658,3 +658,29 @@ def w_clip_crossgpu_matches_global(rank, world_size):
 
     ref = _ref_clip_global(feats_i_global, feats_j_global, 0.07)
     assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+def w_jem_global_regularizer_matches_global(rank, world_size):
+    """JEM's global regularizer under DDP equals the one of the whole batch.
+
+    The ranks sum their probabilities for the batch-mean distribution, so the
+    mean of the per-rank losses is the single-process loss, and a rank's
+    gradients, once DDP averages them over the ranks, are those of its rows.
+    """
+    from stable_pretraining.losses import JEMLoss
+    from stable_pretraining.utils import all_reduce
+
+    torch.manual_seed(0)  # identical GLOBAL batch on every rank
+    b = 4
+    logits_global = torch.randn(b * world_size, 5, 7, requires_grad=True)
+    ref = JEMLoss().global_regularizer(JEMLoss().log_probabilities(logits_global))
+    (ref_grad,) = torch.autograd.grad(ref, logits_global)
+
+    rows = slice(rank * b, (rank + 1) * b)
+    logits = logits_global.detach()[rows].requires_grad_()
+    local = JEMLoss().global_regularizer(JEMLoss().log_probabilities(logits))
+    local.backward()
+    avg = all_reduce(local.detach().clone()) / world_size
+
+    assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+    assert torch.allclose(logits.grad / world_size, ref_grad[rows], atol=1e-6)

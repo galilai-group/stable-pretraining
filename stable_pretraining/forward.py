@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``jem`` — JEM patch-level alignment across views on one patch grid
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -37,6 +38,7 @@ Example:
         module = Module(forward=simclr, backbone=backbone, projector=projector)
 """
 
+import math
 from typing import Any
 
 import torch
@@ -1260,4 +1262,225 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         prog_bar=True,
     )
 
+    return out
+
+
+def _jem_features(
+    vit: torch.nn.Module,
+    images: torch.Tensor,
+    layers: set[int],
+    mask: torch.Tensor | None = None,
+    mask_token: torch.Tensor | None = None,
+) -> dict[int, torch.Tensor]:
+    """Patch tokens of a timm ViT or Eva after the given blocks, registers left out.
+
+    Layer 0 is the output of the patch embedding, layer ``k`` the output of
+    block ``k``; the last block's output goes through the final norm.
+    """
+    x = vit.patch_embed(images)
+    features = {0: x.flatten(1, 2)}
+    if mask is not None:
+        x = torch.where(mask.view(*x.shape[:3], 1), mask_token.to(x.dtype), x)
+    x = vit._pos_embed(x)
+    # Encoders with rotary positions (timm's Eva, as in DINOv3) return them beside the tokens
+    x, rope = x if isinstance(x, tuple) else (x, None)
+    x = vit.norm_pre(x)
+    for index, block in enumerate(vit.blocks, start=1):
+        x = block(x) if rope is None else block(x, rope=rope)
+        if index in layers:
+            tokens = vit.norm(x) if index == len(vit.blocks) else x
+            features[index] = tokens[:, vit.num_prefix_tokens :]
+    return features
+
+
+def _jem_mask(
+    views: int, rows: int, columns: int, ratio: float, blocks: bool
+) -> torch.Tensor:
+    """Patches to mask in each view, bool ``[views, rows * columns]``.
+
+    With ``blocks``, rectangles of random area and aspect ratio are added
+    until ``ratio`` of the patches is covered, then the mask is rolled by a
+    random shift so that blocks wrap around the borders: the multi-block
+    masking of iBOT with the cyclic shifts of CAPI. Without, a random
+    ``ratio`` of the patches.
+    """
+    target = round(ratio * rows * columns)
+    if not blocks:
+        return torch.rand(views, rows * columns).argsort(1).argsort(1) < target
+    masks = torch.zeros(views, rows, columns, dtype=torch.bool)
+    for mask in masks:
+        while (missing := target - int(mask.sum())) > 0:
+            area = torch.empty(()).uniform_(min(4, missing), missing).item()
+            aspect = math.exp(
+                torch.empty(()).uniform_(-math.log(3), math.log(3)).item()
+            )
+            height = min(rows, max(1, round(math.sqrt(area * aspect))))
+            width = min(columns, max(1, round(math.sqrt(area / aspect))))
+            top = torch.randint(rows - height + 1, ()).item()
+            left = torch.randint(columns - width + 1, ()).item()
+            mask[top : top + height, left : left + width] = True
+        shift = (torch.randint(rows, ()).item(), torch.randint(columns, ()).item())
+        mask.copy_(mask.roll(shift, dims=(0, 1)))
+    return masks.flatten(1)
+
+
+def jem(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for JEM, a patch-level student-teacher method.
+
+    Each student view is aligned with the teacher view on the patches the two
+    share: the student's categorical distribution of a patch is pulled to the
+    teacher's (KL divergence), at several depths of the encoder. Two
+    regularizers on the student prevent collapse: one keeps the categories
+    informative over the batch, one keeps the patch-to-patch similarities of
+    earlier teacher layers readable from the final student patches.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: TeacherStudentWrapper of a timm ``VisionTransformer``
+              or ``Eva`` built with ``dynamic_img_size=True`` and without
+              class token
+            - projector: TeacherStudentWrapper of a ModuleList with one head
+              per entry of ``target_layers``, mapping patches to category logits
+            - structure_projector: ModuleList with one head per entry of
+              ``structure_layers``, applied to the final student patches
+            - jem_loss: JEMLoss instance
+            - mask_token: Parameter that replaces masked patch embeddings
+            - global_mask_ratio (float): Share of patches masked, in blocks, in
+              a student view of the teacher's size
+            - local_mask_ratio (float): Share of patches masked at random in a
+              smaller student view
+            - mask_probability (float): Share of the student views that is masked
+            - target_layers (tuple[int]): Aligned blocks, the last block last
+            - layer_weights (tuple[float]): Alignment weight of each target layer
+            - structure_layers (tuple[int]): Teacher layers whose similarities
+              are matched; 0 is the patch embedding
+            - global_weight (float): Weight of the global regularizer after warm-up
+            - structure_weight (tuple[float, float]): Weight of the structural
+              regularizer after warm-up and at the end of training
+            - warmup_fraction (float): Share of the training steps over which
+              the two regularizer weights warm up
+        batch: For training, a dict of views as ``AlignedMultiCrop`` makes
+            them: ``"teacher"`` and any number of student views, each a dict
+            with ``"image"`` and ``"offset"``, the patch row and column of
+            its corner on the grid all views share. Otherwise a dict with a
+            single ``"image"`` tensor.
+        stage: Training stage ('fit', 'validate', 'test' or 'predict')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Mean of the teacher's final patches, ``[B, D]``
+            - 'label': Labels if present (for probes/callbacks)
+            - 'loss', 'alignment_loss', 'global_loss', 'structure_loss': With
+              views only
+
+    Note:
+        Introduced in Seitzer et al., "Scalable Patch-Level Self-Supervised
+        Learning" (2026). Requires ``TeacherStudentCallback`` for the EMA
+        teacher. The batch-mean distribution of the global regularizer is
+        gathered across GPUs under DDP; the alignment and the structural
+        regularizer are per GPU (see ``JEMLoss``). The global regularizer
+        starts at weight 1 and the structural one at 0; both reach their
+        configured weights after ``warmup_fraction`` of the training steps.
+    """
+    out = {}
+    depth = len(self.backbone.student.blocks)
+    views = {
+        name: view
+        for name, view in batch.items()
+        if isinstance(view, dict) and "offset" in view
+    }
+    teacher_view = views.pop("teacher", batch)
+    if "label" in teacher_view:
+        out["label"] = teacher_view["label"]
+
+    layers = {*self.target_layers, *self.structure_layers}
+    with torch.no_grad():
+        teacher = _jem_features(self.backbone.teacher, teacher_view["image"], layers)
+        out["embedding"] = teacher[depth].mean(1)
+        if not views:
+            return out
+        teacher_log_probs = {
+            layer: self.jem_loss.log_probabilities(head(teacher[layer]))
+            for layer, head in zip(self.target_layers, self.projector.teacher)
+        }
+
+    patch = self.backbone.student.patch_embed.patch_size[0]
+    teacher_rows, teacher_columns = (
+        size // patch for size in teacher_view["image"].shape[-2:]
+    )
+    alignment = global_term = structure = 0.0
+    for view in views.values():
+        images = view["image"]
+        rows, columns = (size // patch for size in images.shape[-2:])
+        full = (rows, columns) == (teacher_rows, teacher_columns)
+        ratio = self.global_mask_ratio if full else self.local_mask_ratio
+        masked = _jem_mask(len(images), rows, columns, ratio, blocks=full)
+        masked = masked.to(images.device) & (
+            torch.rand(len(images), 1, device=images.device) < self.mask_probability
+        )
+        student = _jem_features(
+            self.backbone.student,
+            images,
+            set(self.target_layers),
+            masked,
+            self.mask_token,
+        )
+
+        shift = view["offset"] - teacher_view["offset"]
+        row = shift[:, :1] + torch.arange(rows, device=images.device)
+        column = shift[:, 1:] + torch.arange(columns, device=images.device)
+        overlap = (
+            ((row >= 0) & (row < teacher_rows))[:, :, None]
+            & ((column >= 0) & (column < teacher_columns))[:, None, :]
+        ).flatten(1)
+        index = (
+            row.clamp(0, teacher_rows - 1)[:, :, None] * teacher_columns
+            + column.clamp(0, teacher_columns - 1)[:, None, :]
+        ).flatten(1)
+
+        def matching(tokens: torch.Tensor) -> torch.Tensor:
+            return tokens.gather(1, index[:, :, None].expand(-1, -1, tokens.shape[-1]))
+
+        for layer, weight, head in zip(
+            self.target_layers, self.layer_weights, self.projector.student
+        ):
+            log_probs = self.jem_loss.log_probabilities(head(student[layer]))
+            alignment = alignment + weight * self.jem_loss.alignment(
+                log_probs, matching(teacher_log_probs[layer]), masked, overlap
+            )
+            global_term = global_term + self.jem_loss.global_regularizer(log_probs)
+        for layer, head in zip(self.structure_layers, self.structure_projector):
+            structure = structure + self.jem_loss.structural_regularizer(
+                head(student[depth]), matching(teacher[layer]), overlap
+            )
+
+    alignment = alignment / len(views)
+    global_term = global_term / (len(views) * len(self.target_layers))
+    structure = structure / (len(views) * len(self.structure_layers))
+
+    attached = self._trainer is not None
+    progress = (
+        self.global_step / self.trainer.estimated_stepping_batches if attached else 0.0
+    )
+    warmup = min(progress / self.warmup_fraction, 1.0)
+    start, end = self.structure_weight
+    global_weight = 1.0 + warmup * (self.global_weight - 1.0)
+    structure_weight = warmup * start + max(progress - self.warmup_fraction, 0.0) / (
+        1.0 - self.warmup_fraction
+    ) * (end - start)
+
+    out["alignment_loss"] = alignment
+    out["global_loss"] = global_term
+    out["structure_loss"] = structure
+    out["loss"] = alignment + global_weight * global_term + structure_weight * structure
+    if attached:
+        self.log_dict(
+            {
+                f"{stage}/{name}": out[name]
+                for name in ("loss", "alignment_loss", "global_loss", "structure_loss")
+            },
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+        )
     return out
