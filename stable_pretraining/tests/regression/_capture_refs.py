@@ -71,6 +71,16 @@ class FakeDataset(Dataset):
         return {"image": self.images[i], "label": self.labels[i]}
 
 
+def _vibcreg_module():
+    module = spt.VIbCReg(
+        encoder_name=make_backbone(),
+        projector_dims=(EMBED_DIM, PROJ_DIM),
+        iternorm_groups=4,
+    )
+    module.optim = {"optimizer": {"type": "Adam", "lr": 1e-3}}
+    return module
+
+
 def make_data(multi_view=True):
     return spt.data.DataModule(
         train=DataLoader(
@@ -110,6 +120,10 @@ METHODS = {
             vicreg_loss=losses.VICRegLoss(),
             optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
         ),
+        data=make_data(True),
+    ),
+    "vibcreg": lambda: dict(
+        module=_vibcreg_module(),
         data=make_data(True),
     ),
     "barlow_twins": lambda: dict(

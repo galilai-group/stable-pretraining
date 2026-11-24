@@ -218,6 +218,37 @@ VICReg
         var_weight: 25.0
         cov_weight: 1.0
 
+VIbCReg
+~~~~~~~
+
+.. autofunction:: vibcreg
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: Projection head, typically ending in ``IterNorm``
+- ``vibcreg_loss``: VIbCReg loss (invariance + variance + feature decorrelation)
+
+**Key Features:**
+
+- IterNorm whitening of the projector output
+- Scale-invariant feature decorrelation on the correlation matrix
+- Same two-view setup and invariance/variance terms as VICReg
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.vibcreg
+      backbone: ...
+      projector: ...
+      vibcreg_loss:
+        _target_: stable_pretraining.losses.VIbCRegLoss
+        sim_coeff: 25.0
+        std_coeff: 25.0
+        cov_coeff: 200.0
+
 Barlow Twins
 ~~~~~~~~~~~~
 

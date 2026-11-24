@@ -17,6 +17,17 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``VIbCReg`` (Variance-Invariance-better-Covariance Regularization): VICReg
+  with an ``IterNorm`` whitening layer at the end of the projector and a
+  scale-invariant feature-decorrelation term on the correlation matrix, per
+  Lee & Aune (2021). Adds ``VIbCRegLoss``, the ``backbone.IterNorm`` layer,
+  the ``forward.vibcreg`` forward function and the ``VIbCReg`` method class
+  (dict-based ``forward(batch, stage)``), registered in
+  ``stable_pretraining.methods``, the top-level namespace and ``METHODS.md``.
+  CIFAR-10 ResNet-18 benchmark under
+  ``benchmarks/cifar10/vibcreg-resnet18.py`` (89.90% online linear top-1
+  after 1000 epochs; solo-learn reference 91.18%), which also runs the
+  VICReg baseline and the IterNorm ablation.
 
 **Discoverability improvements**
 
@@ -162,6 +173,15 @@ Unreleased
   introduced in 0.21 (paired with torch 2.6); on older torchvision they are
   still named ``_get_params`` / ``_transform`` and every ``spt`` transform
   raised ``AttributeError`` when called.
+
+**Bug fixes**
+
+- ``forward._get_views_list`` counted the ``batch_idx`` that
+  ``Module.training_step`` injects into every batch as an extra view when
+  views were passed as named keys, so the two-view forward functions
+  (``simclr``, ``byol``, ``vicreg``, ``vibcreg``, ``barlow_twins``, ``swav``,
+  ``nnclr``) failed on named-view batches under ``Manager``. Only dict entries
+  are now treated as views.
 
 Version 0.1
 -----------

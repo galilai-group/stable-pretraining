@@ -201,6 +201,26 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         assert "embedding" in result
         assert "loss" in result
 
+    def test_vibcreg_forward_with_benchmark_transforms(self):
+        """Test vibcreg with benchmark transforms."""
+        sample = {"image": _create_dummy_pil_image()}
+
+        transform = _simclr_transforms()
+        batch = transform(sample)
+
+        module = Mock()
+        module.backbone = lambda x: torch.randn(x.shape[0], 512)
+        module.projector = lambda x: torch.randn(x.shape[0], 2048)
+        module.vibcreg_loss = Mock(return_value=torch.tensor(0.4))
+        module.training = True
+        module.log = Mock()
+
+        result = forward_module.vibcreg(module, batch, "train")
+
+        assert "embedding" in result
+        assert "loss" in result
+        module.vibcreg_loss.assert_called_once()
+
     def test_barlow_twins_forward_with_benchmark_transforms(self):
         """Test barlow_twins with benchmark transforms."""
         sample = {"image": _create_dummy_pil_image()}
@@ -439,3 +459,12 @@ class TestForwardFunctionsWithBenchmarkTransforms:
         assert "embedding" in result
         assert "logits" in result
         assert "loss" in result
+
+
+@pytest.mark.unit
+def test_named_views_ignore_injected_metadata():
+    """``batch_idx`` injected by ``Module.training_step`` is not a view."""
+    views = [{"image": torch.randn(2, 3, 8, 8)} for _ in range(2)]
+    batch = {"view_0": views[0], "view_1": views[1], "batch_idx": 3}
+
+    assert forward_module._get_views_list(batch) == views

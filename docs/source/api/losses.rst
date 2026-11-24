@@ -11,4 +11,5 @@ stable_pretraining.losses
    NTXEntLoss
    NegativeCosineSimilarity
    VICRegLoss
+   VIbCRegLoss
    BarlowTwinsLoss

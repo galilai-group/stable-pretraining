@@ -49,8 +49,9 @@ def _get_views_list(batch: dict):
     if "views" in batch:
         return batch["views"]
     elif "image" not in batch:
-        # Dict of named views - convert to list
-        return list(batch.values())
+        # Dict of named views - convert to list. Non-dict entries are metadata
+        # such as the ``batch_idx`` that ``Module.training_step`` injects.
+        return [v for v in batch.values() if isinstance(v, dict)]
     else:
         # Single view, return None as sentinel
         return None
@@ -448,6 +449,89 @@ def vicreg(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
             )
     else:
         # Single-view validation
+        out["embedding"] = self.backbone(batch["image"])
+        if "label" in batch:
+            out["label"] = batch["label"]
+
+    return out
+
+
+def vibcreg(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for VIbCReg (Variance-Invariance-better-Covariance Regularization).
+
+    VIbCReg keeps VICReg's two-view setup and invariance/variance criteria, but
+    whitens the projector output with :class:`~stable_pretraining.backbone.IterNorm`
+    and replaces the covariance penalty with a scale-invariant feature
+    decorrelation term.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: Feature extraction network
+            - projector: Projection head, typically ending in ``IterNorm``
+            - vibcreg_loss: VIbCReg loss with invariance, variance and
+              feature decorrelation terms
+        batch: Either a list of view dicts (from MultiViewTransform) or
+            a single dict (for validation/single-view)
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Feature representations from backbone
+            - 'loss': Combined VIbCReg loss (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+
+    Note:
+        Introduced in the VIbCReg paper :cite:`lee2021vibcreg`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import vibcreg
+
+            backbone = spt.backbone.from_torchvision("resnet18", low_resolution=True)
+            backbone.fc = torch.nn.Identity()
+            module = spt.Module(
+                forward=vibcreg,
+                backbone=backbone,
+                projector=torch.nn.Sequential(
+                    torch.nn.Linear(512, 2048),
+                    spt.backbone.IterNorm(2048, num_groups=64),
+                ),
+                vibcreg_loss=spt.losses.VIbCRegLoss(),
+                optim={"optimizer": {"type": "LARS", "lr": 0.3}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is not None:
+        if len(views) != 2:
+            raise ValueError(
+                f"VIbCReg requires exactly 2 views, got {len(views)}. "
+                "For other configurations, please implement a custom forward function."
+            )
+
+        embeddings = [self.backbone(view["image"]) for view in views]
+        out["embedding"] = torch.cat(embeddings, dim=0)
+
+        if "label" in views[0]:
+            out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+        if self.training:
+            # Each view is projected separately so IterNorm whitens per view,
+            # as in the reference implementation.
+            projections = [self.projector(emb) for emb in embeddings]
+            out["loss"] = self.vibcreg_loss(projections[0], projections[1])
+            self.log(
+                f"{stage}/loss",
+                out["loss"],
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+            )
+    else:
         out["embedding"] = self.backbone(batch["image"])
         if "label" in batch:
             out["label"] = batch["label"]

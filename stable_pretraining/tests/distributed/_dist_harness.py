@@ -570,6 +570,52 @@ def w_barlow_matches_single_proc(rank, world_size):
     assert torch.allclose(loss, ref, atol=1e-5), (loss.item(), ref.item())
 
 
+def w_vibcreg_matches_single_proc(rank, world_size):
+    """Sharded VIbCReg loss and gradients == single-process on the global batch.
+
+    Each rank holds one shard of a global batch. The variance and decorrelation
+    terms are computed on the all-gathered batch, so they are identical on every
+    rank, while the invariance term is local. Averaged over ranks (as DDP does),
+    loss and gradients must therefore match one process seeing the whole batch.
+    """
+    from stable_pretraining.losses import VIbCRegLoss
+
+    torch.manual_seed(0)  # identical global batch on every rank
+    global_i = torch.randn(8 * world_size, 16)
+    global_j = global_i + 0.5 * torch.randn(8 * world_size, 16)
+    shard = slice(rank * 8, (rank + 1) * 8)
+    loss_fn = VIbCRegLoss()
+
+    z_i = global_i[shard].clone().requires_grad_()
+    z_j = global_j[shard].clone().requires_grad_()
+    loss = loss_fn(z_i, z_j)
+    loss.backward()
+    # all_gather's backward sums every rank's contribution into the local shard;
+    # DDP then averages over ranks.
+    grad_i = z_i.grad / world_size
+    mean_loss = loss.detach().clone()
+    dist.all_reduce(mean_loss)
+    mean_loss /= world_size
+
+    ref_i = global_i.clone().requires_grad_()
+    ref_j = global_j.clone().requires_grad_()
+    # Spelled out term by term: inside a process group, calling loss_fn would
+    # gather the full batch again.
+    ref_loss = (
+        loss_fn.sim_coeff * torch.nn.functional.mse_loss(ref_i, ref_j)
+        + loss_fn.std_coeff * (loss_fn._variance(ref_i) + loss_fn._variance(ref_j))
+        + loss_fn.cov_coeff
+        * (loss_fn._decorrelation(ref_i) + loss_fn._decorrelation(ref_j))
+    )
+    ref_loss.backward()
+
+    assert torch.allclose(mean_loss, ref_loss.detach(), atol=1e-5), (
+        mean_loss.item(),
+        ref_loss.item(),
+    )
+    assert torch.allclose(grad_i, ref_i.grad[shard], atol=1e-6)
+
+
 def w_contrastive_runs_under_ddp(rank, world_size):
     """NTXEnt (masked) and CLIP (unmasked) contrastive losses run under DDP.
 

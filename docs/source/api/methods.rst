@@ -52,6 +52,7 @@ feature dimensions rather than using explicit contrastive pairs.
 
    VICReg
    VICRegL
+   VIbCReg
    BarlowTwins
    WMSE
 
