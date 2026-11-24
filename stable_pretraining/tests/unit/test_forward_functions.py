@@ -479,7 +479,7 @@ def _equimod_batch(n: int = 4):
 
 
 def _equimod_module(embed_dim: int = 16):
-    """A real EquiMod so forward.equimod and EquiMod.forward can be compared."""
+    """A small EquiMod: the method class, whose forward is ``forward.equimod``."""
     from stable_pretraining.methods import EquiMod
 
     torch.manual_seed(0)
@@ -577,25 +577,25 @@ class TestEquiModForward:
             result["loss"], logged["fit/inv"] + 0.5 * logged["fit/equi"], atol=1e-6
         )
 
-    def test_matches_method_class_forward(self):
+    @pytest.mark.parametrize("container", ["named", "nested_named"])
+    def test_named_views_match_the_list_form(self, container):
         model = _equimod_module()
         model.train()
         model.log = Mock()
         batch = _equimod_batch(n=4)
         original, v1, v2 = batch["views"]
+        named = {"original": original, "view_a": v1, "view_b": v2}
+        # Module.training_step adds batch_idx beside the views
+        if container == "named":
+            other = {**named, "batch_idx": 0}
+        else:
+            other = {"views": named, "batch_idx": 0}
 
-        torch.manual_seed(1)
-        via_forward = forward_module.equimod(model, batch, "fit")
-        torch.manual_seed(1)
-        via_class = model(
-            v1["image"],
-            v2["image"],
-            original["image"],
-            model.augmentation_params(v1),
-            model.augmentation_params(v2),
-        )
-        assert torch.allclose(via_forward["loss"], via_class.loss, atol=1e-6)
-        assert torch.allclose(via_forward["embedding"], via_class.embedding, atol=1e-6)
+        from_list = model({**batch, "batch_idx": 0}, "fit")
+        from_named = model(other, "fit")
+
+        assert torch.allclose(from_named["loss"], from_list["loss"], atol=1e-6)
+        assert torch.equal(from_named["label"], from_list["label"])
 
     def test_eval_mode_skips_loss(self):
         model = _equimod_module()
@@ -613,19 +613,6 @@ class TestEquiModForward:
         assert result["embedding"].shape == (4, 16)
         assert torch.equal(result["label"], torch.arange(4))
         assert "loss" not in result
-
-    def test_named_views_dict_is_accepted(self):
-        model = _equimod_module()
-        model.train()
-        model.log = Mock()
-        batch = _equimod_batch(n=4)
-        original, v1, v2 = batch["views"]
-        named = {"views": {"original": original, "view_a": v1, "view_b": v2}}
-        torch.manual_seed(1)
-        from_named = forward_module.equimod(model, named, "fit")
-        torch.manual_seed(1)
-        from_list = forward_module.equimod(model, batch, "fit")
-        assert torch.allclose(from_named["loss"], from_list["loss"], atol=1e-6)
 
     def test_two_views_is_rejected(self):
         model = _equimod_module()

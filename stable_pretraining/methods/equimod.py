@@ -7,12 +7,13 @@ prediction is trained with a second NT-Xent loss, added to the usual invariance
 loss, so the backbone keeps augmentation-related information that a purely
 invariant objective would discard.
 
-Two entry points, as for SimCLR:
+Two entry points, sharing one implementation:
 
-- :class:`EquiMod`, the ``LightningModule`` with everything pre-wired.
-- :func:`stable_pretraining.forward.equimod`, the stateless forward function,
-  which composes a backbone, projector and :class:`EquivarianceModule` owned by
-  an :class:`~stable_pretraining.Module`.
+- :func:`stable_pretraining.forward.equimod`, the forward function, which runs
+  on any :class:`~stable_pretraining.Module` that owns a backbone, a projector
+  and an :class:`EquivarianceModule`.
+- :class:`EquiMod`, a :class:`~stable_pretraining.Module` with those components
+  pre-wired and that function as its ``forward(batch, stage)``.
 
 References:
     Devillers & Lefort. "EquiMod: An Equivariance Module to Improve
@@ -20,51 +21,30 @@ References:
 
 Example::
 
-    from stable_pretraining.methods import EquiMod
+    import stable_pretraining as spt
 
-    model = EquiMod(encoder_name="resnet18", low_resolution=True)
+    model = spt.EquiMod(encoder_name="resnet18", low_resolution=True)
 
-    # views come from a MultiViewTransform with three pipelines:
+    # ``batch`` comes from a MultiViewTransform with three pipelines,
     # [un-augmented, augmented, augmented]
-    original, view1, view2 = (v["image"] for v in batch["views"])
-    params1 = EquiMod.augmentation_params(batch["views"][1])
-    params2 = EquiMod.augmentation_params(batch["views"][2])
-
-    out = model(view1, view2, original, params1, params2)
-    out.loss.backward()
+    out = model(batch, "fit")
+    out["loss"].backward()
 """
 
-from dataclasses import dataclass
-from typing import Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Mapping, Optional, Sequence, Tuple, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from stable_pretraining import Module
+from stable_pretraining.backbone import from_timm
+from stable_pretraining.forward import equimod
 from stable_pretraining.losses import NTXEntLoss
-from stable_pretraining.methods.simclr import SimCLR, SimCLROutput, _build_projector
+from stable_pretraining.methods.simclr import _build_projector
 
 
 _Stats = Union[torch.Tensor, Sequence[float]]
-
-
-@dataclass
-class EquiModOutput(SimCLROutput):
-    """SimCLROutput extended with the two loss terms and an equivariance metric.
-
-    Attributes:
-        invariance_loss: NT-Xent loss between the two augmented views.
-        equivariance_loss: NT-Xent loss between each view's equivariant
-            embedding and its prediction from the un-augmented image.
-        equivariance_gain: Mean of ``cos(y, y_hat) - cos(y, y_original)``.
-            Positive when the predictor moves the un-augmented embedding
-            towards the augmented one, i.e. when the augmentation is actually
-            modelled.
-    """
-
-    invariance_loss: Optional[torch.Tensor] = None
-    equivariance_loss: Optional[torch.Tensor] = None
-    equivariance_gain: Optional[torch.Tensor] = None
 
 
 class EquivarianceModule(nn.Module):
@@ -76,6 +56,15 @@ class EquivarianceModule(nn.Module):
     :class:`~stable_pretraining.Module` needs to run
     :func:`stable_pretraining.forward.equimod`; :class:`EquiMod` owns one as
     ``self.equi``.
+
+    Note:
+        Under DDP the batch-norm standardisation of the augmentation
+        parameters (``param_stats=None``) uses per-GPU statistics: each rank
+        standardises with the mean and variance of its own local batch, as do
+        the batch norms inside the projectors and the predictor. They are
+        global only if the model is converted to ``SyncBatchNorm`` (e.g.
+        ``Trainer(sync_batchnorm=True)``). A fixed ``param_stats`` applies the
+        same values on every rank.
 
     Args:
         embed_dim: Backbone output dimension.
@@ -89,7 +78,8 @@ class EquivarianceModule(nn.Module):
             the single linear layer used in the paper.
         param_stats: Optional ``(mean, std)`` of the parameter vector, each a
             tensor or sequence of length ``param_dim``, used to standardise
-            it. If ``None``, a non-affine batch norm standardises it instead.
+            it. If ``None``, a non-affine batch norm standardises it instead,
+            with the statistics of the local (per-GPU) batch.
         weight: Weight ``lambda`` of the equivariance loss in the total loss.
         param_keys: Optional keyword overrides for :meth:`augmentation_params`
             (e.g. ``{"blur": "PILGaussianBlur"}``), used by
@@ -268,23 +258,27 @@ class EquivarianceModule(nn.Module):
         return y_views, y_hat, gain
 
 
-class EquiMod(SimCLR):
+class EquiMod(Module):
     """EquiMod: SimCLR with an augmentation-conditioned equivariance module.
 
-    Architecture (on top of the SimCLR backbone and invariance projector):
-        - **Equivariance projector**: MLP mapping backbone features of the
-          un-augmented image and of both augmented views to the equivariant
-          space.
-        - **Parameter projector**: standardises the augmentation-parameter
-          vector and maps it to a small embedding.
-        - **Predictor**: maps ``[equivariant embedding of the un-augmented
-          image, parameter embedding]`` to the predicted equivariant embedding
-          of the augmented view.
-        - **Loss**: ``NT-Xent(z1, z2) + equi_weight * NT-Xent(y, y_hat)``.
+    A :class:`~stable_pretraining.Module` whose ``forward(batch, stage)`` is
+    :func:`stable_pretraining.forward.equimod`. It takes the batch dict of a
+    three-view ``MultiViewTransform`` (``[un-augmented, augmented,
+    augmented]``) and returns a dict with ``"loss"``, ``"embedding"`` and
+    ``"label"``, so it trains through :class:`~stable_pretraining.Manager`
+    as is.
 
-    The three heads live in ``self.equi``, an :class:`EquivarianceModule`,
-    so the same instance also runs under
-    :func:`stable_pretraining.forward.equimod`.
+    Components (the attributes the forward function reads):
+        - ``backbone``: any feature extractor producing a flat [B, D] embedding
+          (timm ViT/ResNet with the head removed).
+        - ``projector`` and ``simclr_loss``: SimCLR's invariance head and
+          NT-Xent loss on the two augmented views.
+        - ``equi``: an :class:`EquivarianceModule`. Its predictor maps
+          ``[equivariant embedding of the un-augmented image, parameter
+          embedding]`` to the predicted equivariant embedding of each view.
+        - ``equi_loss``: NT-Xent loss between each view's equivariant
+          embedding and its prediction.
+        - **Loss**: ``NT-Xent(z1, z2) + equi_weight * NT-Xent(y, y_hat)``.
 
     Note:
         Follows the official implementation where it differs from the paper:
@@ -293,6 +287,17 @@ class EquiMod(SimCLR):
         negatives (Eq. 4 of the paper excludes the sibling view). The
         projectors and the predictor reuse SimCLR's projector builder, whose
         final batch norm has a learnable scale (official: ``affine=False``).
+
+        Under DDP both NT-Xent terms, invariance and equivariance, score each
+        rank's anchors against candidates gathered from all ranks, so their
+        negatives are those of the global batch. Batch-norm statistics are
+        per GPU: with ``param_stats=None`` each rank standardises the
+        augmentation parameters with its own local batch, and the same holds
+        for the batch norms of the backbone, the projectors and the
+        predictor. They are global only if the model is converted to
+        ``SyncBatchNorm`` (e.g. ``Trainer(sync_batchnorm=True)``, as in the
+        official multi-GPU run). A fixed ``param_stats`` applies the same
+        values on every rank.
 
     Args:
         encoder_name: timm model name or a pre-instantiated ``nn.Module``
@@ -311,27 +316,33 @@ class EquiMod(SimCLR):
             the single linear layer used in the paper.
         param_stats: Optional ``(mean, std)`` of the parameter vector, each a
             tensor or sequence of length ``param_dim``, used to standardise
-            it. If ``None``, a non-affine batch norm standardises it instead.
+            it. If ``None``, a non-affine batch norm standardises it instead,
+            with the statistics of the local (per-GPU) batch.
         param_keys: Optional keyword overrides for
             :meth:`EquivarianceModule.augmentation_params` (e.g.
-            ``{"blur": "PILGaussianBlur"}`` with ``param_dim=17``), used when
-            the model is driven by :func:`stable_pretraining.forward.equimod`.
+            ``{"blur": "PILGaussianBlur"}`` with ``param_dim=17``).
         low_resolution: Adapt first conv for 32x32 inputs (CIFAR-style).
         pretrained: Load pretrained timm weights for the encoder.
+        optim: Optimizer configuration accepted by
+            :class:`~stable_pretraining.Module`. ``None`` keeps the Module
+            default; it can also be set afterwards as ``model.optim``.
 
     Example::
 
-        model = EquiMod(encoder_name="resnet18", low_resolution=True)
+        model = EquiMod(
+            encoder_name="resnet18",
+            low_resolution=True,
+            optim={"optimizer": {"type": "LARS", "lr": 4.0}},
+        )
 
-        original = torch.randn(64, 3, 32, 32)
-        v1, v2 = torch.randn(64, 3, 32, 32), torch.randn(64, 3, 32, 32)
-        p1, p2 = torch.randn(64, 15), torch.randn(64, 15)
-        out = model(v1, v2, original, p1, p2)
-        out.loss.backward()
+        # training batch: three views, the augmented ones carrying the
+        # parameters their transforms sampled
+        out = model(batch, "fit")
+        out["loss"].backward()
 
-        # eval: single view, no loss
+        # evaluation: a single-view batch, no loss
         model.eval()
-        features = model(v1).embedding  # [64, embed_dim]
+        features = model({"image": images}, "validate")["embedding"]
     """
 
     def __init__(
@@ -349,95 +360,45 @@ class EquiMod(SimCLR):
         param_keys: Optional[Mapping[str, Optional[str]]] = None,
         low_resolution: bool = False,
         pretrained: bool = False,
-    ):
+        optim: Optional[Mapping[str, Any]] = None,
+    ) -> None:
+        if isinstance(encoder_name, str):
+            backbone = from_timm(
+                encoder_name,
+                num_classes=0,
+                low_resolution=low_resolution,
+                pretrained=pretrained,
+            )
+        else:
+            backbone = encoder_name
+
+        # Detect embedding dimension by running a tiny dummy input
+        with torch.no_grad():
+            embed_dim = backbone(torch.zeros(1, 3, 224, 224)).shape[-1]
+
         super().__init__(
-            encoder_name=encoder_name,
-            projector_dims=projector_dims,
-            temperature=temperature,
-            low_resolution=low_resolution,
-            pretrained=pretrained,
+            forward=equimod,
+            hparams={
+                "temperature": temperature,
+                "equi_temperature": equi_temperature,
+                "equi_weight": equi_weight,
+                "param_dim": param_dim,
+            },
+            backbone=backbone,
+            projector=_build_projector(embed_dim, list(projector_dims)),
+            simclr_loss=NTXEntLoss(temperature=temperature),
+            equi=EquivarianceModule(
+                embed_dim,
+                projector_dims=equi_projector_dims,
+                param_dim=param_dim,
+                param_projector_dims=param_projector_dims,
+                predictor_hidden_dims=predictor_hidden_dims,
+                param_stats=param_stats,
+                weight=equi_weight,
+                param_keys=param_keys,
+            ),
+            equi_loss=NTXEntLoss(temperature=equi_temperature),
+            # an explicit ``optim=None`` would disable optimization in Module
+            **({} if optim is None else {"optim": optim}),
         )
-        self.equi = EquivarianceModule(
-            self.embed_dim,
-            projector_dims=equi_projector_dims,
-            param_dim=param_dim,
-            param_projector_dims=param_projector_dims,
-            predictor_hidden_dims=predictor_hidden_dims,
-            param_stats=param_stats,
-            weight=equi_weight,
-            param_keys=param_keys,
-        )
-        self.equi_loss = NTXEntLoss(temperature=equi_temperature)
-
-    augmentation_params = staticmethod(EquivarianceModule.augmentation_params)
-
-    @property
-    def equi_weight(self) -> float:
-        """Weight ``lambda`` of the equivariance loss."""
-        return self.equi.weight
-
-    @equi_weight.setter
-    def equi_weight(self, value: float) -> None:
-        self.equi.weight = value
-
-    @property
-    def param_dim(self) -> int:
-        """Size of the augmentation-parameter vector."""
-        return self.equi.param_dim
-
-    def forward(
-        self,
-        view1: torch.Tensor,
-        view2: Optional[torch.Tensor] = None,
-        original: Optional[torch.Tensor] = None,
-        params1: Optional[torch.Tensor] = None,
-        params2: Optional[torch.Tensor] = None,
-    ) -> EquiModOutput:
-        """Forward pass.
-
-        Args:
-            view1: First augmented view [B, C, H, W] (or single view at eval).
-            view2: Second augmented view [B, C, H, W]. If ``None``, returns
-                only the backbone embedding (eval mode).
-            original: Un-augmented image [B, C, H, W].
-            params1: Augmentation parameters of ``view1`` [B, param_dim].
-            params2: Augmentation parameters of ``view2`` [B, param_dim].
-
-        Returns:
-            :class:`EquiModOutput`. ``embedding`` holds the backbone features
-            of the two augmented views, [2B, D].
-        """
-        if view2 is None:
-            embedding = self.backbone(view1)
-            return EquiModOutput(
-                loss=torch.zeros((), device=embedding.device, dtype=embedding.dtype),
-                embedding=embedding,
-            )
-        if original is None or params1 is None or params2 is None:
-            raise ValueError(
-                "EquiMod needs the un-augmented image and the augmentation "
-                "parameters of both views: forward(view1, view2, original, "
-                "params1, params2)"
-            )
-
-        B = view1.shape[0]
-        # One pass over [original, view1, view2] so batch-norm statistics are
-        # shared by the three, as in the official implementation.
-        h = self.backbone(torch.cat([original, view1, view2], dim=0))
-
-        z = self.projector(h[B:])
-        invariance_loss = self.simclr_loss(z[:B], z[B:])
-
-        y_views, y_hat, gain = self.equi(
-            h[:B], h[B:], torch.cat([params1, params2], dim=0)
-        )
-        equivariance_loss = self.equi_loss(y_views, y_hat)
-
-        return EquiModOutput(
-            loss=invariance_loss + self.equi.weight * equivariance_loss,
-            embedding=h[B:],
-            projection=z,
-            invariance_loss=invariance_loss.detach(),
-            equivariance_loss=equivariance_loss.detach(),
-            equivariance_gain=gain,
-        )
+        self.embed_dim = embed_dim

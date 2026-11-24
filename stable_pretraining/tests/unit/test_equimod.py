@@ -1,6 +1,7 @@
 """Unit tests for EquiMod (equivariance module on top of SimCLR)."""
 
 import copy
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -9,9 +10,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image
 
+import stable_pretraining as spt
+from stable_pretraining import forward
 from stable_pretraining.data import transforms
 from stable_pretraining.losses import NTXEntLoss
-from stable_pretraining.methods.equimod import EquiMod
+from stable_pretraining.methods.equimod import EquiMod, EquivarianceModule
 
 pytestmark = pytest.mark.unit
 
@@ -39,11 +42,50 @@ def _model(**kwargs) -> EquiMod:
     return EquiMod(**defaults)
 
 
-def _inputs(param_dim: int = 15):
+def _records(generator: torch.Generator) -> dict:
+    """Parameter records of one augmented view, as the transforms write them."""
+    factors = torch.cat(
+        [
+            0.6 + 0.8 * torch.rand(B, 3, generator=generator),
+            0.2 * torch.rand(B, 1, generator=generator) - 0.1,
+        ],
+        dim=1,
+    )
+    order = torch.stack([torch.randperm(4, generator=generator) for _ in range(B)])
+    jitter = torch.cat([factors, order.float()], dim=1)
+    jitter[::3] = 0.0  # these samples skipped the colour jitter
+    return {
+        "RandomResizedCrop": torch.randint(0, 32, (B, 4), generator=generator).float(),
+        "RandomHorizontalFlip": torch.rand(B, generator=generator) < 0.5,
+        "ColorJitter": jitter,
+        "RandomGrayscale": torch.rand(B, generator=generator) < 0.2,
+    }
+
+
+def _batch() -> dict:
+    """Collated three-view training batch: [un-augmented, augmented, augmented]."""
     g = torch.Generator().manual_seed(0)
-    images = [torch.randn(B, 3, 32, 32, generator=g) for _ in range(3)]
-    params = [torch.randn(B, param_dim, generator=g) for _ in range(2)]
-    return images, params
+    views = []
+    for augmented in (False, True, True):
+        view = {
+            "image": torch.randn(B, 3, 32, 32, generator=g),
+            "label": torch.arange(B),
+        }
+        if augmented:
+            view.update(_records(g))
+        views.append(view)
+    return {"views": views}
+
+
+def _fit(model: EquiMod, batch: dict):
+    """One training forward: the output dict and the scalars it logged."""
+    model.log = Mock()
+    out = model(batch, "fit")
+    logged = {
+        call.args[0].removeprefix("fit/"): call.args[1]
+        for call in model.log.call_args_list
+    }
+    return out, logged
 
 
 def _augmented(blur=None):
@@ -93,8 +135,8 @@ def test_augmentation_params_from_transform_pipeline():
     views = _collated_views()
     assert "ColorJitter" not in views[0], "un-augmented view must carry no params"
 
-    p1 = EquiMod.augmentation_params(views[1])
-    p2 = EquiMod.augmentation_params(views[2])
+    p1 = EquivarianceModule.augmentation_params(views[1])
+    p2 = EquivarianceModule.augmentation_params(views[2])
     assert p1.shape == p2.shape == (32, 15)
     assert p1.dtype == torch.float32
     assert not torch.equal(p1, p2), "each view must keep its own parameters"
@@ -123,7 +165,9 @@ def test_augmentation_params_skipped_jitter_is_identity():
             [[0.0] * 8, [1.2, 0.8, 1.1, -0.05, 2.0, 0.0, 3.0, 1.0]]
         )
     }
-    p = EquiMod.augmentation_params(view, crop=None, flip=None, grayscale=None)
+    p = EquivarianceModule.augmentation_params(
+        view, crop=None, flip=None, grayscale=None
+    )
     assert p.shape == (2, 9)
     skipped = torch.tensor([0.0, 0.0, 1.0, 2.0, 3.0, 1.0, 1.0, 1.0, 0.0])
     assert torch.equal(p[0], skipped)
@@ -135,13 +179,13 @@ def test_augmentation_params_skipped_jitter_is_identity():
 def test_augmentation_params_with_blur():
     torch.manual_seed(0)
     views = _collated_views(blur=transforms.PILGaussianBlur(p=0.5))
-    p = EquiMod.augmentation_params(views[1], blur="PILGaussianBlur")
+    p = EquivarianceModule.augmentation_params(views[1], blur="PILGaussianBlur")
     assert p.shape == (32, 17)
     blurred, sigma = p[:, 15], p[:, 16]
     assert torch.equal(sigma, views[1]["PILGaussianBlur"].reshape(-1))
     assert torch.equal(blurred.bool(), sigma > 0)
     assert set(blurred.tolist()) == {0.0, 1.0}
-    assert torch.equal(p[:, :15], EquiMod.augmentation_params(views[1]))
+    assert torch.equal(p[:, :15], EquivarianceModule.augmentation_params(views[1]))
 
 
 def test_augmentation_params_with_two_sigma_blur_record():
@@ -149,14 +193,14 @@ def test_augmentation_params_with_two_sigma_blur_record():
     blur = transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0), p=0.5)
     views = _collated_views(blur=blur)
     assert views[1]["GaussianBlur"].shape == (32, 2)
-    p = EquiMod.augmentation_params(views[1], blur="GaussianBlur")
+    p = EquivarianceModule.augmentation_params(views[1], blur="GaussianBlur")
     assert p.shape == (32, 17)
     assert torch.equal(p[:, 16], views[1]["GaussianBlur"][:, 0])
 
 
 def test_augmentation_params_missing_record_raises():
     with pytest.raises(KeyError, match="RandomHorizontalFlip.*RandomResizedCrop"):
-        EquiMod.augmentation_params({"RandomResizedCrop": torch.zeros(2, 4)})
+        EquivarianceModule.augmentation_params({"RandomResizedCrop": torch.zeros(2, 4)})
 
 
 def test_param_keys_reach_the_equivariance_module():
@@ -198,25 +242,49 @@ def _hooks(model: EquiMod) -> dict:
     return seen
 
 
-def test_forward_shapes_and_loss_composition():
+def test_class_is_a_module_whose_forward_is_the_forward_function():
+    model = _model(temperature=0.3, equi_temperature=0.1, equi_weight=0.5)
+    assert isinstance(model, spt.Module)
+    assert spt.EquiMod is EquiMod
+    assert model.forward.__func__ is forward.equimod
+    assert model.simclr_loss.temperature == model.hparams["temperature"] == 0.3
+    assert model.equi_loss.temperature == model.hparams["equi_temperature"] == 0.1
+    assert model.equi.weight == model.hparams["equi_weight"] == 0.5
+
+
+def test_optim_reaches_module_and_default_is_left_to_module():
+    optim = {"optimizer": {"type": "SGD", "lr": 0.1}}
+    assert _model(optim=optim).optim == optim
+    # an ``optim=None`` attribute would switch optimisation off in Module
+    assert not hasattr(_model(), "optim")
+
+
+def test_forward_returns_loss_embedding_and_label():
     model = _model(equi_weight=0.5).train()
-    (original, v1, v2), (p1, p2) = _inputs()
-    out = model(v1, v2, original, p1, p2)
-    assert out.embedding.shape == (2 * B, EMBED_DIM)
-    assert out.projection.shape == (2 * B, 8)
-    assert torch.allclose(
-        out.loss, out.invariance_loss + 0.5 * out.equivariance_loss, atol=1e-6
-    )
+    out, logged = _fit(model, _batch())
+    assert set(out) == {"loss", "embedding", "label"}
+    assert out["embedding"].shape == (2 * B, EMBED_DIM)
+    assert torch.equal(out["label"], torch.arange(B).repeat(2))
+    assert set(logged) == {"inv", "equi", "equi_gain", "loss"}
+    assert torch.equal(logged["loss"], out["loss"])
+    assert torch.allclose(out["loss"], logged["inv"] + 0.5 * logged["equi"], atol=1e-6)
 
 
 def test_predictor_gets_original_embedding_and_each_views_own_params():
     mean, std = torch.full((15,), 2.0), torch.full((15,), 4.0)
     model = _model(param_stats=(mean, std)).train()
     seen = _hooks(model)
-    (original, v1, v2), (p1, p2) = _inputs()
-    model(v1, v2, original, p1, p2)
+    batch = _batch()
+    _fit(model, batch)
     # view k's prediction is conditioned on view k's standardised parameters
-    assert torch.allclose(seen["param_in"], (torch.cat([p1, p2]) - 2.0) / 4.0)
+    _, view1, view2 = batch["views"]
+    params = torch.cat(
+        [
+            EquivarianceModule.augmentation_params(view1),
+            EquivarianceModule.augmentation_params(view2),
+        ]
+    )
+    assert torch.allclose(seen["param_in"], (params - 2.0) / 4.0)
     # ...and on the embedding of the un-augmented image, not of the view itself
     y_original = seen["y"][:B]
     assert torch.equal(seen["predictor_in"][:, :8], y_original.repeat(2, 1))
@@ -226,65 +294,75 @@ def test_predictor_gets_original_embedding_and_each_views_own_params():
 def test_losses_and_gain_match_independent_reference():
     model = _model().train()
     seen = _hooks(model)
-    (original, v1, v2), (p1, p2) = _inputs()
-    out = model(v1, v2, original, p1, p2)
+    batch = _batch()
+    out, logged = _fit(model, batch)
+    y_views, y_original, y_hat = seen["y"][B:], seen["y"][:B], seen["y_hat"]
 
     # one backbone pass over [original, view1, view2]: batch-norm statistics
     # are shared by the three, so separate passes would give other features
-    h = model.backbone(torch.cat([original, v1, v2]))
+    h = model.backbone(torch.cat([view["image"] for view in batch["views"]]))
     z = model.projector(h[B:])
-    assert torch.allclose(out.embedding, h[B:], atol=1e-6)
-    assert torch.allclose(out.projection, z, atol=1e-5)
-    assert torch.allclose(out.invariance_loss, NTXEntLoss(0.5)(z[:B], z[B:]), atol=1e-5)
+    assert torch.allclose(out["embedding"], h[B:], atol=1e-6)
+    assert torch.allclose(logged["inv"], NTXEntLoss(0.5)(z[:B], z[B:]), atol=1e-5)
 
-    y_views, y_original, y_hat = seen["y"][B:], seen["y"][:B], seen["y_hat"]
-    assert torch.allclose(
-        out.equivariance_loss, NTXEntLoss(0.2)(y_views, y_hat), atol=1e-5
+    # the equivariance branch predicts both views from the un-augmented rows
+    _, view1, view2 = batch["views"]
+    params = torch.cat(
+        [
+            EquivarianceModule.augmentation_params(view1),
+            EquivarianceModule.augmentation_params(view2),
+        ]
     )
+    reference_views, reference_hat, _ = model.equi(h[:B], h[B:], params)
+    assert torch.allclose(y_views, reference_views, atol=1e-6)
+    assert torch.allclose(y_hat, reference_hat, atol=1e-6)
+    assert torch.allclose(logged["equi"], NTXEntLoss(0.2)(y_views, y_hat), atol=1e-5)
     gain = (
         F.cosine_similarity(y_views, y_hat)
         - F.cosine_similarity(y_views, y_original.repeat(2, 1))
     ).mean()
-    assert torch.allclose(out.equivariance_gain, gain, atol=1e-6)
+    assert torch.allclose(logged["equi_gain"], gain, atol=1e-6)
 
 
 def test_equivariance_branch_can_fit_a_small_batch():
     torch.manual_seed(0)
     model = _model().train()
-    (original, v1, v2), (p1, p2) = _inputs()
+    batch = _batch()
     opt = torch.optim.Adam(model.parameters(), lr=1e-2)
     first = None
     for _ in range(60):
-        out = model(v1, v2, original, p1, p2)
-        first = out.equivariance_loss if first is None else first
+        out, logged = _fit(model, batch)
+        first = logged["equi"] if first is None else first
         opt.zero_grad()
-        out.loss.backward()
+        out["loss"].backward()
         opt.step()
-    assert out.equivariance_loss < 0.5 * first
-    assert out.equivariance_gain > 0.3
+    assert logged["equi"] < 0.5 * first
+    assert logged["equi_gain"] > 0.3
     # the fit depends on the parameters: swapping them between views breaks it
-    swapped = model(v1, v2, original, p2, p1)
-    assert swapped.equivariance_loss > out.equivariance_loss + 0.5
+    original, view1, view2 = batch["views"]
+    swapped_batch = {
+        "views": [
+            original,
+            {**view2, "image": view1["image"]},
+            {**view1, "image": view2["image"]},
+        ]
+    }
+    _, swapped = _fit(model, swapped_batch)
+    assert swapped["equi"] > logged["equi"] + 0.5
 
 
 def test_end_to_end_from_transform_pipeline():
     torch.manual_seed(0)
     views = _collated_views()
-    model = _model().train()
-    out = model(
-        views[1]["image"],
-        views[2]["image"],
-        views[0]["image"],
-        EquiMod.augmentation_params(views[1]),
-        EquiMod.augmentation_params(views[2]),
-    )
-    assert torch.isfinite(out.loss)
+    out, _ = _fit(_model().train(), {"views": views})
+    assert torch.isfinite(out["loss"])
+    assert out["embedding"].shape == (2 * 32, EMBED_DIM)
 
 
 def test_equivariance_loss_trains_every_new_module():
     model = _model().train()
-    (original, v1, v2), (p1, p2) = _inputs()
-    model(v1, v2, original, p1, p2).loss.backward()
+    out, _ = _fit(model, _batch())
+    out["loss"].backward()
     for name in (
         "equi.projector",
         "equi.param_projector",
@@ -300,41 +378,63 @@ def test_equivariance_loss_trains_every_new_module():
 def test_equivariance_loss_reaches_the_backbone():
     with_equi = _model().train()
     without = copy.deepcopy(with_equi)
-    without.equi_weight = 0.0
-    (original, v1, v2), (p1, p2) = _inputs()
+    without.equi.weight = 0.0
     grads = []
     for model in (with_equi, without):
-        model(v1, v2, original, p1, p2).loss.backward()
+        out, _ = _fit(model, _batch())
+        out["loss"].backward()
         grads.append(torch.cat([p.grad.flatten() for p in model.backbone.parameters()]))
     assert not torch.allclose(grads[0], grads[1])
 
 
 def test_zero_weight_removes_equivariance_gradient():
     model = _model(equi_weight=0.0).train()
-    (original, v1, v2), (p1, p2) = _inputs()
-    out = model(v1, v2, original, p1, p2)
-    assert torch.allclose(out.loss, out.invariance_loss)
-    out.loss.backward()
+    out, logged = _fit(model, _batch())
+    assert torch.allclose(out["loss"], logged["inv"])
+    out["loss"].backward()
     for p in model.equi.predictor.parameters():
         assert p.grad is None or p.grad.abs().sum() == 0
 
 
-def test_training_requires_original_and_params():
+def test_loss_and_gradients_stay_finite_on_degenerate_parameters():
+    """Constant parameter columns (zero batch variance) and huge crop boxes."""
+    batch = _batch()
+    for view in batch["views"][1:]:
+        view["RandomResizedCrop"] = torch.full((B, 4), 1e6)
+        view["RandomHorizontalFlip"] = torch.zeros(B, dtype=torch.bool)
+        view["ColorJitter"] = torch.zeros(B, 8)  # jitter skipped everywhere
+        view["RandomGrayscale"] = torch.zeros(B, dtype=torch.bool)
     model = _model().train()
-    (original, v1, v2), (p1, p2) = _inputs()
-    with pytest.raises(ValueError, match="un-augmented image"):
-        model(v1, v2)
-    with pytest.raises(ValueError, match="un-augmented image"):
-        model(v1, v2, original, p1)
+    out, _ = _fit(model, batch)
+    assert torch.isfinite(out["loss"])
+    out["loss"].backward()
+    for name, p in model.named_parameters(with_callbacks=False):
+        if p.grad is not None:
+            assert torch.isfinite(p.grad).all(), name
 
 
-def test_eval_single_view_returns_embedding_only():
+def test_training_rejects_missing_views_and_records():
+    model = _model().train()
+    original, view1, view2 = _batch()["views"]
+    with pytest.raises(ValueError, match="exactly 3 views"):
+        _fit(model, {"views": [view1, view2]})
+    bare = {"image": view2["image"], "label": view2["label"]}
+    with pytest.raises(KeyError, match="RandomResizedCrop"):
+        _fit(model, {"views": [original, view1, bare]})
+
+
+def test_evaluation_returns_embedding_without_loss():
     model = _model().eval()
-    (_, v1, _), _ = _inputs()
+    batch = _batch()
+    images, labels = batch["views"][0]["image"], batch["views"][0]["label"]
     with torch.no_grad():
-        out = model(v1)
-    assert out.embedding.shape == (B, EMBED_DIM)
-    assert out.loss == 0 and out.projection is None
+        single, logged = _fit(model, {"image": images, "label": labels})
+        multi, _ = _fit(model, batch)
+    assert set(single) == {"embedding", "label"} and not logged
+    assert single["embedding"].shape == (B, EMBED_DIM)
+    assert torch.equal(single["label"], labels)
+    assert set(multi) == {"embedding", "label"}
+    assert multi["embedding"].shape == (2 * B, EMBED_DIM)
 
 
 def test_fixed_param_stats_standardise_parameters():
@@ -364,10 +464,9 @@ def test_param_stats_zero_std_raises():
         _model(param_stats=(torch.zeros(15), std))
 
 
-@pytest.mark.parametrize("param_stats", [None, ([0.0] * 15, [1.0] * 15)])
+@pytest.mark.parametrize("param_stats", [None, ([0.0] * 17, [1.0] * 17)])
 def test_wrong_parameter_width_raises(param_stats):
-    model = _model(param_stats=param_stats).train()
-    (original, v1, v2), _ = _inputs()
-    wrong = torch.randn(B, 17)
+    # 17 expected (blur), but the views only carry the 15 default parameters
+    model = _model(param_dim=17, param_stats=param_stats).train()
     with pytest.raises(ValueError, match="param_dim"):
-        model(v1, v2, original, wrong, wrong)
+        _fit(model, _batch())

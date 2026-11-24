@@ -1280,11 +1280,12 @@ def equimod(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
             - simclr_loss: NT-Xent loss for the invariance term
             - equi: EquivarianceModule (heads, parameter projector, loss weight)
             - equi_loss: NT-Xent loss for the equivariance term
-        batch: A list of exactly three view dicts (from MultiViewTransform):
-            ``[un-augmented, augmented, augmented]``. The two augmented views
-            must carry the parameter records of ``RandomResizedCrop``,
-            ``RandomHorizontalFlip``, ``ColorJitter`` and ``RandomGrayscale``.
-            A single dict is treated as validation / single-view input.
+        batch: Exactly three view dicts (from MultiViewTransform, as a list
+            or as named views): ``[un-augmented, augmented, augmented]``. The
+            two augmented views must carry the parameter records of
+            ``RandomResizedCrop``, ``RandomHorizontalFlip``, ``ColorJitter``
+            and ``RandomGrayscale``. A single dict is treated as validation /
+            single-view input.
         stage: Training stage ('train', 'val', or 'test')
 
     Returns:
@@ -1297,6 +1298,15 @@ def equimod(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         Introduced in the EquiMod paper :cite:`devillers2023equimod`. The
         backbone runs once over ``[original, view1, view2]`` so batch-norm
         statistics are shared, as in the official implementation.
+        :class:`~stable_pretraining.methods.equimod.EquiMod` uses this
+        function as its ``forward``.
+
+        Under DDP both NT-Xent terms, invariance and equivariance, use
+        negatives gathered from all ranks (``NTXEntLoss`` scores the local
+        anchors against the candidates of every rank). Batch-norm statistics
+        are per GPU, including the standardisation of the augmentation
+        parameters when ``equi`` was built without ``param_stats``, unless
+        the module is converted to ``SyncBatchNorm``.
 
     Example:
         ::
@@ -1322,6 +1332,8 @@ def equimod(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     if views is not None:
         if isinstance(views, dict):  # named views: keep insertion order
             views = list(views.values())
+        # Module.training_step adds ``batch_idx`` beside top-level named views
+        views = [view for view in views if isinstance(view, dict)]
         if len(views) != 3:
             raise ValueError(
                 f"EquiMod requires exactly 3 views [original, view1, view2], got "

@@ -294,6 +294,10 @@ EquiMod
 - SimCLR invariance plus an augmentation-equivariance objective
 - Predictor conditioned on the recorded augmentation parameters
 - Needs three views per sample: ``[un-augmented, augmented, augmented]``
+- Is the ``forward(batch, stage)`` of the
+  :class:`~stable_pretraining.methods.equimod.EquiMod` method class
+- Under DDP both NT-Xent terms use negatives gathered from all ranks;
+  batch-norm statistics stay per GPU unless ``SyncBatchNorm`` is used
 
 **Example Config:**
 

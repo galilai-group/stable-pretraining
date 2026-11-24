@@ -172,23 +172,6 @@ def test_pmsn_forward_backward():
     _assert_loss_and_backward(model, output)
 
 
-def test_equimod_forward_backward():
-    model = M.EquiMod(
-        encoder_name=TINY_VIT,
-        projector_dims=(256, 64),
-        equi_projector_dims=(256, 64),
-        param_projector_dims=(32,),
-    )
-    model.train()
-    v1, v2 = _two_views()
-    g = torch.Generator().manual_seed(3)
-    original = torch.randn(B, C, H, W, generator=g)
-    p1 = torch.randn(B, model.param_dim, generator=g)
-    p2 = torch.randn(B, model.param_dim, generator=g)
-    output = model(v1, v2, original, p1, p2)
-    _assert_loss_and_backward(model, output)
-
-
 def test_swav_forward_backward_two_view():
     """SwAV's compatibility 2-view forward (no multi-crop)."""
     model = M.SwAV(
@@ -300,7 +283,6 @@ def test_mim_refiner_forward_backward():
         ("SimCLR", {"projector_dims": (256, 256, 64)}),
         ("BYOL", {"projector_dims": (256, 64), "predictor_dims": (256, 64)}),
         ("VICReg", {"projector_dims": (256, 256, 256)}),
-        ("EquiMod", {"projector_dims": (256, 64), "equi_projector_dims": (256, 64)}),
     ],
 )
 def test_eval_mode_no_loss(method_name: str, kwargs: dict) -> None:
@@ -317,3 +299,42 @@ def test_eval_mode_no_loss(method_name: str, kwargs: dict) -> None:
         output = model(v)
     assert torch.isfinite(output.loss).all()
     assert output.embedding is not None and output.embedding.shape[0] == B
+
+
+def test_equimod_dict_method_forward_backward() -> None:
+    """EquiMod's dict API: a three-view batch in, a dict with the loss out."""
+    model = M.EquiMod(
+        encoder_name=TINY_VIT,
+        projector_dims=(256, 64),
+        equi_projector_dims=(256, 64),
+        param_projector_dims=(32,),
+    )
+    v1, v2 = _two_views()
+    g = torch.Generator().manual_seed(3)
+
+    def augmented(image: torch.Tensor) -> dict:
+        jitter = torch.cat(
+            [
+                torch.rand(B, 4, generator=g),
+                torch.randperm(4, generator=g).repeat(B, 1),
+            ],
+            dim=1,
+        )
+        return {
+            "image": image,
+            "RandomResizedCrop": H * torch.rand(B, 4, generator=g),
+            "RandomHorizontalFlip": torch.rand(B, generator=g) < 0.5,
+            "ColorJitter": jitter,
+            "RandomGrayscale": torch.rand(B, generator=g) < 0.2,
+        }
+
+    original = {"image": torch.randn(B, C, H, W, generator=g)}
+    output = model({"views": [original, augmented(v1), augmented(v2)]}, stage="fit")
+    loss = output["loss"]
+    assert loss.ndim == 0 and torch.isfinite(loss)
+    assert output["embedding"].shape[0] == 2 * B
+    loss.backward()
+    assert any(
+        p.grad is not None and p.grad.abs().sum() > 0
+        for p in model.backbone.parameters()
+    )

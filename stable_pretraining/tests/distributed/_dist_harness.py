@@ -684,11 +684,30 @@ def _tiny_equimod(seed: int = 0):
     )
 
 
-def _equimod_batch(seed: int, n: int):
+def _equimod_batch(seed: int, n: int) -> dict:
+    """Collated three-view batch ``[un-augmented, augmented, augmented]``.
+
+    The augmented views carry the parameter records the transforms write.
+    """
     g = torch.Generator().manual_seed(seed)
-    images = [torch.randn(n, 3, 32, 32, generator=g) for _ in range(3)]
-    params = [torch.randn(n, 15, generator=g) for _ in range(2)]
-    return images, params
+
+    def view(augmented: bool) -> dict:
+        out = {"image": torch.randn(n, 3, 32, 32, generator=g)}
+        if augmented:
+            order = torch.stack([torch.randperm(4, generator=g) for _ in range(n)])
+            factors = 0.6 + 0.8 * torch.rand(n, 4, generator=g)
+            out["RandomResizedCrop"] = torch.randint(0, 32, (n, 4), generator=g).float()
+            out["RandomHorizontalFlip"] = torch.rand(n, generator=g) < 0.5
+            out["ColorJitter"] = torch.cat([factors, order.float()], dim=1)
+            out["RandomGrayscale"] = torch.rand(n, generator=g) < 0.2
+        return out
+
+    return {"views": [view(False), view(True), view(True)]}
+
+
+def _equimod_rows(batch: dict, rows: slice) -> dict:
+    """The same batch restricted to ``rows``: one rank's share of it."""
+    return {"views": [{k: v[rows] for k, v in view.items()} for view in batch["views"]]}
 
 
 def w_equimod_ddp_step_keeps_ranks_in_sync(rank, world_size):
@@ -704,13 +723,13 @@ def w_equimod_ddp_step_keeps_ranks_in_sync(rank, world_size):
     from stable_pretraining.utils import all_gather
 
     model = _tiny_equimod(seed=0).train()
+    model.log = lambda *args, **kwargs: None  # no Trainer to log to
     ddp = DistributedDataParallel(model)
     opt = torch.optim.SGD(model.parameters(), lr=0.1)
 
-    (original, v1, v2), (p1, p2) = _equimod_batch(seed=rank + 1, n=4)
-    out = ddp(v1, v2, original, p1, p2)
-    assert out.loss.ndim == 0 and torch.isfinite(out.loss), out.loss
-    out.loss.backward()
+    loss = ddp(_equimod_batch(seed=rank + 1, n=4), "fit")["loss"]
+    assert loss.ndim == 0 and torch.isfinite(loss), loss
+    loss.backward()
     missing = [
         n for n, p in model.named_parameters() if p.requires_grad and p.grad is None
     ]
@@ -723,34 +742,82 @@ def w_equimod_ddp_step_keeps_ranks_in_sync(rank, world_size):
         assert torch.allclose(other, flat, atol=1e-6)
 
 
-def w_equimod_equi_loss_crossgpu_matches_global(rank, world_size):
+def w_equimod_losses_crossgpu_match_global(rank, world_size):
     """Mean of per-rank EquiMod losses == single-process losses on the global batch.
 
-    ``EquiMod.forward`` contrasts each view's embedding against its prediction
-    (and the two views against each other) with negatives gathered from all
-    ranks. With identical weights on every rank (eval mode, so batch norm uses
-    running statistics and the outputs of a slice equal the slice of the
-    outputs), the mean of the per-rank losses must recover the single-process
-    losses over the whole batch — for both the equivariance and the invariance
-    term, through the real forward.
+    Both NT-Xent terms of ``forward.equimod`` (the two views against each
+    other, and each view's embedding against its prediction) use negatives
+    gathered from all ranks. With identical weights on every rank and batch
+    norm frozen on its running statistics (so the outputs of a slice equal the
+    slice of the outputs), the mean of the per-rank losses must recover the
+    single-process losses over the whole batch, for the invariance and the
+    equivariance term alike.
     """
     from stable_pretraining.utils import all_reduce
 
-    model = _tiny_equimod(seed=0).eval()
+    model = _tiny_equimod(seed=0).train()  # training forward: losses are computed
+    for module in model.modules():
+        if isinstance(module, nn.modules.batchnorm._BatchNorm):
+            module.eval()
+    logged = {}
+    model.log = lambda name, value, **kwargs: logged.update({name: value})
+
     n = 4
-    (original, v1, v2), (p1, p2) = _equimod_batch(seed=0, n=n * world_size)
-
+    batch = _equimod_batch(seed=0, n=n * world_size)
     with torch.no_grad():
-        sl = slice(rank * n, (rank + 1) * n)
-        out = model(v1[sl], v2[sl], original[sl], p1[sl], p2[sl])
-        avg_equi = all_reduce(out.equivariance_loss.clone()) / world_size
-        avg_inv = all_reduce(out.invariance_loss.clone()) / world_size
+        model(_equimod_rows(batch, slice(rank * n, (rank + 1) * n)), "fit")
+        avg_inv = all_reduce(logged["fit/inv"].clone()) / world_size
+        avg_equi = all_reduce(logged["fit/equi"].clone()) / world_size
 
-        B = original.shape[0]
-        h = model.backbone(torch.cat([original, v1, v2]))
+        original, view1, view2 = batch["views"]
+        B = n * world_size
+        h = model.backbone(
+            torch.cat([original["image"], view1["image"], view2["image"]])
+        )
         z = model.projector(h[B:])
-        y_views, y_hat, _ = model.equi(h[:B], h[B:], torch.cat([p1, p2]))
-        ref_equi = _ref_ntxent_global(y_views, y_hat, model.equi_loss.temperature)
+        params = torch.cat(
+            [model.equi.params_from_view(view1), model.equi.params_from_view(view2)]
+        )
+        y_views, y_hat, _ = model.equi(h[:B], h[B:], params)
         ref_inv = _ref_ntxent_global(z[:B], z[B:], model.simclr_loss.temperature)
-    assert torch.allclose(avg_equi, ref_equi, atol=1e-5), (avg_equi, ref_equi)
+        ref_equi = _ref_ntxent_global(y_views, y_hat, model.equi_loss.temperature)
     assert torch.allclose(avg_inv, ref_inv, atol=1e-5), (avg_inv, ref_inv)
+    assert torch.allclose(avg_equi, ref_equi, atol=1e-5), (avg_equi, ref_equi)
+
+
+def w_equimod_param_norm_uses_local_batch_statistics(rank, world_size):
+    """The batch-norm standardisation of the parameters is per rank, not global.
+
+    Each rank holds a different share of one batch. Without ``param_stats``
+    the augmentation parameters go through a plain ``BatchNorm1d``, so under
+    DDP every rank standardises them with the mean and variance of its own
+    local batch, as the EquiMod docstrings state.
+    """
+    from torch.nn.parallel import DistributedDataParallel
+
+    from stable_pretraining.utils import all_gather
+
+    model = _tiny_equimod(seed=0).train()
+    model.log = lambda *args, **kwargs: None  # no Trainer to log to
+    seen = {}
+    model.equi.param_norm.register_forward_hook(
+        lambda module, inputs, output: seen.update(raw=inputs[0], out=output)
+    )
+
+    n = 4
+    batch = _equimod_batch(seed=0, n=n * world_size)
+    with torch.no_grad():
+        DistributedDataParallel(model)(
+            _equimod_rows(batch, slice(rank * n, (rank + 1) * n)), "fit"
+        )
+    raw, out = seen["raw"], seen["out"]
+    eps = model.equi.param_norm.eps
+
+    def standardise(reference):
+        return (raw - reference.mean(0)) / (
+            reference.var(0, unbiased=False) + eps
+        ).sqrt()
+
+    everyone = torch.cat(all_gather(raw.clone()), dim=0)
+    assert torch.allclose(out, standardise(raw), atol=1e-5)
+    assert not torch.allclose(out, standardise(everyone), atol=1e-3)

@@ -19,7 +19,7 @@ from stable_pretraining.methods import EquiMod, SimCLR
 
 # Mean / std of the 15-d augmentation-parameter vector under the augmentation
 # below, taken from the official implementation (src/main.py). Layout matches
-# ``EquiMod.augmentation_params``.
+# ``EquivarianceModule.augmentation_params``.
 PARAM_MEAN = [
     4.3122, 4.3216, 23.369, 23.374, 0.49998, 0.80087, 1.2025, 1.4007,
     1.5964, 1.8004, 0.99993, 1.0002, 0.99986, 2.2321e-07, 0.19965,
@@ -121,12 +121,11 @@ def main():
             temperature=0.5,
             low_resolution=True,
         )
+        # the library's SimCLR class takes tensors: bind the batch-dict forward
+        module.forward = types.MethodType(simclr_two_views, module)
     else:
         raise ValueError(f"METHOD must be 'equimod' or 'simclr', got {method!r}")
 
-    module.forward = types.MethodType(
-        forward.equimod if method == "equimod" else simclr_two_views, module
-    )
     module.optim = {
         "optimizer": {
             "type": "LARS",

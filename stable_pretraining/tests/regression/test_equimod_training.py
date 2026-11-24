@@ -2,13 +2,13 @@
 
 Runs the three-view EquiMod pipeline on tiny fake data (no downloads), for
 both entry points (``forward.equimod`` on a composable ``Module`` and the
-``EquiMod`` class), and checks that a SLURM-style requeue resumes from the
-per-epoch checkpoint and reproduces the uninterrupted run.
+``EquiMod`` class, which trains through ``Manager`` as is), and checks that a
+SLURM-style requeue resumes from the per-epoch checkpoint and reproduces the
+uninterrupted run.
 """
 
 import json
 import signal
-import types
 
 import lightning as pl
 import pytest
@@ -139,17 +139,15 @@ def build_composable_module():
 
 
 def build_method_class():
-    """The EquiMod class driven by forward.equimod, as the benchmark does."""
+    """The EquiMod class, trained as is: its forward is forward.equimod."""
     pl.seed_everything(SEED, workers=True)
-    model = EquiMod(
+    return EquiMod(
         encoder_name=make_encoder(),
         projector_dims=(16, 8),
         equi_projector_dims=(16, 8),
         param_projector_dims=(8,),
+        optim=OPTIM,
     )
-    model.forward = types.MethodType(forward.equimod, model)
-    model.optim = OPTIM
-    return model
 
 
 BUILDERS = {"module": build_composable_module, "method_class": build_method_class}
