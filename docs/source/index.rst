@@ -24,6 +24,7 @@
     guides/resume
     guides/jet
     guides/agents
+    directclr
     cache_dir
     cli
 

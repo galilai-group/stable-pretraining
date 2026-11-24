@@ -7,6 +7,7 @@ logic for each method and can be specified in YAML configs or Python code.
 Available forward functions:
     - ``supervised`` — standard supervised training
     - ``simclr`` — SimCLR contrastive learning
+    - ``directclr`` — contrastive learning without a trainable projector
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
@@ -176,6 +177,74 @@ def supervised(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tenso
             prog_bar=True,
         )
 
+    return out
+
+
+def directclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Train on a fixed subspace and expose full backbone features for evaluation.
+
+    Args:
+        self: Module with ``backbone``, ``subspace_dim`` and ``directclr_loss``.
+        batch: Two view dictionaries under ``views`` during training, or an
+            ``image`` tensor during evaluation. Optional labels are used only
+            by evaluation callbacks and are repeated in view order.
+        stage: Lightning stage: ``fit``, ``validate``, ``test`` or ``predict``.
+
+    Returns:
+        Full ``embedding`` and optional ``label`` tensors. During training,
+        also returns scalar ``loss`` and the selected ``projection`` subspace.
+
+    Note:
+        Implements DirectCLR from Jing et al., ICLR 2022. Views pass through
+        the backbone separately, preserving per-view BatchNorm statistics.
+        Selecting dimensions is a fixed operation, not a trainable projector.
+    """
+    if (
+        isinstance(self.subspace_dim, bool)
+        or not isinstance(self.subspace_dim, int)
+        or self.subspace_dim < 1
+    ):
+        raise ValueError("subspace_dim must be a positive integer")
+    views = _get_views_list(batch)
+    if views is None:
+        if self.training:
+            raise ValueError("DirectCLR training requires exactly two views")
+        out = {"embedding": self.backbone(batch["image"])}
+        if "label" in batch:
+            out["label"] = batch["label"]
+        return out
+    if len(views) != 2:
+        raise ValueError("DirectCLR requires exactly two views")
+
+    embeddings = [self.backbone(view["image"]) for view in views]
+    if (
+        embeddings[0].ndim != 2
+        or embeddings[0].shape != embeddings[1].shape
+        or not 1 <= self.subspace_dim <= embeddings[0].shape[-1]
+    ):
+        raise ValueError(
+            "backbone must return matching [N, D] with 1 <= subspace_dim <= D"
+        )
+    out = {"embedding": torch.cat(embeddings, dim=0)}
+    if any("label" in view for view in views):
+        if not all(
+            "label" in view and view["label"].shape[0] == emb.shape[0]
+            for view, emb in zip(views, embeddings)
+        ):
+            raise ValueError("both views must supply labels aligned with embeddings")
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+    if self.training:
+        projections = [embedding[:, : self.subspace_dim] for embedding in embeddings]
+        out["projection"] = torch.cat(projections, dim=0)
+        out["loss"] = self.directclr_loss(*projections)
+        self.log(
+            f"{stage}/loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=embeddings[0].shape[0],
+        )
     return out
 
 

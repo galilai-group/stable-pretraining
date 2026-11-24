@@ -2,6 +2,13 @@
 Unreleased
 ----------
 
+**DirectCLR**
+
+- Add DirectCLR with a dict-based method and composable forward using the
+  shared CLIP loss on a fixed encoder subspace.
+- Add a ResNet-50 ImageNet-100 benchmark with frozen linear evaluation,
+  matched projector controls and documented results.
+
 **New method**
 
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing

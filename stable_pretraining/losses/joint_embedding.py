@@ -243,6 +243,7 @@ class InfoNCELoss(torch.nn.Module):
         targets: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
         logit_scale: Optional[torch.Tensor | float] = None,
+        eps: float = 1e-12,
     ) -> torch.Tensor:
         logit_scale = self.temperature if logit_scale is None else logit_scale
 
@@ -251,8 +252,8 @@ class InfoNCELoss(torch.nn.Module):
         # ``targets`` / ``mask``) is the caller's responsibility — see
         # ``NTXEntLoss.forward`` / ``CLIPLoss.forward`` — so anchors stay local
         # while candidates may span all ranks.
-        anchors = F.normalize(anchors, dim=-1)
-        candidates = F.normalize(candidates, dim=-1)
+        anchors = F.normalize(anchors, dim=-1, eps=eps)
+        candidates = F.normalize(candidates, dim=-1, eps=eps)
 
         logits = (anchors @ candidates.T) / logit_scale
 
