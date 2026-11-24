@@ -7,6 +7,7 @@ from .data2vec import Data2Vec
 from .dino import DINO
 from .dinov2 import DINOv2
 from .dinov3 import DINOv3
+from .equimod import EquiMod
 from .ibot import iBOT
 from .igpt import iGPT
 from .ijepa import IJEPA
@@ -42,6 +43,7 @@ __all__ = [
     "DINO",
     "DINOv2",
     "DINOv3",
+    "EquiMod",
     "iBOT",
     "iGPT",
     "IJEPA",

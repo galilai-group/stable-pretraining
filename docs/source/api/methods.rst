@@ -39,6 +39,7 @@ or by bootstrapping without explicit negatives.
    SimSiam
    PIRL
    TiCO
+   EquiMod
 
 Feature Redundancy Reduction
 -----------------------------
