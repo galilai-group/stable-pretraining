@@ -174,26 +174,6 @@ def _backbone(args):
     return backbone, 2048 if args.backbone == "resnet50" else 512
 
 
-def _linear_contrastive(self, batch: dict, stage: str) -> dict[str, torch.Tensor]:
-    if "views" not in batch:
-        return {"embedding": self.backbone(batch["image"]), "label": batch["label"]}
-    embeddings = [self.backbone(view["image"]) for view in batch["views"]]
-    projections = [self.projector(embedding) for embedding in embeddings]
-    loss = self.directclr_loss(*projections)
-    self.log(
-        f"{stage}/loss",
-        loss,
-        on_step=True,
-        on_epoch=True,
-        batch_size=embeddings[0].shape[0],
-    )
-    return {
-        "embedding": torch.cat(embeddings),
-        "loss": loss,
-        "label": torch.cat([view["label"] for view in batch["views"]]),
-    }
-
-
 def _configure(args):
     torch.set_num_threads(args.cpu_threads)
     pl.seed_everything(args.seed, workers=True)
@@ -378,10 +358,10 @@ def train(args: argparse.Namespace) -> pl.Trainer:
     }
     if args.method == "linear":
         module = spt.Module(
-            forward=_linear_contrastive,
+            forward=spt.forward.simclr,
             backbone=backbone,
             projector=nn.Linear(width, args.dim, bias=False),
-            directclr_loss=spt.losses.CLIPLoss(args.temperature),
+            simclr_loss=spt.losses.CLIPLoss(args.temperature),
             optim=optim,
             hparams=metadata,
         )

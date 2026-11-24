@@ -41,8 +41,7 @@ no-projector control by 3.24 percentage points, while remaining 2.16 points
 below the trainable linear projector. With fixed LR 1, DirectCLR is 3.44 points
 below the no-projector control. The ordering depends on the readout protocol;
 these single-seed measurements do not establish general method superiority.
-The full-dimensional control is a separately trained SSL encoder, distinct
-from the full-2,048 readout of the fixed DirectCLR encoder below.
+The full-dimensional control uses a separately trained SSL encoder.
 
 To run this historical no-projector configuration on fresh data, use:
 
@@ -76,55 +75,9 @@ with momentum 0.9 and per-update cosine decay. Candidate training uses 11,200
 updates per head and the full-train refit uses 12,400 updates. The committed
 cache-only evaluator and probe sweep produced these measurements. An independent
 CPU calculation reproduces the three candidate development scores and both
-final validation counts. The full2048 diagnostic below remains a dev result.
+final validation counts.
 The validation set had been used in earlier experiments; this is a repeated
 evaluation on the same dataset.
-
-## Fixed-encoder subspace and spectrum diagnostic
-
-The pre-CIFAR SSL encoder and center-view cache stay fixed. First256, last256,
-fixed random orthogonal Q256 and full2048 each receive the same fit/dev rows,
-seed 0, zero-initialized head, LR 15/30/60 grid and 100 epochs / 11,200 updates.
-The learning rate is selected using final-epoch dev only.
-
-| Readout | Head parameters | Dev Top-1 | Effective rank / dimension |
-|---|---:|---:|---:|
-| First256 | 25,700 | 70.94% | 43.55% |
-| Last256 | 25,700 | 75.07% | 84.99% |
-| Fixed Q256 | 25,700 | 77.13% | 80.12% |
-| Full2048 | 204,900 | 81.19% | 47.43% |
-
-The first three heads have equal trainable capacity; full2048 has more
-parameters. Q is a fixed posthoc readout, not a projector added to SSL training.
-All spectra use the same 4,096 fit-only rows, L2-normalized features and
-FP64-centered covariance; effective rank uses entropy of data singular values.
-Last256 has a more uniform spectrum than Q256 but lower accuracy, so spectral
-uniformity alone does not explain readout performance. One encoder/projection
-seed and reused dev limit interpretation. These diagnostic scores use
-zero-initialized heads and are measured on dev. The main result uses a fresh
-randomly initialized head refitted on all training rows and scores final
-validation.
-
-## Separate supervised transfer
-
-The selected SSL encoder was also fine-tuned on CIFAR-10 with a new 10-class head: 45,000/5,000 train/dev split (seed 2026), input 160, seed 0, 100 epochs / 17,600 updates, SGD encoder/head LR 0.01/0.1, momentum 0.9, weight decay 5e-4, five-epoch warmup then cosine. Dev is 93.86%; one final test is 93.57% (9,357/10,000). Recovery retains the first 45 epochs and the original remaining schedule. This supervised transfer score is separate from ImageNet frozen evaluation.
-
-### Fixed-budget CIFAR development controls
-
-Two new controls use the same 45,000/5,000 training/dev split, seed 0,
-head initialization, row order, input 160 and 100-epoch / 17,600-update
-schedule as the historical pretrained fine-tuning recipe. Fixed-epoch
-evaluation gives 88.38% (4419/5000) for random-init full supervised
-training and 80.40% (4020/5000) for a frozen pretrained encoder/BN with
-head-only training. Historical pretrained full fine-tuning is 93.86%
-(4693/5000) on this same dev split, 5.48 and 13.46 percentage points higher.
-Each control retains the fixed recipe rather than receiving separate tuning.
-These two CIFAR controls use training and dev data only.
-
-Each control records five bounded same-batch AMP retries with no skipped
-successful updates. These single-seed results support transfer under this
-recipe; they do not determine each control's best achievable accuracy.
-The 400-epoch SSL projector control remains unavailable.
 
 ## Fresh-run commands
 
@@ -154,15 +107,6 @@ selection is saved before final validation is scored. For the three matched
 `--encoder-epochs 100 --methods directclr linear full --learning-rates 1 3 10`
 with a separate output directory.
 
-## Supplementary analysis
-
-Separate CPU experiments examine directional suppression, factorization and
-finite-time layer alignment. Spectral effects are observed, while perfect
-alignment remains unobserved under both the released-code and Eq2 protocols.
-The [scripts, figures and reports](https://github.com/realwooha/stable-pretraining/tree/2d4c5291a30b6f1418bdd32c631266df21ef4f39/benchmarks/toy)
-are preserved separately from this method contribution. These toy results do
-not establish the full asymptotic theory or explain the ResNet accuracy order.
-
 ## Interpretation limits
 
-One encoder seed and the missing matched 400-epoch baseline limit conclusions about method superiority. The early matched comparison is a negative result. Repeated dev exploration, earlier val/test exposure and unlabeled dev images in SSL pretraining limit independence; reduced source resolution, AMP/DDP and recovery boundaries also affect comparisons. This validation uses ImageNet-100 rather than the paper's ImageNet-1K protocol.
+One encoder seed and the missing matched 400-epoch baseline limit conclusions about method superiority. The early matched comparison is a negative result. Repeated dev exploration, earlier use of final validation data and unlabeled dev images in SSL pretraining limit independence; reduced source resolution, AMP/DDP and recovery boundaries also affect comparisons. This validation uses ImageNet-100 rather than the paper's ImageNet-1K protocol.
