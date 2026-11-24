@@ -570,6 +570,43 @@ def w_barlow_matches_single_proc(rank, world_size):
     assert torch.allclose(loss, ref, atol=1e-5), (loss.item(), ref.item())
 
 
+def w_ssley_matches_global_batch(rank, world_size):
+    """Per-rank SSL-EY loss and gradients match the single-process global batch.
+
+    Each rank holds a disjoint, equal-sized slice of a shared global batch.
+    ``SSLEYLoss`` gathers both views' projections with autograd, so every rank
+    computes the global-batch loss. The gather's backward sums the identical
+    per-rank losses' gradients, giving ``world_size`` times the global gradient
+    on each local slice; DDP's gradient averaging then recovers the
+    single-process parameter gradients.
+    """
+    from stable_pretraining.losses import SSLEYLoss
+
+    torch.manual_seed(0)  # identical GLOBAL batch on every rank
+    n, d = 4, 6
+    x_global = torch.randn(n * world_size, d, dtype=torch.float64)
+    y_global = torch.randn(n * world_size, d, dtype=torch.float64)
+    rows = slice(rank * n, (rank + 1) * n)
+    x = x_global[rows].clone().requires_grad_(True)
+    y = y_global[rows].clone().requires_grad_(True)
+
+    loss = SSLEYLoss()(x, y)
+    loss.backward()
+
+    x_ref = x_global.clone().requires_grad_(True)
+    y_ref = y_global.clone().requires_grad_(True)
+    # Reference: same objective on the whole batch, with no process group use.
+    xc, yc = x_ref - x_ref.mean(0), y_ref - y_ref.mean(0)
+    m = x_ref.shape[0] - 1
+    cov = (xc.T @ xc + yc.T @ yc) / m
+    ref = -2 * torch.trace(2 * xc.T @ yc / m) + torch.trace(cov @ cov)
+    ref.backward()
+
+    torch.testing.assert_close(loss.detach(), ref.detach())
+    torch.testing.assert_close(x.grad, world_size * x_ref.grad[rows])
+    torch.testing.assert_close(y.grad, world_size * y_ref.grad[rows])
+
+
 def w_contrastive_runs_under_ddp(rank, world_size):
     """NTXEnt (masked) and CLIP (unmasked) contrastive losses run under DDP.
 

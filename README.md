@@ -776,6 +776,7 @@ spt.set(default_loggers={"registry": False})
 | BYOL | `forward.byol` | `BYOLLoss` | Momentum-based self-distillation without negatives |
 | VICReg | `forward.vicreg` | `VICRegLoss` | Variance-invariance-covariance regularization |
 | Barlow Twins | `forward.barlow_twins` | `BarlowTwinsLoss` | Cross-correlation matrix alignment to identity |
+| SSL-EY | `forward.ssley` | `SSLEYLoss` | Unconstrained stochastic CCA on two views |
 | SwAV | `forward.swav` | `SwAVLoss` | Online clustering with Sinkhorn-Knopp normalization |
 | NNCLR | `forward.nnclr` | `NTXEntLoss` | Nearest-neighbor contrastive learning |
 | DINO | `forward.dino` | `DINOv1Loss` | Self-distillation with multi-crop and centering |

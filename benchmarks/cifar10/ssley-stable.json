@@ -1,0 +1,34 @@
+{
+  "name": "ssley-cifar10-stability-v1",
+  "source_commit": "11eac929a3cfb8fe28cefa573ef87e08fcf1eb27",
+  "epochs": 1000,
+  "batch_size": 256,
+  "projector_dims": [
+    2048,
+    2048,
+    2048
+  ],
+  "lr": 0.3,
+  "classifier_lr": 0.1,
+  "weight_decay": 0.0001,
+  "momentum": 0.0,
+  "eta": 0.02,
+  "clip_lr": true,
+  "exclude_bias_n_norm": true,
+  "warmup_epochs": 10,
+  "warmup_start_lr": 3e-05,
+  "precision": "16-mixed",
+  "crop_scale": [
+    0.2,
+    1.0
+  ],
+  "solarization_probabilities": [
+    0.1,
+    0.1
+  ],
+  "seed": 7,
+  "stem_padding": 2,
+  "implementation_revision": "numerical-stability-v1",
+  "loss_force_float32": true,
+  "unadapted_grad_clip_norm": 1.0
+}

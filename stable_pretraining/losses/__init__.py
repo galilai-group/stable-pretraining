@@ -19,6 +19,8 @@ from .joint_embedding import (
     SwAVLoss,
 )
 
+from .ssley import SSLEYLoss
+
 # Multimodal losses
 from .multimodal import CLIPLoss
 
@@ -39,6 +41,7 @@ __all__ = [
     "DINOv2Loss",
     "iBOTPatchLoss",
     # Joint embedding
+    "SSLEYLoss",
     "BYOLLoss",
     "VICRegLoss",
     "BarlowTwinsLoss",

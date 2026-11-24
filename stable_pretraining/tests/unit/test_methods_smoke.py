@@ -257,6 +257,23 @@ def test_visreg_forward_backward():
     _assert_loss_and_backward(model, output)
 
 
+def test_ssley_forward_backward():
+    """SSL-EY takes an explicit backbone/projector and dict-based views."""
+    import timm
+
+    encoder = timm.create_model(TINY_VIT, num_classes=0, pretrained=False)
+    model = M.SSLEY(backbone=encoder, projector=torch.nn.Linear(192, 64))
+    model.train()
+    v1, v2 = _two_views()
+    output = model({"views": [{"image": v1}, {"image": v2}]}, stage="fit")
+    loss = output["loss"]
+    assert loss.ndim == 0 and torch.isfinite(loss)
+    loss.backward()
+    assert any(
+        p.grad is not None and p.grad.abs().sum() > 0 for p in model.parameters()
+    ), "no parameter received a non-zero gradient"
+
+
 def test_mim_refiner_forward_backward():
     """MIM-Refiner takes a pre-built encoder; just pass a fresh timm ViT."""
     import timm

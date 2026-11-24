@@ -247,6 +247,35 @@ Barlow Twins
         _target_: stable_pretraining.losses.BarlowTwinsLoss
         lambda_: 0.005
 
+SSL-EY
+~~~~~~
+
+.. autofunction:: ssley
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: Projection head
+- ``ssley_loss``: SSL-EY loss (unconstrained stochastic CCA objective)
+
+**Key Features:**
+
+- Centered two-view covariance objective, ``-2 trace(C) + trace(V @ V)``
+- Labels never enter the SSL objective; evaluation skips the projector
+- Covariance arithmetic is promoted to FP32 by default under mixed precision
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.ssley
+      backbone: ...
+      projector: ...
+      ssley_loss:
+        _target_: stable_pretraining.losses.SSLEYLoss
+        force_float32: true
+
 Supervised
 ~~~~~~~~~~
 

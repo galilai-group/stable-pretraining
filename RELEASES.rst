@@ -4,6 +4,9 @@ Unreleased
 
 **New method**
 
+- ``SSL-EY``: centered two-view covariance objective, dict-based forward
+  function, method class, and CIFAR-10 example (`#463 <https://github.com/galilai-group/stable-pretraining/pull/463>`_).
+
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,
