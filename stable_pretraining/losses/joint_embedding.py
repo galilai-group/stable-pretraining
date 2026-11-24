@@ -102,6 +102,11 @@ class VIbCRegLoss(torch.nn.Module):
         results: the per-view variance terms are summed, not averaged as in
         :class:`VICRegLoss`, and the decorrelation term is the mean of the
         squared off-diagonal correlations over all ``D * D`` entries.
+
+        Under DDP, the variance and decorrelation statistics are computed on the
+        global batch: embeddings are all-gathered across GPUs (with gradients)
+        before these terms, so every rank sees the same values. The invariance
+        term is computed on each GPU's local batch.
     """
 
     def __init__(

@@ -338,3 +338,52 @@ class TestVIbCRegMethod:
 
         with pytest.raises(ValueError, match="exactly 2 views"):
             module.forward(batch, "fit")
+
+
+def _extreme_inputs() -> dict[str, torch.Tensor]:
+    g = torch.Generator().manual_seed(0)
+    column = torch.randn(32, 1, generator=g)
+    return {
+        "constant": torch.ones(32, 16),
+        "zeros": torch.zeros(32, 16),
+        "duplicated_columns": column.repeat(1, 16),
+        "scale_1e4": torch.randn(32, 16, generator=g) * 1e4,
+        "scale_1e-6": torch.randn(32, 16, generator=g) * 1e-6,
+        "batch_of_2": torch.randn(2, 16, generator=g),
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("case", list(_extreme_inputs()))
+class TestGradientsStayFinite:
+    """Degenerate batches must not produce NaN/Inf gradients."""
+
+    def test_through_loss(self, case):
+        z = _extreme_inputs()[case]
+        z_i, z_j = z.clone().requires_grad_(), z.clone().requires_grad_()
+
+        loss = VIbCRegLoss()(z_i, z_j)
+        loss.backward()
+
+        assert torch.isfinite(loss)
+        assert torch.isfinite(z_i.grad).all() and torch.isfinite(z_j.grad).all()
+
+    def test_through_iternorm(self, case):
+        x = _extreme_inputs()[case].requires_grad_()
+        layer = IterNorm(16, num_groups=2).train()
+
+        out = layer(x)
+        out.pow(2).sum().backward()
+
+        assert torch.isfinite(out).all()
+        assert torch.isfinite(x.grad).all()
+        assert torch.isfinite(layer.weight.grad).all()
+        assert torch.isfinite(layer.running_wm).all()
+
+    def test_through_iternorm_and_loss(self, case):
+        x = _extreme_inputs()[case].requires_grad_()
+        z = IterNorm(16, num_groups=2).train()(x)
+
+        VIbCRegLoss()(z, z.flip(0)).backward()
+
+        assert torch.isfinite(x.grad).all()

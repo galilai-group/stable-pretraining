@@ -105,6 +105,14 @@ class IterNorm(torch.nn.Module):
         Matches the solo-learn implementation used for the VIbCReg reference
         results, except that gradients come from autograd rather than a
         hand-written backward pass.
+
+        Under DDP, whitening statistics are per GPU: each rank whitens with
+        the mean and covariance of its local batch, like
+        :class:`torch.nn.BatchNorm1d` without ``SyncBatchNorm``. The running
+        mean and whitening matrix are updated from the local batch as well;
+        with DDP's default ``broadcast_buffers=True`` they are overwritten by
+        rank 0's values at each forward, so all replicas share rank 0's
+        running statistics.
     """
 
     def __init__(

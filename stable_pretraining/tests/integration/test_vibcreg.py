@@ -134,6 +134,79 @@ class TestVIbCRegManagerCPU:
             "IterNorm buffers missing from the checkpoint"
         )
 
+    def test_resume_restores_iternorm_running_statistics(self):
+        """Resuming from ``last.ckpt`` restores IterNorm's running statistics.
+
+        The statistics are read when training restarts, before any new step
+        can overwrite them, and compared with the values in the checkpoint.
+        """
+        pl.seed_everything(0, workers=True)
+        manager = spt.Manager(
+            trainer=_cpu_trainer(max_epochs=1),
+            module=_make_module(),
+            data=_make_data(),
+        )
+        manager()
+        last_ckpt = manager._run_dir / "checkpoints" / "last.ckpt"
+        saved = torch.load(last_ckpt, map_location="cpu", weights_only=False)
+        saved_stats = {k: v for k, v in saved["state_dict"].items() if "running_" in k}
+        assert saved_stats, "IterNorm buffers missing from the checkpoint"
+
+        resumed_module = _make_module()
+        iternorm_prefix = next(
+            name
+            for name, m in resumed_module.named_modules()
+            if isinstance(m, IterNorm)
+        )
+        assert not torch.equal(
+            resumed_module.state_dict()[f"{iternorm_prefix}.running_wm"],
+            saved_stats[f"{iternorm_prefix}.running_wm"],
+        ), "a fresh module must start from different statistics"
+
+        recorder = _RecordAtTrainStart(iternorm_prefix)
+        spt.Manager(
+            trainer=_cpu_trainer(max_epochs=2, callbacks=[recorder]),
+            module=resumed_module,
+            data=_make_data(),
+            ckpt_path=str(last_ckpt),
+            weights_only=False,
+        )()
+
+        assert recorder.epoch == 1, "training restarted instead of resuming"
+        for key in ("running_wm", "running_mean"):
+            torch.testing.assert_close(
+                recorder.stats[key], saved_stats[f"{iternorm_prefix}.{key}"]
+            )
+
+
+class _RecordAtTrainStart(pl.Callback):
+    """Captures IterNorm buffers and the epoch when training (re)starts."""
+
+    def __init__(self, iternorm_prefix: str):
+        self.iternorm_prefix = iternorm_prefix
+        self.stats = {}
+        self.epoch = None
+
+    def on_train_start(self, trainer, pl_module):
+        layer = pl_module.get_submodule(self.iternorm_prefix)
+        self.stats = {
+            "running_wm": layer.running_wm.detach().cpu().clone(),
+            "running_mean": layer.running_mean.detach().cpu().clone(),
+        }
+        self.epoch = trainer.current_epoch
+
+
+def _cpu_trainer(max_epochs: int, callbacks=None) -> pl.Trainer:
+    return pl.Trainer(
+        max_epochs=max_epochs,
+        accelerator="cpu",
+        callbacks=callbacks or [],
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        num_sanity_val_steps=0,
+        logger=False,
+    )
+
 
 @pytest.mark.ddp
 @pytest.mark.filterwarnings("ignore:.*does not have many workers")
