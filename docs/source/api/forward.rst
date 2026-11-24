@@ -247,6 +247,47 @@ Barlow Twins
         _target_: stable_pretraining.losses.BarlowTwinsLoss
         lambda_: 0.005
 
+DCL
+~~~
+
+.. autofunction:: dcl
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: Projection head for embedding transformation
+- ``dcl_loss``: Decoupled contrastive loss function
+
+**Key Features:**
+
+- Excludes positive pairs and self-similarities from the loss denominator.
+- Requires exactly two augmented views during training.
+- Supports single-view feature extraction during evaluation.
+- Uses negatives from all distributed ranks; the loss can be negative.
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.dcl
+      backbone:
+        _target_: stable_pretraining.backbone.from_torchvision
+        model_name: resnet18
+      projector:
+        _target_: torch.nn.Sequential
+        _args_:
+          - _target_: torch.nn.Linear
+            in_features: 512
+            out_features: 2048
+          - _target_: torch.nn.ReLU
+          - _target_: torch.nn.Linear
+            in_features: 2048
+            out_features: 128
+      dcl_loss:
+        _target_: stable_pretraining.losses.DCLLoss
+        temperature: 0.1
+
 Supervised
 ~~~~~~~~~~
 

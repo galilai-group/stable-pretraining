@@ -17,6 +17,13 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``DCL`` (Decoupled Contrastive Learning): contrastive learning with positive
+  pairs excluded from the loss denominator, per Yeh et al., "Decoupled
+  Contrastive Learning" (ECCV 2022). Includes ``DCLLoss``, the ``dcl`` forward
+  function, and a method class supporting tensor and batch-dictionary calls.
+  Registered in ``stable_pretraining.methods`` and ``METHODS.md``, with a
+  matched CIFAR-10 ResNet-18 comparison against SimCLR under
+  ``benchmarks/cifar10/dcl-resnet18.py``.
 
 **Discoverability improvements**
 
