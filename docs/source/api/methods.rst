@@ -68,6 +68,7 @@ online clustering to learn representations without negative pairs.
    DINO
    DINOv2
    DINOv3
+   JEM
    iBOT
    SwAV
    MSN

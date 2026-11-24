@@ -4,6 +4,14 @@ Unreleased
 
 **New method**
 
+- ``JEM`` (Seitzer et al., "Scalable Patch-Level Self-Supervised Learning",
+  2026): a student ViT without class token is aligned with an EMA teacher on
+  the patches two views share, at several depths, through categorical
+  distributions; an entropy term over the batch and a term on patch-to-patch
+  similarities prevent collapse, with no centering, Sinkhorn-Knopp or KoLeo.
+  Adds the ``jem`` forward function, ``JEMLoss``, the ``AlignedMultiCrop``
+  transform that cuts all views on one patch grid, and an Imagenette ViT-S/16
+  benchmark under ``benchmarks/imagenet10/jem-vit-small.py``.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,
