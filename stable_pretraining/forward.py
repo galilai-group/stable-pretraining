@@ -1369,6 +1369,7 @@ def jem(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     Returns:
         Dictionary containing:
             - 'embedding': Mean of the teacher's final patches, ``[B, D]``
+            - 'patch_features': The teacher's final patches, ``[B, N, D]``
             - 'label': Labels if present (for probes/callbacks)
             - 'loss', 'alignment_loss', 'global_loss', 'structure_loss': With
               views only
@@ -1396,6 +1397,7 @@ def jem(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     layers = {*self.target_layers, *self.structure_layers}
     with torch.no_grad():
         teacher = _jem_features(self.backbone.teacher, teacher_view["image"], layers)
+        out["patch_features"] = teacher[depth]
         out["embedding"] = teacher[depth].mean(1)
         if not views:
             return out

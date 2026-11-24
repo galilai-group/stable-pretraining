@@ -192,7 +192,7 @@ class JEM(Module):
                 "scheduler": {"type": "LinearWarmupCosineAnnealing"},
             },
         )
-        self.embed_dim = encoder.embed_dim
+        self.embed_dim: int = encoder.embed_dim
         self.mask_token = nn.Parameter(torch.zeros(encoder.embed_dim))
         nn.init.trunc_normal_(self.mask_token, std=0.02)
 

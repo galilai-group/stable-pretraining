@@ -313,6 +313,7 @@ class TestJEMForward:
             stage="validate",
         )
         assert out["embedding"].shape == (2, 32)
+        assert out["patch_features"].shape == (2, 16, 32)
         assert "loss" not in out and out["label"].tolist() == [0, 1]
 
     def test_unmasked_shifted_views_align_exactly_on_shared_patches(self):
