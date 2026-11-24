@@ -45,6 +45,9 @@ python benchmarks/cifar10/barlow-resnet18.py
 
 # NNCLR
 python benchmarks/cifar10/nnclr-resnet18.py
+
+# FroSSL (downloads CIFAR-10 when needed)
+python benchmarks/cifar10/frossl-resnet18.py --download
 ```
 
 ## Notes

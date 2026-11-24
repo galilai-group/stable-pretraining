@@ -19,6 +19,7 @@ Methods come in two forms:
 | SimCLR | `simclr` | `SimCLR` | `NTXEntLoss` | — | [Chen et al., 2020](https://arxiv.org/abs/2002.05709) |
 | BYOL | `byol` | `BYOL` | `BYOLLoss` | `TeacherStudent†` | [Grill et al., 2020](https://arxiv.org/abs/2006.07733) |
 | VICReg | `vicreg` | `VICReg` | `VICRegLoss` | — | [Bardes et al., 2022](https://arxiv.org/abs/2105.04906) |
+| FroSSL | `frossl` | `FroSSL` | `FroSSLLoss` | — | [Skean et al., 2024](https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/12410.pdf) |
 | Barlow Twins | `barlow_twins` | `BarlowTwins` | `BarlowTwinsLoss` | — | [Zbontar et al., 2021](https://arxiv.org/abs/2103.03230) |
 | SwAV | `swav` | `SwAV` | `SwAVLoss` | `OnlineQueue` | [Caron et al., 2020](https://arxiv.org/abs/2006.09882) |
 | NNCLR | `nnclr` | `NNCLR` | `NTXEntLoss` | `OnlineQueue` | [Dwibedi et al., 2021](https://arxiv.org/abs/2104.14548) |

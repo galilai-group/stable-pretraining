@@ -218,6 +218,17 @@ VICReg
         var_weight: 25.0
         cov_weight: 1.0
 
+FroSSL
+~~~~~~
+
+.. autofunction:: frossl
+
+**Required Module Attributes:** ``backbone``, ``projector``, and
+``frossl_loss`` (:class:`~stable_pretraining.losses.FroSSLLoss`). Training
+uses at least two aligned views. Single-view validation returns backbone
+embeddings for callbacks such as ``OnlineProbe``. See
+``benchmarks/cifar10/frossl-resnet18.py`` for the CIFAR-10 benchmark.
+
 Barlow Twins
 ~~~~~~~~~~~~
 

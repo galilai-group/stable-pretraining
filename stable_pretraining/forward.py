@@ -9,6 +9,7 @@ Available forward functions:
     - ``simclr`` — SimCLR contrastive learning
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
+    - ``frossl`` — FroSSL multiview objective
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
     - ``swav`` — SwAV online clustering
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
@@ -374,6 +375,77 @@ def byol(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
             target_only_features = self.backbone.forward_teacher(images)
         out["embedding"] = target_only_features.detach()
 
+    return out
+
+
+def frossl(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for FroSSL.
+
+    Args:
+        self: Module with ``backbone``, ``projector``, and ``frossl_loss``.
+        batch: Aligned views from ``MultiViewTransform`` (a list under
+            ``views`` or a dict of named views), or one ``image`` dictionary
+            during evaluation.
+        stage: Lightning stage (``fit``, ``validate``, or ``test``).
+
+    Returns:
+        Dictionary with backbone ``embedding`` and optional ``label``;
+        training also supplies a scalar ``loss``.
+
+    Note:
+        View order is preserved in the concatenated embeddings and labels so
+        evaluation callbacks receive matching rows. ``sample_idx`` is checked
+        across views when the dataset provides it.
+        Introduced by Skean et al. :cite:`skean2024frossl`.
+    """
+    if "views" in batch:
+        raw_views = batch["views"]
+    elif "image" in batch:
+        raw_views = None
+    else:
+        # Module.training_step adds batch_idx beside named views.
+        raw_views = {
+            key: value
+            for key, value in batch.items()
+            if key != "batch_idx" and isinstance(value, dict)
+        }
+
+    if raw_views is None:
+        if self.training:
+            raise ValueError("FroSSL training requires at least two augmented views")
+        out = {"embedding": self.backbone(batch["image"])}
+        if "label" in batch:
+            out["label"] = batch["label"]
+        return out
+
+    views = list(raw_views.values()) if isinstance(raw_views, dict) else raw_views
+    if not isinstance(views, (list, tuple)):
+        raise ValueError("FroSSL views must be a list or a dict of view dictionaries")
+    if len(views) < 2:
+        raise ValueError("FroSSL requires at least two aligned views")
+    if any(not isinstance(view, dict) or "image" not in view for view in views):
+        raise ValueError("each FroSSL view must be a dictionary with an image")
+
+    for key in ("label", "sample_idx"):
+        present = [key in view for view in views]
+        if any(present) and not all(present):
+            raise ValueError(f"FroSSL views must all contain {key} or all omit it")
+    if "sample_idx" in views[0] and any(
+        not torch.equal(view["sample_idx"], views[0]["sample_idx"])
+        for view in views[1:]
+    ):
+        raise ValueError("FroSSL views must have aligned sample_idx values")
+
+    embeddings = [self.backbone(view["image"]) for view in views]
+    out = {"embedding": torch.cat(embeddings, dim=0)}
+    if "label" in views[0]:
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+    if self.training:
+        projections = [self.projector(embedding) for embedding in embeddings]
+        out["loss"] = self.frossl_loss(projections)
+        self.log(
+            f"{stage}/loss", out["loss"], on_step=True, on_epoch=True, sync_dist=True
+        )
     return out
 
 
