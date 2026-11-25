@@ -43,6 +43,57 @@ def test_align_uniform_loss_matches_definition_and_backpropagates():
     assert z_j.grad is not None and torch.isfinite(z_j.grad).all()
 
 
+@pytest.mark.parametrize(
+    ("scale", "relationship", "t"),
+    [
+        (0.0, "same", 2.0),
+        (1e-14, "opposite", 2.0),
+        (1e15, "opposite", 2.0),
+        (1.0, "same", 2.0),
+        (1.0, "opposite", 1000.0),
+    ],
+)
+def test_align_uniform_loss_extreme_inputs_are_finite(scale, relationship, t):
+    base = torch.tensor(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [-1.0, 0.0, 0.0]]
+    )
+    z_i = (base * scale).requires_grad_()
+    z_j = (base * scale * (1 if relationship == "same" else -1)).requires_grad_()
+
+    loss, alignment, uniformity = AlignUniformLoss(t=t).loss_and_terms(z_i, z_j)
+    for value in (loss, alignment, uniformity):
+        assert torch.isfinite(value)
+    loss.backward()
+    for z in (z_i, z_j):
+        assert z.grad is not None
+        assert torch.isfinite(z.grad).all()
+
+
+def test_align_uniform_loss_gathers_views_for_uniformity(monkeypatch):
+    z_i = torch.randn(4, 8, requires_grad=True)
+    z_j = torch.randn(4, 8, requires_grad=True)
+
+    gathered = []
+
+    def fake_all_gather(tensor):
+        gathered.append(tensor)
+        return [tensor, tensor.detach().clone()]
+
+    monkeypatch.setattr(
+        "stable_pretraining.losses.align_uniform.all_gather", fake_all_gather
+    )
+
+    loss, alignment, uniformity = AlignUniformLoss().loss_and_terms(z_i, z_j)
+
+    assert len(gathered) == 2
+    assert gathered[0].shape == z_i.shape
+    assert gathered[1].shape == z_j.shape
+    assert torch.isfinite(loss)
+    assert torch.isfinite(alignment)
+    assert torch.isfinite(uniformity)
+    loss.backward()
+
+
 def test_align_uniform_loss_normalizes_inputs_and_applies_weights():
     torch.manual_seed(1)
     z_i = torch.randn(4, 8)
@@ -137,11 +188,14 @@ def test_align_uniform_method_forward_and_eval():
     view1 = torch.randn(2, 3, 32, 32)
     view2 = torch.randn(2, 3, 32, 32)
 
-    output = model(view1, view2)
-    assert output.loss.ndim == 0 and torch.isfinite(output.loss)
-    assert output.alignment.ndim == 0
-    assert output.uniformity.ndim == 0
-    output.loss.backward()
+    output = model(
+        {"views": [{"image": view1}, {"image": view2}]},
+        stage="train",
+    )
+    assert output["loss"].ndim == 0 and torch.isfinite(output["loss"])
+    assert output["alignment"].ndim == 0
+    assert output["uniformity"].ndim == 0
+    output["loss"].backward()
     assert any(
         parameter.grad is not None and parameter.grad.abs().sum() > 0
         for parameter in model.parameters()
@@ -149,7 +203,6 @@ def test_align_uniform_method_forward_and_eval():
 
     model.eval()
     with torch.no_grad():
-        eval_output = model(view1)
-    assert eval_output.embedding.shape == (2, 8)
-    assert eval_output.projection is None
-    assert eval_output.loss.item() == 0
+        eval_output = model({"image": view1}, stage="val")
+    assert eval_output["embedding"].shape == (2, 8)
+    assert "loss" not in eval_output

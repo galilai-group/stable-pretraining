@@ -14,6 +14,7 @@ from transformers.utils import ModelOutput
 
 from stable_pretraining import Module
 from stable_pretraining.backbone import from_timm
+from stable_pretraining.forward import align_uniform
 from stable_pretraining.losses import AlignUniformLoss
 
 
@@ -103,42 +104,16 @@ class AlignUniform(Module):
 
     def forward(
         self,
-        view1: torch.Tensor,
-        view2: Optional[torch.Tensor] = None,
-    ) -> AlignUniformOutput:
-        """Compute the two-view objective, or return embeddings for one view.
+        batch: dict[str, torch.Tensor],
+        stage: str,
+    ) -> dict[str, torch.Tensor]:
+        """Delegate the batch dict and stage to the composable forward function.
 
         Args:
-            view1: First view tensor with batch dimension first.
-            view2: Optional second view tensor. If omitted, only embeddings are
-                returned.
+            batch: Two-view batch or single-view evaluation batch.
+            stage: Current training stage.
 
         Returns:
-            Loss, backbone embeddings, and optional projection/term values.
+            Dictionary containing embeddings, loss, and optional objective terms.
         """
-        if view2 is None:
-            embedding = self.backbone(view1)
-            return AlignUniformOutput(
-                loss=torch.zeros((), device=embedding.device, dtype=embedding.dtype),
-                embedding=embedding,
-            )
-
-        h1 = self.backbone(view1)
-        h2 = self.backbone(view2)
-        z1 = self.projector(h1)
-        z2 = self.projector(h2)
-
-        if self.training:
-            loss, alignment, uniformity = self.align_uniform_loss.loss_and_terms(z1, z2)
-        else:
-            loss = torch.zeros((), device=h1.device, dtype=h1.dtype)
-            alignment = None
-            uniformity = None
-
-        return AlignUniformOutput(
-            loss=loss,
-            embedding=torch.cat((h1, h2), dim=0),
-            projection=torch.cat((z1, z2), dim=0),
-            alignment=alignment,
-            uniformity=uniformity,
-        )
+        return align_uniform(self, batch, stage)

@@ -477,6 +477,8 @@ def align_uniform(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Te
     Note:
         Introduced by Wang and Isola, "Understanding Contrastive Representation
         Learning through Alignment and Uniformity on the Hypersphere" (ICML 2020).
+        In distributed training, uniformity gathers both views across ranks;
+        alignment is computed only between the paired local views.
     """
     out = {}
     views = _get_views_list(batch)

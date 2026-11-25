@@ -5,6 +5,8 @@ import math
 import torch
 import torch.nn.functional as F
 
+from ..utils import all_gather
+
 
 class AlignUniformLoss(torch.nn.Module):
     """Alignment and uniformity objective from Wang and Isola.
@@ -18,7 +20,9 @@ class AlignUniformLoss(torch.nn.Module):
     Note:
         Both terms are computed on L2-normalized embeddings. Uniformity is
         computed within each view over distinct samples, then averaged across
-        the two views.
+        the two views. Under DDP, the local batches are all-gathered so
+        uniformity covers samples from every GPU; alignment remains the
+        correspondence between the two local views on each rank.
     """
 
     def __init__(
@@ -82,8 +86,11 @@ class AlignUniformLoss(torch.nn.Module):
 
         alignment = (z_i - z_j).norm(p=2, dim=-1).pow(self.alpha).mean()
 
+        global_i = torch.cat(all_gather(z_i), dim=0)
+        global_j = torch.cat(all_gather(z_j), dim=0)
+
         uniformities = []
-        for embeddings in (z_i, z_j):
+        for embeddings in (global_i, global_j):
             pairwise_distances = torch.pdist(embeddings, p=2).square()
             log_mean_potential = torch.logsumexp(
                 -self.t * pairwise_distances, dim=0
