@@ -15,6 +15,7 @@ Methods come in two forms:
 
 | Method | Forward fn | Method class | Loss class(es) | Key callbacks | Paper |
 |--------|-----------|--------------|----------------|---------------|-------|
+| Alignment & Uniformity | `align_uniform` | `AlignUniform` | `AlignUniformLoss` | — | [Wang & Isola, 2020](https://arxiv.org/abs/2005.10242) |
 | Supervised | `supervised` | — | any | — | — |
 | SimCLR | `simclr` | `SimCLR` | `NTXEntLoss` | — | [Chen et al., 2020](https://arxiv.org/abs/2002.05709) |
 | BYOL | `byol` | `BYOL` | `BYOLLoss` | `TeacherStudent†` | [Grill et al., 2020](https://arxiv.org/abs/2006.07733) |
@@ -104,6 +105,7 @@ All loss classes are importable from `stable_pretraining.losses`:
 | Loss | Methods that use it |
 |------|-------------------|
 | `NTXEntLoss` | SimCLR, NNCLR, MoCov2, MoCov3 |
+| `AlignUniformLoss` | Alignment & Uniformity |
 | `BYOLLoss` | BYOL |
 | `VICRegLoss` | VICReg, VICRegL |
 | `BarlowTwinsLoss` | Barlow Twins |

@@ -34,6 +34,9 @@ Each dataset will be stored in its own subdirectory (e.g., `cifar10/`, `imagenet
 # SimCLR
 python benchmarks/cifar10/simclr-resnet18.py
 
+# Alignment and Uniformity (same training setup as SimCLR)
+python benchmarks/cifar10/align-uniform-resnet18.py
+
 # BYOL
 python benchmarks/cifar10/byol-resnet18.py
 
