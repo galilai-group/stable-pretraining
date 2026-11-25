@@ -1,8 +1,10 @@
 """Unit tests for LeHami: the guarantees of its flow and stencils, and the method."""
 
+import lightning as pl
 import pytest
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader, Dataset
 
 from stable_pretraining.losses import LeHamiLoss
 from stable_pretraining.methods.lehami import (
@@ -340,3 +342,112 @@ def test_lehami_matches_module_with_forward_function():
         got = _objective(module, video, actions)
     for key in ("loss", "pos_loss", "mom_loss", "sigreg_loss", "embedding"):
         assert torch.allclose(got[key], expected[key]), key
+
+
+class _Clips(Dataset):
+    def __init__(self, n: int = 8):
+        g = torch.Generator().manual_seed(0)
+        self.video = torch.randn(n, 8, 3, 32, 32, generator=g)
+        self.action = torch.randn(n, 7, 2, generator=g)
+
+    def __len__(self):
+        return len(self.video)
+
+    def __getitem__(self, i):
+        return {"video": self.video[i], "action": self.action[i]}
+
+
+class _Watch(pl.Callback):
+    """Records the state training starts from and every step's loss."""
+
+    def __init__(self):
+        self.start_step, self.start_state, self.losses = None, None, []
+
+    def on_train_start(self, trainer, pl_module):
+        self.start_step = trainer.global_step
+        self.start_state = {
+            k: v.detach().clone() for k, v in pl_module.state_dict().items()
+        }
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        self.losses.append(outputs["loss"].detach())
+
+
+@pytest.fixture()
+def _cache_dir(tmp_path, monkeypatch):
+    import stable_pretraining as spt
+    from stable_pretraining._config import get_config
+
+    for var in (
+        "SLURM_JOB_ID",
+        "SLURM_ARRAY_TASK_ID",
+        "SLURM_RESTART_COUNT",
+        "TORCHELASTIC_RUN_ID",
+    ):
+        monkeypatch.delenv(var, raising=False)
+    get_config().reset()
+    spt.set(cache_dir=str(tmp_path / "cache"))
+    yield tmp_path
+    get_config().reset()
+
+
+def _fit(root, max_epochs: int, ckpt_path=None):
+    import stable_pretraining as spt
+
+    model = _model(action_dim=2)
+    model.optim = {"optimizer": {"type": "Adam", "lr": 1e-3}}
+    watch = _Watch()
+    trainer = pl.Trainer(
+        max_epochs=max_epochs,
+        accelerator="cpu",
+        devices=1,
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        num_sanity_val_steps=0,
+        callbacks=[watch],
+        default_root_dir=str(root),
+    )
+    data = spt.data.DataModule(train=DataLoader(_Clips(), batch_size=4, drop_last=True))
+    manager = spt.Manager(
+        trainer=trainer,
+        module=model,
+        data=data,
+        seed=0,
+        ckpt_path=None if ckpt_path is None else str(ckpt_path),
+        weights_only=False,
+    )
+    manager()
+    return manager, trainer, watch
+
+
+def test_lehami_trains_and_resumes_through_manager(_cache_dir):
+    """Two steps through ``spt.Manager``, then a full-state resume for two more."""
+    manager, trainer, watch = _fit(_cache_dir, max_epochs=1)
+    first = manager._run_dir / "checkpoints" / "last.ckpt"
+    assert trainer.global_step == 2 and len(watch.losses) == 2
+    assert all(torch.isfinite(loss) for loss in watch.losses)
+    saved = torch.load(first, map_location="cpu", weights_only=False)
+    assert saved["global_step"] == 2
+    sigreg_steps = saved["state_dict"]["lehami_loss.sigreg.global_step"]
+    assert sigreg_steps > 0
+
+    weight = "flow.potential_net.0.weight"
+    assert not torch.equal(
+        _model(action_dim=2).state_dict()[weight], saved["state_dict"][weight]
+    )
+
+    manager, trainer, watch = _fit(_cache_dir, max_epochs=2, ckpt_path=first)
+    assert watch.start_step == 2
+    for key, value in saved["state_dict"].items():
+        assert torch.equal(watch.start_state[key], value), key
+    assert trainer.global_step == 4 and len(watch.losses) == 2
+    assert all(torch.isfinite(loss) for loss in watch.losses)
+    resumed = torch.load(
+        manager._run_dir / "checkpoints" / "last.ckpt",
+        map_location="cpu",
+        weights_only=False,
+    )
+    assert resumed["global_step"] == 4
+    assert resumed["state_dict"]["lehami_loss.sigreg.global_step"] == 2 * sigreg_steps
