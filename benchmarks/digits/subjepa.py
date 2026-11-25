@@ -5,7 +5,7 @@ Sub-JEPA on translated handwritten digits
 
 Run::
 
-    python examples/subjepa_digits.py --epochs 20 --output /tmp/subjepa-digits
+    python benchmarks/digits/subjepa.py --epochs 20 --output /tmp/subjepa-digits
 
 This offline diagnostic uses real handwritten images (8x8 on a 16x16 canvas),
 not the paper's Two-Room/PushT benchmark. Train/validation split is by source

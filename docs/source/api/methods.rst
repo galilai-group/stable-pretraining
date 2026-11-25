@@ -47,7 +47,7 @@ time and batch as described in the paper's equation 6. Under DDP, the statistic
 uses differentiable global batch sums. Frozen projection matrices and the
 random-direction step counter are checkpointed.
 
-Run ``python examples/subjepa_digits.py --epochs 20 --output /tmp/subjepa-digits``
+Run ``python benchmarks/digits/subjepa.py --epochs 20 --output /tmp/subjepa-digits``
 for a small CPU diagnostic on translated sklearn handwritten digits. This
 reports held-out dynamics errors and representation diagnostics; it does not
 reproduce the paper's Two-Room, Reacher, PushT, or OGB-Cube planning results.

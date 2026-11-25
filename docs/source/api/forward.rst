@@ -49,6 +49,22 @@ Or in Python code:
 Available Forward Functions
 ---------------------------
 
+Sub-JEPA
+~~~~~~~~
+
+.. autofunction:: subjepa
+
+**Required Module Attributes:**
+
+- ``backbone``: Observation encoder returning a flat latent vector per observation
+- ``predictor``: Causal predictor taking latent and action histories
+- ``subjepa_loss``: :class:`~stable_pretraining.losses.SubJEPALoss`
+
+Training batches contain ``image`` with shape ``[batch, time, ...]`` and
+``action`` with shape ``[batch, time - 1, action_dim]``. The function returns
+next-latent predictions, embeddings, and loss components. Targets remain
+differentiable. Without actions, evaluation returns observation embeddings.
+
 SimCLR
 ~~~~~~
 

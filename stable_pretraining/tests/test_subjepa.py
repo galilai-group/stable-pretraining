@@ -167,6 +167,96 @@ def test_lightning_training_and_validation(tmp_path):
     assert torch.isfinite(trainer.callback_metrics["validate/loss"])
 
 
+class _ResumeState(pl.Callback):
+    """Capture restored state before a resumed training batch can change it."""
+
+    def on_train_start(self, trainer, pl_module):
+        self.global_step = trainer.global_step
+        self.state = {
+            name: tensor.detach().clone()
+            for name, tensor in pl_module.state_dict().items()
+        }
+
+
+class _StopAfterEpoch(pl.Callback):
+    """Stop at an epoch boundary without changing the planned training horizon."""
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        trainer.should_stop = True
+
+
+def test_manager_checkpoint_resume_preserves_frozen_subspaces(tmp_path, monkeypatch):
+    """Exercise full Manager resume and observe buffers before and after training."""
+    from stable_pretraining._config import get_config
+    from stable_pretraining.callbacks.factories import _DEFAULT_CALLBACK_REGISTRY
+
+    config = get_config()
+    monkeypatch.setattr(
+        config,
+        "_default_callbacks",
+        {name: name == "registry" for name in _DEFAULT_CALLBACK_REGISTRY},
+    )
+    monkeypatch.setattr(config, "_requeue_checkpoint", False)
+    model = _model()
+    model.optim["scheduler"] = {"type": "ConstantLR", "factor": 1.0}
+    initial_weight = model.backbone.weight.detach().clone()
+    initial_matrices = model.subjepa_loss.projection_matrices.clone()
+    loader = DataLoader(_Trajectories(), batch_size=8)
+    data = spt.data.DataModule(train=loader)
+    trainer_options = {
+        "accelerator": "cpu",
+        "devices": 1,
+        "logger": False,
+        "enable_checkpointing": False,
+        "enable_progress_bar": False,
+        "enable_model_summary": False,
+        "num_sanity_val_steps": 0,
+        "limit_val_batches": 0,
+    }
+    trainer = pl.Trainer(**trainer_options, max_epochs=2, callbacks=[_StopAfterEpoch()])
+    spt.Manager(trainer=trainer, module=model, data=data, seed=13)()
+    assert trainer.global_step == 2
+    assert model.subjepa_loss.projection_step.item() == 2
+    assert not torch.equal(initial_weight, model.backbone.weight)
+    torch.testing.assert_close(
+        model.subjepa_loss.projection_matrices, initial_matrices, rtol=0, atol=0
+    )
+    checkpoint = tmp_path / "subjepa.ckpt"
+    trainer.save_checkpoint(checkpoint)
+    saved = torch.load(checkpoint, weights_only=False)
+    matrix_key = "subjepa_loss.projection_matrices"
+    step_key = "subjepa_loss.projection_step"
+    torch.testing.assert_close(
+        saved["state_dict"][matrix_key], initial_matrices, rtol=0, atol=0
+    )
+    assert saved["state_dict"][step_key].item() == saved["global_step"] == 2
+
+    resumed = _model()
+    resumed.optim["scheduler"] = {"type": "ConstantLR", "factor": 1.0}
+    # Distinct sentinels make a missing checkpoint restore observable.
+    resumed.subjepa_loss.projection_matrices.zero_()
+    resumed.subjepa_loss.projection_step.fill_(999)
+    restored = _ResumeState()
+    resumed_trainer = pl.Trainer(**trainer_options, max_epochs=2, callbacks=[restored])
+    spt.Manager(
+        trainer=resumed_trainer,
+        module=resumed,
+        data=spt.data.DataModule(train=loader),
+        seed=13,
+        ckpt_path=str(checkpoint),
+        weights_only=False,
+    )()
+    assert restored.global_step == 2
+    for name, expected in saved["state_dict"].items():
+        torch.testing.assert_close(restored.state[name], expected, rtol=0, atol=0)
+    assert resumed_trainer.global_step == 4
+    assert resumed.subjepa_loss.projection_step.item() == 4
+    torch.testing.assert_close(
+        resumed.subjepa_loss.projection_matrices, initial_matrices, rtol=0, atol=0
+    )
+    assert not torch.equal(restored.state["backbone.weight"], resumed.backbone.weight)
+
+
 def _distributed_statistic(rank: int, rendezvous: str) -> None:
     torch.set_num_threads(1)
     torch.manual_seed(41)

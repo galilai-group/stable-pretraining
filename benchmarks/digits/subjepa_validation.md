@@ -23,8 +23,8 @@ and [training objective](https://github.com/intcomp/Sub-JEPA/blob/main/train.py)
 ## Reproduce the CPU diagnostic
 
 ```bash
-python examples/subjepa_digits.py --epochs 20 --seed 42 --output /tmp/subjepa-digits-42
-python examples/subjepa_digits.py --epochs 20 --seed 7 --output /tmp/subjepa-digits-7
+python benchmarks/digits/subjepa.py --epochs 20 --seed 42 --output /tmp/subjepa-digits-42
+python benchmarks/digits/subjepa.py --epochs 20 --seed 7 --output /tmp/subjepa-digits-7
 python -m pytest stable_pretraining/tests/test_subjepa.py -q
 ```
 
@@ -78,5 +78,9 @@ statistic and gradient, frozen orthogonal matrices, checkpoint continuation,
 Gaussian-versus-collapsed embeddings, gradients through targets, malformed
 configuration/batches, mixed precision, causal action conditioning, public
 imports, composable Module usage, and actual Lightning optimizer/validation steps.
+A Manager checkpoint-resume test trains for two steps, saves a checkpoint, and
+resumes a new model for two more steps. It checks exact state restoration before
+the first resumed batch, unchanged frozen projection matrices, and continuation
+of the projection counter from two to four.
 A two-process Gloo check compares distributed statistics and gradients with a
 single-process reference, including unequal local batch sizes (3 and 5).
