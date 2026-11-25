@@ -52,7 +52,7 @@ def w_sigreg_is_global_when_built_after_init(rank, world_size):
 
     Currently fails: ``EppsPulley`` drops the result of the functional
     ``all_reduce``, so each rank keeps its local statistic, scaled by the
-    world size. Used by a strict ``xfail`` test.
+    world size; fixed in #511. Used by a strict ``xfail`` test.
     """
     q_global, q_local = _batches(rank, world_size)
     value = _sigreg(_loss(before_init=False), q_local)

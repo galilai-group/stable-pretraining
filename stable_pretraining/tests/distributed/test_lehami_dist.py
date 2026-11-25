@@ -25,7 +25,8 @@ class TestLeHamiSIGRegDDP:
         strict=True,
         reason="EppsPulley (methods/lejepa.py) ignores the result of the functional "
         "all_reduce, so a loss built after init_process_group scales the local "
-        "statistic by world_size instead of averaging across ranks.",
+        "statistic by world_size instead of averaging across ranks. Fixed in #511; "
+        "remove this marker once it merges.",
     )
     def test_global_when_built_after_process_group(self):
         H.run_distributed(
