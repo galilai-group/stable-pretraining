@@ -9,6 +9,7 @@ Available forward functions:
     - ``simclr`` — SimCLR contrastive learning
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
+    - ``simco`` — SimCo dual-temperature cross-view contrastive learning
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
     - ``swav`` — SwAV online clustering
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
@@ -253,6 +254,76 @@ def simclr(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         if "label" in batch:
             out["label"] = batch["label"]
 
+    return out
+
+
+def simco(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Encode two augmented views and apply SimCo's dual-temperature objective.
+
+    Args:
+        self: Module with ``backbone``, ``projector``, and ``simco_loss``.
+        batch: Two view dictionaries under ``views``, or one image dictionary
+            for evaluation. Optional labels and sample indices must be tensors
+            in both views, or missing/None in both views.
+        stage: Runtime stage supplied by Module (fit, validate, or test).
+
+    Returns:
+        Backbone embeddings, optional labels and sample indices; training also
+        returns the scalar symmetric dual-temperature loss.
+
+    Note:
+        Both views receive gradients. The hardness ratio is detached inside
+        the loss. Evaluation bypasses the projector. Labels only feed probes.
+    """
+    views = _get_views_list(batch)
+    if views is None:
+        out = {"embedding": self.backbone(batch["image"])}
+        for key in ("label", "sample_idx"):
+            if batch.get(key) is not None:
+                out[key] = batch[key]
+        return out
+    if isinstance(views, dict):
+        views = list(views.values())
+    if len(views) != 2:
+        raise ValueError(f"SimCo requires exactly 2 views, got {len(views)}")
+    embeddings = [self.backbone(view["image"]) for view in views]
+    out = {"embedding": torch.cat(embeddings)}
+    for key in ("label", "sample_idx"):
+        values = [view.get(key) for view in views]
+        if all(value is None for value in values):
+            continue
+        if not all(isinstance(value, torch.Tensor) for value in values):
+            raise ValueError(
+                f"SimCo '{key}' must be a tensor in both views, "
+                "or missing/None in both views"
+            )
+        if (
+            any(
+                value.ndim == 0 or value.shape[0] != embedding.shape[0]
+                for value, embedding in zip(values, embeddings)
+            )
+            or values[0].shape[1:] != values[1].shape[1:]
+        ):
+            raise ValueError(
+                f"SimCo '{key}' must have matching shapes after the batch "
+                "dimension and one entry per image in each view"
+            )
+        out[key] = torch.cat(values)
+    if self.training:
+        projections = [self.projector(embedding) for embedding in embeddings]
+        loss = self.simco_loss(*projections)
+        if not torch.isfinite(loss):
+            raise FloatingPointError("Nonfinite SimCo loss")
+        out["loss"] = loss
+        self.log_dict(
+            {
+                f"{stage}/loss": loss,
+            },
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=embeddings[0].shape[0],
+        )
     return out
 
 

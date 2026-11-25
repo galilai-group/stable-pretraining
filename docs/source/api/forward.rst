@@ -49,6 +49,13 @@ Or in Python code:
 Available Forward Functions
 ---------------------------
 
+SimCo
+~~~~~
+
+.. autofunction:: simco
+
+Requires ``backbone``, ``projector``, and ``simco_loss`` (``SimCoLoss``).
+
 SimCLR
 ~~~~~~
 

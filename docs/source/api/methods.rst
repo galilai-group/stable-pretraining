@@ -54,6 +54,7 @@ feature dimensions rather than using explicit contrastive pairs.
    VICRegL
    BarlowTwins
    WMSE
+   SimCo
 
 Self-Distillation and Clustering
 ----------------------------------

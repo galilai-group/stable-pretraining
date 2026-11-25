@@ -4,6 +4,10 @@ Unreleased
 
 **New method**
 
+- ``SimCo`` adds a symmetric cross-view contrastive loss with detached
+  dual-temperature weighting, a composable forward function and a method class.
+  The CIFAR-10/100 benchmark uses global negatives across DDP ranks.
+
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

@@ -1,0 +1,132 @@
+{
+  "method": "SimCo",
+  "recipe": "cifar_adaptation_not_paper_reproduction",
+  "paper": "https://arxiv.org/abs/2203.17248",
+  "author_reference_commit": "e8d5e768255721b23643d948631f80c0b8a0851b",
+  "evaluation": {
+    "metric": "online linear-probe top-1 accuracy",
+    "unit": "fraction",
+    "split": "5000 held-out images from the official training split",
+    "training_examples": 45000,
+    "validation_examples": 5000,
+    "probe_features_detached": true,
+    "official_test_split_used": false,
+    "frozen_encoder_evaluation_performed": false,
+    "best_selection": "maximum reported validation accuracy across training epochs",
+    "final_selection": "last reported validation accuracy"
+  },
+  "configuration": {
+    "seed": 0,
+    "split_seed": 0,
+    "runs_per_dataset": 1,
+    "epochs": 500,
+    "encoder": {
+      "model_name": "resnet18",
+      "low_resolution": true,
+      "weights": null
+    },
+    "projector": {
+      "dimensions": [
+        512,
+        128,
+        128
+      ],
+      "hidden_blocks": "Linear with bias, ReLU",
+      "final_linear_bias": true,
+      "batch_normalization": false
+    },
+    "loss": {
+      "intra_temperature": 0.1,
+      "inter_temperature": 1.0,
+      "positive_pairs": "matching row across views",
+      "negatives": "other rows of opposite view only",
+      "reduction": "mean over global examples and both directions",
+      "hardness_ratio_detached": true
+    },
+    "global_batch_size": 256,
+    "per_device_batch_size": 128,
+    "training_drop_last": true,
+    "batches_per_epoch": 175,
+    "planned_optimizer_steps": 87500,
+    "optimization": {
+      "optimizer": {
+        "type": "SGD",
+        "lr": 0.03,
+        "momentum": 0.9,
+        "weight_decay": 0.0005,
+        "exclude_bias_norm": false
+      },
+      "scheduler": {
+        "type": "LinearWarmupCosineAnnealingLR",
+        "warmup_steps": 1750,
+        "max_steps": 87500,
+        "warmup_start_lr": 0.0,
+        "eta_min": 0.0
+      },
+      "interval": "step"
+    },
+    "warmup_epochs": 10,
+    "probe_optimizer": {
+      "type": "SGD",
+      "lr": 0.1,
+      "momentum": 0.9
+    },
+    "probe_scheduler": {
+      "type": "ConstantLR",
+      "factor": 1.0
+    },
+    "precision": "32-true",
+    "distributed": {
+      "nodes": 1,
+      "world_size": 2,
+      "strategy": "DDPStrategy",
+      "sync_batchnorm": true
+    },
+    "hardware": {
+      "gpu_model": "NVIDIA RTX A5000",
+      "gpu_count": 2
+    },
+    "software": {
+      "python": "3.11.17",
+      "torch": "2.6.0+cu124",
+      "torchvision": "0.21.0+cu124",
+      "lightning": "2.6.6"
+    }
+  },
+  "results": {
+    "cifar10": {
+      "optimizer_steps": 87500,
+      "wall_time_seconds": 9682.415914564393,
+      "best_online_validation_top1_accuracy": 0.8858000040054321,
+      "final_online_validation_top1_accuracy": 0.8817999958992004,
+      "final_epoch_ssl_loss": 1.0838255882263184,
+      "final_epoch_online_probe_cross_entropy": 0.3607090413570404,
+      "protocol_sha256": "d25f0b2735cbb52e9873d449397268f49ab74357e387e5d4f0fdfab93a7d566c",
+      "split_indices_sha256": "abe3b7ec839465e01cc32c40784dafc3e1156b6e08fdbf23a043e57738705888",
+      "reported_distributed": {
+        "world_size": 2,
+        "strategy": "DDPStrategy",
+        "global_batch_size": 256,
+        "per_device_batch_size": 128,
+        "sync_batchnorm": true
+      }
+    },
+    "cifar100": {
+      "optimizer_steps": 87500,
+      "wall_time_seconds": 10357.262417588383,
+      "best_online_validation_top1_accuracy": 0.6075999736785889,
+      "final_online_validation_top1_accuracy": 0.6033999919891357,
+      "final_epoch_ssl_loss": 1.0863661766052246,
+      "final_epoch_online_probe_cross_entropy": 1.3505572080612183,
+      "protocol_sha256": "e99b3224e59524244efe430e7eacf27ace22fd99fbfb3cb8708e4d773a00643a",
+      "split_indices_sha256": "40b55ecab63d92c14fe97aaa0a0fb8c52524a7debf7c6f04586a013d35b8d30f",
+      "reported_distributed": {
+        "world_size": 2,
+        "strategy": "DDPStrategy",
+        "global_batch_size": 256,
+        "per_device_batch_size": 128,
+        "sync_batchnorm": true
+      }
+    }
+  }
+}
