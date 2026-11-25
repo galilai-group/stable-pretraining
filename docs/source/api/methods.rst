@@ -4,11 +4,11 @@ stable_pretraining.methods
 .. module:: stable_pretraining.methods
 .. currentmodule:: stable_pretraining.methods
 
-The methods module provides 30 ready-to-use ``LightningModule`` subclasses, one
+The methods module provides ready-to-use ``LightningModule`` subclasses, one
 per SSL algorithm. Each class pre-wires the backbone, loss function, optimizer,
 and any required callbacks so you can start training with minimal boilerplate.
 
-All method classes are importable from the top-level namespace::
+Frequently used method classes are also importable from the top-level namespace::
 
     import stable_pretraining as spt
 
@@ -43,8 +43,8 @@ or by bootstrapping without explicit negatives.
 Feature Redundancy Reduction
 -----------------------------
 
-Methods that learn representations by reducing redundancy or decorrelating
-feature dimensions rather than using explicit contrastive pairs.
+Methods that learn representations by reducing redundancy, decorrelating
+feature dimensions, or matching feature distributions.
 
 .. autosummary::
    :toctree: gen_modules/
@@ -54,6 +54,7 @@ feature dimensions rather than using explicit contrastive pairs.
    VICRegL
    BarlowTwins
    WMSE
+   LpJEPA
 
 Self-Distillation and Clustering
 ----------------------------------

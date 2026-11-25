@@ -9,6 +9,7 @@ Available forward functions:
     - ``simclr`` — SimCLR contrastive learning
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
+    - ``lpjepa`` — Rectified LpJEPA invariance and distribution matching
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
     - ``swav`` — SwAV online clustering
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
@@ -451,6 +452,87 @@ def vicreg(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         out["embedding"] = self.backbone(batch["image"])
         if "label" in batch:
             out["label"] = batch["label"]
+
+    return out
+
+
+def lpjepa(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for Rectified LpJEPA.
+
+    Each view is encoded and projected separately, then rectified with ReLU.
+    Training combines two-view mean squared error with rectified distribution
+    matching. Evaluation returns both feature spaces for online probes.
+
+    Args:
+        self: Module instance (automatically bound) with ``backbone``,
+            ``projector``, ``rdmreg``, ``inv_weight``, and ``rdmreg_weight``
+            attributes. ``rdmreg`` accepts two rectified projection tensors.
+        batch: Dictionary of named views, or a ``"views"`` entry containing
+            a list or dictionary of views. Each view contains a batched
+            ``"image"`` tensor and optionally a batched ``"label"`` tensor.
+            Training requires two views of the same images in matching row
+            order. Evaluation accepts one or two views, including a single
+            image dictionary. View order follows list or dictionary order.
+            Labels must be present for every view or omitted for all views.
+        stage: Logging prefix, such as ``"fit"`` or ``"validate"``.
+            Loss computation is controlled by ``self.training``.
+
+    Returns:
+        Dictionary containing ``"embedding"`` (backbone features) and
+        ``"projection"`` (rectified projector features), concatenated along
+        the batch dimension in view order. For two batches of size B, these
+        have shapes [2B, D] and [2B, P]. A single evaluation view returns
+        [B, D] and [B, P]. ``"label"`` is included when provided, concatenated
+        in the same view order. Training also returns the scalar
+        unweighted ``"inv_loss"`` and ``"rdmreg_loss"``, and their weighted
+        sum as ``"loss"``. Evaluation omits all loss keys.
+
+    Raises:
+        ValueError: If the number of views is unsupported for the current mode.
+
+    Note:
+        ReLU is applied after both default and custom projectors. Evaluation
+        runs the projector for probing but does not call the regularizer or
+        advance its sampling state.
+    """
+    views = _get_views_list(batch)
+    if views is None:
+        views = [batch]
+    elif isinstance(views, dict):
+        views = list(views.values())
+
+    if self.training and len(views) != 2:
+        raise ValueError(
+            f"LpJEPA requires exactly 2 views in training, got {len(views)}."
+        )
+    if not self.training and len(views) not in (1, 2):
+        raise ValueError(
+            f"LpJEPA requires 1 or 2 views in evaluation, got {len(views)}."
+        )
+
+    embeddings = [self.backbone(view["image"]) for view in views]
+    projections = [self.projector(embedding).relu() for embedding in embeddings]
+    out = {
+        "embedding": torch.cat(embeddings, dim=0),
+        "projection": torch.cat(projections, dim=0),
+    }
+    if "label" in views[0]:
+        out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+    if self.training:
+        z1, z2 = projections
+        out["inv_loss"] = torch.nn.functional.mse_loss(z1, z2)
+        out["rdmreg_loss"] = self.rdmreg(z1, z2)
+        out["loss"] = (
+            self.inv_weight * out["inv_loss"] + self.rdmreg_weight * out["rdmreg_loss"]
+        )
+        self.log_dict(
+            {f"{stage}/{key}": out[key] for key in ("loss", "inv_loss", "rdmreg_loss")},
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=views[0]["image"].shape[0],
+        )
 
     return out
 
