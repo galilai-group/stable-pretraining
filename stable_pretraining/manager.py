@@ -598,7 +598,9 @@ class Manager(submitit.helpers.Checkpointable):
         # Flips to True if `_resolve_run_dir` detects the "SLURM says
         # requeue but no index exists" early-preempt scenario and falls
         # back to fresh-run resolution. `_resolve_load_path` reads it so
-        # it doesn't insist on a non-existent ``last.ckpt``.
+        # it doesn't insist on a non-existent ``last.ckpt``. Non-zero DDP
+        # ranks copy rank-0's value from the handoff record: every rank
+        # must resolve the same load path.
         self._early_preempt_fallback: bool = False
 
         self.compile = compile
@@ -879,6 +881,10 @@ class Manager(submitit.helpers.Checkpointable):
                 log_header(f"RunDirectory (rank {rank}, adopted from rank-0)")
                 logging.info(f"  run_dir: {self._run_dir}")
                 logging.info(f"  run_id:  {self._run_id}")
+                logging.info(
+                    f"  early_preempt_fallback: {self._early_preempt_fallback} "
+                    "(rank-0's decision)"
+                )
                 # Non-rank-0 doesn't write the index (rank-0 owns that); we
                 # just record what we adopted.
                 return self._run_dir
@@ -1208,12 +1214,23 @@ class Manager(submitit.helpers.Checkpointable):
         Atomic via temp+``replace`` so a rank-N reader never observes a
         partially-written file. The target path is naturally idempotent: if a
         previous launch with the same key crashed, this rewrite stomps it.
+
+        The JSON record also carries rank-0's early-preempt decision and the
+        ``SLURM_RESTART_COUNT`` it was made under. Non-zero ranks copy that
+        decision rather than re-deriving it from what *they* see on disk: a
+        rank that decided alone could start fresh while rank-0 resumes, and
+        DDP only syncs weights, not optimizer, scheduler or step state.
         """
         handoff = self._handoff_path(cache_dir, launch_key)
+        record = {
+            "run_dir": str(run_dir),
+            "restart_count": os.environ.get("SLURM_RESTART_COUNT", "0"),
+            "early_preempt_fallback": self._early_preempt_fallback,
+        }
         try:
             handoff.parent.mkdir(parents=True, exist_ok=True)
             tmp = handoff.with_name(handoff.name + ".tmp")
-            tmp.write_text(str(run_dir))
+            tmp.write_text(json.dumps(record))
             tmp.replace(handoff)
             logging.info(f"  rank-0 published handoff → {handoff}")
         except OSError as exc:
@@ -1224,22 +1241,37 @@ class Manager(submitit.helpers.Checkpointable):
     ) -> Optional[Path]:
         """Block (poll) until rank-0 has published a usable ``run_dir``.
 
-        Returns the published path, or ``None`` on timeout. The validity check
+        Returns the published path, or ``None`` on timeout, and adopts
+        rank-0's ``_early_preempt_fallback`` with it. The validity check
         (``is_dir()``) means rank-N never adopts a dangling pointer left over
-        from a stale prior launch with the same key.
+        from a stale prior launch with the same key, and the restart-count
+        check that it never adopts the record of an earlier attempt of the
+        same SLURM job, which shares the launch key.
         """
         handoff = self._handoff_path(cache_dir, launch_key)
+        restart_count = os.environ.get("SLURM_RESTART_COUNT", "0")
         deadline = time.monotonic() + _RANK_HANDOFF_TIMEOUT_S
         logged_waiting = False
         while time.monotonic() < deadline:
             try:
                 if handoff.is_file():
-                    candidate = handoff.read_text().strip()
-                    if candidate and Path(candidate).is_dir():
+                    record = json.loads(handoff.read_text())
+                    candidate = (
+                        record.get("run_dir") if isinstance(record, dict) else None
+                    )
+                    if (
+                        candidate
+                        and record.get("restart_count") == restart_count
+                        and Path(candidate).is_dir()
+                    ):
+                        self._early_preempt_fallback = bool(
+                            record.get("early_preempt_fallback")
+                        )
                         return Path(candidate)
-                    # Pointer present but invalid (rank-0 still mid-write or
-                    # stale crashed launch). Keep polling — rank-0 may rewrite.
-            except OSError:
+                    # Record present but unusable (rank-0 still mid-write, stale
+                    # crashed launch, or an earlier attempt of this job). Keep
+                    # polling — rank-0 rewrites it for this attempt.
+            except (OSError, ValueError):
                 pass
             if not logged_waiting:
                 logging.info(
