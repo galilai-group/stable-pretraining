@@ -159,7 +159,7 @@ Unreleased
 - ``EppsPulley`` (LeJEPA's SIGReg) now averages its moments across DDP ranks.
   It discarded the result of the functional ``all_reduce``, which returns a new
   tensor, so each rank kept its local statistic and scaled it by the world
-  size. Only affects a loss built after ``init_process_group``.
+  size. Only affects a loss built after ``init_process_group`` (#511).
 
 **Dependencies**
 
