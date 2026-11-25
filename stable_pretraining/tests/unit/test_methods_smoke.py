@@ -13,6 +13,7 @@ regressions in the method classes (shape mismatches, missing kwargs,
 broken loss imports, etc.).
 """
 
+from types import SimpleNamespace
 from typing import Tuple
 
 import pytest
@@ -60,7 +61,6 @@ TWO_VIEW_METHODS = [
     ("BarlowTwins", {"projector_dims": (256, 256, 256)}),
     ("BYOL", {"projector_dims": (512, 64), "predictor_dims": (512, 64)}),
     ("CMAE", {"projector_dim": 64}),
-    ("CPLearn", {"projector_dim": 64, "dictionary_size": 256}),
     ("MoCov2", {"projector_dims": (256, 64), "queue_length": 32}),
     ("MoCov3", {"projector_dims": (512, 512, 64), "predictor_hidden_dim": 512}),
     (
@@ -85,6 +85,23 @@ def test_two_view_method_forward_backward(method_name: str, kwargs: dict) -> Non
     v1, v2 = _two_views()
     output = model(v1, v2)
     _assert_loss_and_backward(model, output)
+
+
+# --- batch-dict methods (forward(batch, stage)) --------------------------
+
+BATCH_METHODS = [
+    ("CPLearn", {"projector_dim": 64, "dictionary_size": 256}),
+]
+
+
+@pytest.mark.parametrize("method_name,kwargs", BATCH_METHODS)
+def test_batch_method_forward_backward(method_name: str, kwargs: dict) -> None:
+    cls = getattr(M, method_name)
+    model = cls(encoder_name=TINY_VIT, **kwargs)
+    model.train()
+    v1, v2 = _two_views()
+    output = model({"views": [{"image": v1}, {"image": v2}]}, "fit")
+    _assert_loss_and_backward(model, SimpleNamespace(**output))
 
 
 # --- single-view masked methods (forward(images)) ------------------------

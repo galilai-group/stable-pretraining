@@ -24,28 +24,16 @@ References:
 """
 
 import math
-from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers.utils import ModelOutput
 
 from stable_pretraining import Module
 from stable_pretraining.backbone import from_timm
+from stable_pretraining.forward import cplearn as cplearn_forward
 from stable_pretraining.losses import CPLearnLoss
-
-
-@dataclass
-class CPLearnOutput(ModelOutput):
-    """Output from CPLearn forward pass."""
-
-    loss: torch.Tensor = None
-    embedding: torch.Tensor = None
-    logits: Optional[torch.Tensor] = None
-    invariance: Optional[torch.Tensor] = None
-    prior: Optional[torch.Tensor] = None
 
 
 class CPLearnProjector(nn.Module):
@@ -156,6 +144,10 @@ class CPLearn(Module):
     :class:`CPLearnProjector` and :class:`~stable_pretraining.losses.CPLearnLoss`
     for how each option relates to the paper.
 
+    ``forward(batch, stage)`` runs :func:`stable_pretraining.forward.cplearn`,
+    so the class trains with ``spt.Manager`` like any ``spt.Module`` and
+    returns and logs the same values as the forward function.
+
     Note:
         The prior term uses the batch mean, so with ``n`` samples per batch
         and hard assignments it cannot go below ``log c - log n``; with the
@@ -224,28 +216,18 @@ class CPLearn(Module):
             gather_distributed=gather_distributed,
         )
 
-    def forward(
-        self,
-        view1: torch.Tensor,
-        view2: Optional[torch.Tensor] = None,
-    ) -> CPLearnOutput:
-        if view2 is None:
-            embedding = self.backbone(view1)
-            return CPLearnOutput(
-                loss=torch.zeros((), device=embedding.device, dtype=embedding.dtype),
-                embedding=embedding,
-                logits=None,
-            )
+    def forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+        """Run :func:`stable_pretraining.forward.cplearn` on this module.
 
-        h1 = self.backbone(view1)
-        h2 = self.backbone(view2)
-        logits1 = self.projector(h1)
-        logits2 = self.projector(h2)
-        terms = self.cplearn_loss.terms(logits1, logits2)
-        return CPLearnOutput(
-            loss=terms["loss"],
-            embedding=torch.cat([h1, h2], dim=0),
-            logits=torch.cat([logits1, logits2], dim=0),
-            invariance=terms["invariance"].detach(),
-            prior=terms["prior"].detach(),
-        )
+        Args:
+            batch: ``{"views": [view_1, view_2]}`` with one dict per view
+                (``"image"`` and optionally ``"label"``) for training, or a
+                single-view dict for evaluation.
+            stage: Stage name passed by ``Module`` (``"fit"``, ``"validate"``,
+                ``"test"`` or ``"predict"``); used as the logging prefix.
+
+        Returns:
+            dict[str, torch.Tensor]: ``"embedding"``, ``"label"`` if present,
+            and ``"loss"`` for two views in training mode.
+        """
+        return cplearn_forward(self, batch, stage)

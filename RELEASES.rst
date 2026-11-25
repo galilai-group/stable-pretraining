@@ -14,8 +14,9 @@ Unreleased
   the points where the paper is ambiguous or differs from it (epsilon, tanh vs.
   L2 scaling, reverse-KL vs. cross-entropy prior, symmetrization, multi-GPU
   batch mean) are exposed as options and documented in the docstrings.
-  Registered in ``stable_pretraining.methods`` and ``METHODS.md``, with a
-  CIFAR-10 ResNet-18 benchmark under ``benchmarks/cifar10/cplearn-resnet18.py``.
+  Registered in ``stable_pretraining.methods``, at the top level as
+  ``spt.CPLearn`` and in ``METHODS.md``, with a CIFAR-10 ResNet-18 benchmark
+  under ``benchmarks/cifar10/cplearn-resnet18.py``.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,

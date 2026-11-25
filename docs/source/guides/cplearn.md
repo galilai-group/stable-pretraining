@@ -35,14 +35,27 @@ For a batch of `n` image pairs with backbone features `Z` and `Z'`:
 With the method class:
 
 ```python
-import torch
-from stable_pretraining.methods import CPLearn
+import lightning as pl
+import stable_pretraining as spt
 
-model = CPLearn(encoder_name="resnet18", projector_dim=2048, dictionary_size=16384, beta=1.0)
-out = model(torch.randn(8, 3, 224, 224), torch.randn(8, 3, 224, 224))
-out.loss.backward()
-print(out.invariance, out.prior)  # the two loss terms
+model = spt.CPLearn(
+    encoder_name="resnet18",
+    low_resolution=True,
+    projector_dim=2048,
+    dictionary_size=16384,
+    beta=1.0,
+)
+spt.Manager(trainer=pl.Trainer(max_epochs=1000), module=model, data=data)()
 ```
+
+Here `data` is a data module whose training batches hold two views,
+`{"views": [{"image": ..., "label": ...}, {"image": ..., "label": ...}]}`, for
+example from a two-transform `transforms.MultiViewTransform` as in
+`benchmarks/cifar10/cplearn-resnet18.py`. `CPLearn.forward(batch, stage)` runs
+the `forward.cplearn` function shown next, so it returns the same dict
+(`"embedding"`, `"label"`, and `"loss"` in training) and logs the same values.
+Set `model.optim` to choose the optimizer; without it `Module` falls back to
+its default AdamW setup.
 
 With the forward function and `spt.Module`:
 

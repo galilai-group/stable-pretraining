@@ -3,13 +3,18 @@
 import math
 from unittest.mock import Mock
 
+import lightning as pl
 import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
 from stable_pretraining import forward as forward_module
+from stable_pretraining._config import get_config
+from stable_pretraining.data import DataModule
 from stable_pretraining.losses import CPLearnLoss
+from stable_pretraining.manager import Manager
 from stable_pretraining.methods import CPLearn
 from stable_pretraining.methods.cplearn import CPLearnProjector
 
@@ -121,6 +126,36 @@ def test_loss_is_computed_in_float32_for_low_precision_logits():
     assert loss.dtype == torch.float32 and torch.isfinite(loss)
 
 
+def _extreme_logit_pairs():
+    """Two-view inputs of the extreme-value tests above."""
+    c = 8
+    balanced = torch.arange(2 * c) % c
+    collapsed = torch.zeros(2 * c, dtype=torch.long)
+    l1, l2 = _logits(c=4096)
+    return {
+        "balanced-eps1e-6": (_hard_assignments(balanced, c, 1e-6),) * 2,
+        "balanced-eps1e-8": (_hard_assignments(balanced, c, 1e-8),) * 2,
+        "collapsed-eps1e-8": (_hard_assignments(collapsed, c, 1e-8),) * 2,
+        "bf16-x50": (l1.bfloat16() * 50, l2.bfloat16() * 50),
+        "fp32-x1e4": (l1 * 1e4, l2 * 1e4),
+    }
+
+
+@pytest.mark.parametrize("symmetric", [False, True])
+@pytest.mark.parametrize("prior", ["ce", "reverse_kl"])
+@pytest.mark.parametrize("case", list(_extreme_logit_pairs()))
+def test_extreme_inputs_give_finite_gradients(case, prior, symmetric):
+    # Saturated softmax outputs underflow to exact zeros; the loss must not
+    # take log(0) on the backward pass either.
+    l1, l2 = (t.detach().clone().requires_grad_() for t in _extreme_logit_pairs()[case])
+    loss = CPLearnLoss(prior=prior, symmetric=symmetric)(l1, l2)
+    loss.backward()
+    assert torch.isfinite(loss)
+    for logits in (l1, l2):
+        assert logits.grad is not None
+        assert torch.isfinite(logits.grad).all()
+
+
 def test_loss_rejects_unknown_prior():
     with pytest.raises(ValueError, match="prior"):
         CPLearnLoss(prior="kl")
@@ -210,31 +245,136 @@ def test_projector_rejects_unknown_activation():
 # --- CPLearn method class ------------------------------------------------
 
 
+def _two_view_batch(n=4):
+    return {
+        "views": [
+            {"image": torch.randn(n, 3, 32, 32), "label": torch.arange(n)}
+            for _ in range(2)
+        ]
+    }
+
+
 def test_method_forward_backward_leaves_codes_untouched():
     model = CPLearn(
         encoder_name=_tiny_encoder(), projector_dim=32, dictionary_size=64, codes_seed=0
     ).train()
+    model.log, model.log_dict = Mock(), Mock()
     codes = model.projector.codes.clone()
-    v1, v2 = torch.randn(4, 3, 32, 32), torch.randn(4, 3, 32, 32)
-    out = model(v1, v2)
-    assert out.loss.ndim == 0 and torch.isfinite(out.loss)
-    assert out.embedding.shape == (8, 16)
-    assert out.logits.shape == (8, 64)
-    torch.testing.assert_close(out.loss.detach(), out.invariance + out.prior)
-    out.loss.backward()
+    out = model(_two_view_batch(), "fit")
+    assert out["loss"].ndim == 0 and torch.isfinite(out["loss"])
+    assert out["embedding"].shape == (8, 16)
+    assert out["label"].shape == (8,)
+    logged = model.log_dict.call_args.args[0]
+    torch.testing.assert_close(
+        out["loss"].detach(),
+        logged["fit/cplearn_invariance"] + logged["fit/cplearn_prior"],
+    )
+    out["loss"].backward()
     assert model.projector.linear.weight.grad.abs().sum() > 0
     assert model.backbone[-1].weight.grad.abs().sum() > 0
     assert torch.equal(model.projector.codes, codes)
 
 
-def test_method_single_view_returns_embedding_and_zero_loss():
+def test_method_forward_delegates_to_forward_function(monkeypatch):
+    import stable_pretraining.methods.cplearn as cplearn_module
+
+    model = CPLearn(encoder_name=_tiny_encoder(), projector_dim=32, dictionary_size=64)
+    sentinel = {"loss": torch.tensor(1.0)}
+    fake_forward = Mock(return_value=sentinel)
+    monkeypatch.setattr(cplearn_module, "cplearn_forward", fake_forward)
+    batch = _two_view_batch()
+    assert model(batch, "fit") is sentinel
+    fake_forward.assert_called_once_with(model, batch, "fit")
+
+
+def test_method_single_view_returns_embedding_without_loss():
     model = CPLearn(
         encoder_name=_tiny_encoder(), projector_dim=32, dictionary_size=64
     ).eval()
+    batch = {"image": torch.randn(2, 3, 32, 32), "label": torch.arange(2)}
     with torch.no_grad():
-        out = model(torch.randn(2, 3, 32, 32))
-    assert out.embedding.shape == (2, 16)
-    assert out.loss.item() == 0 and out.logits is None
+        out = model(batch, "validate")
+    assert out["embedding"].shape == (2, 16)
+    assert "loss" not in out
+    assert torch.equal(out["label"], batch["label"])
+
+
+def test_method_is_exported_from_top_level_package():
+    import stable_pretraining as spt
+
+    assert spt.CPLearn is CPLearn
+    assert "CPLearn" in spt.__all__
+
+
+def _fit_with_manager(model, run_dir, max_epochs, ckpt_path=None):
+    g = torch.Generator().manual_seed(0)
+    samples = [
+        {
+            "views": [
+                {"image": torch.randn(3, 8, 8, generator=g), "label": i % 2}
+                for _ in range(2)
+            ]
+        }
+        for i in range(8)
+    ]
+    trainer = pl.Trainer(
+        accelerator="cpu",
+        devices=1,
+        max_epochs=max_epochs,
+        default_root_dir=str(run_dir),
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        num_sanity_val_steps=0,
+    )
+    Manager(
+        trainer=trainer,
+        module=model,
+        data=DataModule(train=DataLoader(samples, batch_size=4)),
+        seed=0,
+        ckpt_path=ckpt_path,
+        weights_only=False,
+    )()
+    return trainer
+
+
+def test_method_trains_with_manager_and_resumes_codes_from_checkpoint(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(get_config(), "requeue_checkpoint", False)
+
+    def make(codes_seed):
+        return CPLearn(
+            encoder_name=_tiny_encoder(),
+            projector_dim=32,
+            dictionary_size=64,
+            codes_seed=codes_seed,
+        )
+
+    model = make(codes_seed=0)
+    codes = model.projector.codes.clone()
+    weight = model.projector.linear.weight.detach().clone()
+    trainer = _fit_with_manager(model, tmp_path / "first", max_epochs=1)
+    trained = trainer.lightning_module
+    assert trainer.global_step == 2
+    for name in ("fit/loss", "fit/cplearn_invariance", "fit/cplearn_prior"):
+        assert torch.isfinite(trainer.callback_metrics[name])
+    assert not torch.equal(trained.projector.linear.weight.detach(), weight)
+    assert torch.equal(trained.projector.codes, codes)
+
+    path = tmp_path / "cplearn.ckpt"
+    trainer.save_checkpoint(path)
+    saved = torch.load(path, map_location="cpu", weights_only=False)
+    assert torch.equal(saved["state_dict"]["projector.codes"], codes)
+
+    resumed = make(codes_seed=1)
+    assert not torch.equal(resumed.projector.codes, codes)
+    trainer = _fit_with_manager(
+        resumed, tmp_path / "second", max_epochs=2, ckpt_path=str(path)
+    )
+    assert trainer.global_step == 4
+    assert torch.equal(trainer.lightning_module.projector.codes, codes)
 
 
 def test_method_passes_options_to_projector_and_loss():
