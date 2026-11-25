@@ -21,15 +21,15 @@ class LeHamiLoss(nn.Module):
         n_slices: SIGReg random projections.
 
     Note:
-        Under DDP, the SIGReg statistics are **per GPU** when training through
-        Lightning or :class:`~stable_pretraining.Manager`: each rank tests only
-        its local batch, and the gradients are then averaged as usual. This is
-        because :class:`~stable_pretraining.methods.lejepa.SlicedEppsPulley`
-        decides whether to all-reduce when it is constructed, and the model is
-        built before Lightning starts the process group. A loss constructed
-        after ``torch.distributed.init_process_group`` instead averages the
-        statistics across ranks, i.e. tests the global batch. Either way all
-        ranks draw the same random projections.
+        Under DDP, the SIGReg statistics are **per GPU**: each rank tests only
+        its local batch at each frame, all ranks draw the same random
+        projections, and the gradients are then averaged as usual. This holds
+        because the loss is built before Lightning or
+        :class:`~stable_pretraining.Manager` starts the process group. Do not
+        construct it after ``torch.distributed.init_process_group``:
+        :class:`~stable_pretraining.methods.lejepa.SlicedEppsPulley` then
+        multiplies the local statistic by the world size without averaging it
+        across ranks.
     """
 
     def __init__(

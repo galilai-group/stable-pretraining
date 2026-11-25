@@ -254,11 +254,10 @@ class LeHami(Module):
     (``"joint"``).
 
     Note:
-        Under DDP, SIGReg's batch statistics are per GPU when the model is
-        trained through Lightning or :class:`~stable_pretraining.Manager`:
-        each rank tests its local batch at each frame. A model constructed
-        after ``torch.distributed.init_process_group`` tests the global batch
-        instead. See :class:`~stable_pretraining.losses.LeHamiLoss`.
+        Under DDP, SIGReg's batch statistics are per GPU: each rank tests its
+        local batch at each frame. Build the model before the process group
+        starts, as Lightning and :class:`~stable_pretraining.Manager` do; see
+        :class:`~stable_pretraining.losses.LeHamiLoss`.
 
     Args:
         encoder: timm model name or an ``nn.Module`` returning ``[N, D]``.

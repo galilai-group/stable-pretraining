@@ -1299,9 +1299,7 @@ def lehami(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     Note:
         Introduced in Yalovetzky, Balestriero & LeCun, "LeHami: Symplectic
         Latent Dynamics for World Models", 2026. Under DDP, SIGReg's batch
-        statistics are per GPU when trained through Lightning or
-        :class:`~stable_pretraining.Manager`; see
-        :class:`~stable_pretraining.losses.LeHamiLoss`.
+        statistics are per GPU; see :class:`~stable_pretraining.losses.LeHamiLoss`.
 
     Example:
         ::

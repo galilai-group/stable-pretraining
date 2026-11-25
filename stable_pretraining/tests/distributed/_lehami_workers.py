@@ -48,7 +48,12 @@ def w_sigreg_is_per_gpu_when_built_before_init(rank, world_size):
 
 
 def w_sigreg_is_global_when_built_after_init(rank, world_size):
-    """Built inside the process group, SIGReg tests the global batch."""
+    """Built inside the process group, SIGReg should test the global batch.
+
+    Currently fails: ``EppsPulley`` drops the result of the functional
+    ``all_reduce``, so each rank keeps its local statistic, scaled by the
+    world size. Used by a strict ``xfail`` test.
+    """
     q_global, q_local = _batches(rank, world_size)
     value = _sigreg(_loss(before_init=False), q_local)
     global_ref = _sigreg(_loss(before_init=True), q_global)
