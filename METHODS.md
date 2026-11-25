@@ -32,7 +32,7 @@ Methods come in two forms:
 | iBOT | — | `iBOT` | `DINOv1Loss`, `iBOTPatchLoss` | `TeacherStudent†` | [Zhou et al., 2022](https://arxiv.org/abs/2111.07832) |
 | iGPT | — | `iGPT` | — | — | [El-Nouby et al., 2024](https://arxiv.org/abs/2401.08541) |
 | IJEPA | — | `IJEPA` | — | — | [Assran et al., 2023](https://arxiv.org/abs/2301.08243) |
-| LeHami | — | `LeHami` | — | — | [Yalovetzky, Balestriero & LeCun, 2026](https://github.com/rominay/LeHami) |
+| LeHami | `lehami` | `LeHami` | `LeHamiLoss` | — | [Yalovetzky, Balestriero & LeCun, 2026](https://github.com/rominay/LeHami) |
 | LeJEPA | — | `LeJEPA` | — | — | [Balestriero & LeCun, 2025](https://arxiv.org/abs/2511.08544) |
 | MAE | — | `MAE` | `MAELoss` | — | [He et al., 2022](https://arxiv.org/abs/2111.06377) |
 | MaskFeat | — | `MaskFeat` | — | — | [Wei et al., 2022](https://arxiv.org/abs/2112.09133) |
@@ -114,4 +114,5 @@ All loss classes are importable from `stable_pretraining.losses`:
 | `iBOTPatchLoss` | DINOv2, iBOT, MIMRefiner |
 | `MAELoss` | MAE |
 | `CLIPLoss` | Multimodal CLIP-style objectives |
+| `LeHamiLoss` | LeHami |
 | `NegativeCosineSimilarity` | SimSiam, general use |

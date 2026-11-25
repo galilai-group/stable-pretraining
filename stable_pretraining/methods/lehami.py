@@ -41,11 +41,10 @@ from typing import Optional, Union
 import timm
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from transformers.utils import ModelOutput
 
 from stable_pretraining import Module
-from stable_pretraining.methods.lejepa import SlicedEppsPulley
+from stable_pretraining.losses import LeHamiLoss
 
 CENTERED_HALFWIDTH = 2
 CAUSAL_WINDOW = 4
@@ -241,7 +240,8 @@ class LeHamiOutput(ModelOutput):
     :ivar embedding: Encoder positions ``q`` for every frame ``[B, T, d]``.
     :ivar pos_loss: Rollout error on positions, averaged over steps.
     :ivar mom_loss: Rollout error on momenta, averaged over steps.
-    :ivar sigreg_loss: SIGReg on the encoder's latents.
+    :ivar sigreg_loss: SIGReg on the encoder's latents; see :class:`LeHamiLoss`
+        for whether it is per GPU or global under DDP.
     """
 
     loss: torch.Tensor = None
@@ -261,7 +261,8 @@ class LeHami(Module):
         - **Momentum**: Savitzky-Golay stencils on the ``q`` trajectory
         - **Predictor**: :class:`SeparableHamiltonianFlow`, conditioned on an
           MLP embedding of the action through ``V(q, u)``
-        - **Loss**: rollout MSE on ``q`` and ``p`` plus ``lamb`` times SIGReg
+        - **Loss**: :class:`~stable_pretraining.losses.LeHamiLoss`, rollout
+          MSE on ``q`` and ``p`` plus ``lamb`` times SIGReg
 
     A training clip of ``T`` frames anchors the rollout at frame 3 (``q`` from
     the encoder, ``p`` from the causal stencil over frames ``0 .. 3``) and
@@ -271,6 +272,13 @@ class LeHami(Module):
     8-step unroll of the paper. SIGReg is applied per frame across the batch,
     on ``q`` (``sigreg_on="q"``, the paper's main model) or on ``[q, p]``
     (``"joint"``).
+
+    Note:
+        Under DDP, SIGReg's batch statistics are per GPU when the model is
+        trained through Lightning or :class:`~stable_pretraining.Manager`:
+        each rank tests its local batch at each frame. A model constructed
+        after ``torch.distributed.init_process_group`` tests the global batch
+        instead. See :class:`~stable_pretraining.losses.LeHamiLoss`.
 
     Args:
         encoder: timm model name or an ``nn.Module`` returning ``[N, D]``.
@@ -312,8 +320,6 @@ class LeHami(Module):
         pretrained: bool = False,
     ):
         super().__init__()
-        if sigreg_on not in ("q", "joint"):
-            raise ValueError(f"sigreg_on must be 'q' or 'joint', got {sigreg_on!r}")
         if isinstance(encoder, str):
             encoder = timm.create_model(encoder, pretrained=pretrained, num_classes=0)
         self.encoder = encoder
@@ -346,13 +352,15 @@ class LeHami(Module):
             learnable_scale=learnable_scale,
             even_kinetic=even_kinetic,
         )
-        self.sigreg = SlicedEppsPulley(num_slices=n_slices)
+        self.lehami_loss = LeHamiLoss(
+            momentum_weight=momentum_weight,
+            lamb=lamb,
+            sigreg_on=sigreg_on,
+            n_slices=n_slices,
+        )
         self.action_dim = action_dim
         self.latent_dim = latent_dim
         self.dt = dt
-        self.momentum_weight = momentum_weight
-        self.lamb = lamb
-        self.sigreg_on = sigreg_on
 
     @torch.no_grad()
     def _infer_dim(self, image_size: int) -> int:
@@ -374,10 +382,6 @@ class LeHami(Module):
         if actions is None:
             raise ValueError(f"this model takes actions of size {self.action_dim}")
         return self.action_encoder(actions.float())
-
-    def _sigreg(self, x: torch.Tensor) -> torch.Tensor:
-        """SIGReg across the batch at each frame of ``x`` ``[B, T, D]``."""
-        return torch.stack([self.sigreg(x[:, i]) for i in range(x.shape[1])]).mean()
 
     def forward(
         self, video: torch.Tensor, actions: Optional[torch.Tensor] = None
@@ -403,26 +407,25 @@ class LeHami(Module):
         p_ref = centered_momentum(q, self.dt)  # frames 2 .. T - 3
         u = self._embed_actions(actions)
 
-        q_pred = q[:, anchor]
-        p_pred = causal_momentum(q[:, : anchor + 1], self.dt)
-        pos_loss = mom_loss = 0.0
+        q_t = q[:, anchor]
+        p_t = causal_momentum(q[:, : anchor + 1], self.dt)
+        q_pred, p_pred = [], []
         for k in range(n_unroll):
-            step_u = None if u is None else u[:, anchor + k]
-            q_pred, p_pred = self.flow(q_pred, p_pred, step_u)
-            frame = anchor + 1 + k
-            pos_loss = pos_loss + F.mse_loss(q_pred, q[:, frame])
-            mom_loss = mom_loss + F.mse_loss(
-                p_pred, p_ref[:, frame - CENTERED_HALFWIDTH]
-            )
-        pos_loss = pos_loss / n_unroll
-        mom_loss = mom_loss / n_unroll
-
-        q_win = q[:, CENTERED_HALFWIDTH : t - CENTERED_HALFWIDTH]
-        if self.sigreg_on == "joint":
-            sigreg_loss = self._sigreg(torch.cat([q_win, p_ref], dim=-1))
-        else:
-            sigreg_loss = self._sigreg(q_win)
-        loss = pos_loss + self.momentum_weight * mom_loss + self.lamb * sigreg_loss
+            q_t, p_t = self.flow(q_t, p_t, None if u is None else u[:, anchor + k])
+            q_pred.append(q_t)
+            p_pred.append(p_t)
+        # Step k lands on frame anchor + 1 + k; p_ref[:, i] is frame i + 2.
+        first = anchor + 1
+        loss, pos_loss, mom_loss, sigreg_loss = self.lehami_loss(
+            torch.stack(q_pred, 1),
+            torch.stack(p_pred, 1),
+            q[:, first : first + n_unroll],
+            p_ref[
+                :, first - CENTERED_HALFWIDTH : first - CENTERED_HALFWIDTH + n_unroll
+            ],
+            q[:, CENTERED_HALFWIDTH : t - CENTERED_HALFWIDTH],
+            p_ref,
+        )
         return LeHamiOutput(
             loss=loss,
             embedding=q.detach(),
