@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``subjepa`` — action-conditioned latent world modeling
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -42,6 +43,67 @@ from typing import Any
 import torch
 
 from .callbacks.queue import find_or_create_queue_callback, OnlineQueue
+
+
+def subjepa(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Encode trajectories and predict next latents with Sub-JEPA regularization.
+
+    Args:
+        self: Module with backbone, predictor, and subjepa_loss attributes.
+        batch: Dict with image [B, T, ...] and action [B, T-1, A] (or T actions).
+            Without actions, image is interpreted as independent observations.
+        stage: Module stage (fit, validate, test) or train/val aliases.
+
+    Returns:
+        Dict with embedding [B, T, D], prediction, target, and loss components.
+        Without actions, returns only embedding [B, D].
+
+    Note:
+        Targets remain differentiable, as in the authors' released code.
+        The predictor must be causal and return one next-state latent per input.
+        Evaluation without actions supports ordinary embedding callbacks.
+    """
+    images = batch["image"]
+    if "action" not in batch:
+        if stage in ("train", "fit"):
+            raise ValueError("Sub-JEPA training requires an action trajectory")
+        return {"embedding": self.backbone(images)}
+    actions = batch["action"]
+    if images.ndim < 3 or images.shape[1] < 2:
+        raise ValueError("image must have shape [batch, time >= 2, ...]")
+    batch_size, length = images.shape[:2]
+    if (
+        actions.ndim != 3
+        or actions.shape[0] != batch_size
+        or actions.shape[1] not in (length - 1, length)
+        or actions.shape[-1] < 1
+    ):
+        raise ValueError("action must have shape [batch, time-1 (or time), action_dim]")
+    if hasattr(self, "action_dim") and actions.shape[-1] != self.action_dim:
+        raise ValueError("action last dimension must match action_dim")
+    embedding = self.backbone(images.flatten(0, 1))
+    if embedding.ndim != 2 or embedding.shape != (
+        batch_size * length,
+        self.subjepa_loss.embed_dim,
+    ):
+        raise ValueError("backbone must return [batch * time, embed_dim]")
+    embedding = embedding.reshape(batch_size, length, -1)
+    target = embedding[:, 1:]
+    prediction = self.predictor(embedding[:, :-1], actions[:, : length - 1])
+    output = self.subjepa_loss(prediction, target, embedding)
+    self.log_dict(
+        {f"{stage}/{key}": value.detach() for key, value in output.items()},
+        on_step=stage in ("train", "fit"),
+        on_epoch=True,
+        sync_dist=True,
+        batch_size=batch_size,
+    )
+    return {
+        **output,
+        "embedding": embedding,
+        "prediction": prediction,
+        "target": target,
+    }
 
 
 def _get_views_list(batch: dict):

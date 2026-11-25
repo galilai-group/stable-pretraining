@@ -28,6 +28,16 @@ Each dataset will be stored in its own subdirectory (e.g., `cifar10/`, `imagenet
 
 ## Running Benchmarks
 
+### Handwritten Digits: Sub-JEPA
+
+```bash
+python benchmarks/digits/subjepa.py --epochs 20 --seed 42 --output /tmp/subjepa-digits-42
+```
+
+This CPU diagnostic trains on action-controlled translations of sklearn's digits
+dataset. See [the validation report](digits/subjepa_validation.md) for the full
+protocol and reported results. It does not reproduce paper-scale planning tasks.
+
 ### CIFAR-10 Benchmarks
 
 ```bash

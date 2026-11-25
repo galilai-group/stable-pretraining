@@ -26,6 +26,7 @@ from .simclr import SimCLR
 from .simmim import SimMIM
 from .simsiam import SimSiam
 from .swav import SwAV
+from .subjepa import SubJEPA
 from .tico import TiCO
 from .vicreg import VICReg
 from .vicregl import VICRegL
@@ -61,6 +62,7 @@ __all__ = [
     "SimMIM",
     "SimSiam",
     "SwAV",
+    "SubJEPA",
     "TiCO",
     "VICReg",
     "VICRegL",

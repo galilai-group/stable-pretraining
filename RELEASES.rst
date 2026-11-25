@@ -4,6 +4,10 @@ Unreleased
 
 **New method**
 
+- ``SubJEPA``: action-conditioned latent prediction with frozen orthogonal
+  subspace Gaussian regularization (Zhao et al., 2026). Includes the composable
+  ``subjepa`` forward function, ``SubJEPALoss``, and a reproducible translated
+  handwritten-digits validation example.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,
