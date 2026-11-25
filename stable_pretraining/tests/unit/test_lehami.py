@@ -95,7 +95,7 @@ def test_leapfrog_step_matches_reference():
     """
     flow = _analytic(SeparableHamiltonianFlow(2, 2, dt=0.5), 2).double()
     with torch.no_grad():
-        flow.log_scale.copy_(torch.tensor([1.0, 2.0]).log())
+        flow.log_scale.copy_(torch.tensor([1.0, 2.0], dtype=torch.float64).log())
     q, p = flow(
         torch.tensor([[1.0, -0.5]], dtype=torch.float64),
         torch.tensor([[0.25, 2.0]], dtype=torch.float64),
@@ -194,9 +194,13 @@ def _model(**kwargs) -> LeHami:
     return LeHami(**{**defaults, **kwargs})
 
 
-def _objective(model: LeHami, video: torch.Tensor, actions=None):
+def _batch(video: torch.Tensor, actions=None) -> dict:
+    return {"video": video} if actions is None else {"video": video, "action": actions}
+
+
+def _objective(model, video: torch.Tensor, actions=None, stage: str = "fit"):
     """The training objective of ``model`` on a batch of clips."""
-    return model(video, actions)
+    return model(_batch(video, actions), stage)
 
 
 @pytest.mark.parametrize("sigreg_on", ["q", "joint"])
@@ -204,20 +208,21 @@ def test_lehami_trains_with_actions(sigreg_on):
     model = _model(action_dim=2, sigreg_on=sigreg_on).train()
     video, actions = torch.randn(4, 9, 3, 32, 32), torch.randn(4, 8, 2)
     output = _objective(model, video, actions)
-    assert torch.isfinite(output.loss)
-    output.loss.backward()
+    assert torch.isfinite(output["loss"])
+    output["loss"].backward()
     assert model.flow.potential_net[0].weight.grad.abs().sum() > 0
     assert model.action_encoder[0].weight.grad.abs().sum() > 0
     assert model.encoder[0].weight.grad.abs().sum() > 0
-    assert output.embedding.shape == (4, 9, 8)
+    assert output["embedding"].shape == (4, 9, 8)
+    assert not output["embedding"].requires_grad
 
 
 def test_lehami_without_actions_rolls_out():
     model = _model().eval()
     with torch.no_grad():
-        output = _objective(model, torch.randn(3, 7, 3, 32, 32))
+        output = _objective(model, torch.randn(3, 7, 3, 32, 32), stage="validate")
         q, p = model.rollout(torch.randn(3, 5, 3, 32, 32), steps=6)
-    assert torch.isfinite(output.loss)
+    assert torch.isfinite(output["loss"])
     assert q.shape == p.shape == (3, 6, 8)
 
 
@@ -230,7 +235,9 @@ def test_rollout_matches_training_unroll():
         q, _ = model.rollout(video[:, :4], actions[:, 3:7])
         output = _objective(model, video, actions)
     expected = ((q - q_all[:, 4:8]) ** 2).mean(dim=(0, 2))
-    assert output.pos_loss.item() == pytest.approx(expected[:2].mean().item(), rel=1e-4)
+    assert output["pos_loss"].item() == pytest.approx(
+        expected[:2].mean().item(), rel=1e-4
+    )
 
 
 def test_lehami_rejects_short_clips_and_missing_actions():
@@ -302,3 +309,34 @@ def test_lehami_loss_weights_and_joint_sigreg():
         joint(zeros, zeros, zeros, zeros, torch.randn(5, 3, 4))
     with pytest.raises(ValueError, match="sigreg_on"):
         LeHamiLoss(sigreg_on="p")
+
+
+def test_predict_returns_embeddings_only():
+    model = _model(action_dim=1).eval()
+    with torch.no_grad():
+        output = _objective(model, torch.randn(2, 3, 3, 32, 32), stage="predict")
+    assert set(output) == {"embedding"}
+    assert output["embedding"].shape == (2, 3, 8)
+
+
+def test_lehami_matches_module_with_forward_function():
+    """``LeHami`` is ``spt.Module`` with ``forward.lehami`` and its submodules."""
+    import stable_pretraining as spt
+
+    model = _model(action_dim=2).eval()
+    module = spt.Module(
+        forward=spt.forward.lehami,
+        encoder=model.encoder,
+        projector=model.projector,
+        flow=model.flow,
+        action_encoder=model.action_encoder,
+        lehami_loss=model.lehami_loss,
+    ).eval()
+    assert spt.LeHami is LeHami
+    video, actions = torch.randn(4, 8, 3, 32, 32), torch.randn(4, 7, 2)
+    with torch.no_grad():
+        expected = _objective(model, video, actions)
+        model.lehami_loss.sigreg.global_step.zero_()
+        got = _objective(module, video, actions)
+    for key in ("loss", "pos_loss", "mom_loss", "sigreg_loss", "embedding"):
+        assert torch.allclose(got[key], expected[key]), key

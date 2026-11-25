@@ -17,8 +17,9 @@ Unreleased
   Savitzky-Golay stencils on the latent trajectory; training unrolls the flow
   on its own predictions with SIGReg on the latents. Also exposes the reusable
   ``SeparableHamiltonianFlow`` and the ``centered_momentum`` /
-  ``causal_momentum`` stencils. Registered in ``stable_pretraining.methods``
-  and ``METHODS.md``.
+  ``causal_momentum`` stencils, the ``forward.lehami`` forward function and
+  ``losses.LeHamiLoss``. Exported as ``spt.LeHami`` and registered in
+  ``METHODS.md``.
 - ``VISReg``: multi-view invariance combined with a sliced-Wasserstein
   goodness-of-fit regulariser (center + scale + sliced inverse-CDF/quantile
   terms) that pushes embeddings toward an isotropic standard Gaussian — a

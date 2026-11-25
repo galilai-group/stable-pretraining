@@ -14,6 +14,7 @@ Available forward functions:
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
     - ``dinov2`` — DINOv2 with iBOT masked patch prediction
+    - ``lehami`` — LeHami symplectic Hamiltonian world model on video clips
 
 These are the lightweight composable form of each method. For full
 ``LightningModule`` implementations of 30+ SSL methods (BYOL, DINO, MAE,
@@ -1260,4 +1261,118 @@ def dinov2(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         prog_bar=True,
     )
 
+    return out
+
+
+def lehami(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for LeHami (symplectic Hamiltonian latent dynamics).
+
+    Encodes every frame of a clip to a position ``q``, estimates momenta ``p``
+    with Savitzky-Golay stencils, rolls the leapfrog flow out on its own
+    predictions from a causal anchor at frame 3, and scores each step against
+    the encoder's positions and the centered-stencil momenta. SIGReg on the
+    encoder's latents keeps them from collapsing.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - encoder: Maps frames ``[N, C, H, W]`` to features ``[N, D]``
+            - projector: Maps features ``[N, D]`` to positions ``[N, d]``
+            - flow: :class:`~stable_pretraining.methods.lehami.SeparableHamiltonianFlow`;
+              its ``dt`` is also the frame spacing of the momentum stencils
+            - lehami_loss: :class:`~stable_pretraining.losses.LeHamiLoss`
+            - action_encoder (optional): Maps actions ``[B, T - 1, a]`` to the
+              flow's action embedding; absent or ``None`` for passive dynamics
+        batch: Dict with ``"video"`` frames ``[B, T, C, H, W]`` and, when the
+            module has an action encoder, ``"action"`` ``[B, T - 1, a]`` or
+            longer, where action ``t`` leads from frame ``t`` to frame ``t + 1``.
+        stage: ``"fit"``, ``"validate"``, ``"test"`` or ``"predict"``.
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Detached positions ``q`` for every frame ``[B, T, d]``
+            - 'loss': ``pos_loss + momentum_weight * mom_loss + lamb * sigreg_loss``
+            - 'pos_loss', 'mom_loss', 'sigreg_loss': Its terms, see
+              :class:`~stable_pretraining.losses.LeHamiLoss`
+        The losses are computed in every stage but ``"predict"``, and need
+        clips of at least 7 frames: ``T = 14`` gives the paper's 8-step unroll.
+
+    Note:
+        Introduced in Yalovetzky, Balestriero & LeCun, "LeHami: Symplectic
+        Latent Dynamics for World Models", 2026. Under DDP, SIGReg's batch
+        statistics are per GPU when trained through Lightning or
+        :class:`~stable_pretraining.Manager`; see
+        :class:`~stable_pretraining.losses.LeHamiLoss`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import lehami
+            from stable_pretraining.methods.lehami import SeparableHamiltonianFlow
+
+            module = spt.Module(
+                forward=lehami,
+                encoder=encoder,  # frames -> [N, 512]
+                projector=torch.nn.Linear(512, 32),
+                flow=SeparableHamiltonianFlow(32, hidden_dim=1024),
+                lehami_loss=spt.losses.LeHamiLoss(lamb=0.25),
+            )
+            out = module({"video": torch.randn(4, 14, 3, 64, 64)}, stage="fit")
+    """
+    from .methods.lehami import (
+        CAUSAL_WINDOW,
+        CENTERED_HALFWIDTH,
+        causal_momentum,
+        centered_momentum,
+    )
+
+    video = batch["video"]
+    b, t = video.shape[:2]
+    q = self.projector(self.encoder(video.flatten(0, 1))).unflatten(0, (b, t))
+    out = {"embedding": q.detach()}
+    if stage == "predict":
+        return out
+
+    anchor = CAUSAL_WINDOW - 1
+    n_unroll = t - 1 - CENTERED_HALFWIDTH - anchor
+    if n_unroll < 1:
+        raise ValueError(f"clips need at least 7 frames, got {t}")
+    action_encoder = getattr(self, "action_encoder", None)
+    u = None
+    if action_encoder is not None:
+        if batch.get("action") is None:
+            raise ValueError("this model takes actions: pass batch['action']")
+        u = action_encoder(batch["action"].float())
+
+    dt = self.flow.dt
+    p_ref = centered_momentum(q, dt)  # frames 2 .. T - 3
+    q_t = q[:, anchor]
+    p_t = causal_momentum(q[:, : anchor + 1], dt)
+    q_pred, p_pred = [], []
+    for k in range(n_unroll):
+        q_t, p_t = self.flow(q_t, p_t, None if u is None else u[:, anchor + k])
+        q_pred.append(q_t)
+        p_pred.append(p_t)
+    # Step k lands on frame anchor + 1 + k; p_ref[:, i] is frame i + 2.
+    first = anchor + 1
+    lag = first - CENTERED_HALFWIDTH
+    loss, pos_loss, mom_loss, sigreg_loss = self.lehami_loss(
+        torch.stack(q_pred, 1),
+        torch.stack(p_pred, 1),
+        q[:, first : first + n_unroll],
+        p_ref[:, lag : lag + n_unroll],
+        q[:, CENTERED_HALFWIDTH : t - CENTERED_HALFWIDTH],
+        p_ref,
+    )
+    out.update(loss=loss, pos_loss=pos_loss, mom_loss=mom_loss, sigreg_loss=sigreg_loss)
+    for name in ("loss", "pos_loss", "mom_loss", "sigreg_loss"):
+        self.log(
+            f"{stage}/{name}",
+            out[name],
+            on_step=True,
+            on_epoch=True,
+            sync_dist=True,
+            prog_bar=name == "loss",
+        )
     return out

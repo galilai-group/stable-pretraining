@@ -28,22 +28,21 @@ Example::
     actions = torch.randn(4, 14, 1)  # action t leads from frame t to t + 1
 
     model.train()
-    output = model(video, actions)
-    output.loss.backward()
+    output = model({"video": video, "action": actions[:, :13]}, stage="fit")
+    output["loss"].backward()
 
     model.eval()
     q, p = model.rollout(video[:, :4], actions[:, 3:13])  # 10 steps ahead
 """
 
-from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import timm
 import torch
 import torch.nn as nn
-from transformers.utils import ModelOutput
 
 from stable_pretraining import Module
+from stable_pretraining.forward import lehami as lehami_forward
 from stable_pretraining.losses import LeHamiLoss
 
 CENTERED_HALFWIDTH = 2
@@ -232,25 +231,6 @@ class SeparableHamiltonianFlow(nn.Module):
         return q_next.to(q.dtype), p_next.to(p.dtype)
 
 
-@dataclass
-class LeHamiOutput(ModelOutput):
-    """Output of a LeHami forward pass.
-
-    :ivar loss: ``pos_loss + momentum_weight * mom_loss + lamb * sigreg_loss``.
-    :ivar embedding: Encoder positions ``q`` for every frame ``[B, T, d]``.
-    :ivar pos_loss: Rollout error on positions, averaged over steps.
-    :ivar mom_loss: Rollout error on momenta, averaged over steps.
-    :ivar sigreg_loss: SIGReg on the encoder's latents; see :class:`LeHamiLoss`
-        for whether it is per GPU or global under DDP.
-    """
-
-    loss: torch.Tensor = None
-    embedding: torch.Tensor = None
-    pos_loss: torch.Tensor = None
-    mom_loss: torch.Tensor = None
-    sigreg_loss: torch.Tensor = None
-
-
 class LeHami(Module):
     """LeHami: JEPA world model with a symplectic Hamiltonian predictor.
 
@@ -383,56 +363,22 @@ class LeHami(Module):
             raise ValueError(f"this model takes actions of size {self.action_dim}")
         return self.action_encoder(actions.float())
 
-    def forward(
-        self, video: torch.Tensor, actions: Optional[torch.Tensor] = None
-    ) -> LeHamiOutput:
-        """Rollout loss on a batch of clips.
+    def forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+        """Rollout loss on a batch of clips; see :func:`stable_pretraining.forward.lehami`.
 
         Args:
-            video: Frames ``[B, T, C, H, W]`` with ``T >= 7``.
-            actions: ``[B, T - 1, action_dim]`` or longer, where action ``t``
-                leads from frame ``t`` to frame ``t + 1``; ``None`` when
-                ``action_dim`` is 0.
+            batch: Dict with ``"video"`` ``[B, T, C, H, W]`` (``T >= 7`` except
+                in ``"predict"``) and, when ``action_dim > 0``, ``"action"``
+                ``[B, T - 1, action_dim]`` or longer, where action ``t`` leads
+                from frame ``t`` to frame ``t + 1``.
+            stage: ``"fit"``, ``"validate"``, ``"test"`` or ``"predict"``.
 
         Returns:
-            :class:`LeHamiOutput`. The losses are computed in eval mode too,
-            for validation.
+            Dict with ``"embedding"`` (positions ``q`` ``[B, T, d]``) and, except
+            in ``"predict"``, ``"loss"``, ``"pos_loss"``, ``"mom_loss"`` and
+            ``"sigreg_loss"``.
         """
-        t = video.shape[1]
-        anchor = CAUSAL_WINDOW - 1
-        n_unroll = t - 1 - CENTERED_HALFWIDTH - anchor
-        if n_unroll < 1:
-            raise ValueError(f"clips need at least 7 frames, got {t}")
-        q = self.encode(video)
-        p_ref = centered_momentum(q, self.dt)  # frames 2 .. T - 3
-        u = self._embed_actions(actions)
-
-        q_t = q[:, anchor]
-        p_t = causal_momentum(q[:, : anchor + 1], self.dt)
-        q_pred, p_pred = [], []
-        for k in range(n_unroll):
-            q_t, p_t = self.flow(q_t, p_t, None if u is None else u[:, anchor + k])
-            q_pred.append(q_t)
-            p_pred.append(p_t)
-        # Step k lands on frame anchor + 1 + k; p_ref[:, i] is frame i + 2.
-        first = anchor + 1
-        loss, pos_loss, mom_loss, sigreg_loss = self.lehami_loss(
-            torch.stack(q_pred, 1),
-            torch.stack(p_pred, 1),
-            q[:, first : first + n_unroll],
-            p_ref[
-                :, first - CENTERED_HALFWIDTH : first - CENTERED_HALFWIDTH + n_unroll
-            ],
-            q[:, CENTERED_HALFWIDTH : t - CENTERED_HALFWIDTH],
-            p_ref,
-        )
-        return LeHamiOutput(
-            loss=loss,
-            embedding=q.detach(),
-            pos_loss=pos_loss,
-            mom_loss=mom_loss,
-            sigreg_loss=sigreg_loss,
-        )
+        return lehami_forward(self, batch, stage)
 
     def rollout(
         self,
