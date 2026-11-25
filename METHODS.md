@@ -107,6 +107,8 @@ The following loss classes are importable from `stable_pretraining.losses`:
 | `NTXEntLoss` | SimCLR, NNCLR, MoCov2, MoCov3 |
 | `BYOLLoss` | BYOL |
 | `VICRegLoss` | VICReg, VICRegL |
+| `RDMReg` | Rectified LpJEPA |
+| `SlicedWassersteinDistance` | Rectified LpJEPA (used by `RDMReg`) |
 | `BarlowTwinsLoss` | Barlow Twins |
 | `SwAVLoss` | SwAV |
 | `DINOv1Loss` | DINO, iBOT, MIMRefiner |
@@ -115,6 +117,3 @@ The following loss classes are importable from `stable_pretraining.losses`:
 | `MAELoss` | MAE |
 | `CLIPLoss` | Multimodal CLIP-style objectives |
 | `NegativeCosineSimilarity` | SimSiam, general use |
-
-LpJEPA's `RDMReg` and `SlicedWassersteinDistance` helpers are available from
-`stable_pretraining.methods.lpjepa`.

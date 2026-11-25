@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from torchmetrics.classification import MulticlassAccuracy
 
 import stable_pretraining as spt
-from stable_pretraining.methods.lpjepa import RDMReg
+from stable_pretraining.losses import RDMReg
 
 from ._interaction_helpers import _Trace, _assert_tree_close, _snapshot
 

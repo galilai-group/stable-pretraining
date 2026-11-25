@@ -227,7 +227,7 @@ LpJEPA
 
 - ``backbone``: Feature extraction network
 - ``projector``: Projection head; the forward function applies ReLU to its output
-- ``rdmreg``: ``RDMReg`` from ``stable_pretraining.methods.lpjepa``
+- ``rdmreg``: :class:`~stable_pretraining.losses.RDMReg`
 - ``inv_weight``: Weight of the two-view mean squared error
 - ``rdmreg_weight``: Weight of the distribution-matching loss
 
@@ -256,7 +256,7 @@ LpJEPA
         in_features: 512
         out_features: 128
       rdmreg:
-        _target_: stable_pretraining.methods.lpjepa.RDMReg
+        _target_: stable_pretraining.losses.RDMReg
         num_slices: 1024
         p: 1.0
         mu: 0.0

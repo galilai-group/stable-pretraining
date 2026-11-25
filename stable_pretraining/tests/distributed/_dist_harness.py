@@ -687,7 +687,7 @@ def w_rdmreg_matches_global(rank: int, world_size: int, p: float) -> None:
         world_size: Number of processes in the initialized group.
         p: Shape parameter of the target distribution.
     """
-    from stable_pretraining.methods.lpjepa import RDMReg
+    from stable_pretraining.losses import RDMReg
 
     torch.set_num_threads(1)
     torch.manual_seed(100 + rank)

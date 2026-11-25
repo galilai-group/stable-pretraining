@@ -19,6 +19,9 @@ from .joint_embedding import (
     SwAVLoss,
 )
 
+# Rectified distribution matching
+from .lpjepa import RDMReg, SlicedWassersteinDistance
+
 # Multimodal losses
 from .multimodal import CLIPLoss
 
@@ -45,6 +48,9 @@ __all__ = [
     "NTXEntLoss",
     "SwAVLoss",
     "CLIPLoss",
+    # Rectified distribution matching
+    "RDMReg",
+    "SlicedWassersteinDistance",
     # Reconstruction
     "mae",
     "MAELoss",

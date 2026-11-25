@@ -37,7 +37,6 @@ from torchvision.transforms import InterpolationMode
 
 import stable_pretraining as spt
 from stable_pretraining.data import transforms as T
-from stable_pretraining.methods.lpjepa import RDMReg
 
 
 def lpjepa_scheduler(
@@ -247,7 +246,7 @@ def main(argv: list[str] | None = None) -> None:
         backbone=backbone,
         projector=projector,
         forward=spt.forward.lpjepa,
-        rdmreg=RDMReg(num_slices=8192, p=1.0, mu=0.0, sigma=None),
+        rdmreg=spt.losses.RDMReg(num_slices=8192, p=1.0, mu=0.0, sigma=None),
         inv_weight=25.0,
         rdmreg_weight=250.0,
         hparams={

@@ -11,11 +11,8 @@ from timm.models.vision_transformer import VisionTransformer
 
 from stable_pretraining import Module
 from stable_pretraining.forward import lpjepa
-from stable_pretraining.methods.lpjepa import (
-    LpJEPA,
-    RDMReg,
-    SlicedWassersteinDistance,
-)
+from stable_pretraining.losses import RDMReg, SlicedWassersteinDistance
+from stable_pretraining.methods import LpJEPA
 
 pytestmark = pytest.mark.unit
 
