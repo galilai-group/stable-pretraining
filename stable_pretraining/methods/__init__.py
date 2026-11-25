@@ -11,6 +11,7 @@ from .ibot import iBOT
 from .igpt import iGPT
 from .ijepa import IJEPA
 from .mae import MAE
+from .lehami import LeHami
 from .lejepa import LeJEPA
 from .maskfeat import MaskFeat
 from .mim_refiner import MIMRefiner
@@ -46,6 +47,7 @@ __all__ = [
     "iGPT",
     "IJEPA",
     "MAE",
+    "LeHami",
     "LeJEPA",
     "MaskFeat",
     "MIMRefiner",

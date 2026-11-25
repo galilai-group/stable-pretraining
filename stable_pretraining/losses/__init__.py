@@ -22,6 +22,9 @@ from .joint_embedding import (
 # Multimodal losses
 from .multimodal import CLIPLoss
 
+# World-model losses
+from .lehami import LeHamiLoss
+
 # Reconstruction losses
 from .reconstruction import mae, MAELoss
 
@@ -45,6 +48,8 @@ __all__ = [
     "NTXEntLoss",
     "SwAVLoss",
     "CLIPLoss",
+    # World models
+    "LeHamiLoss",
     # Reconstruction
     "mae",
     "MAELoss",
