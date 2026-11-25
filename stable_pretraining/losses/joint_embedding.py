@@ -2,9 +2,10 @@
 
 This module contains joint embedding methods that learn to embed different views
 of the same image close together in representation space. Includes both contrastive
-(NTXentLoss) and non-contrastive (BYOL, VICReg, Barlow Twins) methods.
+(NTXentLoss) and non-contrastive (BYOL, VICReg, Barlow Twins, CPLearn) methods.
 """
 
+import math
 from typing import Optional
 
 import torch
@@ -217,6 +218,136 @@ class SwAVLoss(torch.nn.Module):
             Q *= (r / u).unsqueeze(1)
             Q *= (c / torch.sum(Q, dim=0)).unsqueeze(0)
         return (Q / torch.sum(Q, dim=0, keepdim=True)).T
+
+
+class CPLearnLoss(torch.nn.Module):
+    """SSL objective used in CPLearn :cite:`sansone2025collapse`.
+
+    Combines an invariance term, the cross-entropy between the code assignments
+    ``P`` and ``P'`` of two views, with a prior-matching term that pulls the
+    batch-averaged assignment towards the uniform prior ``q`` over the ``c``
+    dictionary codes (Eq. 2 of the paper)::
+
+        L = beta * CE(P, P') + prior(mean_i P_i, q)
+
+    The inputs are the logits produced by
+    :class:`~stable_pretraining.methods.cplearn.CPLearnProjector`. No
+    stop-gradient is used: gradients flow through both views. :meth:`terms`
+    returns the two terms alongside the loss for logging.
+
+    Note:
+        The paper and the official code (https://github.com/emsansone/CPLearn)
+        disagree on several points. The defaults follow the official code,
+        which produced the reported results:
+
+        - ``prior``: Eq. 2 and Algorithm 1 use ``CE(q, mean P)``. Appendix N
+          reports that, with the larger ImageNet-100 backbone, this term
+          becomes infinite when codes are unused early in training
+          (``log 0``) and replaces it with the reverse ``KL(mean P || q)``.
+          The official code uses the reverse KL for every experiment, CIFAR
+          included. ``"reverse_kl"`` is the default and ``"ce"`` gives Eq. 2.
+        - ``symmetric``: Eq. 2 is one-directional (``P`` is the target and the
+          prior only sees the first view) and the paper never symmetrizes it.
+          The official code averages both directions, each with its own prior
+          term. ``True`` (default) matches the official code and ``False``
+          matches Eq. 2.
+        - ``gather_distributed``: the paper does not say whether the batch
+          mean in the prior term spans all GPUs. The official code uses the
+          local batch, which is the default. ``True`` estimates the mean over
+          the global batch with an autograd-aware all-gather.
+
+    Args:
+        beta (float, optional): Weight of the invariance term. Default is 1.0,
+            the value selected for ResNet-18 on CIFAR-10 (Appendix L). ResNet-8
+            used 0.05-0.5 depending on the dictionary size (Table 7) and
+            ViT-S on ImageNet-100 used 0.25 (Appendix M). Too large a value
+            leads to cluster collapse (Table 9).
+        prior (str, optional): ``"reverse_kl"`` for ``KL(mean P || q)`` or
+            ``"ce"`` for ``CE(q, mean P)``. Default is ``"reverse_kl"``.
+        symmetric (bool, optional): Average the loss over both directions.
+            Default is True.
+        gather_distributed (bool, optional): Compute the batch mean of the
+            prior term over all ranks. Default is False.
+    """
+
+    def __init__(
+        self,
+        beta: float = 1.0,
+        prior: str = "reverse_kl",
+        symmetric: bool = True,
+        gather_distributed: bool = False,
+    ):
+        super().__init__()
+        if prior not in ("reverse_kl", "ce"):
+            raise ValueError(f"prior must be 'reverse_kl' or 'ce', got {prior!r}")
+        self.beta = beta
+        self.prior = prior
+        self.symmetric = symmetric
+        self.gather_distributed = gather_distributed
+
+    def _log_mean_prob(self, log_p: torch.Tensor) -> torch.Tensor:
+        """Log of the batch-averaged assignment probabilities, shape ``[c]``."""
+        log_sum = torch.logsumexp(log_p, dim=0)
+        n = torch.tensor(float(log_p.size(0)), device=log_p.device)
+        if self.gather_distributed:
+            # Single process: both collectives are no-ops.
+            log_sum = torch.logsumexp(torch.stack(all_gather(log_sum)), dim=0)
+            n = all_reduce(n)
+        return log_sum - n.log()
+
+    def _prior_loss(self, log_p: torch.Tensor) -> torch.Tensor:
+        """Prior-matching term between the batch-mean assignment and uniform."""
+        log_mean = self._log_mean_prob(log_p)
+        if self.prior == "ce":
+            # CE(q, mean P) with q_j = 1/c.
+            return -log_mean.mean()
+        # KL(mean P || q) with q_j = 1/c.
+        return (log_mean.exp() * (log_mean + math.log(log_mean.numel()))).sum()
+
+    @staticmethod
+    def _cross_entropy(log_p_target: torch.Tensor, log_p: torch.Tensor) -> torch.Tensor:
+        """Batch-mean cross-entropy ``CE(P_target, P)`` from log-probabilities."""
+        return -(log_p_target.exp() * log_p).sum(dim=-1).mean()
+
+    def terms(
+        self, logits_1: torch.Tensor, logits_2: torch.Tensor
+    ) -> dict[str, torch.Tensor]:
+        """Compute the CPLearn loss together with its two terms, for logging.
+
+        Args:
+            logits_1 (torch.Tensor): Code logits of the first view, shape ``[N, c]``.
+            logits_2 (torch.Tensor): Code logits of the second view, shape ``[N, c]``.
+
+        Returns:
+            dict[str, torch.Tensor]: Scalars ``"loss"`` (``beta * invariance +
+            prior``), ``"invariance"`` and ``"prior"``. With ``symmetric=True``
+            both terms are averaged over the two directions.
+        """
+        # Large dictionaries and mixed precision: work in float32.
+        log_p1 = F.log_softmax(logits_1.float(), dim=-1)
+        log_p2 = F.log_softmax(logits_2.float(), dim=-1)
+        invariance = self._cross_entropy(log_p1, log_p2)
+        prior = self._prior_loss(log_p1)
+        if self.symmetric:
+            invariance = 0.5 * (invariance + self._cross_entropy(log_p2, log_p1))
+            prior = 0.5 * (prior + self._prior_loss(log_p2))
+        return {
+            "loss": self.beta * invariance + prior,
+            "invariance": invariance,
+            "prior": prior,
+        }
+
+    def forward(self, logits_1: torch.Tensor, logits_2: torch.Tensor) -> torch.Tensor:
+        """Compute the CPLearn loss.
+
+        Args:
+            logits_1 (torch.Tensor): Code logits of the first view, shape ``[N, c]``.
+            logits_2 (torch.Tensor): Code logits of the second view, shape ``[N, c]``.
+
+        Returns:
+            torch.Tensor: Scalar loss value.
+        """
+        return self.terms(logits_1, logits_2)["loss"]
 
 
 class InfoNCELoss(torch.nn.Module):

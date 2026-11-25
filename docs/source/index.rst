@@ -23,6 +23,7 @@
     guides/online_evaluation
     guides/resume
     guides/jet
+    guides/cplearn
     guides/agents
     cache_dir
     cli

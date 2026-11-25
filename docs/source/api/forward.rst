@@ -247,6 +247,39 @@ Barlow Twins
         _target_: stable_pretraining.losses.BarlowTwinsLoss
         lambda_: 0.005
 
+CPLearn
+~~~~~~~
+
+.. autofunction:: cplearn
+
+**Required Module Attributes:**
+
+- ``backbone``: Feature extraction network
+- ``projector``: :class:`~stable_pretraining.methods.cplearn.CPLearnProjector` (linear + batch norm + tanh, matched against a frozen random code dictionary)
+- ``cplearn_loss``: CPLearn loss (invariance + uniform prior matching)
+
+**Key Features:**
+
+- Frozen dictionary of random +/-1 codes; the projector outputs code logits
+- No stop-gradient, momentum encoder, predictor or clustering step
+- Larger dictionaries (``dictionary_size`` much larger than ``projector_dim``) decorrelate and cluster the embeddings
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.cplearn
+      backbone: ...
+      projector:
+        _target_: stable_pretraining.methods.cplearn.CPLearnProjector
+        in_dim: 512
+        projector_dim: 2048
+        dictionary_size: 16384
+      cplearn_loss:
+        _target_: stable_pretraining.losses.CPLearnLoss
+        beta: 1.0
+
 Supervised
 ~~~~~~~~~~
 

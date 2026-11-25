@@ -10,6 +10,7 @@ Available forward functions:
     - ``byol`` — BYOL momentum self-distillation
     - ``vicreg`` — VICReg variance-invariance-covariance regularization
     - ``barlow_twins`` — Barlow Twins cross-correlation alignment
+    - ``cplearn`` — CPLearn prior matching over a frozen random code dictionary
     - ``swav`` — SwAV online clustering
     - ``nnclr`` — NNCLR nearest-neighbor contrastive learning
     - ``dino`` — DINO self-distillation with multi-crop
@@ -521,6 +522,104 @@ def barlow_twins(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Ten
                 f"{stage}/loss",
                 out["loss"],
                 on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+            )
+    else:
+        # Single-view validation
+        out["embedding"] = self.backbone(batch["image"])
+        if "label" in batch:
+            out["label"] = batch["label"]
+
+    return out
+
+
+def cplearn(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+    """Forward function for CPLearn (Collapse-Proof Non-Contrastive SSL).
+
+    CPLearn projects embeddings onto a frozen dictionary of random bipolar
+    codes and minimizes the cross-entropy between the code assignments of two
+    views plus a term matching the batch-averaged assignment to a uniform
+    prior. This avoids collapse without stop-gradient, momentum encoder or
+    predictor.
+
+    Args:
+        self: Module instance (automatically bound) with required attributes:
+            - backbone: Feature extraction network
+            - projector: Code projector returning logits (``CPLearnProjector``)
+            - cplearn_loss: CPLearn loss (``CPLearnLoss``)
+        batch: Either a list of view dicts (from MultiViewTransform) or
+            a single dict (for validation/single-view)
+        stage: Training stage ('train', 'val', or 'test')
+
+    Returns:
+        Dictionary containing:
+            - 'embedding': Feature representations from backbone
+            - 'loss': CPLearn loss (during training only)
+            - 'label': Labels if present (for probes/callbacks)
+
+        During training the invariance and prior terms are also logged as
+        ``{stage}/cplearn_invariance`` and ``{stage}/cplearn_prior``.
+
+    Note:
+        Introduced in the CPLearn paper :cite:`sansone2025collapse`.
+
+    Example:
+        ::
+
+            import torch
+            import stable_pretraining as spt
+            from stable_pretraining.forward import cplearn
+            from stable_pretraining.methods.cplearn import CPLearnProjector
+
+            backbone = spt.backbone.from_torchvision("resnet18", low_resolution=True)
+            backbone.fc = torch.nn.Identity()
+            module = spt.Module(
+                forward=cplearn,
+                backbone=backbone,
+                projector=CPLearnProjector(
+                    512, projector_dim=2048, dictionary_size=16384
+                ),
+                cplearn_loss=spt.losses.CPLearnLoss(beta=1.0),
+                optim={"optimizer": {"type": "Adam", "lr": 1e-3, "weight_decay": 1e-4}},
+            )
+    """
+    out = {}
+
+    views = _get_views_list(batch)
+    if views is not None:
+        # Multi-view training - CPLearn requires exactly 2 views
+        if len(views) != 2:
+            raise ValueError(
+                f"CPLearn requires exactly 2 views, got {len(views)}. "
+                "For other configurations, please implement a custom forward function."
+            )
+
+        embeddings = [self.backbone(view["image"]) for view in views]
+        out["embedding"] = torch.cat(embeddings, dim=0)
+
+        # Concatenate labels for callbacks
+        if "label" in views[0]:
+            out["label"] = torch.cat([view["label"] for view in views], dim=0)
+
+        if self.training:
+            logits = [self.projector(emb) for emb in embeddings]
+            terms = self.cplearn_loss.terms(logits[0], logits[1])
+            out["loss"] = terms["loss"]
+            self.log(
+                f"{stage}/loss",
+                out["loss"],
+                on_step=True,
+                on_epoch=True,
+                sync_dist=True,
+            )
+            # The paper tunes beta so that both terms decrease.
+            self.log_dict(
+                {
+                    f"{stage}/cplearn_invariance": terms["invariance"].detach(),
+                    f"{stage}/cplearn_prior": terms["prior"].detach(),
+                },
+                on_step=False,
                 on_epoch=True,
                 sync_dist=True,
             )

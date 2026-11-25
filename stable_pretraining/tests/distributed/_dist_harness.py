@@ -658,3 +658,44 @@ def w_clip_crossgpu_matches_global(rank, world_size):
 
     ref = _ref_clip_global(feats_i_global, feats_j_global, 0.07)
     assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+def w_cplearn_gather_matches_global(rank, world_size):
+    """CPLearn with ``gather_distributed=True`` == single process on the global batch.
+
+    Each rank holds an equal-sized slice of a shared global batch. The prior
+    term uses the batch mean gathered from all ranks, so the mean of the
+    per-rank losses equals the single-process loss. For the gradients, every
+    rank's loss depends on every slice through the gather, and the gather's
+    backward sums those contributions: each local slice receives
+    ``world_size`` times its share of the global gradient, which DDP's
+    gradient averaging divides back out. Without the gather the losses differ.
+    """
+    from stable_pretraining.losses import CPLearnLoss
+    from stable_pretraining.utils import all_reduce
+
+    torch.manual_seed(0)  # identical GLOBAL batch on every rank
+    n, c = 4, 32
+    l1_global = torch.randn(n * world_size, c) * 3
+    l2_global = torch.randn(n * world_size, c) * 3
+    rows = slice(rank * n, (rank + 1) * n)
+
+    for prior in ("reverse_kl", "ce"):
+        ref_l1 = l1_global.clone().requires_grad_()
+        ref_l2 = l2_global.clone().requires_grad_()
+        ref = CPLearnLoss(beta=0.5, prior=prior)(ref_l1, ref_l2)
+        ref.backward()
+
+        l1 = l1_global[rows].clone().requires_grad_()
+        l2 = l2_global[rows].clone().requires_grad_()
+        local = CPLearnLoss(beta=0.5, prior=prior, gather_distributed=True)(l1, l2)
+        local.backward()
+        avg = all_reduce(local.detach().clone()) / world_size
+        assert torch.allclose(avg, ref.detach(), atol=1e-5), (prior, avg, ref)
+        for grad, ref_grad in ((l1.grad, ref_l1.grad), (l2.grad, ref_l2.grad)):
+            expected = world_size * ref_grad[rows]
+            assert torch.allclose(grad, expected, atol=1e-5), (prior, grad, expected)
+
+        no_gather = CPLearnLoss(beta=0.5, prior=prior)(l1.detach(), l2.detach())
+        avg_no_gather = all_reduce(no_gather.clone()) / world_size
+        assert not torch.allclose(avg_no_gather, ref.detach(), atol=1e-3), prior

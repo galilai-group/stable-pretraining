@@ -40,3 +40,8 @@ class TestCollectives:
         H.run_distributed(
             H.w_clip_crossgpu_matches_global, world_size=2, backend="gloo"
         )
+
+    def test_cplearn_gathered_prior_matches_global(self):
+        H.run_distributed(
+            H.w_cplearn_gather_matches_global, world_size=2, backend="gloo"
+        )
