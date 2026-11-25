@@ -43,7 +43,7 @@ Every rank evaluates the global loss. Gather's backward sum and DDP's
 parameter-gradient average together yield the global-reference parameter
 gradient; no extra world-size factor is applied to the loss.
 
-The example uses existing framework components:
+The benchmark uses five framework components.
 
 1. `DataModule` supplies two independent augmented view dictionaries.
 2. `spt.SimCo` combines a backbone, projector, `SimCoLoss` and `forward.simco`.
@@ -60,7 +60,7 @@ Validation accepts a single view dictionary.
 
 ## Recipe and step budget
 
-`examples/simco_cifar.py` uses a CIFAR-stem ResNet18, a biased
+`benchmarks/cifar/simco/simco_cifar.py` uses a CIFAR-stem ResNet18, a biased
 `512 -> 128 -> 128` projector with ReLU and no projector BatchNorm, SGD
 learning rate 0.03, momentum 0.9 and weight decay 5e-4. The default **500-epoch**,
 **global batch 256** recipe warms up for 10 epochs and then applies cosine
@@ -92,15 +92,15 @@ both datasets once in an existing data directory:
 
 ```bash
 export CIFAR_DATA_DIR=/absolute/path/to/cifar
-python examples/simco_cifar.py --dataset cifar10 --data-dir "$CIFAR_DATA_DIR" --download-only
-python examples/simco_cifar.py --dataset cifar100 --data-dir "$CIFAR_DATA_DIR" --download-only
+python benchmarks/cifar/simco/simco_cifar.py --dataset cifar10 --data-dir "$CIFAR_DATA_DIR" --download-only
+python benchmarks/cifar/simco/simco_cifar.py --dataset cifar100 --data-dir "$CIFAR_DATA_DIR" --download-only
 ```
 
 Within an allocation containing two GPUs, run a short real-data check first:
 
 ```bash
 python -m torch.distributed.run --standalone --nnodes=1 --nproc-per-node=2 \
-  examples/simco_cifar.py --devices 2 --dataset cifar10 \
+  benchmarks/cifar/simco/simco_cifar.py --devices 2 --dataset cifar10 \
   --data-dir "$CIFAR_DATA_DIR" --output-dir outputs/simco-cifar10-check \
   --batch-size 256 --epochs 1 --max-steps 10 --warmup-epochs 0
 ```
@@ -109,31 +109,26 @@ Then start independent full experiments, using distinct output directories:
 
 ```bash
 python -m torch.distributed.run --standalone --nnodes=1 --nproc-per-node=2 \
-  examples/simco_cifar.py --devices 2 --dataset cifar10 \
+  benchmarks/cifar/simco/simco_cifar.py --devices 2 --dataset cifar10 \
   --data-dir "$CIFAR_DATA_DIR" --output-dir outputs/simco-cifar10-500 \
   --batch-size 256 --epochs 500 --warmup-epochs 10
 
 python -m torch.distributed.run --standalone --nnodes=1 --nproc-per-node=2 \
-  examples/simco_cifar.py --devices 2 --dataset cifar100 \
+  benchmarks/cifar/simco/simco_cifar.py --devices 2 --dataset cifar100 \
   --data-dir "$CIFAR_DATA_DIR" --output-dir outputs/simco-cifar100-500 \
   --batch-size 256 --epochs 500 --warmup-epochs 10
 ```
 
-The example supports a single node. Use exactly one launcher process; torchrun
+The benchmark supports a single node. Use exactly one launcher process; torchrun
 creates the two DDP workers. On Slurm, one task requesting two GPUs can invoke
 the command through `srun --ntasks=1`. Do not create two Slurm launcher tasks.
-For one GPU, invoke `python examples/simco_cifar.py --devices 1 ...` directly.
+For one GPU, invoke `python benchmarks/cifar/simco/simco_cifar.py --devices 1 ...` directly.
 See the official [torchrun documentation](https://docs.pytorch.org/docs/stable/elastic/run.html)
 for launcher configuration.
 
-Start each training horizon independently. A two-epoch or ten-step checkpoint
-was built with a different cosine schedule and cannot establish a 500-epoch
-continuation result. Resume an interrupted SimCo run using
-`--resume /absolute/path/to/latest.ckpt` with its original dataset, model,
-split, device count and full scheduling horizon. The synthetic Manager
-integration test verifies complete-state checkpoint continuation. Continuation
-from either completed 500-epoch checkpoint and automatic Slurm requeue remain
-unverified.
+To resume an interrupted run, pass `--resume /absolute/path/to/latest.ckpt` and
+keep the original dataset, model, split, device count and scheduling horizon.
+The learning-rate schedule depends on the total training budget.
 
 ## Artifacts and validation
 
@@ -174,7 +169,7 @@ broader representation comparisons. Reserve official test evaluation until
 the protocol is fixed. Equal-temperature cross-view InfoNCE is a useful
 ablation supported by `--inter-temperature 0.1`, but is not full SimCLR.
 
-## Tests and experiment status
+## Tests
 
 Run only unit tests locally, following `TESTING.md`:
 
@@ -182,7 +177,7 @@ Run only unit tests locally, following `TESTING.md`:
 python -m pytest stable_pretraining/tests -m unit
 ```
 
-On Linux CI or Oscar, the distributed regression suite runs actual two-process
+The distributed integration suite on Linux runs two-process
 Gloo collectives. It compares the loss, both-view input gradients, DDP
 parameter gradients, two SGD updates and momentum state against an independent
 global-batch reference. A separate two-process Manager check verifies shared
@@ -200,65 +195,17 @@ python -m pytest stable_pretraining/tests/integration/test_simco_cifar.py \
   stable_pretraining/tests/integration/test_simco_ddp.py -m integration -q
 ```
 
-The historical Linux validation output from job 7816077 reports all five SimCo
-integration tests passed with no skips, including the full-state synthetic continuation test and
-real two-process gradient/update checks. The training logs also report three
-distributed tests passed before each 500-epoch run.
+## Reported 500-epoch results
 
-Historical validation job 7822625, before the subsequent utility/test fixes,
-passed all 81 SimCo unit cases on Linux CPU. The whole unit suite
-reported 3,820 passed, 11 failed and 20 skipped. Pristine upstream at
-`ab836bf699a2be712dfcf980a5eb70d36391e876`, run in the same environment, reported
-3,739 passed, the same 11 failed, and 20 skipped. Failure-node sets and error
-causes match: one home-directory symlink assertion and ten existing statistics
-tests using unsupported Gloo `ReduceOp.AVG` under PyTorch 2.6. There are no
-additional failing cases in that SimCo comparison, but the whole suite returned
-a nonzero exit code.
-
-The statistics helper now uses differentiable `SUM / world_size` instead of
-unsupported Gloo `AVG`. The tilde-expansion regression compares resolved cache
-paths and exercises isolated direct, parent-component and symlink home layouts.
-A subsequent user-provided `unit-comparison.json` reports that both the SimCo
-unit command and complete unit-suite command exited with code 0 after these
-fixes, with no failing node IDs and no baseline run needed. This run used CPU
-with inherited Slurm/elastic/MPI/rank variables cleared. Its job ID, test/skip
-counts, duration, source hashes and integration results were not supplied;
-post-fix integration execution and CI status remain unverified. The historical
-counts above remain the record of the pre-fix run. These utility/test fixes do
-not change the SimCo objective or recipe, so the completed 500-epoch training
-runs do not need to be repeated.
-
-### Reported 500-epoch results
-
-On 2026-10-22, user-provided Oscar configurations and summaries recorded the
-following independently initialized runs, each with 500 epochs, 87,500 updates,
-two RTX A5000 GPUs, DDP, SyncBatchNorm, global batch 256, and seed 0:
+Each dataset used a separate training run with seed 0, two RTX A5000 GPUs,
+DDP with SyncBatchNorm, and global batch size 256. The table reports the
+online linear probe's highest and final top-1 accuracy on the 5,000 held-out
+validation images. Each run completed 87,500 optimizer steps.
 
 | Dataset | Best online validation top-1 | Final online validation top-1 | Final SSL loss | Wall time |
 |---|---:|---:|---:|---:|
 | CIFAR-10 | 88.58% | 88.18% | 1.0838 | 2.69 h |
 | CIFAR-100 | 60.76% | 60.34% | 1.0864 | 2.88 h |
 
-The environment records PyTorch 2.6.0+cu124, torchvision 0.21.0+cu124, and
-Lightning 2.6.6. Both complete protocol hashes agree between config and summary.
-These are **online probe results on held-out training-set validation images**,
-not frozen linear evaluation, official test accuracy, or a reproduction of
-paper accuracy. The best checkpoints were selected using validation accuracy;
-the table reports final accuracy separately.
-
-The training logs confirm both runs reached `max_epochs=500`. A subsequent
-Oscar validation checked the original protocol/split hashes, complete disjoint
-45,000/5,000 partitions, and final checkpoint epoch 499 / step 87,500 with two
-populated optimizer states and saved probe parameters. It also confirmed metric
-CSV files exist. The received local split copies were truncated during transfer;
-the original scratch files passed these checks.
-
-Full metric CSV, checkpoint files and prediction shards have not been transferred
-for local inspection. CSV contents and prediction-derived accuracy remain
-unchecked. The passing continuation test uses a new synthetic checkpoint rather
-than resuming either completed 500-epoch checkpoint. Compact results and provenance
-are recorded under `benchmarks/cifar/simco/`.
-
-Earlier ten-step and two-epoch CIFAR-10 checks were separate runs with different
-scheduler horizons and must not be joined into a continuous training curve.
-Copy final artifacts to durable storage when using temporary scratch.
+The benchmark directory contains the full-precision metrics, environment
+versions, and protocol and split hashes in `benchmarks/cifar/simco/results.json`.

@@ -1,12 +1,9 @@
-"""SimCo on CIFAR-10 and CIFAR-100
-================================
-
-Train SimCo through Module, OnlineProbe, and Manager.
+"""Train SimCo on CIFAR-10 and CIFAR-100 through Module, OnlineProbe, and Manager.
 
 This follows SimCo's two-view dual-temperature objective (CVPR 2022).
 The reserved validation split and FP32 recipe are adaptations of author settings.
-Run ``python examples/simco_cifar.py --help`` for all options.
-"""  # noqa: D205, D415 -- Sphinx-Gallery requires a section title.
+Run ``python benchmarks/cifar/simco/simco_cifar.py --help`` for all options.
+"""
 
 import argparse
 import hashlib
@@ -518,7 +515,7 @@ def _run(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    """Prepare data or run the CIFAR SimCo training example."""
+    """Prepare data or run the SimCo CIFAR benchmark."""
     args = _parser().parse_args()
     args.data_dir = args.data_dir.expanduser().resolve()
     if args.download_only:

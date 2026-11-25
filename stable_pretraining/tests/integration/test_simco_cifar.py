@@ -15,6 +15,9 @@ import torch
 import stable_pretraining as spt
 
 pytestmark = pytest.mark.integration
+BENCHMARK = (
+    Path(__file__).resolve().parents[3] / "benchmarks/cifar/simco/simco_cifar.py"
+)
 
 
 def test_short_training_updates_encoder_validates_and_saves_probe(
@@ -24,9 +27,7 @@ def test_short_training_updates_encoder_validates_and_saves_probe(
         # Upstream's signal diagnostics require POSIX; training math is unchanged.
         manager_module = importlib.import_module("stable_pretraining.manager")
         monkeypatch.setattr(manager_module, "print_signal_info", lambda *args: None)
-    example = runpy.run_path(
-        str(Path(__file__).resolve().parents[3] / "examples" / "simco_cifar.py")
-    )
+    example = runpy.run_path(str(BENCHMARK))
     original_class = spt.SimCo
     captured = {}
 
@@ -103,9 +104,7 @@ def test_manager_resume_restores_full_training_state_before_continuing(
     if os.name == "nt":
         manager_module = importlib.import_module("stable_pretraining.manager")
         monkeypatch.setattr(manager_module, "print_signal_info", lambda *args: None)
-    example = runpy.run_path(
-        str(Path(__file__).resolve().parents[3] / "examples" / "simco_cifar.py")
-    )
+    example = runpy.run_path(str(BENCHMARK))
     original_trainer = pl.Trainer
     trainers = []
     restored = {}

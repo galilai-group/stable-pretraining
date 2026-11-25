@@ -16,9 +16,8 @@ pytestmark = pytest.mark.unit
 
 @pytest.fixture(scope="module")
 def example():
-    return runpy.run_path(
-        str(Path(__file__).resolve().parents[3] / "examples" / "simco_cifar.py")
-    )
+    repository = Path(__file__).resolve().parents[3]
+    return runpy.run_path(str(repository / "benchmarks/cifar/simco/simco_cifar.py"))
 
 
 def _args(example):

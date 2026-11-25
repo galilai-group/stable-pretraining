@@ -215,7 +215,7 @@ def test_two_rank_example_trains_validates_and_saves_shared_artifacts(
         "--standalone",
         "--nnodes=1",
         "--nproc-per-node=2",
-        str(repository / "examples" / "simco_cifar.py"),
+        str(repository / "benchmarks/cifar/simco/simco_cifar.py"),
         "--synthetic",
         "--accelerator",
         "cpu",
