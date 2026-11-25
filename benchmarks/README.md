@@ -47,6 +47,16 @@ python benchmarks/cifar10/barlow-resnet18.py
 python benchmarks/cifar10/nnclr-resnet18.py
 ```
 
+### Pendulum (LeHami)
+
+CPU-scale world-model check on rendered pendulum videos; no download needed.
+Global batch size 32 (single process). Setup, commands and results are in
+[`pendulum/RESULTS.md`](pendulum/RESULTS.md).
+
+```bash
+python benchmarks/pendulum/lehami_pendulum.py --model lehami --out runs/lehami
+```
+
 ## Notes
 
 - The data directory will be created automatically if it doesn't exist
