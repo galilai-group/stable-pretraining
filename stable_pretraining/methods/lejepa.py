@@ -79,8 +79,9 @@ class EppsPulley(nn.Module):
         sin_mean = x_t.sin().mean(0)
 
         if self._is_ddp:
-            all_reduce(cos_mean, op=torch.distributed.ReduceOp.AVG)
-            all_reduce(sin_mean, op=torch.distributed.ReduceOp.AVG)
+            # The functional all_reduce returns a new tensor; the input is unchanged.
+            cos_mean = all_reduce(cos_mean, op=torch.distributed.ReduceOp.AVG)
+            sin_mean = all_reduce(sin_mean, op=torch.distributed.ReduceOp.AVG)
 
         err = (cos_mean - self.phi).square() + sin_mean.square()
         return (err @ self.weights) * N * self.world_size
