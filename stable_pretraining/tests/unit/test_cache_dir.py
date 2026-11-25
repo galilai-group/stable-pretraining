@@ -573,7 +573,11 @@ class TestDDPRankHandoff:
 
         handoff = cache_dir / ".rank_handoff" / "slurm-777"
         assert handoff.is_file(), "rank-0 must publish handoff"
-        assert handoff.read_text().strip() == str(run_dir)
+        assert json.loads(handoff.read_text()) == {
+            "run_dir": str(run_dir),
+            "restart_count": "0",
+            "early_preempt_fallback": False,
+        }
 
     def test_rank_n_adopts_handoff(self, cache_dir, monkeypatch):
         """Rank 1 reads rank-0's published path instead of computing its own."""
@@ -582,16 +586,98 @@ class TestDDPRankHandoff:
         published.mkdir(parents=True)
         ho_dir = cache_dir / ".rank_handoff"
         ho_dir.mkdir(parents=True)
-        (ho_dir / "slurm-777").write_text(str(published))
+        (ho_dir / "slurm-777").write_text(
+            json.dumps({"run_dir": str(published), "restart_count": "0"})
+        )
 
         # Pretend we're rank 1 of the same launch.
         monkeypatch.setenv("SLURM_JOB_ID", "777")
         monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
+        monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
         self._set_rank(monkeypatch, 1)
 
         manager = self._make_manager()
         run_dir = manager._resolve_run_dir()
         assert run_dir == published
+
+    def test_rank_n_follows_rank_zero_early_preempt_fallback(
+        self, cache_dir, monkeypatch
+    ):
+        """Requeue preempted before Manager ran: every rank starts fresh, none raises.
+
+        Regression: rank-0 found no index, fell back to a fresh run and
+        published its new dir; rank-N adopted the dir but not the decision,
+        saw ``SLURM_RESTART_COUNT >= 1`` and raised "REQUEUE but no last.ckpt".
+        """
+        monkeypatch.setenv("SLURM_JOB_ID", "777")
+        monkeypatch.setenv("SLURM_RESTART_COUNT", "1")
+        monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
+        self._set_rank(monkeypatch, 0)
+        rank0 = self._make_manager()
+        run_dir = rank0._resolve_run_dir()
+        assert rank0._early_preempt_fallback is True
+
+        self._set_rank(monkeypatch, 1)
+        rank1 = self._make_manager()
+        assert rank1._resolve_run_dir() == run_dir
+        assert rank1._early_preempt_fallback is True
+        assert rank1._resolve_load_path(run_dir) == rank0._resolve_load_path(run_dir)
+        assert rank1._resolve_load_path(run_dir) == (None, None)
+
+    def test_rank_n_follows_rank_zero_requeue(self, cache_dir, monkeypatch):
+        """Requeue with an index: every rank resumes rank-0's ``last.ckpt``."""
+        from stable_pretraining.manager import Manager
+
+        prior = cache_dir / "runs" / "20260101" / "120000" / "prior"
+        (prior / "checkpoints").mkdir(parents=True)
+        (prior / "checkpoints" / "last.ckpt").write_bytes(b"state")
+        monkeypatch.setenv("SLURM_JOB_ID", "777")
+        monkeypatch.setenv("SLURM_RESTART_COUNT", "2")
+        monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
+        Manager._write_slurm_index(cache_dir, prior)
+        self._set_rank(monkeypatch, 0)
+        assert self._make_manager()._resolve_run_dir() == prior
+
+        self._set_rank(monkeypatch, 1)
+        rank1 = self._make_manager()
+        assert rank1._resolve_run_dir() == prior
+        assert rank1._early_preempt_fallback is False
+        assert rank1._resolve_load_path(prior) == (
+            str(prior / "checkpoints" / "last.ckpt"),
+            False,
+        )
+
+    def test_rank_n_ignores_handoff_from_earlier_attempt(self, cache_dir, monkeypatch):
+        """A record left by an earlier attempt of the same job is never adopted.
+
+        Requeues keep ``SLURM_JOB_ID``, hence the launch key, so the previous
+        attempt's record is still on disk until rank-0 rewrites it; adopting it
+        would copy a decision rank-0 has not made for this attempt.
+        """
+        import stable_pretraining.manager as mgr_mod
+
+        monkeypatch.setattr(mgr_mod, "_RANK_HANDOFF_TIMEOUT_S", 0.3)
+        earlier = cache_dir / "runs" / "20260101" / "120000" / "earlier"
+        earlier.mkdir(parents=True)
+        ho_dir = cache_dir / ".rank_handoff"
+        ho_dir.mkdir(parents=True)
+        (ho_dir / "slurm-777").write_text(
+            json.dumps(
+                {
+                    "run_dir": str(earlier),
+                    "restart_count": "0",
+                    "early_preempt_fallback": True,
+                }
+            )
+        )
+        (ho_dir / "slurm-778").write_text(str(earlier))  # format before the record
+
+        monkeypatch.setenv("SLURM_RESTART_COUNT", "1")
+        self._set_rank(monkeypatch, 1)
+        manager = self._make_manager()
+        assert manager._wait_for_rank_zero_handoff(cache_dir, "slurm-777") is None
+        assert manager._wait_for_rank_zero_handoff(cache_dir, "slurm-778") is None
+        assert manager._early_preempt_fallback is False
 
     def test_rank_n_falls_back_on_timeout(self, cache_dir, monkeypatch):
         """Rank-N falls back to local resolution if rank-0 never publishes.
@@ -625,7 +711,9 @@ class TestDDPRankHandoff:
         # Stale pointer to a directory that doesn't exist.
         ho_dir = cache_dir / ".rank_handoff"
         ho_dir.mkdir(parents=True)
-        (ho_dir / "slurm-777").write_text(str(cache_dir / "vanished"))
+        (ho_dir / "slurm-777").write_text(
+            json.dumps({"run_dir": str(cache_dir / "vanished"), "restart_count": "0"})
+        )
 
         monkeypatch.setenv("SLURM_JOB_ID", "777")
         monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
@@ -683,7 +771,7 @@ class TestDDPRankHandoff:
         assert handoff.is_file()
         # No leftover .tmp file from the rename trick.
         assert not handoff.with_name(handoff.name + ".tmp").exists()
-        assert handoff.read_text() == str(target)
+        assert json.loads(handoff.read_text())["run_dir"] == str(target)
 
     def test_single_process_skips_handoff(self, cache_dir, monkeypatch):
         """No DDP env vars → ``_ddp_launch_key`` is None → no handoff file."""
