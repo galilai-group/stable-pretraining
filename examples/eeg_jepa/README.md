@@ -181,3 +181,62 @@ external output directory and contain source/code hashes, window starts,
 masks, initialization hashes, input differences, losses and elapsed times.
 Preflight checks warm the requests. Timings include shared CPU preprocessing
 and are a short correctness diagnostic, not a GPU speedup result.
+
+
+## Repeated benchmark
+
+Add `--trials 3 --workers 0 2` to the pilot command to enable the benchmark.
+Each trial uses CPU memmap with 0/2 spawned workers and, when requested, GPU
+assembly with 0 workers. Case order alternates forward/reverse/forward. All
+trials replay the same initialization, windows, masks and update budget; model
+and optimizer state reset per case. Three restarts characterize timing variation,
+not independent data samples or confidence intervals.
+
+`--startup-steps N` fixes the startup interval before measurement. It includes
+worker/reader startup and the first N model updates. The sustained rate counts
+only the remaining updates and elapsed time after update N. No updates or losses
+are discarded, and weights are not reset at that boundary. First-batch time,
+iterator setup, startup, total time and sustained windows/s are reported with
+per-trial values, medians and observed ranges.
+
+The main clock starts before creating the training DataLoader iterator and ends
+after the final optimizer/teacher update. Model/Manager setup, input checks,
+worker shutdown, report/plot writing and automatic checkpoint I/O are excluded.
+CPU uses completed host timestamps; CUDA records nonblocking completion events,
+resolved after training. Loss tensors are copied to the host after training.
+The benchmark adds no per-step synchronization in main mode. The unchanged
+reference objective and shared CPU preprocessing still perform their own scalar
+reads/device-to-host work, so this is not a fully asynchronous trainer.
+
+`--diagnostic` runs one **separate** instrumented replay per case. It records
+reader loading/calibration, CPU preprocessing, main-process loader wait,
+delivery-to-compute delay, and model-step time (forward/backward, optimizer and
+EMA). Diagnostic boundaries synchronize CUDA. Worker timings can overlap model
+compute and must not be summed as pipeline wall time. Delivery-to-compute also
+includes framework/transfer overhead. Diagnostic rates are not included in the
+main throughput summary. Every replay must pass the same loss checks.
+
+Inside an allocated Hydra GPU job, after the environment/path setup above:
+
+```bash
+export CUBLAS_WORKSPACE_CONFIG=:4096:8
+export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+python -m examples.eeg_jepa.pilot --source /path/on/hydra/eeg4.edf \
+  --reference-root "$EEG_JEPA_REFERENCE" --output "$study_root/benchmark-gpu" \
+  --paths edf_memmap edf_gpu_assembly --accelerator gpu \
+  --steps 8 --startup-steps 2 --batch-size 2 --seconds 4 --seed 0 \
+  --trials 3 --workers 0 2 --diagnostic
+```
+
+For a local CPU check, use `--paths edf_memmap --accelerator cpu` and a new
+output directory. Workers open independent readers after spawn and cap Torch/
+Arrow thread pools; keep the environment thread limits above. GPU assembly
+cannot be placed in workers. Parent and spawned-worker inputs are checked before
+timing; those checks warm requests and are recorded in the report.
+
+`report.json` retains all main/diagnostic runs, phase measurements, parameter
+counts, case order, seeds, input/source/code hashes, environment and allocation.
+`trials.jsonl` retains each validated completed run even if a later run fails.
+`learning-progress.png` contains loss-versus-step and loss-versus-completed-wall-
+time panels, with individual trials, median curves, parameter counts and source/
+reference fingerprints. All artifacts are local and outside Git.

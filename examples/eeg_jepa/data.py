@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from typing import Any
+from time import perf_counter
 
 import torch
 
@@ -221,8 +222,14 @@ class NeonatalBatches(torch.utils.data.Dataset):
     """Read complete batches through stable-datasets and apply model preprocessing."""
 
     def __init__(
-        self, reader: Any, starts: Any, masks: list[dict], config: Config
+        self,
+        reader: Any,
+        starts: Any,
+        masks: list[dict],
+        config: Config,
+        diagnostic: bool = False,
     ) -> None:
+        self.diagnostic = diagnostic
         self.reader, self.starts, self.masks, self.config = (
             reader,
             starts,
@@ -233,14 +240,23 @@ class NeonatalBatches(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return len(self.starts)
 
-    def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
+    def __getitem__(self, index: int) -> dict[str, Any]:
         rate = int(self.reader.metadata.sample_rate_hz)
+        started = perf_counter() if self.diagnostic else None
         values = self.reader.read(
             self.starts[index] - CONTEXT_SECONDS * rate,
             (self.config.patches + 2 * CONTEXT_SECONDS) * rate,
         )
+        if self.diagnostic and values.is_cuda:
+            torch.cuda.synchronize(values.device)
+        read_done = perf_counter() if self.diagnostic else None
         batch = {key: value.clone() for key, value in self.masks[index].items()}
         batch["eeg"] = model_patches(
             values, self.reader.metadata.channel_names, rate, self.config.patches
         )
+        if self.diagnostic:
+            batch["_diagnostic"] = dict(
+                loading_seconds=read_done - started,
+                preprocessing_seconds=perf_counter() - read_done,
+            )
         return batch

@@ -96,20 +96,24 @@ def warmup_factor(step: int, steps: int) -> float:
 
 
 @contextmanager
-def run_settings(output: Path) -> Iterator[None]:
+def run_settings(output: Path, benchmark: bool = False) -> Iterator[None]:
     """Temporarily configure local logging and callbacks for a synthetic run.
 
     Args:
         output: External directory for Manager artifacts.
+        benchmark: Disable requeue checkpoint I/O inside timing intervals.
 
     Yields:
         Control with the temporary settings active.
     """
     settings = spt.get_config()
+    previous_requeue = settings.requeue_checkpoint
     previous_cache = settings.cache_dir
     previous_callbacks = settings.default_callbacks
     previous_loggers = settings.default_loggers
     try:
+        if benchmark:
+            spt.set(requeue_checkpoint=False)
         spt.set(
             cache_dir=str(output),
             default_loggers={"registry": True},
@@ -137,3 +141,29 @@ def run_settings(output: Path) -> Iterator[None]:
         settings._default_callbacks = previous_callbacks
         settings._default_loggers = previous_loggers
         settings.cache_dir = previous_cache
+        settings.requeue_checkpoint = previous_requeue
+
+
+@dataclass(frozen=True)
+class BenchmarkConfig:
+    """Repeated measurements with an explicit startup exclusion and worker matrix."""
+
+    trials: int = 3
+    workers: tuple[int, ...] = (0, 2)
+    startup_steps: int = 2
+    diagnostic: bool = False
+
+    def validate(self, steps: int) -> None:
+        """Reject incomplete comparisons before creating output artifacts."""
+        if self.trials < 3:
+            raise ValueError("Benchmark requires at least three trials")
+        if not 1 <= self.startup_steps < steps:
+            raise ValueError("Startup steps must leave at least one sustained update")
+        if (
+            len(set(self.workers)) != len(self.workers)
+            or not {0, 2}.issubset(self.workers)
+            or any(w < 0 for w in self.workers)
+        ):
+            raise ValueError(
+                "Require distinct nonnegative CPU worker counts including 0 and 2"
+            )

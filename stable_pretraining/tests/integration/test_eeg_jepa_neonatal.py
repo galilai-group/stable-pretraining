@@ -179,3 +179,167 @@ def test_cuda_pilot_checks_both_real_loading_paths(
         == (report["paths"]["edf_gpu_assembly"]["initial_weights_sha256"])
     )
     assert all(path["teacher_updates"] == 2 for path in report["paths"].values())
+
+
+def test_benchmark_case_order_and_startup_budget():
+    from examples.eeg_jepa.benchmark import cases, intervals, trial_order
+    from examples.eeg_jepa.config import BenchmarkConfig
+
+    matrix = cases(("edf_memmap", "edf_gpu_assembly"), (0, 2))
+    assert matrix == [("edf_memmap", 0), ("edf_memmap", 2), ("edf_gpu_assembly", 0)]
+    assert trial_order(matrix, 0) == trial_order(matrix, 2) == matrix
+    assert trial_order(matrix, 1) == list(reversed(matrix))
+    result = intervals([2.0, 3.0, 5.0, 7.0], 2, 4)
+    assert result["startup_seconds"] == 3
+    assert result["sustained_seconds"] == 4
+    assert result["sustained_steps"] == 2
+    assert result["sustained_windows_per_second"] == 2
+    for invalid in (
+        BenchmarkConfig(trials=2),
+        BenchmarkConfig(workers=(0,)),
+        BenchmarkConfig(startup_steps=4),
+    ):
+        with pytest.raises(ValueError):
+            invalid.validate(4)
+
+
+def test_main_history_defers_synchronization_and_host_loss_copies(monkeypatch):
+    from examples.eeg_jepa import benchmark
+
+    syncs, records = [], []
+
+    class Event:
+        def __init__(self, **kwargs):
+            self.index = len(records)
+            records.append(self)
+
+        def record(self):
+            pass
+
+        def elapsed_time(self, end):
+            return (end.index - self.index) * 1000.0
+
+    monkeypatch.setattr(benchmark, "_sync", lambda device: syncs.append(device))
+    monkeypatch.setattr(torch.cuda, "Event", Event)
+    history = benchmark.History(torch.device("cuda"))
+    history.begin()
+    original_cpu = torch.Tensor.cpu
+
+    def no_cpu_copy(*args, **kwargs):
+        raise AssertionError("Main batch hook must not copy losses to the host")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(torch.Tensor, "cpu", no_cpu_copy)
+        history.on_train_batch_start(None, None, {}, 0)
+        history.on_train_batch_end(None, None, {"loss": torch.tensor(1.0)}, {}, 0)
+        history.on_train_batch_end(None, None, {"loss": torch.tensor(2.0)}, {}, 1)
+    assert torch.Tensor.cpu is original_cpu
+    assert len(syncs) == 1
+    history.on_train_end(None, None)
+    assert len(syncs) == 2
+    assert history.values == [1.0, 2.0]
+    assert history.ends == [1.0, 2.0]
+
+
+def test_benchmark_settings_restore_requeue_policy(tmp_path):
+    import stable_pretraining as spt
+    from examples.eeg_jepa.config import run_settings
+
+    settings = spt.get_config()
+    before = (
+        settings.requeue_checkpoint,
+        settings.default_callbacks,
+        settings.default_loggers,
+        settings.cache_dir,
+    )
+    with pytest.raises(RuntimeError, match="injected"):
+        with run_settings(tmp_path / "benchmark-settings", benchmark=True):
+            assert settings.requeue_checkpoint is False
+            raise RuntimeError("injected")
+    assert (
+        settings.requeue_checkpoint,
+        settings.default_callbacks,
+        settings.default_loggers,
+        settings.cache_dir,
+    ) == before
+
+
+def _assert_benchmark(report, output, expected_cases):
+    data = report["benchmark"]
+    assert len(data["trials"]) == 3 * expected_cases
+    assert len(data["diagnostics"]) == expected_cases
+    assert len(data["summary"]) == expected_cases
+    assert data["trial_order"][0] == data["trial_order"][2]
+    assert data["trial_order"][1] == list(reversed(data["trial_order"][0]))
+    assert (
+        data["worker_input_sha256"]["2"] == report["checks"]["cpu_model_input_sha256"]
+    )
+    all_runs = data["trials"] + data["diagnostics"]
+    assert len({row["initial_weights_sha256"] for row in all_runs}) == 1
+    assert data["parameters"]["total"] > data["parameters"]["trainable"] > 0
+    for row in all_runs:
+        assert row["teacher_updates"] == 3
+        assert row["max_abs_loss_difference"] <= 2e-4
+        assert len(row["steps"]) == 3
+        assert row["intervals"]["sustained_steps"] == 2
+        assert row["intervals"]["startup_steps"] == 1
+        assert row["intervals"]["sustained_windows_per_second"] > 0
+        assert (
+            row["workers"] == 0
+            if row["path"] == "edf_gpu_assembly"
+            else row["workers"] in (0, 2)
+        )
+    for row in data["trials"]:
+        assert row["diagnostic_phases"] is None
+    for row in data["diagnostics"]:
+        assert len(row["diagnostic_phases"]) == 3
+        assert all(
+            all(value >= 0 for value in phase.values())
+            for phase in row["diagnostic_phases"]
+        )
+    assert not list(output.rglob("*.ckpt"))
+    from PIL import Image
+
+    with Image.open(output / "learning-progress.png") as image:
+        assert image.width > 1000 and image.height > 500
+    import json
+
+    records = [
+        json.loads(line) for line in (output / "trials.jsonl").read_text().splitlines()
+    ]
+    assert len(records) == 4 * expected_cases
+
+
+def test_repeated_benchmark_reopens_cpu_workers_and_preserves_learning(
+    neonatal_edf, reference_root, tmp_path
+):
+    from examples.eeg_jepa.config import BenchmarkConfig
+
+    output = tmp_path / "repeated-cpu"
+    report = run(
+        neonatal_edf,
+        reference_root,
+        output,
+        Config(total_steps=3, batch_size=1),
+        benchmark=BenchmarkConfig(trials=3, startup_steps=1, diagnostic=True),
+    )
+    _assert_benchmark(report, output, 2)
+
+
+@pytest.mark.gpu
+def test_cuda_benchmark_matches_workers_and_main_process_assembly(
+    neonatal_edf, reference_root, tmp_path
+):
+    from examples.eeg_jepa.config import BenchmarkConfig
+
+    output = tmp_path / "repeated-cuda"
+    report = run(
+        neonatal_edf,
+        reference_root,
+        output,
+        Config(total_steps=3, batch_size=1),
+        paths=("edf_memmap", "edf_gpu_assembly"),
+        accelerator="gpu",
+        benchmark=BenchmarkConfig(trials=3, startup_steps=1, diagnostic=True),
+    )
+    _assert_benchmark(report, output, 3)

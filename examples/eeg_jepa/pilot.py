@@ -6,6 +6,7 @@ import json
 from dataclasses import asdict
 from importlib.metadata import version
 import platform
+import os
 from pathlib import Path
 from time import perf_counter
 
@@ -14,10 +15,15 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from profiling import edf_record_loading, edf_source, signal_calibration
+from profiling import (
+    edf_record_loading,
+    edf_source,
+    signal_calibration,
+    training_windows,
+)
 from profiling.edf_record_loading import EDF_PATHS, EdfWindowReader
 
-from .config import Config
+from .config import BenchmarkConfig, Config
 from .data import (
     CANONICAL_CHANNELS,
     CONTEXT_SECONDS,
@@ -153,6 +159,7 @@ def run(
     paths: tuple[str, ...] = ("edf_memmap",),
     accelerator: str = "cpu",
     seed: int = 0,
+    benchmark: BenchmarkConfig | None = None,
 ) -> dict:
     """Validate matched inputs, then train fresh models on identical EDF requests.
 
@@ -164,6 +171,7 @@ def run(
         paths: Existing stable-datasets paths to train.
         accelerator: Shared training endpoint, cpu or gpu.
         seed: Shared initialization, window and mask seed.
+        benchmark: Optional repeated worker comparison and timing diagnostics.
 
     Returns:
         Local provenance, input checks and matched per-step training results.
@@ -184,6 +192,8 @@ def run(
         raise ValueError("GPU assembly requires the shared GPU training endpoint")
     if accelerator == "gpu" and not torch.cuda.is_available():
         raise ValueError("CUDA unavailable")
+    if benchmark is not None:
+        benchmark.validate(config.total_steps)
     output, reference_root = _external(output), _external(reference_root)
     reference = load_reference(reference_root)
     before = _checksum(source)
@@ -203,9 +213,26 @@ def run(
     checks = verify_inputs(
         datasets, torch.device("cuda" if accelerator == "gpu" else "cpu")
     )
-    results = _train_paths(
-        reference, datasets, paths, config, output, accelerator, seed
-    )
+    benchmark_report = None
+    if benchmark is None:
+        results = _train_paths(
+            reference, datasets, paths, config, output, accelerator, seed
+        )
+    else:
+        from .benchmark import measure
+
+        benchmark_report = measure(
+            reference,
+            datasets,
+            paths,
+            config,
+            benchmark,
+            output,
+            accelerator,
+            seed,
+            checks,
+        )
+        results = {}
     if _checksum(source) != before:
         raise ValueError("Source changed during the pilot")
     report = dict(
@@ -232,10 +259,28 @@ def run(
         environment=dict(
             python=platform.python_version(),
             torch=torch.__version__,
+            cuda_runtime=torch.version.cuda,
+            torch_threads=torch.get_num_threads(),
             lightning=pl.__version__,
             numpy=np.__version__,
             mne=version("mne"),
             scipy=version("scipy"),
+            host=platform.node(),
+            device=torch.cuda.get_device_name(0) if accelerator == "gpu" else "cpu",
+            cpu_affinity=sorted(os.sched_getaffinity(0))
+            if hasattr(os, "sched_getaffinity")
+            else None,
+            allocation={
+                name: os.environ.get(name)
+                for name in (
+                    "SLURM_JOB_ID",
+                    "SLURM_CPUS_PER_TASK",
+                    "CUDA_VISIBLE_DEVICES",
+                    "OMP_NUM_THREADS",
+                    "MKL_NUM_THREADS",
+                    "OPENBLAS_NUM_THREADS",
+                )
+            },
         ),
     )
     report["code_sha256"] = {
@@ -245,8 +290,20 @@ def run(
             Path(edf_record_loading.__file__),
             Path(edf_source.__file__),
             Path(signal_calibration.__file__),
+            Path(training_windows.__file__),
+            *(
+                Path(__file__).resolve().parents[2] / "stable_pretraining" / name
+                for name in ("module.py", "manager.py", "callbacks/teacher_student.py")
+            ),
         )
     }
+    if benchmark_report is not None:
+        from .benchmark import plot
+
+        report.pop("paths")
+        report["benchmark"] = benchmark_report
+        report["benchmark_config"] = asdict(benchmark)
+        plot(report, output)
     (output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     return report
 
@@ -263,6 +320,10 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--seconds", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--trials", type=int)
+    parser.add_argument("--workers", nargs="+", type=int)
+    parser.add_argument("--startup-steps", type=int, default=2)
+    parser.add_argument("--diagnostic", action="store_true")
     args = parser.parse_args()
     torch.set_num_threads(1)
     report = run(
@@ -275,6 +336,14 @@ def main() -> None:
         paths=tuple(args.paths),
         accelerator=args.accelerator,
         seed=args.seed,
+        benchmark=BenchmarkConfig(
+            trials=args.trials if args.trials is not None else 3,
+            workers=tuple(args.workers if args.workers is not None else (0, 2)),
+            startup_steps=args.startup_steps,
+            diagnostic=args.diagnostic,
+        )
+        if args.trials is not None or args.workers is not None or args.diagnostic
+        else None,
     )
     print(json.dumps(report["checks"], indent=2))
 

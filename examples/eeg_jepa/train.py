@@ -66,6 +66,8 @@ def fit(
     accelerator: str = "cpu",
     callbacks: list[Any] | None = None,
     seed: int = 0,
+    benchmark: bool = False,
+    after_callbacks: list[Any] | None = None,
 ) -> None:
     """Fit an example Module using the shared Manager and callback wiring.
 
@@ -77,8 +79,10 @@ def fit(
         accelerator: Lightning accelerator, cpu or gpu.
         callbacks: Optional observers registered before the EMA callback.
         seed: Shared training RNG seed.
+        benchmark: Disable automatic requeue checkpoints during measurement.
+        after_callbacks: Observers that must see completed teacher updates.
     """
-    with run_settings(output):
+    with run_settings(output, benchmark=benchmark):
         trainer = pl.Trainer(
             accelerator=accelerator,
             devices=1,
@@ -96,7 +100,11 @@ def fit(
             limit_val_batches=0,
             deterministic=True,
             default_root_dir=str(output),
-            callbacks=[*(callbacks or []), spt.TeacherStudentCallback(verbose=False)],
+            callbacks=[
+                *(callbacks or []),
+                spt.TeacherStudentCallback(verbose=False),
+                *(after_callbacks or []),
+            ],
         )
         spt.Manager(
             trainer=trainer,
