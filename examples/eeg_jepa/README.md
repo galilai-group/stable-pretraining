@@ -1,4 +1,4 @@
-# EEG-JEPA synthetic reference checks
+# EEG-JEPA reference checks and neonatal pilot
 
 This milestone checks a thin stable-pretraining adapter against the authors'
 [EEG-JEPA implementation](https://github.com/SWF-hao/EEG-JEPA-official/tree/925b1194d5abf1e95ca2a2e7416b5a5d268845df),
@@ -93,3 +93,91 @@ All four GPU cases must execute: three forward/loss/gradient cases and one
 Manager/EMA comparison. They skip if CUDA is unavailable or unusable.
 These GPU checks remain unverified locally on the Mac. Mixed precision,
 distributed execution and real EEG data are outside this milestone.
+
+
+## Neonatal EDF pilot
+
+The real-data entry point uses `EdfWindowReader` in stable-datasets' existing
+`profiling/edf_record_loading.py`. That facade delegates to the existing native
+memmap/CPU calibration and GPU record assembler; this example owns no EDF or
+Lance parsing or calibration. Lance paths are not enabled in this pilot.
+
+Preprocessing follows the transform order inspected in the pinned reference's
+[record-shard preprocessing](https://github.com/SWF-hao/EEG-JEPA-official/blob/925b1194d5abf1e95ca2a2e7416b5a5d268845df/preprocessing/preprocess_tuh_eeg_record_shards.py)
+and [canonical channel mapper](https://github.com/SWF-hao/EEG-JEPA-official/blob/925b1194d5abf1e95ca2a2e7416b5a5d268845df/preprocessing/preprocess_tuh_eeg_lmdb.py):
+
+- Channel order: `FP1 FP2 F3 F4 C3 C4 P3 P4 O1 O2 F7 F8 T3 T4 T5 T6 FZ CZ PZ`.
+  Case-insensitive canonical names and `EEG ...-Ref` labels are accepted;
+  T7/T8/P7/P8 map to T3/T4/T5/T6. ECG/respiration are excluded. All 19 electrodes
+  are required; missing/duplicate electrodes and bipolar or other suffixes fail.
+  Source referential voltages are preserved; no common-average re-reference is added.
+- Rates: the existing reader requires equal-rate continuous channels. The pilot
+  requires an integral source rate of at least 200 Hz (eeg4 is 256 Hz). Shared
+  CPU/MNE FFT resampling produces 200 Hz, followed by 0.3–75 Hz FIR filtering and
+  a 60 Hz FIR notch. The notch follows the reference default, not neonatal tuning.
+- Units: stable-datasets supplies calibrated float32 **volts**. MNE processes
+  float64 volts; the example converts the result to float32 **microvolts**.
+  The existing reference-objective forward then divides by 100, exactly once.
+- Patches: each request specifies the core window's original EDF sample start.
+  Starts use whole seconds. An additional 12 seconds on each side is read and
+  processed; that context is removed after resampling/filtering. Consecutive
+  200-sample, one-second patches form `[batch, 19, seconds, 200]`.
+- Scope: this uses contextual windows rather than full-record preprocessing.
+  The reference's 60-second end trimming, amplitude QC and corpus selection
+  are not reproduced. It is not a complete reference-data reproduction or a
+  held-out neonatal seizure evaluation; annotation labels are not consumed.
+  Filter boundaries can differ from full-record preprocessing.
+
+Both paths deliberately use the **same CPU/MNE preprocessing**, so GPU assembly
+includes a device-to-host round trip followed by the usual model-device transfer.
+The pilot verifies every scheduled normalized input against CPU memmap with
+`rtol=2e-5, atol=1e-6`, then resets model initialization and training RNG for
+each path. N-MET masks are generated once and replayed with the exact same windows.
+Loss traces must agree within `rtol=2e-4, atol=2e-5`; teacher update counts are
+checked. GPU numerical checks must actually run on Hydra before claiming parity.
+
+From stable-pretraining, install the sibling checkout and medical dependencies.
+The `profiling` research modules are source-tree modules, so also put the
+stable-datasets repository root on `PYTHONPATH`:
+
+```bash
+sds_root="$HOME/stable-datasets"
+python -m pip install -e "$sds_root" "mne==1.10.2" edfio pyedflib
+export PYTHONPATH="$sds_root:$PWD${PYTHONPATH:+:$PYTHONPATH}"
+python -m pytest -q -s -rs -p no:cacheprovider -m "not gpu" \
+  stable_pretraining/tests/integration/test_eeg_jepa_neonatal.py \
+  stable_pretraining/tests/integration/test_eeg_jepa_reference.py
+```
+
+The neonatal tests use generated EDF files without downloads. For a real CPU
+functional run, supply the unchanged neonatal EDF already used in the loading
+study; `--output` must be a new external directory:
+
+```bash
+python -m examples.eeg_jepa.pilot --source /path/to/eeg4.edf \
+  --reference-root "$EEG_JEPA_REFERENCE" --output "$study_root/neonatal-cpu" \
+  --paths edf_memmap --accelerator cpu --steps 3 --batch-size 2 --seconds 4 --seed 0
+```
+
+Proposed command **inside Pascal's allocated Hydra GPU job**, with the two
+checkouts and reference archive available on Hydra:
+
+```bash
+export CUBLAS_WORKSPACE_CONFIG=:4096:8
+export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+python -m pytest -q -s -rs -p no:cacheprovider -m gpu \
+  stable_pretraining/tests/integration/test_eeg_jepa_reference.py \
+  stable_pretraining/tests/integration/test_eeg_jepa_neonatal.py
+python -m examples.eeg_jepa.pilot --source /path/on/hydra/eeg4.edf \
+  --reference-root "$EEG_JEPA_REFERENCE" --output "$study_root/neonatal-gpu" \
+  --paths edf_memmap edf_gpu_assembly --accelerator gpu \
+  --steps 4 --batch-size 2 --seconds 4 --seed 0
+```
+
+Readers execute in the training process with zero workers; no new GPU buffers
+or prefetch architecture is introduced. Each path trains on the same GPU when
+`--accelerator gpu` is selected. Reports and Manager artifacts stay in the
+external output directory and contain source/code hashes, window starts,
+masks, initialization hashes, input differences, losses and elapsed times.
+Preflight checks warm the requests. Timings include shared CPU preprocessing
+and are a short correctness diagnostic, not a GPU speedup result.

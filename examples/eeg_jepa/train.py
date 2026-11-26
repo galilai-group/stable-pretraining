@@ -1,4 +1,4 @@
-"""Run the synthetic EEG-JEPA milestone through Module, Manager and EMA."""
+"""Shared Manager wiring and the synthetic EEG-JEPA entry point."""
 
 import argparse
 from pathlib import Path
@@ -54,6 +54,30 @@ def run(
         ),
         num_workers=0,
     )
+    fit(module, loader, output, config, accelerator, callbacks)
+    return module
+
+
+def fit(
+    module: spt.Module,
+    loader: DataLoader,
+    output: Path,
+    config: Config,
+    accelerator: str = "cpu",
+    callbacks: list[Any] | None = None,
+    seed: int = 0,
+) -> None:
+    """Fit an example Module using the shared Manager and callback wiring.
+
+    Args:
+        module: Freshly initialized adapted model.
+        loader: Synthetic or real pre-batched input loader.
+        output: External directory for local run artifacts.
+        config: Optimizer schedule and training budget.
+        accelerator: Lightning accelerator, cpu or gpu.
+        callbacks: Optional observers registered before the EMA callback.
+        seed: Shared training RNG seed.
+    """
     with run_settings(output):
         trainer = pl.Trainer(
             accelerator=accelerator,
@@ -78,9 +102,8 @@ def run(
             trainer=trainer,
             module=module,
             data=spt.data.DataModule(train=loader),
-            seed=0,
+            seed=seed,
         )()
-    return module
 
 
 def main() -> None:
