@@ -37,6 +37,9 @@ python benchmarks/cifar10/simclr-resnet18.py
 # BYOL
 python benchmarks/cifar10/byol-resnet18.py
 
+# MEC (mec-compare-resnet18.py runs the MEC vs BYOL vs SimSiam comparison)
+python benchmarks/cifar10/mec-resnet18.py
+
 # VICReg
 python benchmarks/cifar10/vicreg-resnet18.py
 

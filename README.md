@@ -774,6 +774,7 @@ spt.set(default_loggers={"registry": False})
 | Supervised | `forward.supervised` | any | Standard supervised training with labels |
 | SimCLR | `forward.simclr` | `NTXEntLoss` | Contrastive learning with 2 augmented views |
 | BYOL | `forward.byol` | `BYOLLoss` | Momentum-based self-distillation without negatives |
+| MEC | `forward.mec` | `MECLoss` | Maximum entropy coding of the cross-view correlation |
 | VICReg | `forward.vicreg` | `VICRegLoss` | Variance-invariance-covariance regularization |
 | Barlow Twins | `forward.barlow_twins` | `BarlowTwinsLoss` | Cross-correlation matrix alignment to identity |
 | SwAV | `forward.swav` | `SwAVLoss` | Online clustering with Sinkhorn-Knopp normalization |

@@ -37,6 +37,7 @@ or by bootstrapping without explicit negatives.
    MoCov2
    MoCov3
    SimSiam
+   MEC
    PIRL
    TiCO
 
