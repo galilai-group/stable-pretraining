@@ -28,7 +28,6 @@ def _encoder(**kwargs):
     "name,kwargs",
     [
         ("CMAE", {"projector_dim": 8}),
-        ("MEC", {"projector_dim": 8, "predictor_hidden_dim": 16}),
         ("MoCov2", {"projector_dims": (16, 8), "queue_length": 8}),
         ("MoCov3", {"projector_dims": (16, 8), "predictor_hidden_dim": 16}),
         (
@@ -75,6 +74,21 @@ def test_evaluation_with_prebuilt_encoder_returns_finite_features_and_zero_loss(
     assert torch.isfinite(output.embedding).all()
     assert output.loss.item() == 0
     assert not output.embedding.requires_grad
+
+
+def test_mec_evaluation_with_prebuilt_encoder_returns_detached_features():
+    """MEC takes ``(batch, stage)`` and returns a dict with no loss in eval."""
+    model = methods.MEC(
+        encoder_name=_encoder(dynamic_img_size=True),
+        projector_dim=8,
+        predictor_hidden_dim=16,
+    ).eval()
+    with torch.no_grad():
+        output = model({"image": torch.randn(2, 3, 32, 32)}, "validate")
+    assert output["embedding"].shape == (2, 24)
+    assert torch.isfinite(output["embedding"]).all()
+    assert "loss" not in output
+    assert not output["embedding"].requires_grad
 
 
 @pytest.mark.parametrize("name", ["DINO", "DINOv2", "DINOv3"])

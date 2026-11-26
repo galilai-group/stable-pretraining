@@ -12,35 +12,15 @@ References:
     NeurIPS 2022. https://arxiv.org/abs/2210.11464
 """
 
-from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Any, Union
 
 import torch
 import torch.nn as nn
-from transformers.utils import ModelOutput
 
 from stable_pretraining import Module
 from stable_pretraining.backbone import TeacherStudentWrapper, from_timm
+from stable_pretraining.forward import mec
 from stable_pretraining.losses import MECLoss
-from stable_pretraining.utils import get_world_size
-
-
-@dataclass
-class MECOutput(ModelOutput):
-    """Output from MEC forward pass.
-
-    :ivar loss: Symmetric MEC loss (0 in eval mode)
-    :ivar embedding: Teacher backbone features (always detached)
-    :ivar prediction: Student predictor output [2B, P] (None in eval)
-    :ivar target: Teacher projector output [2B, P] (None in eval, detached)
-    :ivar entropy: Coding-length entropy estimate (None in eval, detached)
-    """
-
-    loss: torch.Tensor = None
-    embedding: torch.Tensor = None
-    prediction: Optional[torch.Tensor] = None
-    target: Optional[torch.Tensor] = None
-    entropy: Optional[torch.Tensor] = None
 
 
 def _projector(in_dim: int, hidden_dim: int, out_dim: int) -> nn.Module:
@@ -87,7 +67,11 @@ class MEC(Module):
     :param pretrained: Load pretrained timm weights.
 
     Note:
-        Use :class:`~stable_pretraining.callbacks.TeacherStudentCallback`
+        ``forward(batch, stage)`` delegates to
+        :func:`stable_pretraining.forward.mec`, so the class trains directly
+        under :class:`~stable_pretraining.Manager` and returns the same dict
+        (``"loss"``, ``"embedding"``, ``"label"``, ...). Use
+        :class:`~stable_pretraining.callbacks.TeacherStudentCallback`
         to drive teacher EMA updates during training. The ``1/λ`` warm-up
         keeps the Taylor expansion convergent early in training; it steps
         once per epoch, whereas the reference implementation steps per
@@ -139,51 +123,21 @@ class MEC(Module):
         )
         self.predictor = _predictor(projector_dim, predictor_hidden_dim)
         self.mec_loss = MECLoss(eps=eps, order=taylor_order, symmetric=symmetric)
-        self.warmup_epochs = warmup_epochs
-        self.warmup_lambda_scale = warmup_lambda_scale
+        # Attribute names read by ``stable_pretraining.forward.mec``.
+        self.mec_warmup_epochs = warmup_epochs
+        self.mec_warmup_lambda_scale = warmup_lambda_scale
 
-    def _lambda_inv_scale(self) -> float:
-        if self.current_epoch >= self.warmup_epochs:
-            return 1.0
-        progress = self.current_epoch / self.warmup_epochs
-        return self.warmup_lambda_scale + progress * (1.0 - self.warmup_lambda_scale)
+    def forward(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
+        """Run the MEC forward function on a batch.
 
-    def forward(
-        self,
-        view1: torch.Tensor,
-        view2: Optional[torch.Tensor] = None,
-    ) -> MECOutput:
-        if view2 is None:
-            with torch.no_grad():
-                embedding = self.backbone.forward_teacher(view1)
-            return MECOutput(
-                loss=torch.zeros((), device=embedding.device, dtype=embedding.dtype),
-                embedding=embedding.detach(),
-            )
+        Args:
+            batch: A two-view batch (``{"views": [view1, view2]}`` from
+                ``MultiViewTransform``) for training, or a single-view batch
+                with ``"image"`` for evaluation.
+            stage: Training stage (``"fit"``, ``"validate"``, ``"test"`` or
+                ``"predict"``).
 
-        s1 = self.backbone.forward_student(view1)
-        s2 = self.backbone.forward_student(view2)
-        p1 = self.predictor(self.projector.forward_student(s1))
-        p2 = self.predictor(self.projector.forward_student(s2))
-
-        with torch.no_grad():
-            t1 = self.backbone.forward_teacher(view1)
-            t2 = self.backbone.forward_teacher(view2)
-            zt1 = self.projector.forward_teacher(t1)
-            zt2 = self.projector.forward_teacher(t2)
-
-        scale = self._lambda_inv_scale()
-        loss = (self.mec_loss(p1, zt2, scale) + self.mec_loss(p2, zt1, scale)) / 2
-
-        batch_size = p1.size(0) * get_world_size()
-        dim = p1.size(1)
-        lambda_inv = self.mec_loss.lambda_inv(batch_size, dim) * scale
-        entropy = -loss.detach() * (batch_size + dim) / 2 / lambda_inv
-
-        return MECOutput(
-            loss=loss,
-            embedding=torch.cat([t1, t2], dim=0).detach(),
-            prediction=torch.cat([p1, p2], dim=0),
-            target=torch.cat([zt1, zt2], dim=0).detach(),
-            entropy=entropy,
-        )
+        Returns:
+            dict: See :func:`stable_pretraining.forward.mec`.
+        """
+        return mec(self, batch, stage)

@@ -175,3 +175,97 @@ class TestMECLoss:
 
         assert plain(p, z) < bound
         assert symmetric(p, z) > 0
+
+
+def _extreme_inputs(name, m=32, d=16):
+    """Prediction/target pairs at the edges of what the loss may receive."""
+    g = torch.Generator().manual_seed(0)
+
+    def randn():
+        return torch.randn(m, d, generator=g)
+
+    if name == "huge":
+        return randn() * 1e30, randn() * 1e30
+    if name == "tiny":
+        return randn() * 1e-30, randn() * 1e-30
+    if name == "mixed_row_scales":
+        scales = torch.logspace(-30, 30, m)[:, None]
+        return randn() * scales, randn() * scales.flip(0)
+    if name == "all_zero":
+        return torch.zeros(m, d), torch.zeros(m, d)
+    if name == "some_zero_rows":
+        p, z = randn(), randn()
+        p[::4], z[1::4] = 0, 0
+        return p, z
+    if name == "collapsed":
+        row = torch.randn(1, d, generator=g)
+        return row.repeat(m, 1), row.repeat(m, 1)
+    if name == "identical":
+        z = randn()
+        return z.clone(), z
+    if name == "batch_of_one":
+        return torch.randn(1, d, generator=g), torch.randn(1, d, generator=g)
+    if name == "dim_of_one":
+        return torch.randn(m, 1, generator=g), torch.randn(m, 1, generator=g)
+    if name == "fp16_max":
+        big = torch.finfo(torch.float16).max
+        return (randn().clamp(-1, 1) * big).half(), (randn().clamp(-1, 1) * big).half()
+    raise ValueError(name)
+
+
+EXTREME_CASES = [
+    "huge",
+    "tiny",
+    "mixed_row_scales",
+    "all_zero",
+    "some_zero_rows",
+    "collapsed",
+    "identical",
+    "batch_of_one",
+    "dim_of_one",
+    "fp16_max",
+]
+
+
+@pytest.mark.unit
+class TestMECLossExtremeInputs:
+    """The loss and its gradient must stay finite on extreme inputs."""
+
+    @pytest.mark.parametrize("name", EXTREME_CASES)
+    @pytest.mark.parametrize("symmetric", [False, True])
+    @pytest.mark.parametrize("lambda_inv_scale", [1e-3, 1.0, 8.0])
+    # ``eps`` far below 1 puts ``λC`` far outside the Taylor series' radius
+    # of convergence, where ``(λC)^order`` overflows fp32 by construction.
+    @pytest.mark.parametrize("eps", [1.0, 64.0, 1e6])
+    def test_loss_and_gradients_are_finite(
+        self, name, symmetric, lambda_inv_scale, eps
+    ):
+        p, z = _extreme_inputs(name)
+        p = p.requires_grad_()
+        z = z.requires_grad_()
+        loss = MECLoss(eps=eps, symmetric=symmetric)(p, z, lambda_inv_scale)
+
+        assert loss.ndim == 0
+        assert torch.isfinite(loss), f"loss is {loss.item()}"
+        loss.backward()
+        assert torch.isfinite(p.grad).all()
+        assert torch.isfinite(z.grad).all()
+
+    @pytest.mark.parametrize("scale", [1e-30, 1e-20, 1e20, 1e30])
+    def test_scale_invariance_holds_at_extreme_magnitudes(self, scale):
+        """Rows far from unit norm must not overflow or underflow to zero."""
+        torch.manual_seed(0)
+        p, z = torch.randn(32, 16), torch.randn(32, 16)
+        loss_fn = MECLoss()
+        torch.testing.assert_close(loss_fn(scale * p, scale * z), loss_fn(p, z))
+
+    def test_gradient_matches_unscaled_input(self):
+        """Gradients of huge inputs are the unit-scale gradients divided by the scale."""
+        torch.manual_seed(0)
+        p, z = torch.randn(16, 8), torch.randn(16, 8)
+        scale = 1e25
+        p_unit = p.clone().requires_grad_()
+        p_huge = (p * scale).requires_grad_()
+        MECLoss()(p_unit, z).backward()
+        MECLoss()(p_huge, z).backward()
+        torch.testing.assert_close(p_huge.grad * scale, p_unit.grad)

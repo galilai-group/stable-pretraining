@@ -379,6 +379,26 @@ def byol(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     return out
 
 
+def _mec_lambda_inv_scale(self) -> float:
+    """Return the warm-up multiplier on ``1/λ`` for the current epoch.
+
+    Args:
+        self: Module instance; reads ``current_epoch`` and the optional
+            ``mec_warmup_epochs`` (default 0) and ``mec_warmup_lambda_scale``
+            (default 8.0) attributes.
+
+    Returns:
+        float: Decays linearly from ``mec_warmup_lambda_scale`` at epoch 0 to
+        1.0 at ``mec_warmup_epochs``, and stays at 1.0 afterwards.
+    """
+    warmup_epochs = getattr(self, "mec_warmup_epochs", 0)
+    if self.current_epoch >= warmup_epochs:
+        return 1.0
+    start_scale = getattr(self, "mec_warmup_lambda_scale", 8.0)
+    progress = self.current_epoch / warmup_epochs
+    return start_scale + progress * (1.0 - start_scale)
+
+
 def mec(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     """Forward function for MEC (Maximum Entropy Coding).
 
@@ -403,6 +423,9 @@ def mec(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         Dictionary containing:
             - 'embedding': Feature representations from teacher backbone (EMA target)
             - 'loss': MEC loss between predictions and targets (during training)
+            - 'prediction': Online predictor outputs ``[2B, P]`` (during training)
+            - 'target': Target projector outputs ``[2B, P]``, detached (during training)
+            - 'entropy': Coding-length entropy estimate, detached (during training)
             - 'label': Labels if present (for probes/callbacks)
 
     Note:
@@ -472,13 +495,7 @@ def mec(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
                 self.projector.forward_teacher(feat) for feat in target_features
             ]
 
-        warmup_epochs = getattr(self, "mec_warmup_epochs", 0)
-        lambda_inv_scale = 1.0
-        if self.current_epoch < warmup_epochs:
-            start_scale = getattr(self, "mec_warmup_lambda_scale", 8.0)
-            progress = self.current_epoch / warmup_epochs
-            lambda_inv_scale = start_scale + progress * (1.0 - start_scale)
-
+        lambda_inv_scale = _mec_lambda_inv_scale(self)
         loss = (
             self.mec_loss(online_pred[0], target_proj[1], lambda_inv_scale)
             + self.mec_loss(online_pred[1], target_proj[0], lambda_inv_scale)
@@ -492,6 +509,9 @@ def mec(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
         entropy = -loss.detach() * (batch_size + dim) / 2 / lambda_inv
 
         out["embedding"] = torch.cat(target_features, dim=0).detach()
+        out["prediction"] = torch.cat(online_pred, dim=0)
+        out["target"] = torch.cat(target_proj, dim=0).detach()
+        out["entropy"] = entropy
         out["loss"] = loss
         self.log(
             f"{stage}/loss",

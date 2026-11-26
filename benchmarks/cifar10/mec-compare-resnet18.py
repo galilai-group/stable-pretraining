@@ -24,6 +24,7 @@ import torchvision
 
 import stable_pretraining as spt
 from stable_pretraining.data import transforms
+from stable_pretraining.forward import _mec_lambda_inv_scale
 from stable_pretraining.losses import MECLoss
 from stable_pretraining.methods import BYOL, MEC, SimSiam
 
@@ -173,14 +174,30 @@ def build_method(args):
 
 def mec_c_norm(module, output):
     """``||λC||_2`` of the paper's (unsymmetrized) C; the series needs it below 1."""
-    batch_size = output.prediction.shape[0] // 2
-    p, z = output.prediction[:batch_size], output.target[batch_size:]
-    lambda_inv = module.mec_loss.lambda_inv(*p.shape) * module._lambda_inv_scale()
+    batch_size = output["prediction"].shape[0] // 2
+    p, z = output["prediction"][:batch_size], output["target"][batch_size:]
+    lambda_inv = module.mec_loss.lambda_inv(*p.shape) * _mec_lambda_inv_scale(module)
     return c_spectral_norm(p, z) / lambda_inv
 
 
+def mec_forward(self, batch, stage):
+    """MEC's own forward (which logs loss and entropy), plus the ``||λC||`` probe."""
+    output = MEC.forward(self, batch, stage)
+    if "label" in output:
+        output["label"] = output["label"].long()
+    if "prediction" in output and self.global_step % 10 == 0:
+        self.log(
+            f"{stage}/mec_c_norm_max",
+            mec_c_norm(self, output),
+            on_step=False,
+            on_epoch=True,
+            reduce_fx="max",
+        )
+    return output
+
+
 def two_view_forward(self, batch, stage):
-    """Lightning forward for the two-view method classes; also logs MEC entropy."""
+    """Lightning forward for the BYOL and SimSiam method classes."""
     if "image" in batch:
         output = type(self).forward(self, batch["image"])
         return {"embedding": output.embedding, "label": batch["label"].long()}
@@ -188,16 +205,6 @@ def two_view_forward(self, batch, stage):
     views = batch["views"]
     output = type(self).forward(self, views[0]["image"], views[1]["image"])
     self.log(f"{stage}/loss", output.loss, on_step=True, on_epoch=True)
-    if getattr(output, "entropy", None) is not None:
-        self.log(f"{stage}/mec_entropy", output.entropy, on_step=True, on_epoch=True)
-        if self.global_step % 10 == 0:
-            self.log(
-                f"{stage}/mec_c_norm_max",
-                mec_c_norm(self, output),
-                on_step=False,
-                on_epoch=True,
-                reduce_fx="max",
-            )
     return {
         "loss": output.loss,
         "embedding": output.embedding.detach(),
@@ -295,7 +302,8 @@ def main():
     # One run registry per configuration, so each run's metrics.csv is findable.
     spt.set(cache_dir=str(Path(args.out_dir, run_name(args)).resolve()))
     module = build_method(args)
-    module.forward = two_view_forward.__get__(module)
+    forward_fn = mec_forward if args.method == "mec" else two_view_forward
+    module.forward = forward_fn.__get__(module)
     trainer = pl.Trainer(
         max_epochs=args.epochs,
         limit_train_batches=args.limit_batches,

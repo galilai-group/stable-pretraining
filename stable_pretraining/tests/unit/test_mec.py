@@ -100,6 +100,15 @@ class TestMECForward:
         torch.testing.assert_close(logged["fit/mec_entropy"], expected_entropy.detach())
 
 
+def _image_views(batch_size=4):
+    return {
+        "views": [
+            {"image": torch.randn(batch_size, 3, 32, 32), "label": torch.arange(4)}
+            for _ in range(2)
+        ]
+    }
+
+
 class TestMECMethod:
     """Tests for the ``MEC`` method class."""
 
@@ -111,22 +120,44 @@ class TestMECMethod:
         with patch.object(
             MEC, "current_epoch", new_callable=PropertyMock, return_value=epoch
         ):
-            assert model._lambda_inv_scale() == pytest.approx(expected)
+            assert forward._mec_lambda_inv_scale(model) == pytest.approx(expected)
 
     def test_training_output(self):
         model = _tiny_mec().train()
-        v1, v2 = torch.randn(4, 3, 32, 32), torch.randn(4, 3, 32, 32)
-        output = model(v1, v2)
+        output = model(_image_views(), "fit")
 
-        assert output.embedding.shape == (8, 8)
-        assert output.prediction.shape == (8, 16)
-        assert output.target.shape == (8, 16)
-        assert not output.target.requires_grad
-        assert not output.entropy.requires_grad
+        assert isinstance(output, dict)
+        assert output["loss"].ndim == 0
+        assert output["embedding"].shape == (8, 8)
+        assert output["prediction"].shape == (8, 16)
+        assert output["target"].shape == (8, 16)
+        assert output["label"].tolist() == list(range(4)) * 2
+        assert not output["embedding"].requires_grad
+        assert not output["target"].requires_grad
+        assert not output["entropy"].requires_grad
 
-        lambda_inv = model.mec_loss.lambda_inv(4, 16) * model._lambda_inv_scale()
-        expected_entropy = -output.loss.detach() * (4 + 16) / 2 / lambda_inv
-        torch.testing.assert_close(output.entropy, expected_entropy)
+        lambda_inv = model.mec_loss.lambda_inv(4, 16) * 8.0
+        expected_entropy = -output["loss"].detach() * (4 + 16) / 2 / lambda_inv
+        torch.testing.assert_close(output["entropy"], expected_entropy)
+
+    def test_forward_delegates_to_forward_function(self):
+        model = _tiny_mec().train()
+        batch = _image_views()
+        torch.testing.assert_close(
+            model(batch, "fit")["loss"], forward.mec(model, batch, "fit")["loss"]
+        )
+
+    def test_eval_returns_teacher_embedding_without_loss(self):
+        model = _tiny_mec().eval()
+        images = torch.randn(4, 3, 32, 32)
+        output = model({"image": images, "label": torch.arange(4)}, "validate")
+
+        torch.testing.assert_close(
+            output["embedding"], model.backbone.forward_teacher(images)
+        )
+        assert output["label"].tolist() == list(range(4))
+        assert "loss" not in output
+        assert not output["embedding"].requires_grad
 
     @pytest.mark.parametrize("symmetric", [False, True])
     def test_symmetric_option_reaches_loss(self, symmetric):
@@ -134,7 +165,7 @@ class TestMECMethod:
 
     def test_warmup_changes_loss(self):
         """The 8x warm-up at epoch 0 must actually reach the loss."""
-        v1, v2 = torch.randn(4, 3, 32, 32), torch.randn(4, 3, 32, 32)
-        warm = _tiny_mec(warmup_epochs=10).train()(v1, v2).loss
-        cold = _tiny_mec(warmup_epochs=0).train()(v1, v2).loss
+        batch = _image_views()
+        warm = _tiny_mec(warmup_epochs=10).train()(batch, "fit")["loss"]
+        cold = _tiny_mec(warmup_epochs=0).train()(batch, "fit")["loss"]
         assert not torch.allclose(warm, cold)

@@ -39,6 +39,26 @@ class BYOLLoss(torch.nn.Module):
         return loss.mean()
 
 
+def _safe_normalize(x: torch.Tensor) -> torch.Tensor:
+    """L2-normalize rows without overflow or underflow at extreme magnitudes.
+
+    ``F.normalize`` squares its input, so in fp32 rows above ``~1e19``
+    overflow to a zero vector and rows below ``~1e-19`` lose their norm to
+    the ``eps`` clamp. Dividing each row by its largest absolute entry first
+    keeps the squares in range without changing the direction.
+
+    Args:
+        x: Tensor of shape ``[N, D]``.
+
+    Returns:
+        torch.Tensor: Row-normalized ``x``; all-zero rows stay zero.
+    """
+    scale = x.detach().abs().amax(dim=-1, keepdim=True)
+    # Leave all-zero rows unscaled so their gradient stays that of F.normalize.
+    scale = torch.where(scale > 0, scale, torch.ones_like(scale))
+    return F.normalize(x / scale, dim=-1)
+
+
 class MECLoss(torch.nn.Module):
     """Maximum Entropy Coding objective used in MEC :cite:`liu2022self`.
 
@@ -119,8 +139,8 @@ class MECLoss(torch.nn.Module):
         # The alternating power series cancels large terms, so compute in fp32
         # with autocast off (it would otherwise run the matmuls in bf16/fp16).
         with torch.autocast(device_type=online_pred.device.type, enabled=False):
-            online_pred = F.normalize(online_pred.float(), dim=-1)
-            target_proj = F.normalize(target_proj.float(), dim=-1)
+            online_pred = _safe_normalize(online_pred.float())
+            target_proj = _safe_normalize(target_proj.float())
 
             lambda_inv = self.lambda_inv(batch_size, dim) * lambda_inv_scale
             c = online_pred @ target_proj.T
