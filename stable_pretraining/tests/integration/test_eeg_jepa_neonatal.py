@@ -343,3 +343,46 @@ def test_cuda_benchmark_matches_workers_and_main_process_assembly(
         benchmark=BenchmarkConfig(trials=3, startup_steps=1, diagnostic=True),
     )
     _assert_benchmark(report, output, 3)
+
+
+def test_worker_bootstrap_avoids_training_imports(tmp_path):
+    """Re-execute the pilot as spawn does, with training-only imports forbidden."""
+    import subprocess
+    import sys
+
+    code = """
+import importlib.abc
+import runpy
+import sys
+
+blocked = (
+    "lightning", "pytorch_lightning", "torchmetrics", "torchvision", "transformers",
+    "stable_pretraining.module", "stable_pretraining.manager", "stable_pretraining.callbacks",
+    "examples.eeg_jepa.model", "examples.eeg_jepa.train", "examples.eeg_jepa.benchmark",
+)
+
+class WorkerImports(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if any(fullname == name or fullname.startswith(name + ".") for name in blocked):
+            raise AssertionError("Training-only import during worker bootstrap: " + fullname)
+
+sys.meta_path.insert(0, WorkerImports())
+runpy.run_module("examples.eeg_jepa.pilot", run_name="__mp_main__")
+from examples.eeg_jepa.data import NeonatalBatches
+from examples.eeg_jepa.config import Config
+from profiling.edf_record_loading import EdfWindowReader
+assert Config().channels == 19
+assert not any(name == root or name.startswith(root + ".")
+               for name in sys.modules for root in blocked)
+print("worker bootstrap excludes the training stack")
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=tmp_path,
+        env={**os.environ, "CUDA_VISIBLE_DEVICES": "", "PYTHONDONTWRITEBYTECODE": "1"},
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "worker bootstrap excludes the training stack" in result.stdout

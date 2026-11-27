@@ -8,9 +8,7 @@ from importlib.metadata import version
 import platform
 import os
 from pathlib import Path
-from time import perf_counter
 
-import lightning as pl
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -32,9 +30,7 @@ from .data import (
     mask_schedule,
     window_schedule,
 )
-from .model import build_module
 from .reference import REFERENCE_REVISION, load_reference
-from .train import fit
 
 
 def _checksum(path: Path) -> str:
@@ -85,29 +81,14 @@ def verify_inputs(
     )
 
 
-class PilotHistory(pl.Callback):
-    """Retain per-step losses and elapsed time without external tracking."""
-
-    def __init__(self) -> None:
-        self.steps = []
-
-    def on_train_start(self, trainer, pl_module) -> None:
-        if pl_module.device.type == "cuda":
-            torch.cuda.synchronize(pl_module.device)
-        self.started = perf_counter()
-
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx) -> None:
-        loss = float(outputs["loss"].detach().cpu())
-        if not np.isfinite(loss):
-            raise ValueError("Nonfinite pilot loss")
-        if pl_module.device.type == "cuda":
-            torch.cuda.synchronize(pl_module.device)
-        self.steps.append(
-            dict(loss=loss, elapsed_seconds=perf_counter() - self.started)
-        )
-
-
 def _train_paths(reference, datasets, paths, config, output, accelerator, seed):
+    # Spawn re-executes this module; only the training process needs these imports.
+    import lightning as pl
+
+    from .benchmark import PilotHistory
+    from .model import build_module
+    from .train import fit
+
     results = {}
     for name in paths:
         pl.seed_everything(seed, workers=True)
@@ -261,7 +242,7 @@ def run(
             torch=torch.__version__,
             cuda_runtime=torch.version.cuda,
             torch_threads=torch.get_num_threads(),
-            lightning=pl.__version__,
+            lightning=version("lightning"),
             numpy=np.__version__,
             mne=version("mne"),
             scipy=version("scipy"),

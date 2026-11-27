@@ -54,6 +54,28 @@ def _sync(device: torch.device) -> None:
         torch.cuda.synchronize(device)
 
 
+class PilotHistory(pl.Callback):
+    """Retain per-step losses and elapsed time without external tracking."""
+
+    def __init__(self) -> None:
+        self.steps = []
+
+    def on_train_start(self, trainer, pl_module) -> None:
+        if pl_module.device.type == "cuda":
+            torch.cuda.synchronize(pl_module.device)
+        self.started = perf_counter()
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx) -> None:
+        loss = float(outputs["loss"].detach().cpu())
+        if not np.isfinite(loss):
+            raise ValueError("Nonfinite pilot loss")
+        if pl_module.device.type == "cuda":
+            torch.cuda.synchronize(pl_module.device)
+        self.steps.append(
+            dict(loss=loss, elapsed_seconds=perf_counter() - self.started)
+        )
+
+
 class History(pl.Callback):
     """Record completed-step times after EMA, deferring scalar copies until fit ends."""
 
