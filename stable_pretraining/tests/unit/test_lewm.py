@@ -2,8 +2,11 @@
 
 import torch
 from torch import nn
+import pytest
 
 from stable_pretraining.methods.lewm import LeWM
+
+pytestmark = pytest.mark.unit
 
 
 class TinyWorldModel(nn.Module):
@@ -62,3 +65,44 @@ def test_lewm_public_api():
     import stable_pretraining as spt
 
     assert spt.LeWM is LeWM
+
+
+def test_lewm_prediction_loss_reference():
+    """Check prediction MSE against a known numerical result."""
+    from stable_pretraining.losses.world_model import LeWMLoss
+    from stable_pretraining.methods.lewm_components.architecture import SIGReg
+
+    loss_fn = LeWMLoss(sigreg=SIGReg())
+
+    pred = torch.tensor([[[1.0, 2.0]]])
+    target = torch.tensor([[[3.0, 4.0]]])
+    embeddings = torch.randn(4, 2, 2)
+
+    output = loss_fn(pred, target, embeddings)
+
+    torch.testing.assert_close(output["pred_loss"], torch.tensor(4.0))
+
+
+def test_sigreg_reference():
+    """Compare SIGReg against the original LeWM formula."""
+    from stable_pretraining.methods.lewm_components.architecture import SIGReg
+
+    x = torch.randn(3, 8, 4)
+
+    torch.manual_seed(42)
+    actual = SIGReg(knots=17, num_proj=32)(x)
+
+    torch.manual_seed(42)
+    A = torch.randn(4, 32)
+    A = A / A.norm(dim=0)
+
+    t = torch.linspace(0, 3, 17)
+    phi = torch.exp(-t.square() / 2)
+
+    x_t = (x @ A).unsqueeze(-1) * t
+
+    error = (x_t.cos().mean(dim=1) - phi).square() + x_t.sin().mean(dim=1).square()
+
+    expected = (2 * torch.trapezoid(error * phi, t, dim=-1) * x.size(1)).mean()
+
+    torch.testing.assert_close(actual, expected)

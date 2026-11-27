@@ -1295,11 +1295,7 @@ def lewm_forward(
     tgt_emb = emb[:, self.num_preds :]
     pred_emb = self.model.predict(ctx_emb, ctx_act)
 
-    output["pred_loss"] = (pred_emb - tgt_emb).pow(2).mean()
-    output["sigreg_loss"] = self.sigreg(emb.transpose(0, 1))
-
-    output["loss"] = output["pred_loss"] + self.sigreg_weight * output["sigreg_loss"]
-
+    output.update(self.loss_fn(pred_emb, tgt_emb, emb))
     output["embedding"] = emb
 
     # Log prediction, regularization, and total losses

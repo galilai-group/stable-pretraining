@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from einops import rearrange
+from stable_pretraining.losses.sigreg import SlicedEppsPulley
 
 
 def modulate(x, shift, scale):
@@ -9,31 +10,44 @@ def modulate(x, shift, scale):
     return x * (1 + scale) + shift
 
 
-class SIGReg(torch.nn.Module):
-    """Sketch Isotropic Gaussian Regularizer (single-GPU!)."""
+class SIGReg(SlicedEppsPulley):
+    """LeWorldModel SIGReg with per-GPU batch statistics under DDP."""
 
     def __init__(self, knots=17, num_proj=1024):
-        super().__init__()
-        self.num_proj = num_proj
-        t = torch.linspace(0, 3, knots, dtype=torch.float32)
-        dt = 3 / (knots - 1)
-        weights = torch.full((knots,), 2 * dt, dtype=torch.float32)
-        weights[[0, -1]] = dt
-        window = torch.exp(-t.square() / 2.0)
-        self.register_buffer("t", t)
-        self.register_buffer("phi", window)
-        self.register_buffer("weights", weights * window)
+        super().__init__(
+            num_slices=num_proj,
+            t_max=3.0,
+            n_points=knots,
+            distributed=False,
+            seeded=False,
+        )
 
-    def forward(self, proj):
-        """proj: (T, B, D)."""
-        # sample random projections
-        A = torch.randn(proj.size(-1), self.num_proj, device=proj.device)
-        A = A.div_(A.norm(p=2, dim=0))
-        # compute the epps-pulley statistic
-        x_t = (proj @ A).unsqueeze(-1) * self.t
-        err = (x_t.cos().mean(-3) - self.phi).square() + x_t.sin().mean(-3).square()
-        statistic = (err @ self.weights) * proj.size(-2)
-        return statistic.mean()  # average over projections and time
+
+# class SIGReg(torch.nn.Module):
+#     """Sketch Isotropic Gaussian Regularizer (single-GPU!)."""
+
+#     def __init__(self, knots=17, num_proj=1024):
+#         super().__init__()
+#         self.num_proj = num_proj
+#         t = torch.linspace(0, 3, knots, dtype=torch.float32)
+#         dt = 3 / (knots - 1)
+#         weights = torch.full((knots,), 2 * dt, dtype=torch.float32)
+#         weights[[0, -1]] = dt
+#         window = torch.exp(-t.square() / 2.0)
+#         self.register_buffer("t", t)
+#         self.register_buffer("phi", window)
+#         self.register_buffer("weights", weights * window)
+
+#     def forward(self, proj):
+#         """proj: (T, B, D)."""
+#         # sample random projections
+#         A = torch.randn(proj.size(-1), self.num_proj, device=proj.device)
+#         A = A.div_(A.norm(p=2, dim=0))
+#         # compute the epps-pulley statistic
+#         x_t = (proj @ A).unsqueeze(-1) * self.t
+#         err = (x_t.cos().mean(-3) - self.phi).square() + x_t.sin().mean(-3).square()
+#         statistic = (err @ self.weights) * proj.size(-2)
+#         return statistic.mean()  # average over projections and time
 
 
 class FeedForward(nn.Module):

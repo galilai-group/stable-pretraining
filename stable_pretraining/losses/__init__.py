@@ -25,6 +25,10 @@ from .multimodal import CLIPLoss
 # Reconstruction losses
 from .reconstruction import mae, MAELoss
 
+# World model losses
+from .world_model import LeWMLoss
+from .sigreg import EppsPulley, SlicedEppsPulley
+
 # Utilities
 from .utils import (
     sinkhorn_knopp,
@@ -48,6 +52,10 @@ __all__ = [
     # Reconstruction
     "mae",
     "MAELoss",
+    # World model and regularization
+    "LeWMLoss",
+    "EppsPulley",
+    "SlicedEppsPulley",
     # Utils
     "sinkhorn_knopp",
     "off_diagonal",

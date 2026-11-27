@@ -95,6 +95,17 @@ input, either in pixel space or in a latent feature space.
    VISReg
    SALT
 
+World Models
+------------
+
+Methods that learn action-conditioned latent dynamics.
+
+.. autosummary::
+   :toctree: gen_modules/
+   :template: myclass_template.rst
+
+   LeWM
+
 Other
 -----
 

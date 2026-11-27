@@ -2,6 +2,8 @@
 
 import lightning as pl
 import torch
+import pytest
+import stable_pretraining as spt
 from torch.utils.data import DataLoader, Dataset
 from transformers import ViTConfig, ViTModel
 
@@ -11,6 +13,8 @@ from stable_pretraining.methods.lewm_components.architecture import (
     Embedder,
 )
 from stable_pretraining.methods.lewm_components.jepa import JEPA
+
+pytestmark = pytest.mark.unit
 
 
 class SyntheticSequences(Dataset):
@@ -72,6 +76,7 @@ def test_lewm_training_and_resume(tmp_path):
     pl.seed_everything(42)
 
     loader = DataLoader(SyntheticSequences(), batch_size=2)
+    data = spt.data.DataModule(train=loader)
 
     method = make_method()
     trainer = pl.Trainer(
@@ -86,7 +91,14 @@ def test_lewm_training_and_resume(tmp_path):
         num_sanity_val_steps=0,
     )
 
-    trainer.fit(method, train_dataloaders=loader)
+    manager = spt.Manager(
+        trainer=trainer,
+        module=method,
+        data=data,
+        seed=42,
+    )
+    manager()
+
     assert trainer.global_step == 2
 
     checkpoint = tmp_path / "lewm.ckpt"
@@ -108,10 +120,14 @@ def test_lewm_training_and_resume(tmp_path):
         enable_model_summary=False,
     )
 
-    resumed_trainer.fit(
-        resumed_method,
-        train_dataloaders=loader,
-        ckpt_path=str(checkpoint),
+    resumed_manager = spt.Manager(
+        trainer=resumed_trainer,
+        module=resumed_method,
+        data=data,
+        seed=42,
+        ckpt_path=str(checkpoint.resolve()),
+        weights_only=False,
     )
+    resumed_manager()
 
     assert resumed_trainer.global_step == 3

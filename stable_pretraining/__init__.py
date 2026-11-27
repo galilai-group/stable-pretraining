@@ -38,7 +38,9 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 from loguru import logger
 from omegaconf import OmegaConf
 
+# ---------------------------------------------------------------------------
 # Optional-dependency probes (cheap; users branch on these flags)
+# ---------------------------------------------------------------------------
 
 # ``find_spec`` checks installation without actually importing the package,
 # which is ~40 ms total for all four (vs 3 s for eager imports of sklearn /
@@ -51,7 +53,9 @@ TRACKIO_AVAILABLE = _find_spec("trackio") is not None
 SWANLAB_AVAILABLE = _find_spec("swanlab") is not None
 
 
+# ---------------------------------------------------------------------------
 # Eager light-weight imports
+# ---------------------------------------------------------------------------
 
 # Global config and version metadata are tiny and used nearly everywhere.
 from ._config import get_config, set  # noqa: F401, E402
@@ -69,7 +73,9 @@ from .__about__ import (  # noqa: F401, E402
 OmegaConf.register_new_resolver("eval", eval)
 
 
+# ---------------------------------------------------------------------------
 # Logger setup
+# ---------------------------------------------------------------------------
 
 # Use richuru for nicer console output if it's available.
 try:
@@ -132,7 +138,9 @@ logging.root.handlers = []
 logging.basicConfig(handlers=[_InterceptHandler()], level="INFO")
 
 
+# ---------------------------------------------------------------------------
 # Lazy heavy attributes (PEP 562)
+# ---------------------------------------------------------------------------
 
 # Mapping of attribute -> (module path, attr name within that module).
 # Accessing any of these triggers a one-time submodule import + the deferred
