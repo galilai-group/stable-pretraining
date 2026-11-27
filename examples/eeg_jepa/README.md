@@ -240,3 +240,21 @@ counts, case order, seeds, input/source/code hashes, environment and allocation.
 `learning-progress.png` contains loss-versus-step and loss-versus-completed-wall-
 time panels, with individual trials, median curves, parameter counts and source/
 reference fingerprints. All artifacts are local and outside Git.
+
+
+## Batched MNE preprocessing
+
+Preprocessing packs windows as independent rows shaped `[batch * 19, time]`
+in one MNE `RawArray`; it never joins windows along time. Resampling, FIR
+parameters, microvolt conversion and context cropping are unchanged. The result
+is restored to `[batch, 19, seconds, 200]`. A frozen per-window test oracle
+requires exact agreement for batches 1, 2 and 4, including 200/256 Hz inputs,
+one/four-second crops and generated EDF windows.
+
+CPU diagnostic job 237865 measured median preprocessing of 51.24 ms per batch
+before batching and 43.57 ms for the candidate (batch 2, four-second core,
+12-second context on each side, 256 Hz source). Tracemalloc peak allocation
+increased from 5,344,826 to 7,235,690 bytes: approximately **5.10 to 6.90 MiB**.
+That is a measured allocation-workspace tradeoff, not RSS or CUDA memory;
+larger batches require larger simultaneous workspaces. This change does not
+alter reader/calibration code or introduce a filter cache.

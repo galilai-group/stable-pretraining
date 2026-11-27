@@ -151,17 +151,28 @@ def model_patches(
     selected = values.detach().cpu().numpy()[:, :, indices]
     if not np.isfinite(selected).all():
         raise ValueError("Nonfinite EEG values")
-    info = mne.create_info(list(CANONICAL_CHANNELS), rate_hz, ch_types="eeg")
-    output = []
-    for window in selected:
-        with mne.io.RawArray(window.T.astype(np.float64), info, verbose="ERROR") as raw:
-            raw.resample(TARGET_RATE, npad="auto", method="fft", verbose="ERROR")
-            raw.filter(l_freq=0.3, h_freq=75.0, verbose="ERROR")
-            raw.notch_filter(freqs=[60.0], verbose="ERROR")
-            start = CONTEXT_SECONDS * TARGET_RATE
-            crop = raw.get_data(units="uV")[:, start : start + patches * TARGET_RATE]
-        output.append(crop.reshape(19, patches, TARGET_RATE).astype(np.float32))
-    return torch.from_numpy(np.stack(output))
+    batch, samples, channels = selected.shape
+    # Rows are independent signals; batching must never join windows along time.
+    data = (
+        selected.transpose(0, 2, 1)
+        .reshape(batch * channels, samples)
+        .astype(np.float64)
+    )
+    batched_names = [
+        f"b{index}:{channel}"
+        for index in range(batch)
+        for channel in CANONICAL_CHANNELS
+    ]
+    info = mne.create_info(batched_names, rate_hz, ch_types="eeg")
+    with mne.io.RawArray(data, info, verbose="ERROR") as raw:
+        raw.resample(TARGET_RATE, npad="auto", method="fft", verbose="ERROR")
+        raw.filter(l_freq=0.3, h_freq=75.0, verbose="ERROR")
+        raw.notch_filter(freqs=[60.0], verbose="ERROR")
+        start = CONTEXT_SECONDS * TARGET_RATE
+        crop = raw.get_data(units="uV")[:, start : start + patches * TARGET_RATE]
+    return torch.from_numpy(
+        crop.reshape(batch, channels, patches, TARGET_RATE).astype(np.float32)
+    )
 
 
 def window_schedule(metadata: Any, config: Config, seed: int) -> Any:

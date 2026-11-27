@@ -386,3 +386,55 @@ print("worker bootstrap excludes the training stack")
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "worker bootstrap excludes the training stack" in result.stdout
+
+
+def _per_window_model_patches(values, names, rate_hz, patches):
+    """Frozen pre-batching oracle; keep its processing calls independent of production."""
+    import mne
+
+    selected = values.detach().cpu().numpy()[:, :, channel_indices(names)]
+    info = mne.create_info(list(CANONICAL_CHANNELS), rate_hz, ch_types="eeg")
+    output = []
+    for window in selected:
+        with mne.io.RawArray(window.T.astype(np.float64), info, verbose="ERROR") as raw:
+            raw.resample(200, npad="auto", method="fft", verbose="ERROR")
+            raw.filter(l_freq=0.3, h_freq=75.0, verbose="ERROR")
+            raw.notch_filter(freqs=[60.0], verbose="ERROR")
+            crop = raw.get_data(units="uV")[:, 12 * 200 : (12 + patches) * 200]
+        output.append(crop.reshape(19, patches, 200).astype(np.float32))
+    return torch.from_numpy(np.stack(output))
+
+
+@pytest.mark.parametrize("batch_size", [1, 2, 4])
+@pytest.mark.parametrize("rate_hz", [200, 256])
+@pytest.mark.parametrize("patches", [1, 4])
+def test_batched_mne_exactly_matches_previous_per_window(batch_size, rate_hz, patches):
+    names = tuple(f"EEG {name}-Ref" for name in reversed(CANONICAL_CHANNELS)) + (
+        "ECG EKG",
+    )
+    generator = torch.Generator().manual_seed(18)
+    values = (
+        torch.randn(batch_size, (patches + 24) * rate_hz, 20, generator=generator)
+        * 2e-5
+    )
+    values += torch.linspace(-1e-5, 1e-5, 20)
+    values[:, [0, values.shape[1] // 2, -1], :] += 1e-4
+    before = values.clone()
+    expected = _per_window_model_patches(values, names, rate_hz, patches)
+    actual = model_patches(values, names, rate_hz, patches)
+    torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+    torch.testing.assert_close(values, before, rtol=0, atol=0)
+    assert actual.dtype == torch.float32
+    assert actual.shape == (batch_size, 19, patches, 200)
+
+
+@pytest.mark.parametrize("batch_size", [1, 2, 4])
+def test_batched_mne_exactly_matches_per_window_edf(neonatal_edf, batch_size):
+    reader = EdfWindowReader(neonatal_edf)
+    starts = np.array([12, 16, 20, 12])[:batch_size] * 256
+    values = reader.read(starts - 12 * 256, 28 * 256)
+    expected = _per_window_model_patches(values, reader.metadata.channel_names, 256, 4)
+    actual = model_patches(values, reader.metadata.channel_names, 256, 4)
+    torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+    if batch_size == 4:
+        torch.testing.assert_close(actual[0], actual[3], rtol=0, atol=0)
