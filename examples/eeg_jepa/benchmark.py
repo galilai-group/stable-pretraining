@@ -31,7 +31,7 @@ def cases(paths: tuple[str, ...], workers: tuple[int, ...]) -> list[tuple[str, i
     return [
         (path, count)
         for path in paths
-        for count in (workers if path == "edf_memmap" else (0,))
+        for count in ((0,) if path == "edf_gpu_assembly" else workers)
     ]
 
 
@@ -307,11 +307,18 @@ def measure(
     matrix = cases(paths, options.workers)
     device = torch.device("cuda" if accelerator == "gpu" else "cpu")
     worker_checks = {}
-    if "edf_memmap" in paths:
+    for path in paths:
+        if path == "edf_gpu_assembly":
+            continue
         for workers in options.workers:
             if workers:
-                worker_checks[str(workers)] = _verify_workers(
-                    datasets["edf_memmap"],
+                key = (
+                    str(workers)
+                    if path == "edf_memmap"
+                    else f"{path}/workers={workers}"
+                )
+                worker_checks[key] = _verify_workers(
+                    datasets[path],
                     workers,
                     seed,
                     checks["cpu_model_input_sha256"],

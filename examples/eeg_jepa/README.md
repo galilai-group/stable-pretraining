@@ -21,8 +21,10 @@ Dataset reading and calibration stay in stable-datasets.
 Run from the stable-pretraining source checkout on
 `research/eeg-reference-integration`. The neonatal example requires the companion
 stable-datasets contribution on `research/gpu-medical-timeseries`, compatible
-with **32cb823e** and the behavior-preserving cleanup based on it. A release
-installation alone lacks its `profiling` modules: both source roots must be on
+with **32cb823e** for EDF controls. The `current_cache` path additionally needs
+the companion `CurrentCacheWindowReader` contribution based on **cd138094**;
+that base revision alone lacks the new reader. A release installation alone
+lacks the `profiling` modules: both source roots must be on
 `PYTHONPATH`. Keep reference caches, environments and artifacts outside Git.
 
 A fresh Mac CPU environment (core versions checked with Python 3.12.13):
@@ -107,7 +109,9 @@ python -m examples.eeg_jepa.train --reference-root "$EEG_JEPA_REFERENCE" \
 ## Neonatal EDF preprocessing and pilot
 
 `EdfWindowReader` delegates to the existing CPU memmap/calibration or CUDA
-record assembler. The example owns no EDF/Lance parsing or calibration. Its
+record assembler. `CurrentCacheWindowReader` delegates to the existing
+production-format `CurrentSignalCache`. The example owns no storage parsing
+or calibration. Its
 transform order follows the pinned reference's
 [record-shard preprocessing](https://github.com/SWF-hao/EEG-JEPA-official/blob/925b1194d5abf1e95ca2a2e7416b5a5d268845df/preprocessing/preprocess_tuh_eeg_record_shards.py)
 and [canonical channel mapper](https://github.com/SWF-hao/EEG-JEPA-official/blob/925b1194d5abf1e95ca2a2e7416b5a5d268845df/preprocessing/preprocess_tuh_eeg_lmdb.py):
@@ -131,7 +135,7 @@ and [canonical channel mapper](https://github.com/SWF-hao/EEG-JEPA-official/blob
 This contextual-window pilot omits the reference corpus selection, 60-second
 end trimming and amplitude QC. Filter boundaries can differ from full-record
 preprocessing. It consumes no seizure labels and establishes no held-out
-neonatal accuracy. Both paths share CPU/MNE preprocessing; GPU assembly includes
+neonatal accuracy. All paths share CPU/MNE preprocessing; GPU assembly includes
 a device-to-host round trip and subsequent model-device transfer.
 
 Every scheduled normalized input is checked against CPU memmap at
@@ -146,10 +150,42 @@ python -m examples.eeg_jepa.pilot --source /path/to/eeg4.edf \
   --paths edf_memmap --accelerator cpu --steps 3 --batch-size 2 --seconds 4 --seed 0
 ```
 
+### Production-cache CPU baseline
+
+Keep the default `edf_memmap` command above unchanged. To include `current_cache`,
+pass `--prepared-workspace` pointing to the existing window study workspace
+containing `preparation.json` and `current/`. If no workspace exists, prepare it
+once outside Git (this also builds the study's Lance layouts):
+
+```bash
+python -m profiling.benchmark_signal_windows prepare /path/to/eeg4.edf "$study_root/prepared-1024" --chunk-samples 1024
+python -m examples.eeg_jepa.pilot --source /path/to/eeg4.edf \
+  --prepared-workspace "$study_root/prepared-1024" \
+  --reference-root "$EEG_JEPA_REFERENCE" --output "$study_root/cache-cpu" \
+  --paths current_cache edf_memmap --accelerator cpu \
+  --steps 4 --batch-size 2 --seconds 4 --seed 0
+```
+
+Before training, stable-datasets checks the manifest's EDF SHA256 and recording
+sample count, rate, channel order, gain and offset against the source. The cache
+already holds float32 volts; no second calibration is applied. Each batch makes
+one grouped `CurrentSignalCache.read()` call, materializing each requested
+recording once even for repeated/unordered windows. Handles reopen per spawned
+process. Source verification is outside timing; worker reopen and batch delivery
+remain inside the existing measured intervals.
+
+All scheduled cache inputs pass the same normalized-input checks against
+memmap, and all training runs pass the same loss/initialization/budget checks.
+`report.json` adds `prepared_cache` with workspace, preparation-manifest SHA256
+and verified EDF SHA256. The manifest records declared source provenance;
+numerical checks validate the requested cached windows. This baseline represents
+the production signal-column cache, not a complete neonatal dataset build.
+
 ## Repeated measurements
 
-Add `--trials 3 --workers 0 2 --startup-steps 2` to compare CPU workers 0/2
-and optional GPU assembly with 0 workers. Order alternates forward/reverse/forward.
+Add `--trials 3 --workers 0 2 --startup-steps 2` to compare workers 0/2 for
+each requested CPU path (`edf_memmap` and/or `current_cache`) and optional GPU
+assembly with 0 workers. Order alternates forward/reverse/forward.
 Each run resets model/optimizer state and replays the same windows/masks/budget.
 Three restarts describe observed timing variation, not independent data samples.
 
@@ -200,7 +236,21 @@ python -m examples.eeg_jepa.pilot --source /path/on/hydra/eeg4.edf \
   --steps 4 --batch-size 2 --seconds 4 --seed 0
 ```
 
-All six selected GPU cases must execute; unavailable/unusable CUDA skips are
-incomplete GPU validation. GPU checks remain unverified on the Mac. Old-cache
-CPU versus new-GPU EEG training, further Lance integration, GPU preprocessing,
+All seven selected GPU cases must execute; unavailable/unusable CUDA skips are
+incomplete GPU validation. GPU checks remain unverified on the Mac. To check
+the production-cache CPU pipeline against GPU assembly, retaining memmap as a
+control on the same GPU, propose a four-update run per case:
+
+```bash
+python -m examples.eeg_jepa.pilot --source /path/on/hydra/eeg4.edf \
+  --prepared-workspace /path/on/hydra/prepared-1024 \
+  --reference-root "$EEG_JEPA_REFERENCE" --output "$study_root/cache-gpu-check" \
+  --paths current_cache edf_memmap edf_gpu_assembly --accelerator gpu \
+  --steps 4 --batch-size 2 --seconds 4 --seed 0 \
+  --trials 3 --workers 0 2 --startup-steps 2
+```
+
+This short run checks correctness and interval accounting; two sustained updates
+cannot establish steady-state performance. CUDA execution and real-recording
+speedup remain unverified. Further Lance integration, GPU preprocessing,
 buffer/stream tuning, larger models and external tracking remain future work.

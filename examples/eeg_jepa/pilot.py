@@ -14,6 +14,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from profiling import (
+    current_signal_cache,
     edf_record_loading,
     edf_source,
     signal_calibration,
@@ -31,6 +32,8 @@ from .data import (
     window_schedule,
 )
 from .reference import REFERENCE_REVISION, load_reference
+
+LOADING_PATHS = ("current_cache", *EDF_PATHS)
 
 
 def _checksum(path: Path) -> str:
@@ -108,13 +111,15 @@ def _train_paths(reference, datasets, paths, config, output, accelerator, seed):
     return results
 
 
-def _validate_options(paths, accelerator, benchmark, steps):
+def _validate_options(paths, accelerator, benchmark, steps, prepared_workspace):
     if (
         not paths
         or len(set(paths)) != len(paths)
-        or any(p not in EDF_PATHS for p in paths)
+        or any(p not in LOADING_PATHS for p in paths)
     ):
-        raise ValueError("Require distinct supported EDF paths")
+        raise ValueError("Require distinct supported loading paths")
+    if "current_cache" in paths and prepared_workspace is None:
+        raise ValueError("current_cache requires a prepared workspace")
     if accelerator not in ("cpu", "gpu"):
         raise ValueError("Require cpu or gpu accelerator")
     if "edf_gpu_assembly" in paths and accelerator != "gpu":
@@ -125,11 +130,15 @@ def _validate_options(paths, accelerator, benchmark, steps):
         benchmark.validate(steps)
 
 
-def _prepare_datasets(source, reference, config, paths, seed):
+def _prepare_datasets(source, reference, config, paths, seed, prepared_workspace):
     readers = {"edf_memmap": EdfWindowReader(source)}
     if "edf_gpu_assembly" in paths:
         readers["edf_gpu_assembly"] = EdfWindowReader(
             source, "edf_gpu_assembly", torch.device("cuda")
+        )
+    if "current_cache" in paths:
+        readers["current_cache"] = current_signal_cache.CurrentCacheWindowReader(
+            source, prepared_workspace
         )
     metadata = readers["edf_memmap"].metadata
     starts = window_schedule(metadata, config, seed)
@@ -196,6 +205,7 @@ def _pilot_report(
         str(path): _checksum(path)
         for path in (
             *sorted(Path(__file__).parent.glob("*.py")),
+            Path(current_signal_cache.__file__),
             Path(edf_record_loading.__file__),
             Path(edf_source.__file__),
             Path(signal_calibration.__file__),
@@ -219,6 +229,7 @@ def run(
     accelerator: str = "cpu",
     seed: int = 0,
     benchmark: BenchmarkConfig | None = None,
+    prepared_workspace: Path | None = None,
 ) -> dict:
     """Validate matched inputs, then train fresh models on identical EDF requests.
 
@@ -227,10 +238,11 @@ def run(
         reference_root: External pinned reference archive.
         output: New external pilot directory.
         config: Small model dimensions, optimizer schedule and training budget.
-        paths: Existing stable-datasets paths to train.
+        paths: Existing stable-datasets loading paths to train.
         accelerator: Shared training endpoint, cpu or gpu.
         seed: Shared initialization, window and mask seed.
         benchmark: Optional repeated worker comparison and timing diagnostics.
+        prepared_workspace: Production-format prepared workspace for current_cache.
 
     Returns:
         Local provenance, input checks and matched per-step training results.
@@ -239,12 +251,14 @@ def run(
         CPU/MNE preprocessing includes a CUDA-to-host copy for GPU assembly.
         Timings are a correctness diagnostic, not an end-to-end speedup claim.
     """
-    _validate_options(paths, accelerator, benchmark, config.total_steps)
+    _validate_options(
+        paths, accelerator, benchmark, config.total_steps, prepared_workspace
+    )
     output, reference_root = _external(output), _external(reference_root)
     reference = load_reference(reference_root)
     before = _checksum(source)
     metadata, starts, masks, datasets = _prepare_datasets(
-        source, reference, config, paths, seed
+        source, reference, config, paths, seed, prepared_workspace
     )
     output.mkdir(parents=True, exist_ok=False)
     checks = verify_inputs(
@@ -284,6 +298,8 @@ def run(
         seed,
         accelerator,
     )
+    if "current_cache" in datasets:
+        report["prepared_cache"] = datasets["current_cache"].reader.provenance
     if benchmark_report is not None:
         from .benchmark import plot
 
@@ -301,7 +317,14 @@ def main() -> None:
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--reference-root", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--paths", nargs="+", choices=EDF_PATHS, default=["edf_memmap"])
+    parser.add_argument(
+        "--paths", nargs="+", choices=LOADING_PATHS, default=["edf_memmap"]
+    )
+    parser.add_argument(
+        "--prepared-workspace",
+        type=Path,
+        help="Workspace from profiling.benchmark_signal_windows prepare; required for current_cache",
+    )
     parser.add_argument("--accelerator", choices=("cpu", "gpu"), default="cpu")
     parser.add_argument("--steps", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=2)
@@ -323,6 +346,7 @@ def main() -> None:
         paths=tuple(args.paths),
         accelerator=args.accelerator,
         seed=args.seed,
+        prepared_workspace=args.prepared_workspace,
         benchmark=BenchmarkConfig(
             trials=args.trials if args.trials is not None else 3,
             workers=tuple(args.workers if args.workers is not None else (0, 2)),

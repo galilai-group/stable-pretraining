@@ -67,6 +67,16 @@ def neonatal_edf(tmp_path):
     return path
 
 
+@pytest.fixture
+def prepared_workspace(neonatal_edf, tmp_path):
+    pytest.importorskip("lance")
+    from profiling.benchmark_signal_windows import prepare
+
+    workspace = tmp_path / "prepared"
+    prepare(neonatal_edf, workspace, chunk_samples=1024)
+    return workspace
+
+
 def test_canonical_channels_reorder_aliases_and_reject_ambiguous_montages():
     names = tuple(f"EEG {name}-Ref" for name in reversed(CANONICAL_CHANNELS)) + (
         "ECG EKG",
@@ -187,6 +197,13 @@ def test_benchmark_case_order_and_startup_budget():
 
     matrix = cases(("edf_memmap", "edf_gpu_assembly"), (0, 2))
     assert matrix == [("edf_memmap", 0), ("edf_memmap", 2), ("edf_gpu_assembly", 0)]
+    assert cases(("current_cache", "edf_memmap", "edf_gpu_assembly"), (0, 2)) == [
+        ("current_cache", 0),
+        ("current_cache", 2),
+        ("edf_memmap", 0),
+        ("edf_memmap", 2),
+        ("edf_gpu_assembly", 0),
+    ]
     assert trial_order(matrix, 0) == trial_order(matrix, 2) == matrix
     assert trial_order(matrix, 1) == list(reversed(matrix))
     result = intervals([2.0, 3.0, 5.0, 7.0], 2, 4)
@@ -438,3 +455,91 @@ def test_batched_mne_exactly_matches_per_window_edf(neonatal_edf, batch_size):
     torch.testing.assert_close(actual, expected, rtol=0, atol=0)
     if batch_size == 4:
         torch.testing.assert_close(actual[0], actual[3], rtol=0, atol=0)
+
+
+@pytest.mark.parametrize(
+    "accelerator", ["cpu", pytest.param("gpu", marks=pytest.mark.gpu)]
+)
+def test_prepared_cache_pilot_matches_memmap_and_gpu_controls(
+    neonatal_edf, prepared_workspace, reference_root, tmp_path, accelerator
+):
+    paths = ("current_cache", "edf_memmap")
+    if accelerator == "gpu":
+        paths += ("edf_gpu_assembly",)
+    config = Config(total_steps=4, batch_size=2)
+    report = run(
+        neonatal_edf,
+        reference_root,
+        tmp_path / "cache-pilot",
+        config,
+        paths=paths,
+        accelerator=accelerator,
+        seed=11,
+        prepared_workspace=prepared_workspace,
+    )
+    assert set(report["paths"]) == set(paths)
+    assert report["prepared_cache"]["source_sha256"] == report["source_sha256"]
+    assert (
+        report["prepared_cache"]["preparation_sha256"]
+        == hashlib.sha256(
+            (prepared_workspace / "preparation.json").read_bytes()
+        ).hexdigest()
+    )
+    assert (
+        len({result["initial_weights_sha256"] for result in report["paths"].values()})
+        == 1
+    )
+    baseline = report["paths"]["edf_memmap"]
+    cached = report["paths"]["current_cache"]
+    assert cached["steps"] and all(
+        result["teacher_updates"] == 4 for result in report["paths"].values()
+    )
+    assert report["checks"]["max_abs_model_input_difference"]["current_cache"] == 0
+    assert [step["loss"] for step in cached["steps"]] == [
+        step["loss"] for step in baseline["steps"]
+    ]
+    assert cached["max_abs_loss_difference"] == 0
+    print(
+        "Prepared cache vs memmap: normalized-input/loss max_abs=0; four matched optimizer/EMA updates"
+    )
+
+
+def test_current_cache_requires_prepared_workspace_before_creating_artifacts(
+    neonatal_edf, tmp_path
+):
+    output = tmp_path / "missing-workspace"
+    with pytest.raises(ValueError, match="requires a prepared workspace"):
+        run(
+            neonatal_edf,
+            tmp_path / "unused-reference",
+            output,
+            Config(),
+            paths=("current_cache",),
+        )
+    assert not output.exists()
+
+
+def test_repeated_cache_benchmark_validates_spawned_workers_and_learning(
+    neonatal_edf, prepared_workspace, reference_root, tmp_path
+):
+    from examples.eeg_jepa.config import BenchmarkConfig
+
+    output = tmp_path / "repeated-cache"
+    report = run(
+        neonatal_edf,
+        reference_root,
+        output,
+        Config(total_steps=3, batch_size=1),
+        paths=("current_cache", "edf_memmap"),
+        prepared_workspace=prepared_workspace,
+        benchmark=BenchmarkConfig(trials=3, startup_steps=1, diagnostic=True),
+    )
+    _assert_benchmark(report, output, 4)
+    assert (
+        report["benchmark"]["worker_input_sha256"]["current_cache/workers=2"]
+        == report["checks"]["cpu_model_input_sha256"]
+    )
+    assert all(
+        row["max_abs_loss_difference"] == 0
+        for row in report["benchmark"]["trials"] + report["benchmark"]["diagnostics"]
+    )
