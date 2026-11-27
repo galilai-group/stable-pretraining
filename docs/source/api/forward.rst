@@ -275,6 +275,25 @@ Supervised
         in_features: 2048
         out_features: 1000
 
+LeWorldModel
+~~~~~~~~~~~~
+
+.. autofunction:: lewm_forward
+
+**Required Module Attributes:**
+
+- ``model``: Action-conditioned world model
+- ``history_size``: Number of context timesteps
+- ``num_preds``: Prediction offset
+- ``loss_fn``: LeWMLoss instance
+
+**Key Features:**
+
+- Prediction in latent space
+- SIGReg regularization
+- Gradients through context and target embeddings
+- Per-GPU SIGReg batch statistics under DDP
+
 Custom Forward Functions
 ------------------------
 

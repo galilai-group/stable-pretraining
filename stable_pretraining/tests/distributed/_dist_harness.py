@@ -658,3 +658,59 @@ def w_clip_crossgpu_matches_global(rank, world_size):
 
     ref = _ref_clip_global(feats_i_global, feats_j_global, 0.07)
     assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+def w_lewm_ddp_training(rank, world_size):
+    """Verify LeWM trains and synchronizes weights under CPU DDP."""
+    from torch.nn.parallel import DistributedDataParallel
+
+    from stable_pretraining.tests.unit.test_lewm_training import make_method
+
+    torch.set_num_threads(1)
+    torch.manual_seed(42)
+
+    method = make_method()
+    method.log_dict = lambda *args, **kwargs: None
+
+    ddp = DistributedDataParallel(method, find_unused_parameters=True)
+    optimizer = torch.optim.AdamW(ddp.parameters(), lr=1e-3)
+
+    before = next(ddp.parameters()).detach().clone()
+
+    generator = torch.Generator().manual_seed(100 + rank)
+    batch = {
+        "pixels": torch.randn(2, 4, 3, 32, 32, generator=generator),
+        "action": torch.randn(2, 4, 3, generator=generator),
+    }
+
+    optimizer.zero_grad()
+    output = ddp(batch, "train")
+    loss = output["loss"]
+
+    assert torch.isfinite(loss), "LeWM loss is not finite"
+
+    loss.backward()
+    grad = next(ddp.parameters()).grad
+    assert grad is not None
+
+    gathered_grads = [torch.empty_like(grad) for _ in range(world_size)]
+    dist.all_gather(gathered_grads, grad)
+
+    max_grad_diff = (gathered_grads[0] - gathered_grads[1]).abs().max().item()
+
+    print(f"Rank {rank}: gradient difference = {max_grad_diff}", flush=True)
+    optimizer.step()
+
+    after = next(ddp.parameters()).detach().clone()
+    assert not torch.allclose(before, after), "Weights did not update"
+
+    gathered = [torch.empty_like(after) for _ in range(world_size)]
+    dist.all_gather(gathered, after)
+
+    for weights in gathered[1:]:
+        max_diff = (gathered[0] - weights).abs().max().item()
+        print(f"Rank {rank}: maximum weight difference = {max_diff}", flush=True)
+
+        assert torch.allclose(gathered[0], weights, atol=1e-6), (
+            f"DDP weights diverged: max_diff={max_diff}"
+        )
