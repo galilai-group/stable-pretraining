@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from io import BytesIO
+from pathlib import Path
 from types import SimpleNamespace
 
 import lightning as pl
@@ -10,6 +11,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
+import stable_pretraining as spt
 from stable_pretraining._config import get_config
 from stable_pretraining.callbacks.factories import _DEFAULT_CALLBACK_REGISTRY
 from stable_pretraining.callbacks.ts2vec import TS2VecAveraging
@@ -18,6 +20,7 @@ from stable_pretraining.backbone.ts2vec import TS2VecEncoder
 from stable_pretraining.forward import _ts2vec_crops
 from stable_pretraining.losses.ts2vec import TS2VecLoss
 from stable_pretraining.methods.ts2vec import TS2Vec
+from stable_pretraining.tests.utils import BoringTrainer
 
 
 def _dense_pair_loss(z1: torch.Tensor, z2: torch.Tensor, dim: int) -> torch.Tensor:
@@ -113,6 +116,40 @@ def test_ts2vec_loss_single_sample_and_single_time_are_finite():
         z1 = torch.randn(batch, time, 2)
         z2 = torch.randn(batch, time, 2)
         assert torch.isfinite(TS2VecLoss()(z1, z2))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("alpha", [0.0, 0.5, 1.0])
+@pytest.mark.parametrize("scale", [1e2, 1e4])
+@pytest.mark.parametrize(
+    "dtype,autocast",
+    [
+        (torch.float32, False),
+        (torch.float32, True),
+        (torch.float16, True),
+        (torch.bfloat16, True),
+    ],
+)
+def test_ts2vec_large_logits_have_finite_loss_and_gradients(
+    alpha: float, scale: float, dtype: torch.dtype, autocast: bool
+) -> None:
+    generator = torch.Generator().manual_seed(71)
+    z1 = (torch.randn(3, 7, 4, generator=generator) * scale).to(dtype).requires_grad_()
+    z2 = (torch.randn(3, 7, 4, generator=generator) * scale).to(dtype).requires_grad_()
+    objective = TS2VecLoss(alpha=alpha)
+    expected = objective(z1.detach().float(), z2.detach().float())
+
+    with torch.autocast("cpu", dtype=torch.bfloat16, enabled=autocast):
+        loss = objective(z1, z2)
+
+    assert loss.ndim == 0
+    assert loss.dtype == torch.float32
+    assert torch.isfinite(loss)
+    assert loss > 0
+    torch.testing.assert_close(loss, expected, rtol=0, atol=0)
+    for gradient in torch.autograd.grad(loss, (z1, z2)):
+        assert torch.isfinite(gradient).all()
+        assert torch.count_nonzero(gradient) > 0
 
 
 @pytest.mark.unit
@@ -446,6 +483,133 @@ def test_tiny_trainer_average_includes_initial_state_and_each_optimizer_step(
     assert len(capture.snapshots) == 3
     assert model.averaged_backbone.n_averaged.item() == 1 + trainer.global_step
     _assert_state_is_average(model.averaged_backbone.module.state_dict(), snapshots)
+
+
+@pytest.mark.unit
+def test_manager_checkpoint_resume_preserves_average_and_optimizer_hook(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    torch.manual_seed(73)
+    config = get_config()
+    monkeypatch.setattr(
+        config,
+        "_default_callbacks",
+        {key: False for key in _DEFAULT_CALLBACK_REGISTRY},
+    )
+    monkeypatch.setattr(config, "_default_loggers", {"registry": False})
+    monkeypatch.setattr(config, "_requeue_checkpoint", False)
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    monkeypatch.delenv("SLURM_RESTART_COUNT", raising=False)
+
+    class StopAfterEpoch(_CaptureBackbone):
+        """Stop at a checkpoint boundary without shortening the learning-rate schedule."""
+
+        def on_train_epoch_end(self, trainer: pl.Trainer, pl_module: TS2Vec) -> None:
+            trainer.should_stop = True
+
+    model = _model()
+    snapshots = [deepcopy(model.backbone.state_dict())]
+    capture = StopAfterEpoch()
+    data = spt.data.DataModule(train=DataLoader(_SeriesDataset(), batch_size=2))
+    trainer_kwargs = dict(
+        accelerator="cpu",
+        devices=1,
+        precision="32-true",
+        # Batch-end snapshots require exactly one optimizer update per batch.
+        accumulate_grad_batches=1,
+        num_sanity_val_steps=0,
+        enable_checkpointing=False,
+        logger=False,
+        default_root_dir=str(tmp_path),
+    )
+    previous_threads = torch.get_num_threads()
+    torch.set_num_threads(1)
+    try:
+        trainer = BoringTrainer(max_steps=6, callbacks=[capture], **trainer_kwargs)
+        manager = spt.Manager(trainer=trainer, module=model, data=data, seed=73)
+        manager()
+        snapshots.extend(capture.snapshots)
+        assert trainer.global_step == len(capture.snapshots) == 3
+        assert model.averaged_backbone.n_averaged.item() == len(snapshots)
+        _assert_state_is_average(model.averaged_backbone.module.state_dict(), snapshots)
+
+        checkpoint = tmp_path / "ts2vec.ckpt"
+        manager.save_checkpoint(str(checkpoint), verbose=False)
+        saved = torch.load(checkpoint, weights_only=False)
+        assert saved["global_step"] == trainer.global_step
+        assert saved["optimizer_states"][0]["state"]
+        for name, value in model.averaged_backbone.state_dict().items():
+            torch.testing.assert_close(
+                saved["state_dict"][f"averaged_backbone.{name}"], value, rtol=0, atol=0
+            )
+
+        class CheckResumedAverage(_CaptureBackbone):
+            """Check restored state before updates and averaging after every update."""
+
+            def on_train_start(self, trainer: pl.Trainer, pl_module: TS2Vec) -> None:
+                assert trainer.global_step == saved["global_step"]
+                for name, value in pl_module.averaged_backbone.state_dict().items():
+                    torch.testing.assert_close(
+                        value,
+                        saved["state_dict"][f"averaged_backbone.{name}"],
+                        rtol=0,
+                        atol=0,
+                    )
+
+            def on_train_batch_end(
+                self,
+                trainer: pl.Trainer,
+                pl_module: TS2Vec,
+                outputs: dict[str, torch.Tensor],
+                batch: dict[str, torch.Tensor],
+                batch_idx: int,
+            ) -> None:
+                super().on_train_batch_end(
+                    trainer, pl_module, outputs, batch, batch_idx
+                )
+                assert trainer.global_step == saved["global_step"] + len(self.snapshots)
+                assert pl_module.averaged_backbone.n_averaged.item() == (
+                    len(snapshots) + len(self.snapshots)
+                )
+                _assert_state_is_average(
+                    pl_module.averaged_backbone.module.state_dict(),
+                    snapshots + self.snapshots,
+                )
+
+        resumed = _model()
+        assert resumed.averaged_backbone.n_averaged.item() == 1
+        resumed_capture = CheckResumedAverage()
+        resumed_trainer = BoringTrainer(
+            max_steps=6, callbacks=[resumed_capture], **trainer_kwargs
+        )
+        spt.Manager(
+            trainer=resumed_trainer,
+            module=resumed,
+            data=data,
+            seed=73,
+            ckpt_path=str(checkpoint),
+            weights_only=False,
+        )()
+    finally:
+        torch.set_num_threads(previous_threads)
+
+    for fitted_trainer in (trainer, resumed_trainer):
+        assert (
+            sum(
+                isinstance(callback, TS2VecAveraging)
+                for callback in fitted_trainer.callbacks
+            )
+            == 1
+        )
+    assert resumed_trainer.global_step == 6
+    assert len(resumed_capture.snapshots) == 3
+    snapshots.extend(resumed_capture.snapshots)
+    assert all(
+        any(not torch.equal(before[name], after[name]) for name in before)
+        for before, after in zip(snapshots, snapshots[1:])
+    )
+    assert resumed.averaged_backbone.n_averaged.item() == len(snapshots) == 7
+    _assert_state_is_average(resumed.averaged_backbone.module.state_dict(), snapshots)
 
 
 @pytest.mark.unit
