@@ -48,6 +48,7 @@ from .methods.dinov2 import DINOv2 as DINOv2
 from .methods.mae import MAE as MAE
 from .methods.nnclr import NNCLR as NNCLR
 from .methods.simclr import SimCLR as SimCLR
+from .methods.ts2vec import TS2Vec as TS2Vec
 from .methods.swav import SwAV as SwAV
 from .methods.vicreg import VICReg as VICReg
 

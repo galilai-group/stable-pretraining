@@ -7,6 +7,8 @@ This module provides various self-supervised learning loss functions organized b
 - Utilities: Helper functions (sinkhorn_knopp, off_diagonal, NegativeCosineSimilarity)
 """
 
+from .ts2vec import TS2VecLoss
+
 # DINO self-distillation losses
 from .dino import DINOv1Loss, DINOv2Loss, iBOTPatchLoss
 
@@ -34,6 +36,7 @@ from .utils import (
 )
 
 __all__ = [
+    "TS2VecLoss",
     # DINO
     "DINOv1Loss",
     "DINOv2Loss",

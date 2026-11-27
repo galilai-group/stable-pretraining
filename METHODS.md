@@ -46,6 +46,7 @@ Methods come in two forms:
 | SimMIM | — | `SimMIM` | — | — | [Xie et al., 2022](https://arxiv.org/abs/2111.09886) |
 | SimSiam | — | `SimSiam` | — | — | [Chen & He, 2021](https://arxiv.org/abs/2011.10566) |
 | TiCO | — | `TiCO` | — | — | [Zhu et al., 2022](https://arxiv.org/abs/2206.10698) |
+| TS2Vec | `ts2vec` | `TS2Vec` | `TS2VecLoss` | `TS2VecAveraging` | [Yue et al., 2022](https://arxiv.org/abs/2106.10466) |
 | VICRegL | — | `VICRegL` | `VICRegLoss` | — | [Bardes et al., 2022](https://arxiv.org/abs/2210.01571) |
 | VISReg | — | `VISReg` | — | — | [Wu et al., 2026](https://arxiv.org/abs/2606.02572) |
 | WMSE | — | `WMSE` | — | — | [Ermolov et al., 2021](https://arxiv.org/abs/2007.06346) |
