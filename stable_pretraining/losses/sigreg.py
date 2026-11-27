@@ -14,13 +14,16 @@ class EppsPulley(nn.Module):
     :param n_points: Number of integration points.
     """
 
-    def __init__(self, t_max: float = 3.0, n_points: int = 17, distributed: bool = True):
+    def __init__(
+        self, t_max: float = 3.0, n_points: int = 17, distributed: bool = True
+    ):
         super().__init__()
         assert n_points % 2 == 1
 
         self._is_ddp = (
-
-            distributed and torch.distributed.is_available() and torch.distributed.is_initialized()
+            distributed
+            and torch.distributed.is_available()
+            and torch.distributed.is_initialized()
         )
         self.world_size = torch.distributed.get_world_size() if self._is_ddp else 1
 
@@ -69,10 +72,19 @@ class SlicedEppsPulley(nn.Module):
     :param n_points: EP quadrature nodes.
     """
 
-    def __init__(self, num_slices: int = 1024, t_max: float = 3.0, n_points: int = 17, distributed: bool = True, seeded: bool = True,):
+    def __init__(
+        self,
+        num_slices: int = 1024,
+        t_max: float = 3.0,
+        n_points: int = 17,
+        distributed: bool = True,
+        seeded: bool = True,
+    ):
         super().__init__()
         self._is_ddp = (
-            distributed and torch.distributed.is_available() and torch.distributed.is_initialized()
+            distributed
+            and torch.distributed.is_available()
+            and torch.distributed.is_initialized()
         )
         self.num_slices = num_slices
         # self.ep = EppsPulley(t_max=t_max, n_points=n_points)
@@ -86,7 +98,6 @@ class SlicedEppsPulley(nn.Module):
 
         self.register_buffer("global_step", torch.zeros((), dtype=torch.long))
 
-    
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Compute SIGReg for [B, D] or [T, B, D] embeddings."""
         with torch.no_grad():
@@ -98,9 +109,7 @@ class SlicedEppsPulley(nn.Module):
                 if self._is_ddp:
                     torch.distributed.broadcast(step, src=0)
 
-                g = torch.Generator(device=x.device).manual_seed(
-                    step.item()
-                )
+                g = torch.Generator(device=x.device).manual_seed(step.item())
                 self.global_step.add_(1)
 
             A = torch.randn(
@@ -113,5 +122,3 @@ class SlicedEppsPulley(nn.Module):
 
         proj = x @ A
         return self.ep(proj).mean()
-
-  

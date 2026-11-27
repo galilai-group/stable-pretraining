@@ -21,7 +21,10 @@ from stable_pretraining.methods.lewm_components.architecture import (
 from stable_pretraining.methods.lewm_components.jepa import JEPA
 import hdf5plugin  # noqa: F401
 
+
 class CubeDataset(Dataset):
+    """Load OGBench Cube trajectories from an HDF5 dataset."""
+
     def __init__(self, path, episodes, mean, std, frameskip=5):
         self.path = path
         self.frameskip = frameskip
@@ -31,13 +34,9 @@ class CubeDataset(Dataset):
         self.mean = mean
         self.std = std
 
-        self.pixel_mean = torch.tensor(
-            [0.485, 0.456, 0.406]
-        ).view(1, 3, 1, 1)
+        self.pixel_mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
 
-        self.pixel_std = torch.tensor(
-            [0.229, 0.224, 0.225]
-        ).view(1, 3, 1, 1)
+        self.pixel_std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
 
         with h5py.File(path, "r") as f:
             for ep in episodes:
@@ -59,9 +58,7 @@ class CubeDataset(Dataset):
         start = self.samples[index]
         end = start + self.num_frames * self.frameskip
 
-        pixels = self.file["pixels"][
-            start:end:self.frameskip
-        ]
+        pixels = self.file["pixels"][start : end : self.frameskip]
 
         pixels = torch.from_numpy(pixels)
         pixels = pixels.permute(0, 3, 1, 2).float() / 255.0
@@ -94,9 +91,7 @@ def compute_action_stats(path, episodes):
             offset = int(f["ep_offset"][ep])
             length = int(f["ep_len"][ep])
 
-            actions.append(
-                f["action"][offset:offset + length]
-            )
+            actions.append(f["action"][offset : offset + length])
 
     actions = np.concatenate(actions)
     actions = actions[np.isfinite(actions).all(axis=1)]
@@ -185,9 +180,7 @@ def evaluate(method, loader, max_batches=100):
         if i >= max_batches:
             break
 
-        batch = {
-            k: v.to(device) for k, v in batch.items()
-        }
+        batch = {k: v.to(device) for k, v in batch.items()}
 
         output = method.model.encode(batch)
 
@@ -197,25 +190,15 @@ def evaluate(method, loader, max_batches=100):
         context = emb[:, :3]
         target = emb[:, 1:]
 
-        pred = method.model.predict(
-            context, act[:, :3]
-        )
+        pred = method.model.predict(context, act[:, :3])
 
-        shuffled_pred = method.model.predict(
-            context, act[:, :3].roll(1, dims=0)
-        )
+        shuffled_pred = method.model.predict(context, act[:, :3].roll(1, dims=0))
 
-        pred_error += (
-            pred - target
-        ).square().sum().item()
+        pred_error += (pred - target).square().sum().item()
 
-        baseline_error += (
-            context - target
-        ).square().sum().item()
+        baseline_error += (context - target).square().sum().item()
 
-        shuffled_error += (
-            shuffled_pred - target
-        ).square().sum().item()
+        shuffled_error += (shuffled_pred - target).square().sum().item()
 
         count += target.numel()
         embeddings.append(emb.cpu())
@@ -224,13 +207,7 @@ def evaluate(method, loader, max_batches=100):
     baseline_mse = baseline_error / count
     shuffled_mse = shuffled_error / count
 
-    embedding_std = (
-        torch.cat(embeddings)
-        .flatten(0, 1)
-        .std(dim=0)
-        .mean()
-        .item()
-    )
+    embedding_std = torch.cat(embeddings).flatten(0, 1).std(dim=0).mean().item()
 
     print("\n--- Evaluation Results ---")
     z = torch.cat(embeddings).flatten(0, 1).float()
@@ -239,9 +216,7 @@ def evaluate(method, loader, max_batches=100):
     singular_values = torch.linalg.svdvals(z)
     p = singular_values / singular_values.sum().clamp_min(1e-12)
 
-    effective_rank = torch.exp(
-        -(p * p.clamp_min(1e-12).log()).sum()
-    ).item()
+    effective_rank = torch.exp(-(p * p.clamp_min(1e-12).log()).sum()).item()
 
     print(f"Effective rank: {effective_rank:.2f} / {z.shape[1]}")
     print(f"Prediction MSE:       {pred_mse:.6f}")
@@ -250,9 +225,7 @@ def evaluate(method, loader, max_batches=100):
     print(f"Embedding STD:        {embedding_std:.6f}")
 
     if baseline_mse > 0:
-        improvement = 100 * (
-            1 - pred_mse / baseline_mse
-        )
+        improvement = 100 * (1 - pred_mse / baseline_mse)
         print(f"Improvement:          {improvement:.2f}%")
 
 
@@ -269,17 +242,11 @@ def main():
 
     train_eps, val_eps = split_episodes()
 
-    mean, std = compute_action_stats(
-        args.data, train_eps
-    )
+    mean, std = compute_action_stats(args.data, train_eps)
 
-    train_dataset = CubeDataset(
-        args.data, train_eps, mean, std
-    )
+    train_dataset = CubeDataset(args.data, train_eps, mean, std)
 
-    val_dataset = CubeDataset(
-        args.data, val_eps, mean, std
-    )
+    val_dataset = CubeDataset(args.data, val_eps, mean, std)
 
     print(f"Training episodes: {len(train_eps)}")
     print(f"Validation episodes: {len(val_eps)}")

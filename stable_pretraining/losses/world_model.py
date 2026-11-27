@@ -22,7 +22,6 @@ class LeWMLoss(nn.Module):
         target: torch.Tensor,
         embeddings: torch.Tensor,
     ) -> dict[str, torch.Tensor]:
-
         pred_loss = (pred - target).pow(2).mean()
         sigreg_loss = self.sigreg(embeddings.transpose(0, 1))
 
