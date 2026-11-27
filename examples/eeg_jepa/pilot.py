@@ -83,19 +83,12 @@ def verify_inputs(
 
 def _train_paths(reference, datasets, paths, config, output, accelerator, seed):
     # Spawn re-executes this module; only the training process needs these imports.
-    import lightning as pl
-
     from .benchmark import PilotHistory
-    from .model import build_module
-    from .train import fit
+    from .train import fit, initialize_module, validate_runs
 
     results = {}
     for name in paths:
-        pl.seed_everything(seed, workers=True)
-        module = build_module(reference, config)
-        initial_hash = hashlib.sha256()
-        for value in module.state_dict().values():
-            initial_hash.update(value.detach().cpu().numpy().tobytes())
+        module, initial_hash = initialize_module(reference, config, seed)
         history = PilotHistory()
         loader = DataLoader(
             datasets[name],
@@ -107,60 +100,15 @@ def _train_paths(reference, datasets, paths, config, output, accelerator, seed):
         if int(module.eeg.completed_steps) != config.total_steps:
             raise ValueError("Teacher update count differs from the training budget")
         results[name] = dict(
-            initial_weights_sha256=initial_hash.hexdigest(),
+            initial_weights_sha256=initial_hash,
             teacher_updates=int(module.eeg.completed_steps),
             steps=history.steps,
         )
-    _compare_runs(results, config.total_steps)
+    validate_runs(results, config.total_steps)
     return results
 
 
-def _compare_runs(results: dict, steps: int) -> None:
-    if len({result["initial_weights_sha256"] for result in results.values()}) != 1:
-        raise ValueError("Initial weights differ across paths")
-    baseline = results.get("edf_memmap", next(iter(results.values())))
-    reference_losses = [row["loss"] for row in baseline["steps"]]
-    for result in results.values():
-        losses = [row["loss"] for row in result["steps"]]
-        if len(losses) != steps:
-            raise ValueError("Incomplete pilot loss trace")
-        np.testing.assert_allclose(losses, reference_losses, rtol=2e-4, atol=2e-5)
-        result["max_abs_loss_difference"] = max(
-            abs(actual - expected)
-            for actual, expected in zip(losses, reference_losses, strict=True)
-        )
-
-
-def run(
-    source: Path,
-    reference_root: Path,
-    output: Path,
-    config: Config,
-    *,
-    paths: tuple[str, ...] = ("edf_memmap",),
-    accelerator: str = "cpu",
-    seed: int = 0,
-    benchmark: BenchmarkConfig | None = None,
-) -> dict:
-    """Validate matched inputs, then train fresh models on identical EDF requests.
-
-    Args:
-        source: Unchanged neonatal EDF recording.
-        reference_root: External pinned reference archive.
-        output: New external pilot directory.
-        config: Small model dimensions, optimizer schedule and training budget.
-        paths: Existing stable-datasets paths to train.
-        accelerator: Shared training endpoint, cpu or gpu.
-        seed: Shared initialization, window and mask seed.
-        benchmark: Optional repeated worker comparison and timing diagnostics.
-
-    Returns:
-        Local provenance, input checks and matched per-step training results.
-
-    Note:
-        CPU/MNE preprocessing includes a CUDA-to-host copy for GPU assembly.
-        Timings are a correctness diagnostic, not an end-to-end speedup claim.
-    """
+def _validate_options(paths, accelerator, benchmark, steps):
     if (
         not paths
         or len(set(paths)) != len(paths)
@@ -174,10 +122,10 @@ def run(
     if accelerator == "gpu" and not torch.cuda.is_available():
         raise ValueError("CUDA unavailable")
     if benchmark is not None:
-        benchmark.validate(config.total_steps)
-    output, reference_root = _external(output), _external(reference_root)
-    reference = load_reference(reference_root)
-    before = _checksum(source)
+        benchmark.validate(steps)
+
+
+def _prepare_datasets(source, reference, config, paths, seed):
     readers = {"edf_memmap": EdfWindowReader(source)}
     if "edf_gpu_assembly" in paths:
         readers["edf_gpu_assembly"] = EdfWindowReader(
@@ -190,32 +138,12 @@ def run(
         name: NeonatalBatches(reader, starts, masks, config)
         for name, reader in readers.items()
     }
-    output.mkdir(parents=True, exist_ok=False)
-    checks = verify_inputs(
-        datasets, torch.device("cuda" if accelerator == "gpu" else "cpu")
-    )
-    benchmark_report = None
-    if benchmark is None:
-        results = _train_paths(
-            reference, datasets, paths, config, output, accelerator, seed
-        )
-    else:
-        from .benchmark import measure
+    return metadata, starts, masks, datasets
 
-        benchmark_report = measure(
-            reference,
-            datasets,
-            paths,
-            config,
-            benchmark,
-            output,
-            accelerator,
-            seed,
-            checks,
-        )
-        results = {}
-    if _checksum(source) != before:
-        raise ValueError("Source changed during the pilot")
+
+def _pilot_report(
+    source, before, metadata, starts, masks, checks, results, config, seed, accelerator
+):
     report = dict(
         scope="Single-recording, contextual-window correctness pilot; shared CPU/MNE preprocessing; no held-out evaluation or speedup claim",
         reference_revision=REFERENCE_REVISION,
@@ -278,6 +206,84 @@ def run(
             ),
         )
     }
+    return report
+
+
+def run(
+    source: Path,
+    reference_root: Path,
+    output: Path,
+    config: Config,
+    *,
+    paths: tuple[str, ...] = ("edf_memmap",),
+    accelerator: str = "cpu",
+    seed: int = 0,
+    benchmark: BenchmarkConfig | None = None,
+) -> dict:
+    """Validate matched inputs, then train fresh models on identical EDF requests.
+
+    Args:
+        source: Unchanged neonatal EDF recording.
+        reference_root: External pinned reference archive.
+        output: New external pilot directory.
+        config: Small model dimensions, optimizer schedule and training budget.
+        paths: Existing stable-datasets paths to train.
+        accelerator: Shared training endpoint, cpu or gpu.
+        seed: Shared initialization, window and mask seed.
+        benchmark: Optional repeated worker comparison and timing diagnostics.
+
+    Returns:
+        Local provenance, input checks and matched per-step training results.
+
+    Note:
+        CPU/MNE preprocessing includes a CUDA-to-host copy for GPU assembly.
+        Timings are a correctness diagnostic, not an end-to-end speedup claim.
+    """
+    _validate_options(paths, accelerator, benchmark, config.total_steps)
+    output, reference_root = _external(output), _external(reference_root)
+    reference = load_reference(reference_root)
+    before = _checksum(source)
+    metadata, starts, masks, datasets = _prepare_datasets(
+        source, reference, config, paths, seed
+    )
+    output.mkdir(parents=True, exist_ok=False)
+    checks = verify_inputs(
+        datasets, torch.device("cuda" if accelerator == "gpu" else "cpu")
+    )
+    benchmark_report = None
+    if benchmark is None:
+        results = _train_paths(
+            reference, datasets, paths, config, output, accelerator, seed
+        )
+    else:
+        from .benchmark import measure
+
+        benchmark_report = measure(
+            reference,
+            datasets,
+            paths,
+            config,
+            benchmark,
+            output,
+            accelerator,
+            seed,
+            checks,
+        )
+        results = {}
+    if _checksum(source) != before:
+        raise ValueError("Source changed during the pilot")
+    report = _pilot_report(
+        source,
+        before,
+        metadata,
+        starts,
+        masks,
+        checks,
+        results,
+        config,
+        seed,
+        accelerator,
+    )
     if benchmark_report is not None:
         from .benchmark import plot
 
@@ -290,7 +296,7 @@ def run(
 
 
 def main() -> None:
-    """Run a short local pilot; leave cluster job submission to Pascal."""
+    """Run a short pilot with external inputs and local artifacts."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--reference-root", type=Path, required=True)

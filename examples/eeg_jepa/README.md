@@ -1,42 +1,58 @@
 # EEG-JEPA reference checks and neonatal pilot
 
-This milestone checks a thin stable-pretraining adapter against the authors'
-[EEG-JEPA implementation](https://github.com/SWF-hao/EEG-JEPA-official/tree/925b1194d5abf1e95ca2a2e7416b5a5d268845df),
-pinned to **925b1194d5abf1e95ca2a2e7416b5a5d268845df**. It loads the
-unmodified model, objective and N-MET sampler from an external source archive;
-`reference.py` verifies hashes before loading.
+A thin `Module`/`Manager` adapter loads the authors'
+[EEG-JEPA implementation](https://github.com/SWF-hao/EEG-JEPA-official/tree/925b1194d5abf1e95ca2a2e7416b5a5d268845df)
+at **925b1194d5abf1e95ca2a2e7416b5a5d268845df**. `reference.py` verifies
+unmodified model, objective, trainer and N-MET source hashes before loading.
+The small configuration uses two encoder layers, intermediate/final supervision,
+19 channels and four 200-sample patches. Tests compare outputs, loss terms,
+every parameter gradient, input gradients, masks, warmups, clipping, learning
+rates and post-optimizer EMA updates, including a four-step Manager run.
 
-The local configuration uses two encoder layers, intermediate/final supervision,
-19 channels and four 200-sample patches. Inputs represent microvolts and follow
-the reference trainer's division by 100. Tests cover stochastic train/eval
-forwards, loss terms, every parameter gradient, input gradients, masking, loss
-warmups, clipping, learning-rate schedules and post-optimizer EMA updates.
-This is synthetic correctness, not a dataset or training-speed benchmark.
+`config.py` contains configuration and schedules; `data.py` owns example
+preprocessing and batch construction; `model.py` owns model adaptation;
+`train.py` owns initialization, result validation, temporary framework settings
+and Manager wiring; `benchmark.py` owns observers and timing. The `pilot.py`
+entry point defers training imports so spawned readers avoid the training stack.
+Dataset reading and calibration stay in stable-datasets.
 
 ## Environment and reference
 
-Run from the **stable-pretraining repository root**, on
-`research/eeg-reference-integration`. All commands below leave source caches and
-run artifacts outside Git. Branch management and Hydra execution belong to Pascal.
+Run from the stable-pretraining source checkout on
+`research/eeg-reference-integration`. The neonatal example requires the companion
+stable-datasets contribution on `research/gpu-medical-timeseries`, compatible
+with **32cb823e** and the behavior-preserving cleanup based on it. A release
+installation alone lacks its `profiling` modules: both source roots must be on
+`PYTHONPATH`. Keep reference caches, environments and artifacts outside Git.
 
-On a Mac, create a separate environment and install the checkout:
+A fresh Mac CPU environment (core versions checked with Python 3.12.13):
 
 ```bash
+spt_root="$HOME/stable-pretraining"
+sds_root="$HOME/stable-datasets"
 python3.12 -m venv "$HOME/.venvs/eeg-jepa"
 source "$HOME/.venvs/eeg-jepa/bin/activate"
-python -m pip install -e . pytest ruff \
-  "torch==2.15.0" "torchvision==0.29.2" "lightning==2.6.6" "numpy==2.5.5"
+python -m pip install -e "$spt_root" -e "$sds_root" pytest ruff \
+  "torch==2.15.0" "torchvision==0.29.2" "lightning==2.6.6" \
+  "numpy==2.5.5" "scipy==1.18.1" "mne==1.10.2" \
+  "edfio==0.4.18" "pyedflib==0.1.42" "pylance==14.0.3" "pyarrow==26.0.1"
+cd "$spt_root"
+export PYTHONPATH="$spt_root:$sds_root${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONDONTWRITEBYTECODE=1
+export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+export RAYON_NUM_THREADS=1 TOKIO_WORKER_THREADS=1
 ```
 
-These core versions were checked locally with Python 3.12.13. On Hydra, use a
-compatible CUDA-enabled PyTorch environment for the allocated GPU and driver;
-install this checkout, pytest and Ruff into that environment. Preserve its CUDA
-wheel build rather than replacing it with a CPU build.
+This is not a complete transitive lock. On Hydra, install both projects and the
+research dependencies into an existing driver-compatible CUDA-enabled PyTorch
+environment; preserve its CUDA build and record `pip freeze` and driver details.
+The sibling storage study's Python 3.13/MNE 1.13.2/Lance 13/CUDA pins describe a
+historical environment, separate from this EEG integration environment.
 
-Download the pinned archive once per machine (no Git clone is needed):
+Download the pinned archive once per machine:
 
 ```bash
-study_root="$HOME/eeg-jepa-milestone"
+study_root="$HOME/eeg-jepa-study"
 revision=925b1194d5abf1e95ca2a2e7416b5a5d268845df
 mkdir -p "$study_root/reference"
 curl --fail --location \
@@ -45,113 +61,84 @@ curl --fail --location \
 tar -xzf "$study_root/reference.tar.gz" --strip-components=1 \
   -C "$study_root/reference"
 export EEG_JEPA_REFERENCE="$study_root/reference"
-export PYTHONDONTWRITEBYTECODE=1
 export MPLCONFIGDIR="$study_root/matplotlib"
 python -m pip freeze > "$study_root/environment.txt"
 ```
 
-Set `EEG_JEPA_REFERENCE` again in each new shell. Without it, reference-dependent
-tests skip; a skipped suite is not a correctness result.
+Set `EEG_JEPA_REFERENCE` in each shell. Missing reference or optional reader
+packages can skip reference-dependent tests or whole modules. Inspect `-rs`:
+those skips mean incomplete validation. `-m 'not gpu'` deliberately deselects
+CUDA cases on CPU; they must execute separately in a GPU allocation.
 
-## CPU checks — Mac terminal
+## Required CPU validation
 
 ```bash
-python -m pytest -q -s -rs -p no:cacheprovider -m "not gpu" \
+CUDA_VISIBLE_DEVICES='' python -m pytest -q -rs -p no:cacheprovider -m 'not gpu' \
   stable_pretraining/tests/integration/test_eeg_jepa_reference.py \
+  stable_pretraining/tests/integration/test_eeg_jepa_neonatal.py \
   stable_pretraining/tests/unit/test_callback_scheduling_and_logging.py \
   stable_pretraining/tests/unit/test_manual_optimization_trainer_args.py
-
-ruff check --no-cache examples/eeg_jepa stable_pretraining/tests/integration/test_eeg_jepa_reference.py
-ruff format --no-cache --check examples/eeg_jepa stable_pretraining/tests/integration/test_eeg_jepa_reference.py
+ruff check --no-cache examples/eeg_jepa \
+  stable_pretraining/tests/integration/test_eeg_jepa_{reference,neonatal}.py \
+  stable_pretraining/tests/unit/test_callback_scheduling_and_logging.py \
+  stable_pretraining/tests/unit/test_manual_optimization_trainer_args.py
+ruff format --no-cache --check examples/eeg_jepa \
+  stable_pretraining/tests/integration/test_eeg_jepa_{reference,neonatal}.py \
+  stable_pretraining/tests/unit/test_callback_scheduling_and_logging.py \
+  stable_pretraining/tests/unit/test_manual_optimization_trainer_args.py
 ```
 
-The parity assertions require exact agreement (`rtol=0, atol=0`), including
-the four-step Manager run. Configuration restoration is checked with both empty
-and pre-existing overrides after successful fits, Trainer construction failures
-and training failures.
+Reference parity uses `rtol=0, atol=0`, including the Manager run. Settings tests
+cover empty/pre-existing overrides after successful fits, Trainer construction
+failures and training failures. Neonatal tests generate EDF fixtures locally;
+worker tests exercise real spawn/reopening and reject training imports during
+bootstrap. A frozen, independent per-window preprocessing oracle requires exact
+agreement with batched preprocessing for batch sizes 1/2/4, 200/256 Hz and
+one/four-second cores. Run the sibling's six retained research test files too,
+as listed in `profiling/medical_signal_research/REPRODUCING.md`.
 
-To exercise the standalone entry point:
+Synthetic entry point:
 
 ```bash
 python -m examples.eeg_jepa.train --reference-root "$EEG_JEPA_REFERENCE" \
-  --output "$study_root/cpu-run"
+  --output "$study_root/synthetic-cpu"
 ```
 
-## CUDA checks — Hydra GPU allocation
+## Neonatal EDF preprocessing and pilot
 
-Inside an allocated GPU job, with the same checkout and an external reference
-archive on Hydra, run:
-
-```bash
-export CUBLAS_WORKSPACE_CONFIG=:4096:8
-python -c 'import torch; assert torch.cuda.is_available(); print(torch.ones(1, device="cuda"))'
-python -m pytest -q -s -rs -p no:cacheprovider -m gpu \
-  stable_pretraining/tests/integration/test_eeg_jepa_reference.py
-```
-
-All four GPU cases must execute: three forward/loss/gradient cases and one
-Manager/EMA comparison. They skip if CUDA is unavailable or unusable.
-These GPU checks remain unverified locally on the Mac. Mixed precision,
-distributed execution and real EEG data are outside this milestone.
-
-
-## Neonatal EDF pilot
-
-The real-data entry point uses `EdfWindowReader` in stable-datasets' existing
-`profiling/edf_record_loading.py`. That facade delegates to the existing native
-memmap/CPU calibration and GPU record assembler; this example owns no EDF or
-Lance parsing or calibration. Lance paths are not enabled in this pilot.
-
-Preprocessing follows the transform order inspected in the pinned reference's
+`EdfWindowReader` delegates to the existing CPU memmap/calibration or CUDA
+record assembler. The example owns no EDF/Lance parsing or calibration. Its
+transform order follows the pinned reference's
 [record-shard preprocessing](https://github.com/SWF-hao/EEG-JEPA-official/blob/925b1194d5abf1e95ca2a2e7416b5a5d268845df/preprocessing/preprocess_tuh_eeg_record_shards.py)
 and [canonical channel mapper](https://github.com/SWF-hao/EEG-JEPA-official/blob/925b1194d5abf1e95ca2a2e7416b5a5d268845df/preprocessing/preprocess_tuh_eeg_lmdb.py):
 
-- Channel order: `FP1 FP2 F3 F4 C3 C4 P3 P4 O1 O2 F7 F8 T3 T4 T5 T6 FZ CZ PZ`.
-  Case-insensitive canonical names and `EEG ...-Ref` labels are accepted;
-  T7/T8/P7/P8 map to T3/T4/T5/T6. ECG/respiration are excluded. All 19 electrodes
-  are required; missing/duplicate electrodes and bipolar or other suffixes fail.
-  Source referential voltages are preserved; no common-average re-reference is added.
-- Rates: the existing reader requires equal-rate continuous channels. The pilot
-  requires an integral source rate of at least 200 Hz (eeg4 is 256 Hz). Shared
-  CPU/MNE FFT resampling produces 200 Hz, followed by 0.3–75 Hz FIR filtering and
-  a 60 Hz FIR notch. The notch follows the reference default, not neonatal tuning.
-- Units: stable-datasets supplies calibrated float32 **volts**. MNE processes
-  float64 volts; the example converts the result to float32 **microvolts**.
-  The existing reference-objective forward then divides by 100, exactly once.
-- Patches: each request specifies the core window's original EDF sample start.
-  Starts use whole seconds. An additional 12 seconds on each side is read and
-  processed; that context is removed after resampling/filtering. Consecutive
-  200-sample, one-second patches form `[batch, 19, seconds, 200]`.
-- Scope: this uses contextual windows rather than full-record preprocessing.
-  The reference's 60-second end trimming, amplitude QC and corpus selection
-  are not reproduced. It is not a complete reference-data reproduction or a
-  held-out neonatal seizure evaluation; annotation labels are not consumed.
-  Filter boundaries can differ from full-record preprocessing.
+- Channels: `FP1 FP2 F3 F4 C3 C4 P3 P4 O1 O2 F7 F8 T3 T4 T5 T6 FZ CZ PZ`.
+  Canonical names and `EEG ...-Ref` labels are case insensitive;
+  T7/T8/P7/P8 map to T3/T4/T5/T6. All 19 electrodes are required. Duplicate,
+  missing, bipolar or other suffixes fail. ECG/respiration are excluded;
+  source referential voltages are preserved without common-average re-reference.
+- Rates: continuous, equal-rate channels at an integral source rate >=200 Hz
+  (eeg4: 256 Hz). CPU/MNE FFT resampling produces 200 Hz, then 0.3–75 Hz FIR
+  filtering and a 60 Hz FIR notch, following the reference defaults.
+- Units: calibrated float32 volts enter MNE as float64 volts; the result becomes
+  float32 microvolts. The objective's forward divides by 100 exactly once.
+- Windows/patches: whole-second core starts address original EDF samples. Read
+  12 seconds of context on each side, process, crop context, and reshape
+  consecutive 200-sample one-second patches to `[batch, 19, seconds, 200]`.
+  Batching packs independent rows `[batch * 19, time]` in one MNE `RawArray`;
+  windows are never joined along time.
 
-Both paths deliberately use the **same CPU/MNE preprocessing**, so GPU assembly
-includes a device-to-host round trip followed by the usual model-device transfer.
-The pilot verifies every scheduled normalized input against CPU memmap with
-`rtol=2e-5, atol=1e-6`, then resets model initialization and training RNG for
-each path. N-MET masks are generated once and replayed with the exact same windows.
-Loss traces must agree within `rtol=2e-4, atol=2e-5`; teacher update counts are
-checked. GPU numerical checks must actually run on Hydra before claiming parity.
+This contextual-window pilot omits the reference corpus selection, 60-second
+end trimming and amplitude QC. Filter boundaries can differ from full-record
+preprocessing. It consumes no seizure labels and establishes no held-out
+neonatal accuracy. Both paths share CPU/MNE preprocessing; GPU assembly includes
+a device-to-host round trip and subsequent model-device transfer.
 
-From stable-pretraining, install the sibling checkout and medical dependencies.
-The `profiling` research modules are source-tree modules, so also put the
-stable-datasets repository root on `PYTHONPATH`:
-
-```bash
-sds_root="$HOME/stable-datasets"
-python -m pip install -e "$sds_root" "mne==1.10.2" edfio pyedflib
-export PYTHONPATH="$sds_root:$PWD${PYTHONPATH:+:$PYTHONPATH}"
-python -m pytest -q -s -rs -p no:cacheprovider -m "not gpu" \
-  stable_pretraining/tests/integration/test_eeg_jepa_neonatal.py \
-  stable_pretraining/tests/integration/test_eeg_jepa_reference.py
-```
-
-The neonatal tests use generated EDF files without downloads. For a real CPU
-functional run, supply the unchanged neonatal EDF already used in the loading
-study; `--output` must be a new external directory:
+Every scheduled normalized input is checked against CPU memmap at
+`rtol=2e-5, atol=1e-6`. All paths replay identical initialization, windows,
+N-MET masks and training RNG. Losses must match at `rtol=2e-4, atol=2e-5`;
+teacher updates must equal the budget. A short real CPU functional run uses the
+unchanged EDF from the sibling study and a new external output directory:
 
 ```bash
 python -m examples.eeg_jepa.pilot --source /path/to/eeg4.edf \
@@ -159,13 +146,52 @@ python -m examples.eeg_jepa.pilot --source /path/to/eeg4.edf \
   --paths edf_memmap --accelerator cpu --steps 3 --batch-size 2 --seconds 4 --seed 0
 ```
 
-Proposed command **inside Pascal's allocated Hydra GPU job**, with the two
-checkouts and reference archive available on Hydra:
+## Repeated measurements
+
+Add `--trials 3 --workers 0 2 --startup-steps 2` to compare CPU workers 0/2
+and optional GPU assembly with 0 workers. Order alternates forward/reverse/forward.
+Each run resets model/optimizer state and replays the same windows/masks/budget.
+Three restarts describe observed timing variation, not independent data samples.
+
+The main clock starts before training iterator/worker creation and ends after
+the final optimizer/EMA update. Setup, preflight, worker shutdown, checkpoint
+I/O and report/plot writing are excluded. Startup is the first configured
+updates; sustained throughput uses all remaining updates without resetting
+weights. A short sustained interval can be affected by prefetched batches and
+should not be interpreted as steady state. CPU uses host timestamps; CUDA uses
+nonblocking completion events resolved after fit. Loss tensors move to the host
+after fit. Main mode adds no per-step synchronization; reference scalar reads
+and CPU preprocessing retain their own synchronization costs.
+
+`--diagnostic` adds separate synchronized replays measuring reader/calibration,
+preprocessing, loader wait, delivery-to-compute and model-step time including
+optimizer/EMA. Worker work overlaps compute and cannot be summed as pipeline
+wall time. Diagnostic rates are excluded from main throughput summaries; loss
+checks still apply. Spawned readers open independently and cap thread pools;
+GPU assembly stays in the main process. Preflight checks warm requests.
+
+`report.json` records starts, masks, initialization/input/source/code hashes,
+losses, teacher counts, environment/allocation, parameter counts, order and all
+measurements. `trials.jsonl` retains validated completed runs if a later run
+fails. `learning-progress.png` plots loss versus step and completed wall time,
+with trials, medians, parameter counts and source/reference fingerprints.
+
+Historical CPU diagnostic **237865** measured preprocessing medians 51.24 ms
+per batch before batching and 43.57 ms for the candidate (batch 2, four-second
+core, 12-second context each side, 256 Hz). Tracemalloc peak allocation rose
+from 5,344,826 to 7,235,690 bytes (**5.10 to 6.90 MiB**), an allocation-workspace
+tradeoff rather than RSS/CUDA memory. Larger batches need more simultaneous
+workspace. These external measurements retain their original provenance and
+are not performance measurements of this cleanup.
+
+## Proposed GPU correctness check
+
+Inside an existing GPU allocation, after the same source/reference setup:
 
 ```bash
 export CUBLAS_WORKSPACE_CONFIG=:4096:8
-export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
-python -m pytest -q -s -rs -p no:cacheprovider -m gpu \
+python -c 'import torch; assert torch.cuda.is_available(); print(torch.ones(1, device="cuda"))'
+python -m pytest -q -rs -p no:cacheprovider -m gpu \
   stable_pretraining/tests/integration/test_eeg_jepa_reference.py \
   stable_pretraining/tests/integration/test_eeg_jepa_neonatal.py
 python -m examples.eeg_jepa.pilot --source /path/on/hydra/eeg4.edf \
@@ -174,87 +200,7 @@ python -m examples.eeg_jepa.pilot --source /path/on/hydra/eeg4.edf \
   --steps 4 --batch-size 2 --seconds 4 --seed 0
 ```
 
-Readers execute in the training process with zero workers; no new GPU buffers
-or prefetch architecture is introduced. Each path trains on the same GPU when
-`--accelerator gpu` is selected. Reports and Manager artifacts stay in the
-external output directory and contain source/code hashes, window starts,
-masks, initialization hashes, input differences, losses and elapsed times.
-Preflight checks warm the requests. Timings include shared CPU preprocessing
-and are a short correctness diagnostic, not a GPU speedup result.
-
-
-## Repeated benchmark
-
-Add `--trials 3 --workers 0 2` to the pilot command to enable the benchmark.
-Each trial uses CPU memmap with 0/2 spawned workers and, when requested, GPU
-assembly with 0 workers. Case order alternates forward/reverse/forward. All
-trials replay the same initialization, windows, masks and update budget; model
-and optimizer state reset per case. Three restarts characterize timing variation,
-not independent data samples or confidence intervals.
-
-`--startup-steps N` fixes the startup interval before measurement. It includes
-worker/reader startup and the first N model updates. The sustained rate counts
-only the remaining updates and elapsed time after update N. No updates or losses
-are discarded, and weights are not reset at that boundary. First-batch time,
-iterator setup, startup, total time and sustained windows/s are reported with
-per-trial values, medians and observed ranges.
-
-The main clock starts before creating the training DataLoader iterator and ends
-after the final optimizer/teacher update. Model/Manager setup, input checks,
-worker shutdown, report/plot writing and automatic checkpoint I/O are excluded.
-CPU uses completed host timestamps; CUDA records nonblocking completion events,
-resolved after training. Loss tensors are copied to the host after training.
-The benchmark adds no per-step synchronization in main mode. The unchanged
-reference objective and shared CPU preprocessing still perform their own scalar
-reads/device-to-host work, so this is not a fully asynchronous trainer.
-
-`--diagnostic` runs one **separate** instrumented replay per case. It records
-reader loading/calibration, CPU preprocessing, main-process loader wait,
-delivery-to-compute delay, and model-step time (forward/backward, optimizer and
-EMA). Diagnostic boundaries synchronize CUDA. Worker timings can overlap model
-compute and must not be summed as pipeline wall time. Delivery-to-compute also
-includes framework/transfer overhead. Diagnostic rates are not included in the
-main throughput summary. Every replay must pass the same loss checks.
-
-Inside an allocated Hydra GPU job, after the environment/path setup above:
-
-```bash
-export CUBLAS_WORKSPACE_CONFIG=:4096:8
-export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
-python -m examples.eeg_jepa.pilot --source /path/on/hydra/eeg4.edf \
-  --reference-root "$EEG_JEPA_REFERENCE" --output "$study_root/benchmark-gpu" \
-  --paths edf_memmap edf_gpu_assembly --accelerator gpu \
-  --steps 8 --startup-steps 2 --batch-size 2 --seconds 4 --seed 0 \
-  --trials 3 --workers 0 2 --diagnostic
-```
-
-For a local CPU check, use `--paths edf_memmap --accelerator cpu` and a new
-output directory. Workers open independent readers after spawn and cap Torch/
-Arrow thread pools; keep the environment thread limits above. GPU assembly
-cannot be placed in workers. Parent and spawned-worker inputs are checked before
-timing; those checks warm requests and are recorded in the report.
-
-`report.json` retains all main/diagnostic runs, phase measurements, parameter
-counts, case order, seeds, input/source/code hashes, environment and allocation.
-`trials.jsonl` retains each validated completed run even if a later run fails.
-`learning-progress.png` contains loss-versus-step and loss-versus-completed-wall-
-time panels, with individual trials, median curves, parameter counts and source/
-reference fingerprints. All artifacts are local and outside Git.
-
-
-## Batched MNE preprocessing
-
-Preprocessing packs windows as independent rows shaped `[batch * 19, time]`
-in one MNE `RawArray`; it never joins windows along time. Resampling, FIR
-parameters, microvolt conversion and context cropping are unchanged. The result
-is restored to `[batch, 19, seconds, 200]`. A frozen per-window test oracle
-requires exact agreement for batches 1, 2 and 4, including 200/256 Hz inputs,
-one/four-second crops and generated EDF windows.
-
-CPU diagnostic job 237865 measured median preprocessing of 51.24 ms per batch
-before batching and 43.57 ms for the candidate (batch 2, four-second core,
-12-second context on each side, 256 Hz source). Tracemalloc peak allocation
-increased from 5,344,826 to 7,235,690 bytes: approximately **5.10 to 6.90 MiB**.
-That is a measured allocation-workspace tradeoff, not RSS or CUDA memory;
-larger batches require larger simultaneous workspaces. This change does not
-alter reader/calibration code or introduce a filter cache.
+All six selected GPU cases must execute; unavailable/unusable CUDA skips are
+incomplete GPU validation. GPU checks remain unverified on the Mac. Old-cache
+CPU versus new-GPU EEG training, further Lance integration, GPU preprocessing,
+buffer/stream tuning, larger models and external tracking remain future work.

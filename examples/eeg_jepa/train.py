@@ -1,19 +1,115 @@
 """Shared Manager wiring and the synthetic EEG-JEPA entry point."""
 
 import argparse
+import hashlib
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 import lightning as pl
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
 import stable_pretraining as spt
 
-from .config import Config, run_settings
+from .config import Config
 from .data import Collate, synthetic_samples
 from .model import build_module
 from .reference import load_reference
+
+
+@contextmanager
+def run_settings(output: Path, benchmark: bool = False) -> Iterator[None]:
+    """Temporarily configure local logging and callbacks for an example run.
+
+    Args:
+        output: External directory for Manager artifacts.
+        benchmark: Disable requeue checkpoint I/O inside timing intervals.
+
+    Yields:
+        Control with the temporary settings active.
+    """
+    settings = spt.get_config()
+    previous_requeue = settings.requeue_checkpoint
+    previous_cache = settings.cache_dir
+    previous_callbacks = settings.default_callbacks
+    previous_loggers = settings.default_loggers
+    try:
+        if benchmark:
+            spt.set(requeue_checkpoint=False)
+        spt.set(
+            cache_dir=str(output),
+            default_loggers={"registry": True},
+            default_callbacks={
+                key: False
+                for key in (
+                    "progress_bar",
+                    "logging",
+                    "env_dump",
+                    "trainer_info",
+                    "sklearn_checkpoint",
+                    "wandb_checkpoint",
+                    "trackio_checkpoint",
+                    "swanlab_checkpoint",
+                    "module_summary",
+                    "slurm_info",
+                    "unused_params",
+                    "hf_checkpoint",
+                )
+            },
+        )
+        yield
+    finally:
+        # Public setters merge dictionaries, so they cannot remove temporary keys.
+        settings._default_callbacks = previous_callbacks
+        settings._default_loggers = previous_loggers
+        settings.cache_dir = previous_cache
+        settings.requeue_checkpoint = previous_requeue
+
+
+def initialize_module(
+    reference: Any, config: Config, seed: int
+) -> tuple[spt.Module, str]:
+    """Initialize a matched model and fingerprint its complete initial state.
+
+    Args:
+        reference: Verified reference model and objective modules.
+        config: Model dimensions and training schedule.
+        seed: Shared model initialization seed.
+
+    Returns:
+        Fresh Module and its initial state SHA256.
+    """
+    pl.seed_everything(seed, workers=True)
+    module = build_module(reference, config)
+    digest = hashlib.sha256()
+    for value in module.state_dict().values():
+        digest.update(value.detach().cpu().numpy().tobytes())
+    return module, digest.hexdigest()
+
+
+def validate_runs(results: dict[str, Any], steps: int) -> None:
+    """Validate matched initialization and complete, equivalent loss traces.
+
+    Args:
+        results: Pilot or benchmark runs, updated with maximum loss differences.
+        steps: Required number of optimizer updates in every trace.
+    """
+    if len({result["initial_weights_sha256"] for result in results.values()}) != 1:
+        raise ValueError("Initial weights differ across paths")
+    baseline = results.get("edf_memmap", next(iter(results.values())))
+    reference_losses = [row["loss"] for row in baseline["steps"]]
+    for result in results.values():
+        losses = [row["loss"] for row in result["steps"]]
+        if len(losses) != steps:
+            raise ValueError("Incomplete pilot loss trace")
+        np.testing.assert_allclose(losses, reference_losses, rtol=2e-4, atol=2e-5)
+        result["max_abs_loss_difference"] = max(
+            abs(actual - expected)
+            for actual, expected in zip(losses, reference_losses, strict=True)
+        )
 
 
 def run(
@@ -115,7 +211,7 @@ def fit(
 
 
 def main() -> None:
-    """Run the milestone locally without downloads, uploads or dataset reads."""
+    """Run synthetic reference training with local artifacts."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reference-root", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)

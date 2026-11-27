@@ -1,11 +1,6 @@
 """Small valid reference configuration and optimizer-step schedules."""
 
 import math
-from collections.abc import Iterator
-from contextlib import contextmanager
-from pathlib import Path
-
-import stable_pretraining as spt
 from dataclasses import dataclass
 
 
@@ -93,55 +88,6 @@ class Config:
 def warmup_factor(step: int, steps: int) -> float:
     """Return the reference's linear loss-weight warmup factor."""
     return step / steps if steps > 0 and step < steps else 1.0
-
-
-@contextmanager
-def run_settings(output: Path, benchmark: bool = False) -> Iterator[None]:
-    """Temporarily configure local logging and callbacks for a synthetic run.
-
-    Args:
-        output: External directory for Manager artifacts.
-        benchmark: Disable requeue checkpoint I/O inside timing intervals.
-
-    Yields:
-        Control with the temporary settings active.
-    """
-    settings = spt.get_config()
-    previous_requeue = settings.requeue_checkpoint
-    previous_cache = settings.cache_dir
-    previous_callbacks = settings.default_callbacks
-    previous_loggers = settings.default_loggers
-    try:
-        if benchmark:
-            spt.set(requeue_checkpoint=False)
-        spt.set(
-            cache_dir=str(output),
-            default_loggers={"registry": True},
-            default_callbacks={
-                key: False
-                for key in (
-                    "progress_bar",
-                    "logging",
-                    "env_dump",
-                    "trainer_info",
-                    "sklearn_checkpoint",
-                    "wandb_checkpoint",
-                    "trackio_checkpoint",
-                    "swanlab_checkpoint",
-                    "module_summary",
-                    "slurm_info",
-                    "unused_params",
-                    "hf_checkpoint",
-                )
-            },
-        )
-        yield
-    finally:
-        # Public setters merge dictionaries, so they cannot remove temporary keys.
-        settings._default_callbacks = previous_callbacks
-        settings._default_loggers = previous_loggers
-        settings.cache_dir = previous_cache
-        settings.requeue_checkpoint = previous_requeue
 
 
 @dataclass(frozen=True)

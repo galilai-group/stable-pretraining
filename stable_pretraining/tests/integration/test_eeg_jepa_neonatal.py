@@ -243,7 +243,7 @@ def test_main_history_defers_synchronization_and_host_loss_copies(monkeypatch):
 
 def test_benchmark_settings_restore_requeue_policy(tmp_path):
     import stable_pretraining as spt
-    from examples.eeg_jepa.config import run_settings
+    from examples.eeg_jepa.train import run_settings
 
     settings = spt.get_config()
     before = (

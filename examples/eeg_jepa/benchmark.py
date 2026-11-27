@@ -15,8 +15,7 @@ from torch.utils.data import DataLoader
 from profiling.training_windows import configure_reader_threads
 
 from .config import BenchmarkConfig, Config
-from .model import build_module
-from .train import fit
+from .train import fit, initialize_module, validate_runs
 
 
 def cases(paths: tuple[str, ...], workers: tuple[int, ...]) -> list[tuple[str, int]]:
@@ -219,11 +218,7 @@ def intervals(times: list[float], startup_steps: int, batch_size: int) -> dict:
 def _run_one(
     reference, dataset, case, config, options, output, accelerator, seed, diagnostic
 ):
-    pl.seed_everything(seed, workers=True)
-    module = build_module(reference, config)
-    initial_hash = hashlib.sha256()
-    for value in module.state_dict().values():
-        initial_hash.update(value.detach().cpu().numpy().tobytes())
+    module, initial_hash = initialize_module(reference, config, seed)
     dataset = copy.copy(dataset)
     dataset.diagnostic = diagnostic
     history = History(
@@ -246,7 +241,7 @@ def _run_one(
         path=case[0],
         workers=case[1],
         case=f"{case[0]}/workers={case[1]}",
-        initial_weights_sha256=initial_hash.hexdigest(),
+        initial_weights_sha256=initial_hash,
         parameters=dict(
             total=sum(p.numel() for p in module.parameters()),
             trainable=sum(p.numel() for p in module.parameters() if p.requires_grad),
@@ -308,8 +303,6 @@ def measure(
     Returns:
         All measurements, observed ranges and separate diagnostics.
     """
-    from .pilot import _compare_runs
-
     options.validate(config.total_steps)
     matrix = cases(paths, options.workers)
     device = torch.device("cuda" if accelerator == "gpu" else "cpu")
@@ -343,7 +336,7 @@ def measure(
             )
             run.update(mode="main", trial=trial)
             validated[f"main/{trial}/{run['case']}"] = run
-            _compare_runs(validated, config.total_steps)
+            validate_runs(validated, config.total_steps)
             runs.append(run)
             with (output / "trials.jsonl").open("a") as stream:
                 stream.write(json.dumps(run) + "\n")
@@ -362,7 +355,7 @@ def measure(
             )
             run.update(mode="diagnostic", trial=None)
             validated[f"diagnostic/{run['case']}"] = run
-            _compare_runs(validated, config.total_steps)
+            validate_runs(validated, config.total_steps)
             diagnostics.append(run)
             with (output / "trials.jsonl").open("a") as stream:
                 stream.write(json.dumps(run) + "\n")
