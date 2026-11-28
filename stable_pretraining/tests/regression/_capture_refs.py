@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader, Dataset
 import stable_pretraining as spt
 from stable_pretraining import forward, losses
 from stable_pretraining._config import get_config
+from stable_pretraining.callbacks.queues import UnsortedQueue
 from stable_pretraining.manager import Manager
 from stable_pretraining.registry import open_registry
 
@@ -98,6 +99,18 @@ METHODS = {
             predictor=make_predictor(),
             forward=forward.byol,
             byol_loss=losses.BYOLLoss(),
+            optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
+        ),
+        data=make_data(True),
+    ),
+    "msf": lambda: dict(
+        module=spt.Module(
+            backbone=spt.backbone.TeacherStudentWrapper(make_backbone()),
+            projector=spt.backbone.TeacherStudentWrapper(make_projector()),
+            predictor=make_predictor(),
+            queue=UnsortedQueue(max_length=64, shape=(PROJ_DIM,)),
+            forward=forward.msf,
+            msf_loss=losses.MSFLoss(topk=2),
             optim={"optimizer": {"type": "Adam", "lr": 1e-3}},
         ),
         data=make_data(True),

@@ -658,3 +658,54 @@ def w_clip_crossgpu_matches_global(rank, world_size):
 
     ref = _ref_clip_global(feats_i_global, feats_j_global, 0.07)
     assert torch.allclose(avg, ref, atol=1e-5), (avg, ref)
+
+
+# ---------------------------------------------------------------------------
+# MSF
+# ---------------------------------------------------------------------------
+
+
+def _tiny_msf(seed: int = 0):
+    """Small MSF with identical initialisation on every rank."""
+    from stable_pretraining.methods import MSF
+
+    torch.manual_seed(seed)
+    encoder = nn.Sequential(
+        nn.Conv2d(3, 8, kernel_size=3, stride=2),
+        nn.BatchNorm2d(8),
+        nn.AdaptiveAvgPool2d(1),
+        nn.Flatten(),
+    )
+    return MSF(
+        encoder_name=encoder,
+        projector_dims=(16, 8),
+        predictor_hidden_dim=16,
+        queue_length=32,
+        topk=2,
+    )
+
+
+def w_msf_ddp_step_keeps_ranks_in_sync(rank, world_size):
+    """A DDP-wrapped MSF step leaves identical parameters on every rank."""
+    from torch.nn.parallel import DistributedDataParallel
+
+    from stable_pretraining.utils import all_gather
+
+    model = _tiny_msf(seed=0).train()
+    ddp = DistributedDataParallel(model)
+    opt = torch.optim.SGD(model.parameters(), lr=0.1)
+
+    g = torch.Generator().manual_seed(rank + 1)
+    v1, v2 = (torch.randn(4, 3, 32, 32, generator=g) for _ in range(2))
+    out = ddp(v1, v2)
+    assert out.loss.ndim == 0 and torch.isfinite(out.loss), out.loss
+    out.loss.backward()
+    missing = [
+        n for n, p in model.named_parameters() if p.requires_grad and p.grad is None
+    ]
+    assert not missing, missing
+    opt.step()
+
+    flat = torch.cat([p.detach().flatten() for p in model.parameters()])
+    for other in all_gather(flat.clone()):
+        assert torch.allclose(other, flat, atol=1e-6)

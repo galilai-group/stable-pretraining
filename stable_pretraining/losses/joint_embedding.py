@@ -39,6 +39,42 @@ class BYOLLoss(torch.nn.Module):
         return loss.mean()
 
 
+class MSFLoss(torch.nn.Module):
+    """Mean-shift objective used in MSF :cite:`koohpayegani2021mean`.
+
+    Pulls each L2-normalized online prediction toward the ``topk`` nearest
+    neighbours of its target in a memory bank of past target projections.
+    With ``topk=1`` and the target in the bank, this equals :class:`BYOLLoss`.
+
+    Args:
+        topk (int, optional): Number of nearest neighbours. Default is 5.
+    """
+
+    def __init__(self, topk: int = 5):
+        super().__init__()
+        self.topk = topk
+
+    def forward(
+        self, online_pred: torch.Tensor, target_proj: torch.Tensor, bank: torch.Tensor
+    ) -> torch.Tensor:
+        """Compute MSF loss.
+
+        Args:
+            online_pred: Predictions from the online network predictor.
+            target_proj: Projections from the target network (no gradient).
+            bank: Memory bank of past target projections, including ``target_proj``.
+
+        Returns:
+            torch.Tensor: Scalar loss value.
+        """
+        online_pred = F.normalize(online_pred.float(), dim=-1, p=2)
+        target_proj = F.normalize(target_proj.float(), dim=-1, p=2)
+        bank = F.normalize(bank.float(), dim=-1, p=2)
+        idx = (target_proj @ bank.T).topk(min(self.topk, len(bank)), dim=1).indices
+        loss = 2 - 2 * (online_pred.unsqueeze(1) * bank[idx]).sum(dim=-1)
+        return loss.mean()
+
+
 class VICRegLoss(torch.nn.Module):
     """SSL objective used in VICReg :cite:`bardes2021vicreg`.
 

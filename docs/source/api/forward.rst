@@ -187,6 +187,43 @@ BYOL
             in_features: 4096
             out_features: 256
 
+MSF
+~~~
+
+.. autofunction:: msf
+
+**Required Module Attributes:**
+
+- ``backbone``: ``TeacherStudentWrapper`` backbone (student + EMA teacher)
+- ``projector``: ``TeacherStudentWrapper`` projector
+- ``predictor``: Student-only predictor
+- ``queue``: ``UnsortedQueue`` memory bank of teacher projections
+- ``msf_loss``: ``MSFLoss`` with the number of nearest neighbours ``topk``
+
+**Key Features:**
+
+- BYOL-style EMA teacher, no negative pairs
+- Target is the mean of the ``topk`` nearest neighbours in the memory bank
+- Asymmetric loss: only the target view's embedding is added to the bank before the search
+- Under DDP the memory bank is per GPU (not gathered across GPUs)
+
+**Example Config:**
+
+.. code-block:: yaml
+
+    module:
+      forward: stable_pretraining.forward.msf
+      backbone: ...
+      projector: ...
+      predictor: ...
+      queue:
+        _target_: stable_pretraining.callbacks.queues.UnsortedQueue
+        max_length: 16384
+        shape: [256]
+      msf_loss:
+        _target_: stable_pretraining.losses.MSFLoss
+        topk: 5
+
 VICReg
 ~~~~~~
 

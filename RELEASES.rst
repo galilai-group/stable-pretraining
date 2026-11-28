@@ -4,6 +4,16 @@ Unreleased
 
 **New method**
 
+- ``MSF`` (Mean Shift for Self-Supervised Learning): extends ``BYOL`` by pulling
+  the student prediction toward the mean of the target's k nearest neighbours in
+  a memory bank of past EMA-teacher embeddings, per Koohpayegani et al., "Mean
+  Shift for Self-Supervised Learning" (ICCV 2021). As in the paper, the loss is
+  asymmetric and only the target view's embedding is added to the memory bank
+  before the neighbour search; under DDP the bank is per GPU.
+  Adds ``spt.losses.MSFLoss`` and the ``stable_pretraining.forward.msf``
+  forward function. Registered in ``stable_pretraining.methods``, the top-level
+  namespace and ``METHODS.md``, with an Imagenette ViT-S/16 benchmark under
+  ``benchmarks/imagenet10/msf-vit-small.py``.
 - ``PMSN`` (Prior Matching for Siamese Networks): extends ``MSN`` by replacing
   its uniform-prior mean-entropy regulariser with a KL-divergence term against
   an arbitrary prior distribution over prototypes (power-law by default,
