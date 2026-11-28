@@ -103,3 +103,38 @@ Other
    :template: myclass_template.rst
 
    NEPA
+
+Latent World Models
+-------------------
+
+.. autosummary::
+   :toctree: gen_modules/
+   :template: myclass_template.rst
+
+   RCaux
+
+RC-aux combines multi-horizon latent prediction with budget-conditioned
+reachability. Supply a world model that returns ``embedding`` (B, T, D),
+``prediction`` (B, K, D), and optionally ``regularization_loss``::
+
+    import stable_pretraining as spt
+
+    model = spt.RCaux(
+        world_model=world_model,
+        embedding_dim=256,
+        max_horizon=5,
+        context_index=1,
+        loss_kwargs={"reachability_weight": 0.35},
+        optim={"optimizer": {"type": "AdamW", "lr": 3e-4}},
+    )
+    spt.Manager(trainer=trainer, module=model, data=data, seed=0)()
+
+The method delegates to :func:`stable_pretraining.forward.rcaux`. In evaluation
+mode only ``embedding`` is required. Under DDP, cross-trajectory negatives come
+from the local batch on each rank (per GPU); there is no global latent gather.
+A local batch of one omits cross-trajectory negatives.
+
+For full-state checkpoint resume, recreate the same model and loss configuration
+and pass an absolute checkpoint path to ``Manager`` with ``weights_only=False``.
+See ``benchmarks/rcaux/README.md`` for the complete prediction-only versus RC-aux
+training comparison, dataset collection command, and measured results.
