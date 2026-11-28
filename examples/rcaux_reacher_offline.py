@@ -1,7 +1,7 @@
 """Matched-budget RC-aux validation on real Reacher trajectories.
 
 This experiment trains a small action-conditioned latent world model on an HDF5
-Reacher dataset. It compares prediction-only continuation with RC-aux under the
+Reacher dataset. It compares prediction-only training with RC-aux under the
 same windows, optimizer, architecture, update count, and evaluation candidates.
 The offline planning task asks each model to retrieve the demonstrated action
 sequence that reaches a held-out future state among action-sequence distractors.
@@ -12,13 +12,15 @@ import copy
 import json
 from pathlib import Path
 
+import lightning as pl
 import h5py
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.utils.data import Dataset, DataLoader
 
-from stable_pretraining.losses import RCauxLoss
+import stable_pretraining as spt
 
 
 class ReacherLatentWorldModel(nn.Module):
@@ -45,6 +47,24 @@ class ReacherLatentWorldModel(nn.Module):
             nn.SiLU(),
             nn.Linear(hidden_dim, observation_dim),
         )
+
+    def forward(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        """Return encoded trajectories, action-conditioned rollout, and anchor loss.
+
+        Args:
+            batch: Normalized observation and aligned action sequences.
+
+        Returns:
+            The dictionary consumed by the RC-aux forward function.
+        """
+        encoded, predicted, anchor = self.trajectory(
+            batch["observation"], batch["action"]
+        )
+        return {
+            "embedding": encoded,
+            "prediction": predicted,
+            "regularization_loss": anchor,
+        }
 
     def encode(self, observation: torch.Tensor) -> torch.Tensor:
         """Encode normalized observations into latent states.
@@ -154,6 +174,49 @@ def load_reacher_windows(
     return train_observations, train_actions, test_observations, test_actions
 
 
+class _Windows(Dataset):
+    """Trajectory tensors indexed by the common training schedule."""
+
+    def __init__(self, observations, actions):
+        self.observations, self.actions = observations, actions
+
+    def __len__(self):
+        return len(self.observations)
+
+    def __getitem__(self, index):
+        return {"observation": self.observations[index], "action": self.actions[index]}
+
+
+class _LearningCurve(pl.Callback):
+    """Record training losses at fixed intervals without changing optimization."""
+
+    def __init__(self):
+        self.rows = []
+        self.final_loss = None
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        self.final_loss = outputs["loss"].item()
+        if (
+            trainer.global_step == 1
+            or trainer.global_step % 100 == 0
+            or trainer.global_step == trainer.max_steps
+        ):
+            self.rows.append(
+                {
+                    "step": trainer.global_step,
+                    **{
+                        key: outputs[key].item()
+                        for key in [
+                            "loss",
+                            "prediction_loss",
+                            "reachability_loss",
+                            "regularization_loss",
+                        ]
+                    },
+                }
+            )
+
+
 def train_world_model(
     initial_state: dict[str, torch.Tensor],
     train_observations: torch.Tensor,
@@ -163,65 +226,76 @@ def train_world_model(
     rcaux: bool,
     horizon: int,
     learning_rate: float,
-) -> tuple[ReacherLatentWorldModel, RCauxLoss | None, float]:
-    """Train one matched-budget prediction-only or RC-aux model.
+    run_dir: Path,
+    seed: int,
+) -> tuple[
+    ReacherLatentWorldModel, spt.losses.RCauxLoss | None, float, list[dict[str, float]]
+]:
+    """Train the complete method via Manager with matched minibatches.
 
     Args:
-        initial_state: Shared initial world-model parameters.
-        train_observations: Normalized training observation windows.
-        train_actions: Normalized training action windows.
-        batch_schedule: Precomputed example indices for every update.
-        device: Training device.
-        rcaux: Whether to train the reachability auxiliary objective.
-        horizon: Open-loop prediction horizon.
+        initial_state: Shared initial encoder and dynamics parameters.
+        train_observations: Training observation windows.
+        train_actions: Training action windows.
+        batch_schedule: Identical window indices for both training conditions.
+        device: CPU or CUDA device (the single default CUDA device is used).
+        rcaux: Enable the auxiliary objective, or set its weight to zero.
+        horizon: Rollout length and maximum reachability budget.
         learning_rate: AdamW learning rate.
+        run_dir: Directory for training logs and Manager checkpoints.
+        seed: Training seed.
 
     Returns:
-        Trained world model, optional RC-aux objective, and final total loss.
+        Trained model, optional reachability objective, last loss, and loss curve.
     """
+    pl.seed_everything(seed)
     model = ReacherLatentWorldModel(
-        observation_dim=train_observations.shape[-1],
-        action_dim=train_actions.shape[-1],
-    ).to(device)
+        train_observations.shape[-1], train_actions.shape[-1]
+    )
     model.load_state_dict(initial_state)
-    objective = None
-    parameters = list(model.parameters())
-    if rcaux:
-        objective = RCauxLoss(
-            embedding_dim=train_observations.shape[-1],
-            max_horizon=horizon,
-            hidden_dim=128,
-            horizon_dim=16,
-            prediction_weight=1.0,
-            reachability_weight=0.35,
-            predicted_pair_weight=0.5,
-            regularization_weight=0.1,
-        ).to(device)
-        parameters.extend(objective.parameters())
-    optimizer = torch.optim.AdamW(parameters, lr=learning_rate)
-
-    final_loss = 0.0
-    model.train()
-    for indices in batch_schedule:
-        observations = train_observations[indices].to(device)
-        actions = train_actions[indices].to(device)
-        encoded, predicted, anchor_loss = model.trajectory(observations, actions)
-        if objective is None:
-            prediction_loss = F.mse_loss(predicted, encoded[:, 1:])
-            loss = prediction_loss + 0.1 * anchor_loss
-        else:
-            loss = objective(
-                encoded,
-                predicted,
-                context_index=1,
-                regularization_loss=anchor_loss,
-            )["loss"]
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        final_loss = loss.item()
-
-    return model, objective, final_loss
+    module = spt.RCaux(
+        world_model=model,
+        embedding_dim=train_observations.shape[-1],
+        max_horizon=horizon,
+        context_index=1,
+        loss_kwargs={
+            "hidden_dim": 128,
+            "horizon_dim": 16,
+            "reachability_weight": 0.35 if rcaux else 0.0,
+            "predicted_pair_weight": 0.5,
+            "regularization_weight": 0.1,
+        },
+        optim={"optimizer": {"type": "AdamW", "lr": learning_rate}},
+    )
+    loader = DataLoader(
+        _Windows(train_observations, train_actions),
+        batch_sampler=batch_schedule.tolist(),
+    )
+    curve = _LearningCurve()
+    trainer = pl.Trainer(
+        accelerator="gpu" if device.type == "cuda" else "cpu",
+        devices=[device.index or 0] if device.type == "cuda" else 1,
+        max_epochs=1,
+        max_steps=len(batch_schedule),
+        logger=False,
+        enable_checkpointing=True,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        num_sanity_val_steps=0,
+        limit_val_batches=0,
+        callbacks=[curve],
+        default_root_dir=str(run_dir),
+        deterministic=True,
+    )
+    spt.Manager(
+        trainer=trainer,
+        module=module,
+        data=spt.data.DataModule(train=loader),
+        seed=seed,
+    )()
+    model.to(device)
+    module.rcaux_loss.to(device)
+    return model, module.rcaux_loss if rcaux else None, curve.final_loss, curve.rows
 
 
 @torch.no_grad()
@@ -259,7 +333,7 @@ def prediction_rmse(
 @torch.no_grad()
 def planning_retrieval(
     model: ReacherLatentWorldModel,
-    objective: RCauxLoss | None,
+    objective: spt.losses.RCauxLoss | None,
     test_observations: torch.Tensor,
     test_actions: torch.Tensor,
     query_indices: torch.Tensor,
@@ -347,7 +421,7 @@ def planning_retrieval(
 @torch.no_grad()
 def reachability_accuracy(
     model: ReacherLatentWorldModel,
-    objective: RCauxLoss,
+    objective: spt.losses.RCauxLoss,
     observations: torch.Tensor,
     device: torch.device,
     sample_count: int = 256,
@@ -442,7 +516,7 @@ def run_seed(
         (args.steps, args.batch_size),
         generator=generator,
     )
-    baseline, _, baseline_loss = train_world_model(
+    baseline, _, baseline_loss, baseline_curve = train_world_model(
         initial_state,
         train_observations,
         train_actions,
@@ -451,8 +525,10 @@ def run_seed(
         rcaux=False,
         horizon=args.horizon,
         learning_rate=args.learning_rate,
+        run_dir=args.output.parent / "training" / f"seed{seed}" / "prediction_only",
+        seed=seed,
     )
-    rcaux_model, objective, rcaux_loss = train_world_model(
+    rcaux_model, objective, rcaux_loss, rcaux_curve = train_world_model(
         initial_state,
         train_observations,
         train_actions,
@@ -461,6 +537,8 @@ def run_seed(
         rcaux=True,
         horizon=args.horizon,
         learning_rate=args.learning_rate,
+        run_dir=args.output.parent / "training" / f"seed{seed}" / "rcaux",
+        seed=seed,
     )
     if objective is None:
         raise RuntimeError("RC-aux training did not create an objective")
@@ -496,8 +574,36 @@ def run_seed(
         true_slots,
         device,
     )
+    initial_prediction = prediction_rmse(
+        template.to(device), test_observations, test_actions, device
+    )
+    initial_planning = planning_retrieval(
+        template,
+        None,
+        test_observations,
+        test_actions,
+        query_indices,
+        candidate_indices,
+        true_slots,
+        device,
+    )
+    with torch.no_grad():
+        obs = test_observations.to(device)
+        geometry = {
+            name: {
+                "anchor_rmse": float(F.mse_loss(model.encode(obs), obs).sqrt()),
+                "latent_std_mean": float(
+                    model.encode(obs).flatten(0, 1).std(dim=0).mean()
+                ),
+            }
+            for name, model in [("prediction_only", baseline), ("rcaux", rcaux_model)]
+        }
     return {
         "seed": seed,
+        "initial_prediction_rmse": initial_prediction,
+        "initial_planning": initial_planning,
+        "learning_curves": {"prediction_only": baseline_curve, "rcaux": rcaux_curve},
+        "geometry_diagnostic": geometry,
         "baseline_final_loss": baseline_loss,
         "rcaux_final_loss": rcaux_loss,
         "baseline_prediction_rmse": prediction_rmse(
@@ -567,7 +673,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    torch.set_num_threads(1)
+    # Subnormal gradients can make these small CPU networks progressively slow.
+    torch.set_flush_denormal(True)
     device = torch.device(args.device)
+    spt.set(cache_dir=str((args.output.parent / "runs").resolve()))
     windows = load_reacher_windows(args.dataset, args.horizon, args.train_episodes)
     train_observations, train_actions, test_observations, test_actions = windows
     results = []
@@ -584,11 +694,23 @@ def main() -> None:
         results.append(result)
         print(json.dumps(result, indent=2))
 
+    with h5py.File(args.dataset, "r") as dataset:
+        episode_count = len(dataset["ep_len"])
+        dataset_metadata = {
+            k: v.item() if isinstance(v, np.generic) else v
+            for k, v in dataset.attrs.items()
+        }
     payload = {
         "protocol": {
             "dataset": str(args.dataset),
             "train_episodes": args.train_episodes,
-            "test_episodes": 20 - args.train_episodes,
+            "test_episodes": episode_count - args.train_episodes,
+            "train_windows": len(train_observations),
+            "test_windows": len(test_observations),
+            "learning_rate": args.learning_rate,
+            "dataset_metadata": dataset_metadata,
+            "torch_version": torch.__version__,
+            "lightning_version": pl.__version__,
             "horizon": args.horizon,
             "steps": args.steps,
             "batch_size": args.batch_size,
