@@ -478,6 +478,10 @@ class RCauxLoss(nn.Module):
 
         Returns:
             A tuple containing the reweighted cost and maximum reachability score.
+            Only intermediate states with positive remaining budget are scored:
+            prediction k uses budget K-k, for 1 <= k < K. For a one-step
+            rollout there is no intermediate state; return the base cost and
+            a zero score (no reachability discount).
 
         Raises:
             ValueError: If shapes, horizon, or scalar parameters are invalid.
@@ -498,15 +502,18 @@ class RCauxLoss(nn.Module):
             raise ValueError("floor must be in the interval (0, 1]")
 
         horizon = predicted_rollout.shape[-2]
-        expanded_goal = goal.unsqueeze(-2).expand_as(predicted_rollout)
+        if horizon == 0:
+            raise ValueError("predicted_rollout must contain at least one state")
+        if horizon == 1:
+            return base_cost, torch.zeros_like(base_cost)
+        intermediate = predicted_rollout[..., :-1, :]
+        expanded_goal = goal.unsqueeze(-2).expand_as(intermediate)
         budgets = torch.arange(
-            horizon, 0, -1, device=predicted_rollout.device, dtype=torch.long
+            horizon - 1, 0, -1, device=predicted_rollout.device, dtype=torch.long
         )
-        budgets = budgets.view((1,) * (predicted_rollout.ndim - 2) + (horizon,))
-        budgets = budgets.expand(predicted_rollout.shape[:-1])
-        probabilities = self.score_reachability(
-            predicted_rollout, expanded_goal, budgets
-        )
+        budgets = budgets.view((1,) * (predicted_rollout.ndim - 2) + (horizon - 1,))
+        budgets = budgets.expand(intermediate.shape[:-1])
+        probabilities = self.score_reachability(intermediate, expanded_goal, budgets)
         max_probability = probabilities.amax(dim=-1)
         multiplier = torch.clamp(1 - reachability_weight * max_probability, min=floor)
         return base_cost * multiplier, max_probability
