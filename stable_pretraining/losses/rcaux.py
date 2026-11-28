@@ -104,6 +104,11 @@ class RCauxLoss(nn.Module):
     Predictions are aligned with ``encoded[:, context_index:context_index + K]``.
     When ``context_index`` is omitted, the final ``K`` encoded states are used.
 
+    Under DDP, cross-trajectory negatives use only the current rank's batch
+    (per GPU), not a globally gathered batch. Each trajectory's negative goal
+    comes from the previous batch entry, with cyclic wraparound. A local batch
+    of one omits these negatives. DDP averages gradients across ranks.
+
     Args:
         embedding_dim: Size of each latent state embedding.
         max_horizon: Largest temporal distance and planning budget to supervise.
