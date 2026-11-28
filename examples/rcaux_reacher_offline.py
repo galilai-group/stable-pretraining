@@ -13,7 +13,6 @@ import json
 from pathlib import Path
 
 import lightning as pl
-import h5py
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -130,6 +129,8 @@ def load_reacher_windows(
     Returns:
         Train observations, train actions, test observations, and test actions.
     """
+    import h5py
+
     with h5py.File(dataset_path, "r") as dataset:
         observations = np.asarray(dataset["observation"], dtype=np.float32)
         actions = np.asarray(dataset["action"], dtype=np.float32)
@@ -328,6 +329,44 @@ def prediction_rmse(
         squared_error += (predicted - encoded[:, 1:]).pow(2).sum().item()
         element_count += predicted.numel()
     return float(np.sqrt(squared_error / element_count))
+
+
+def sample_retrieval_candidates(
+    query_indices: torch.Tensor,
+    window_count: int,
+    candidate_count: int,
+    generator: torch.Generator,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Sample candidates with exactly one designated correct window per query.
+
+    Args:
+        query_indices: CPU indices of the demonstrated query windows.
+        window_count: Number of held-out windows, at least two.
+        candidate_count: Number of candidate slots per query.
+        generator: CPU random generator shared by the evaluation protocol.
+
+    Returns:
+        Candidate window indices and the unique correct slot for each query.
+    """
+    if window_count < 2:
+        raise ValueError("retrieval requires at least two held-out windows")
+    candidates = torch.randint(
+        window_count, (len(query_indices), candidate_count), generator=generator
+    )
+    true_slots = torch.randint(
+        candidate_count, (len(query_indices),), generator=generator
+    )
+    rows = torch.arange(len(query_indices))
+    duplicate = candidates == query_indices[:, None]
+    duplicate[rows, true_slots] = False
+    # Keep the existing candidate set except for copies of the correct answer.
+    excluded = query_indices[:, None].expand_as(candidates)[duplicate]
+    replacements = torch.randint(
+        window_count - 1, (excluded.numel(),), generator=generator
+    )
+    candidates[duplicate] = replacements + (replacements >= excluded).long()
+    candidates[rows, true_slots] = query_indices
+    return candidates, true_slots
 
 
 @torch.no_grad()
@@ -546,13 +585,8 @@ def run_seed(
     query_indices = torch.randperm(len(test_observations), generator=generator)[
         : args.queries
     ]
-    candidate_indices = torch.randint(
-        len(test_observations),
-        (len(query_indices), args.candidates),
-        generator=generator,
-    )
-    true_slots = torch.randint(
-        args.candidates, (len(query_indices),), generator=generator
+    candidate_indices, true_slots = sample_retrieval_candidates(
+        query_indices, len(test_observations), args.candidates, generator
     )
     baseline_planning = planning_retrieval(
         baseline,
@@ -657,6 +691,8 @@ def aggregate(results: list[dict[str, object]]) -> dict[str, dict[str, float]]:
 
 def main() -> None:
     """Run the matched-budget Reacher experiment and save structured results."""
+    import h5py
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -716,6 +752,8 @@ def main() -> None:
             "batch_size": args.batch_size,
             "queries": args.queries,
             "candidates": args.candidates,
+            "candidate_sampling": "replace_duplicate_query_windows",
+            "planning_budget": "intermediate_states_K_minus_k",
             "seeds": args.seeds,
             "device": str(device),
         },
