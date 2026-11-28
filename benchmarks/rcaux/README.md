@@ -41,12 +41,20 @@ consistent CPU performance. Seeds 0, 1, and 2 are all reported.
 
 Evaluation asks the model to rank 32 action sequences for each of 512 held-out
 start/goal queries. One candidate is the demonstrated sequence; the others are
-sampled held-out sequences. All conditions use identical queries, candidates,
+sampled held-out sequences. Any distractor matching the query window is
+replaced by a uniformly sampled different window, so the correct window
+appears exactly once. Other distractors are sampled with replacement.
+All conditions use identical queries, candidates,
 and target slots. Chance top-one accuracy is 3.125%. The report includes
 untrained-model results, final held-out prediction error, retrieval metrics,
 and training losses every 100 updates. Encoder spread and anchor error are
 reported so a small latent prediction error is not considered sufficient
 evidence of learning by itself.
+
+Reachability-adjusted cost scores intermediate predicted states only: the
+k-th predicted state uses the remaining budget K-k for 1 <= k < K. The
+terminal state is excluded. For a one-step rollout the base cost is returned
+without a reachability discount.
 
 ## Interpretation
 
@@ -74,7 +82,9 @@ of parameters and AdamW steps, and a two-process CPU Gloo run launched with
 `torchrun`. The distributed test checks local batch membership, pair counts,
 finite losses, parameter updates, and exact agreement between ranks after
 training. It is marked `integration` and `distributed`, so it runs in the
-existing CPU integration CI job without requiring two GPUs.
+existing CPU integration CI job without requiring two GPUs. Additional unit
+tests check remaining-budget indexing, terminal-state exclusion, one-step
+rollouts, and unique correct candidates with deterministic sampling.
 
 
 ## Measured results
@@ -84,21 +94,33 @@ Mean +/- population standard deviation over all three seeds (0, 1, 2):
 | Condition | Held-out latent RMSE (lower is better) | Retrieval top-1 (%) |
 |---|---:|---:|
 | Untrained world model | 0.7260 +/- 0.0278 | 4.8828 +/- 2.0854 |
-| Prediction-only | 0.0669 +/- 0.0009 | 89.2578 +/- 2.1924 |
-| RC-aux, ordinary cost | 0.0626 +/- 0.0011 | 90.8854 +/- 2.1236 |
-| RC-aux, reachability-adjusted cost | 0.0626 +/- 0.0011 | 90.8854 +/- 2.3347 |
+| Prediction-only | 0.0669 +/- 0.0009 | 89.5182 +/- 2.0567 |
+| RC-aux, ordinary cost | 0.0626 +/- 0.0011 | 91.2109 +/- 2.0360 |
+| RC-aux, reachability-adjusted cost | 0.0626 +/- 0.0011 | 90.7552 +/- 1.7924 |
 
 | Seed | Initial RMSE | Prediction-only RMSE | RC-aux RMSE | Baseline top-1 (%) | RC-aux ordinary top-1 (%) | RC-aux adjusted top-1 (%) |
 |---|---:|---:|---:|---:|---:|---:|
-| 0 | 0.7185 | 0.0681 | 0.0637 | 89.84 | 90.23 | 90.43 |
-| 1 | 0.6963 | 0.0661 | 0.0612 | 91.60 | 93.75 | 93.95 |
-| 2 | 0.7631 | 0.0664 | 0.0629 | 86.33 | 88.67 | 88.28 |
+| 0 | 0.7185 | 0.0681 | 0.0637 | 90.23 | 90.62 | 90.23 |
+| 1 | 0.6963 | 0.0661 | 0.0612 | 91.60 | 93.95 | 93.16 |
+| 2 | 0.7631 | 0.0664 | 0.0629 | 86.72 | 89.06 | 88.87 |
 
 | Condition | Held-out encoder anchor RMSE | Mean latent standard deviation |
 |---|---:|---:|
 | Prediction-only | 0.0767 +/- 0.0032 | 0.8956 +/- 0.0008 |
 | RC-aux | 0.2287 +/- 0.0209 | 0.8856 +/- 0.0091 |
 
-Both complete models learn: the mean held-out latent RMSE decreases from 0.7260 before training to 0.0669 for prediction-only and 0.0626 for RC-aux. The reachability-adjusted RC-aux retrieval score differs from the baseline by +1.63 percentage points. This small three-seed comparison is implementation evidence, not a claim of statistically established planning superiority.
+Both complete models learn: the mean held-out latent RMSE decreases from 0.7260 before training to 0.0669 for prediction-only and 0.0626 for RC-aux. RC-aux with ordinary cost improves retrieval by 1.69 percentage points over the baseline; reachability-adjusted cost improves it by 1.24 points. The adjusted cost performs worse than ordinary cost on the RC-aux model in this experiment. This small three-seed comparison is implementation evidence, not a claim of statistically established planning superiority.
 
-Raw per-seed measurements and both training curves are in [results.json](results.json). The dataset path in this archived copy is normalized to the reproduction command above. The local original output is retained unchanged. Training used Linux/WSL, Python 3.12.16, PyTorch 2.15.0+cpu, Lightning 2.6.6, and one CPU thread. Dataset collection used dm-control 1.0.50, MuJoCo 3.17.0, and NumPy 2.2.6. There are 9,408 training and 3,136 held-out windows.
+These results were reevaluated from the same six 800-step checkpoints after
+correcting remaining-budget indexing and duplicate correct candidates. Before
+reevaluation, the archived prediction and retrieval metrics were reproduced
+with the old evaluation to verify the checkpoint mapping. Training, prediction
+RMSE, encoder diagnostics, and learning curves are unchanged. The candidate
+correction affects 5, 1, and 4 queries for seeds 0, 1, and 2 respectively.
+
+Raw per-seed measurements, both training curves, and evaluation revision notes
+are in [results.json](results.json). The dataset path is normalized to the
+reproduction command above. Training and reevaluation used Linux/WSL, Python
+3.12.16, PyTorch 2.15.0+cpu, Lightning 2.6.6, and one CPU thread. Dataset
+collection used dm-control 1.0.50, MuJoCo 3.17.0, and NumPy 2.2.6. There are
+9,408 training and 3,136 held-out windows.

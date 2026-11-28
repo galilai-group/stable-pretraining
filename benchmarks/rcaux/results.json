@@ -29,7 +29,9 @@
       1,
       2
     ],
-    "device": "cpu"
+    "device": "cpu",
+    "candidate_sampling": "replace_duplicate_query_windows",
+    "planning_budget": "intermediate_states_K_minus_k"
   },
   "results": [
     {
@@ -187,19 +189,19 @@
       "baseline_prediction_rmse": 0.0680917364448019,
       "rcaux_prediction_rmse": 0.06367182340182444,
       "lewm_cont": {
-        "ordinary_top1": 0.8984375,
+        "ordinary_top1": 0.90234375,
         "ordinary_top5": 0.994140625,
-        "ordinary_mean_rank": 1.189453125
+        "ordinary_mean_rank": 1.185546875
       },
       "rcaux_ordinary": {
-        "ordinary_top1": 0.90234375,
+        "ordinary_top1": 0.90625,
         "ordinary_top5": 0.99609375,
-        "ordinary_mean_rank": 1.173828125
+        "ordinary_mean_rank": 1.169921875
       },
       "rcaux_reachability": {
-        "reachability_top1": 0.904296875,
+        "reachability_top1": 0.90234375,
         "reachability_top5": 0.99609375,
-        "reachability_mean_rank": 1.171875
+        "reachability_mean_rank": 1.173828125
       },
       "reachability_diagnostic": {
         "temporal_accuracy": 0.8396875262260437,
@@ -368,14 +370,14 @@
         "ordinary_mean_rank": 1.130859375
       },
       "rcaux_ordinary": {
-        "ordinary_top1": 0.9375,
+        "ordinary_top1": 0.939453125,
         "ordinary_top5": 0.99609375,
-        "ordinary_mean_rank": 1.107421875
+        "ordinary_mean_rank": 1.10546875
       },
       "rcaux_reachability": {
-        "reachability_top1": 0.939453125,
+        "reachability_top1": 0.931640625,
         "reachability_top5": 0.99609375,
-        "reachability_mean_rank": 1.107421875
+        "reachability_mean_rank": 1.123046875
       },
       "reachability_diagnostic": {
         "temporal_accuracy": 0.8420312404632568,
@@ -390,7 +392,7 @@
       "initial_planning": {
         "ordinary_top1": 0.03125,
         "ordinary_top5": 0.171875,
-        "ordinary_mean_rank": 16.064453125
+        "ordinary_mean_rank": 16.06640625
       },
       "learning_curves": {
         "prediction_only": [
@@ -539,19 +541,19 @@
       "baseline_prediction_rmse": 0.06642270038995438,
       "rcaux_prediction_rmse": 0.06290209181676068,
       "lewm_cont": {
-        "ordinary_top1": 0.86328125,
+        "ordinary_top1": 0.8671875,
         "ordinary_top5": 0.986328125,
-        "ordinary_mean_rank": 1.263671875
+        "ordinary_mean_rank": 1.259765625
       },
       "rcaux_ordinary": {
-        "ordinary_top1": 0.88671875,
+        "ordinary_top1": 0.890625,
         "ordinary_top5": 0.984375,
-        "ordinary_mean_rank": 1.232421875
+        "ordinary_mean_rank": 1.228515625
       },
       "rcaux_reachability": {
-        "reachability_top1": 0.8828125,
-        "reachability_top5": 0.984375,
-        "reachability_mean_rank": 1.234375
+        "reachability_top1": 0.888671875,
+        "reachability_top5": 0.986328125,
+        "reachability_mean_rank": 1.228515625
       },
       "reachability_diagnostic": {
         "temporal_accuracy": 0.8410937786102295,
@@ -563,16 +565,39 @@
   ],
   "summary": {
     "lewm_cont": {
-      "top1_mean": 0.892578125,
-      "top1_std": 0.021923773750628563
+      "top1_mean": 0.8951822916666666,
+      "top1_std": 0.020567147134025146
     },
     "rcaux_ordinary": {
-      "top1_mean": 0.9088541666666666,
-      "top1_std": 0.021236336497786574
+      "top1_mean": 0.912109375,
+      "top1_std": 0.02036002053530194
     },
     "rcaux_reachability": {
-      "top1_mean": 0.9088541666666666,
-      "top1_std": 0.02334690244406394
+      "top1_mean": 0.9075520833333334,
+      "top1_std": 0.017924348825437766
     }
+  },
+  "evaluation_revision": {
+    "description": "Reevaluated existing 800-step checkpoints; training and learning curves unchanged.",
+    "verification": [
+      {
+        "seed": 0,
+        "old_results_reproduced": true,
+        "corrected_queries": 5,
+        "unique_correct_action_sequence": true
+      },
+      {
+        "seed": 1,
+        "old_results_reproduced": true,
+        "corrected_queries": 1,
+        "unique_correct_action_sequence": true
+      },
+      {
+        "seed": 2,
+        "old_results_reproduced": true,
+        "corrected_queries": 4,
+        "unique_correct_action_sequence": true
+      }
+    ]
   }
 }
