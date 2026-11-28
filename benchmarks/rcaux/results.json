@@ -1,0 +1,603 @@
+{
+  "protocol": {
+    "dataset": "data/rcaux/reacher_states.h5",
+    "train_episodes": 48,
+    "test_episodes": 16,
+    "train_windows": 9408,
+    "test_windows": 3136,
+    "learning_rate": 0.003,
+    "dataset_metadata": {
+      "dm_control_version": "1.0.50",
+      "domain": "reacher",
+      "mujoco_version": "3.17.0",
+      "numpy_version": "2.2.6",
+      "observation_keys": "position,to_target,velocity",
+      "policy": "uniform_random",
+      "requested_steps": 200,
+      "seed": 2026,
+      "task": "easy"
+    },
+    "torch_version": "2.15.0+cpu",
+    "lightning_version": "2.6.6",
+    "horizon": 5,
+    "steps": 800,
+    "batch_size": 128,
+    "queries": 512,
+    "candidates": 32,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "device": "cpu",
+    "candidate_sampling": "replace_duplicate_query_windows",
+    "planning_budget": "intermediate_states_K_minus_k"
+  },
+  "results": [
+    {
+      "seed": 0,
+      "initial_prediction_rmse": 0.7184842236304351,
+      "initial_planning": {
+        "ordinary_top1": 0.078125,
+        "ordinary_top5": 0.310546875,
+        "ordinary_mean_rank": 11.541015625
+      },
+      "learning_curves": {
+        "prediction_only": [
+          {
+            "step": 1,
+            "loss": 0.5071685910224915,
+            "prediction_loss": 0.5071685910224915,
+            "reachability_loss": 1.0397039651870728,
+            "regularization_loss": 0.0
+          },
+          {
+            "step": 100,
+            "loss": 0.02098277397453785,
+            "prediction_loss": 0.02025715820491314,
+            "reachability_loss": 1.0380589962005615,
+            "regularization_loss": 0.0072561586275696754
+          },
+          {
+            "step": 200,
+            "loss": 0.008557932451367378,
+            "prediction_loss": 0.006711035966873169,
+            "reachability_loss": 1.0391708612442017,
+            "regularization_loss": 0.018468962982296944
+          },
+          {
+            "step": 300,
+            "loss": 0.0037683071568608284,
+            "prediction_loss": 0.0023862740490585566,
+            "reachability_loss": 1.0386738777160645,
+            "regularization_loss": 0.01382033247500658
+          },
+          {
+            "step": 400,
+            "loss": 0.002171874511986971,
+            "prediction_loss": 0.0013377360301092267,
+            "reachability_loss": 1.0387389659881592,
+            "regularization_loss": 0.00834138598293066
+          },
+          {
+            "step": 500,
+            "loss": 0.003300502896308899,
+            "prediction_loss": 0.0026559934485703707,
+            "reachability_loss": 1.0383824110031128,
+            "regularization_loss": 0.006445095408707857
+          },
+          {
+            "step": 600,
+            "loss": 0.00269321259111166,
+            "prediction_loss": 0.002097307238727808,
+            "reachability_loss": 1.0383548736572266,
+            "regularization_loss": 0.005959052126854658
+          },
+          {
+            "step": 700,
+            "loss": 0.0030990648083388805,
+            "prediction_loss": 0.0024651032872498035,
+            "reachability_loss": 1.0391960144042969,
+            "regularization_loss": 0.006339614745229483
+          },
+          {
+            "step": 800,
+            "loss": 0.0017780831549316645,
+            "prediction_loss": 0.001235967269167304,
+            "reachability_loss": 1.0387120246887207,
+            "regularization_loss": 0.005421158857643604
+          }
+        ],
+        "rcaux": [
+          {
+            "step": 1,
+            "loss": 0.8710649609565735,
+            "prediction_loss": 0.5071685910224915,
+            "reachability_loss": 1.0397039651870728,
+            "regularization_loss": 0.0
+          },
+          {
+            "step": 100,
+            "loss": 0.1603260487318039,
+            "prediction_loss": 0.019559036940336227,
+            "reachability_loss": 0.39789313077926636,
+            "regularization_loss": 0.015044275671243668
+          },
+          {
+            "step": 200,
+            "loss": 0.14484335482120514,
+            "prediction_loss": 0.005781971849501133,
+            "reachability_loss": 0.3847264051437378,
+            "regularization_loss": 0.04407130554318428
+          },
+          {
+            "step": 300,
+            "loss": 0.13405326008796692,
+            "prediction_loss": 0.0020845760591328144,
+            "reachability_loss": 0.36103546619415283,
+            "regularization_loss": 0.05606270581483841
+          },
+          {
+            "step": 400,
+            "loss": 0.1252981722354889,
+            "prediction_loss": 0.0010977310594171286,
+            "reachability_loss": 0.3420505225658417,
+            "regularization_loss": 0.04482758417725563
+          },
+          {
+            "step": 500,
+            "loss": 0.12838353216648102,
+            "prediction_loss": 0.002436148701235652,
+            "reachability_loss": 0.34900182485580444,
+            "regularization_loss": 0.037967558950185776
+          },
+          {
+            "step": 600,
+            "loss": 0.12737871706485748,
+            "prediction_loss": 0.0019156290218234062,
+            "reachability_loss": 0.34778696298599243,
+            "regularization_loss": 0.03737659752368927
+          },
+          {
+            "step": 700,
+            "loss": 0.12537811696529388,
+            "prediction_loss": 0.0022376999258995056,
+            "reachability_loss": 0.34141409397125244,
+            "regularization_loss": 0.03645488992333412
+          },
+          {
+            "step": 800,
+            "loss": 0.1178005263209343,
+            "prediction_loss": 0.0010786226484924555,
+            "reachability_loss": 0.3228927254676819,
+            "regularization_loss": 0.03709448128938675
+          }
+        ]
+      },
+      "geometry_diagnostic": {
+        "prediction_only": {
+          "anchor_rmse": 0.07454293221235275,
+          "latent_std_mean": 0.8955824971199036
+        },
+        "rcaux": {
+          "anchor_rmse": 0.22043418884277344,
+          "latent_std_mean": 0.8846036791801453
+        }
+      },
+      "baseline_final_loss": 0.0017780831549316645,
+      "rcaux_final_loss": 0.1178005263209343,
+      "baseline_prediction_rmse": 0.0680917364448019,
+      "rcaux_prediction_rmse": 0.06367182340182444,
+      "lewm_cont": {
+        "ordinary_top1": 0.90234375,
+        "ordinary_top5": 0.994140625,
+        "ordinary_mean_rank": 1.185546875
+      },
+      "rcaux_ordinary": {
+        "ordinary_top1": 0.90625,
+        "ordinary_top5": 0.99609375,
+        "ordinary_mean_rank": 1.169921875
+      },
+      "rcaux_reachability": {
+        "reachability_top1": 0.90234375,
+        "reachability_top5": 0.99609375,
+        "reachability_mean_rank": 1.173828125
+      },
+      "reachability_diagnostic": {
+        "temporal_accuracy": 0.8396875262260437,
+        "positive_probability": 0.879091203212738,
+        "temporal_negative_probability": 0.3460712432861328,
+        "batch_negative_accuracy": 1.0
+      }
+    },
+    {
+      "seed": 1,
+      "initial_prediction_rmse": 0.6963483706023229,
+      "initial_planning": {
+        "ordinary_top1": 0.037109375,
+        "ordinary_top5": 0.19921875,
+        "ordinary_mean_rank": 14.744140625
+      },
+      "learning_curves": {
+        "prediction_only": [
+          {
+            "step": 1,
+            "loss": 0.49112802743911743,
+            "prediction_loss": 0.49112802743911743,
+            "reachability_loss": 1.0374479293823242,
+            "regularization_loss": 0.0
+          },
+          {
+            "step": 100,
+            "loss": 0.02339771017432213,
+            "prediction_loss": 0.022747963666915894,
+            "reachability_loss": 1.0381948947906494,
+            "regularization_loss": 0.006497460417449474
+          },
+          {
+            "step": 200,
+            "loss": 0.01289423555135727,
+            "prediction_loss": 0.011298161000013351,
+            "reachability_loss": 1.0396267175674438,
+            "regularization_loss": 0.01596074365079403
+          },
+          {
+            "step": 300,
+            "loss": 0.004558339715003967,
+            "prediction_loss": 0.0031085857190191746,
+            "reachability_loss": 1.038034439086914,
+            "regularization_loss": 0.014497538097202778
+          },
+          {
+            "step": 400,
+            "loss": 0.0031720874831080437,
+            "prediction_loss": 0.00222266698256135,
+            "reachability_loss": 1.0401043891906738,
+            "regularization_loss": 0.009494204074144363
+          },
+          {
+            "step": 500,
+            "loss": 0.0029338179156184196,
+            "prediction_loss": 0.0022038728930056095,
+            "reachability_loss": 1.0386710166931152,
+            "regularization_loss": 0.007299450691789389
+          },
+          {
+            "step": 600,
+            "loss": 0.0028764307498931885,
+            "prediction_loss": 0.002124532824382186,
+            "reachability_loss": 1.039669394493103,
+            "regularization_loss": 0.007518978789448738
+          },
+          {
+            "step": 700,
+            "loss": 0.0024343333207070827,
+            "prediction_loss": 0.0017399750649929047,
+            "reachability_loss": 1.0391751527786255,
+            "regularization_loss": 0.006943582557141781
+          },
+          {
+            "step": 800,
+            "loss": 0.002494232729077339,
+            "prediction_loss": 0.0018469050992280245,
+            "reachability_loss": 1.0380358695983887,
+            "regularization_loss": 0.006473275367170572
+          }
+        ],
+        "rcaux": [
+          {
+            "step": 1,
+            "loss": 0.8542348146438599,
+            "prediction_loss": 0.49112802743911743,
+            "reachability_loss": 1.0374479293823242,
+            "regularization_loss": 0.0
+          },
+          {
+            "step": 100,
+            "loss": 0.16516779363155365,
+            "prediction_loss": 0.022283827885985374,
+            "reachability_loss": 0.4041860103607178,
+            "regularization_loss": 0.014188743196427822
+          },
+          {
+            "step": 200,
+            "loss": 0.1455979198217392,
+            "prediction_loss": 0.00788525678217411,
+            "reachability_loss": 0.37736383080482483,
+            "regularization_loss": 0.05635315924882889
+          },
+          {
+            "step": 300,
+            "loss": 0.1242777481675148,
+            "prediction_loss": 0.0025033201090991497,
+            "reachability_loss": 0.33000966906547546,
+            "regularization_loss": 0.06271040439605713
+          },
+          {
+            "step": 400,
+            "loss": 0.1263260543346405,
+            "prediction_loss": 0.0018582720076665282,
+            "reachability_loss": 0.34218931198120117,
+            "regularization_loss": 0.04701532423496246
+          },
+          {
+            "step": 500,
+            "loss": 0.12508368492126465,
+            "prediction_loss": 0.0020011751912534237,
+            "reachability_loss": 0.3380013406276703,
+            "regularization_loss": 0.047820497304201126
+          },
+          {
+            "step": 600,
+            "loss": 0.11739155650138855,
+            "prediction_loss": 0.0018834313377738,
+            "reachability_loss": 0.31526219844818115,
+            "regularization_loss": 0.051663562655448914
+          },
+          {
+            "step": 700,
+            "loss": 0.11349744349718094,
+            "prediction_loss": 0.0015427896287292242,
+            "reachability_loss": 0.30568596720695496,
+            "regularization_loss": 0.049645669758319855
+          },
+          {
+            "step": 800,
+            "loss": 0.11956153810024261,
+            "prediction_loss": 0.0016262257704511285,
+            "reachability_loss": 0.32335811853408813,
+            "regularization_loss": 0.047599781304597855
+          }
+        ]
+      },
+      "geometry_diagnostic": {
+        "prediction_only": {
+          "anchor_rmse": 0.08119125664234161,
+          "latent_std_mean": 0.8945565223693848
+        },
+        "rcaux": {
+          "anchor_rmse": 0.2575107216835022,
+          "latent_std_mean": 0.8748984932899475
+        }
+      },
+      "baseline_final_loss": 0.002494232729077339,
+      "rcaux_final_loss": 0.11956153810024261,
+      "baseline_prediction_rmse": 0.06614533698304256,
+      "rcaux_prediction_rmse": 0.06115247700305682,
+      "lewm_cont": {
+        "ordinary_top1": 0.916015625,
+        "ordinary_top5": 0.994140625,
+        "ordinary_mean_rank": 1.130859375
+      },
+      "rcaux_ordinary": {
+        "ordinary_top1": 0.939453125,
+        "ordinary_top5": 0.99609375,
+        "ordinary_mean_rank": 1.10546875
+      },
+      "rcaux_reachability": {
+        "reachability_top1": 0.931640625,
+        "reachability_top5": 0.99609375,
+        "reachability_mean_rank": 1.123046875
+      },
+      "reachability_diagnostic": {
+        "temporal_accuracy": 0.8420312404632568,
+        "positive_probability": 0.8845071792602539,
+        "temporal_negative_probability": 0.3421242833137512,
+        "batch_negative_accuracy": 1.0
+      }
+    },
+    {
+      "seed": 2,
+      "initial_prediction_rmse": 0.7631307999313565,
+      "initial_planning": {
+        "ordinary_top1": 0.03125,
+        "ordinary_top5": 0.171875,
+        "ordinary_mean_rank": 16.06640625
+      },
+      "learning_curves": {
+        "prediction_only": [
+          {
+            "step": 1,
+            "loss": 0.5028468370437622,
+            "prediction_loss": 0.5028468370437622,
+            "reachability_loss": 1.0425214767456055,
+            "regularization_loss": 0.0
+          },
+          {
+            "step": 100,
+            "loss": 0.024908237159252167,
+            "prediction_loss": 0.02425653114914894,
+            "reachability_loss": 1.043311357498169,
+            "regularization_loss": 0.006517063360661268
+          },
+          {
+            "step": 200,
+            "loss": 0.006739180535078049,
+            "prediction_loss": 0.004948229528963566,
+            "reachability_loss": 1.0423921346664429,
+            "regularization_loss": 0.01790950819849968
+          },
+          {
+            "step": 300,
+            "loss": 0.004548125434666872,
+            "prediction_loss": 0.003233486320823431,
+            "reachability_loss": 1.0426926612854004,
+            "regularization_loss": 0.01314638927578926
+          },
+          {
+            "step": 400,
+            "loss": 0.002647961489856243,
+            "prediction_loss": 0.0018338181544095278,
+            "reachability_loss": 1.0424165725708008,
+            "regularization_loss": 0.00814143382012844
+          },
+          {
+            "step": 500,
+            "loss": 0.002091876231133938,
+            "prediction_loss": 0.0014381291111931205,
+            "reachability_loss": 1.0430831909179688,
+            "regularization_loss": 0.006537470035254955
+          },
+          {
+            "step": 600,
+            "loss": 0.0035108497831970453,
+            "prediction_loss": 0.002891056938096881,
+            "reachability_loss": 1.0425403118133545,
+            "regularization_loss": 0.006197928451001644
+          },
+          {
+            "step": 700,
+            "loss": 0.003034952562302351,
+            "prediction_loss": 0.002450173022225499,
+            "reachability_loss": 1.0430376529693604,
+            "regularization_loss": 0.005847796332091093
+          },
+          {
+            "step": 800,
+            "loss": 0.001565256854519248,
+            "prediction_loss": 0.0009936096612364054,
+            "reachability_loss": 1.0439510345458984,
+            "regularization_loss": 0.005716471932828426
+          }
+        ],
+        "rcaux": [
+          {
+            "step": 1,
+            "loss": 0.8677293062210083,
+            "prediction_loss": 0.5028468370437622,
+            "reachability_loss": 1.0425214767456055,
+            "regularization_loss": 0.0
+          },
+          {
+            "step": 100,
+            "loss": 0.16120721399784088,
+            "prediction_loss": 0.023658322170376778,
+            "reachability_loss": 0.38920751214027405,
+            "regularization_loss": 0.013262595981359482
+          },
+          {
+            "step": 200,
+            "loss": 0.1414286196231842,
+            "prediction_loss": 0.003538772463798523,
+            "reachability_loss": 0.37904053926467896,
+            "regularization_loss": 0.05225665867328644
+          },
+          {
+            "step": 300,
+            "loss": 0.1257306933403015,
+            "prediction_loss": 0.0029863067902624607,
+            "reachability_loss": 0.33250781893730164,
+            "regularization_loss": 0.06366655230522156
+          },
+          {
+            "step": 400,
+            "loss": 0.12646615505218506,
+            "prediction_loss": 0.0016267672181129456,
+            "reachability_loss": 0.34255680441856384,
+            "regularization_loss": 0.04944515600800514
+          },
+          {
+            "step": 500,
+            "loss": 0.12393784523010254,
+            "prediction_loss": 0.0012399191036820412,
+            "reachability_loss": 0.3383447229862213,
+            "regularization_loss": 0.042772743850946426
+          },
+          {
+            "step": 600,
+            "loss": 0.12295660376548767,
+            "prediction_loss": 0.002622688189148903,
+            "reachability_loss": 0.3304634690284729,
+            "regularization_loss": 0.04671710729598999
+          },
+          {
+            "step": 700,
+            "loss": 0.12007492035627365,
+            "prediction_loss": 0.002212443621829152,
+            "reachability_loss": 0.32503193616867065,
+            "regularization_loss": 0.0410129576921463
+          },
+          {
+            "step": 800,
+            "loss": 0.11592427641153336,
+            "prediction_loss": 0.0008748025866225362,
+            "reachability_loss": 0.3172301948070526,
+            "regularization_loss": 0.04018907621502876
+          }
+        ]
+      },
+      "geometry_diagnostic": {
+        "prediction_only": {
+          "anchor_rmse": 0.0743747353553772,
+          "latent_std_mean": 0.8965616822242737
+        },
+        "rcaux": {
+          "anchor_rmse": 0.20826339721679688,
+          "latent_std_mean": 0.8972113728523254
+        }
+      },
+      "baseline_final_loss": 0.001565256854519248,
+      "rcaux_final_loss": 0.11592427641153336,
+      "baseline_prediction_rmse": 0.06642270038995438,
+      "rcaux_prediction_rmse": 0.06290209181676068,
+      "lewm_cont": {
+        "ordinary_top1": 0.8671875,
+        "ordinary_top5": 0.986328125,
+        "ordinary_mean_rank": 1.259765625
+      },
+      "rcaux_ordinary": {
+        "ordinary_top1": 0.890625,
+        "ordinary_top5": 0.984375,
+        "ordinary_mean_rank": 1.228515625
+      },
+      "rcaux_reachability": {
+        "reachability_top1": 0.888671875,
+        "reachability_top5": 0.986328125,
+        "reachability_mean_rank": 1.228515625
+      },
+      "reachability_diagnostic": {
+        "temporal_accuracy": 0.8410937786102295,
+        "positive_probability": 0.8810675144195557,
+        "temporal_negative_probability": 0.33723002672195435,
+        "batch_negative_accuracy": 1.0
+      }
+    }
+  ],
+  "summary": {
+    "lewm_cont": {
+      "top1_mean": 0.8951822916666666,
+      "top1_std": 0.020567147134025146
+    },
+    "rcaux_ordinary": {
+      "top1_mean": 0.912109375,
+      "top1_std": 0.02036002053530194
+    },
+    "rcaux_reachability": {
+      "top1_mean": 0.9075520833333334,
+      "top1_std": 0.017924348825437766
+    }
+  },
+  "evaluation_revision": {
+    "description": "Reevaluated existing 800-step checkpoints; training and learning curves unchanged.",
+    "verification": [
+      {
+        "seed": 0,
+        "old_results_reproduced": true,
+        "corrected_queries": 5,
+        "unique_correct_action_sequence": true
+      },
+      {
+        "seed": 1,
+        "old_results_reproduced": true,
+        "corrected_queries": 1,
+        "unique_correct_action_sequence": true
+      },
+      {
+        "seed": 2,
+        "old_results_reproduced": true,
+        "corrected_queries": 4,
+        "unique_correct_action_sequence": true
+      }
+    ]
+  }
+}

@@ -49,6 +49,42 @@ Or in Python code:
 Available Forward Functions
 ---------------------------
 
+RC-aux
+~~~~~~
+
+.. autofunction:: rcaux
+
+**Required Module Attributes:**
+
+- ``world_model``: A module that returns trajectory embeddings with shape
+  ``(batch, time, embedding_dim)`` and open-loop predictions with shape
+  ``(batch, horizon, embedding_dim)``.
+- ``rcaux_loss``: A
+  :class:`~stable_pretraining.losses.RCauxLoss` instance configured for the
+  world model's embedding dimension and maximum planning horizon.
+- ``context_index``: Optional index of the first encoded target aligned with
+  the prediction at horizon one.
+
+**Example:**
+
+.. code-block:: python
+
+    import stable_pretraining as spt
+    from stable_pretraining.forward import rcaux
+    from stable_pretraining.losses import RCauxLoss
+
+    module = spt.Module(
+        forward=rcaux,
+        world_model=world_model,
+        rcaux_loss=RCauxLoss(embedding_dim=256, max_horizon=5),
+        context_index=4,
+        optim={"optimizer": {"type": "AdamW", "lr": 3e-4}},
+    )
+
+The world model remains architecture-specific. RC-aux adds multi-horizon
+prediction supervision and a budget-conditioned reachability objective to its
+outputs. During evaluation, only the ``embedding`` output is required.
+
 SimCLR
 ~~~~~~
 

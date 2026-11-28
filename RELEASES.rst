@@ -17,6 +17,11 @@ Unreleased
   mix ``(1 - lamb) * invariance + lamb * visreg``. Registered in
   ``stable_pretraining.methods`` and ``METHODS.md``, with an Imagenette
   ViT-S/16 benchmark under ``benchmarks/imagenet10/visreg-vit-small.py``.
+- ``RC-aux``: adds a budget-conditioned reachability auxiliary objective for
+  latent world models, with multi-horizon prediction, temporal positive and
+  hard-negative pair construction, unit tests, documentation, and reproducible
+  synthetic and offline Reacher experiments, following Li et al.,
+  "Predictive but Not Plannable: RC-aux for Latent World Models" (NeurIPS 2026).
 
 **Discoverability improvements**
 
