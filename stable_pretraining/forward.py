@@ -125,6 +125,10 @@ def rcaux(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
     set ``module.context_index`` to use another alignment. An optional scalar
     ``regularization_loss`` is included according to the weight in ``RCauxLoss``.
 
+    Under DDP, cross-trajectory negatives are local to each rank (per GPU).
+    No latent all-gather is performed; ``sync_dist`` only aggregates logged
+    diagnostics. A local batch of one has no cross-trajectory negatives.
+
     Args:
         self: Module instance with ``world_model`` and ``rcaux_loss`` attributes.
         batch: Trajectory batch consumed by ``world_model``.
