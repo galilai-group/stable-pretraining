@@ -1,6 +1,11 @@
 """Unit tests for the RC-aux objective and forward function."""
 
-from unittest.mock import Mock
+import math
+
+import lightning as pl
+from torch.utils.data import DataLoader
+
+import stable_pretraining as spt
 
 import pytest
 import torch
@@ -128,39 +133,175 @@ class TestRCauxLoss:
         torch.testing.assert_close(cost, base_cost * 0.6)
 
 
+class _AnalyticHead(nn.Module):
+    """Nonconstant logits with an independently computable scalar expression."""
+
+    def forward(self, source, goal, budget):
+        return 0.1 * source[..., 0] + 0.2 * goal[..., 0] + 0.3 * budget.to(source)
+
+
+@pytest.mark.unit
+def test_reachability_matches_hand_enumerated_binary_cross_entropy() -> None:
+    """Check labels, budgets, group balancing, and predicted-source alignment."""
+    objective = RCauxLoss(
+        embedding_dim=1,
+        max_horizon=2,
+        hidden_dim=4,
+        horizon_dim=2,
+        temporal_negative_weight=2.0,
+        batch_negative_weight=3.0,
+        predicted_pair_weight=0.4,
+        prediction_weight=0.7,
+        reachability_weight=0.6,
+        regularization_weight=0.2,
+        horizon_weights=(1.0, 3.0),
+    ).double()
+    objective.reachability_head = _AnalyticHead()
+    encoded = torch.tensor(
+        [[[0.0], [1.0], [3.0]], [[10.0], [12.0], [15.0]]], dtype=torch.float64
+    )
+    predicted = torch.tensor([[[0.5], [2.0]], [[11.0], [14.0]]], dtype=torch.float64)
+
+    # Explicit (source, goal, budget) tables for these two length-three paths.
+    positives = [
+        (0, 1, 1),
+        (0, 1, 2),
+        (1, 3, 1),
+        (1, 3, 2),
+        (10, 12, 1),
+        (10, 12, 2),
+        (12, 15, 1),
+        (12, 15, 2),
+        (0, 3, 2),
+        (10, 15, 2),
+    ]
+    temporal_negatives = [(0, 3, 1), (10, 15, 1)]
+    batch_negatives = [
+        (0, 12, 1),
+        (0, 12, 2),
+        (1, 15, 1),
+        (1, 15, 2),
+        (10, 1, 1),
+        (10, 1, 2),
+        (12, 3, 1),
+        (12, 3, 2),
+        (0, 15, 2),
+        (10, 3, 2),
+    ]
+    predicted_positives = [(0.5, 3, 1), (0.5, 3, 2), (11, 15, 1), (11, 15, 2)]
+    predicted_negatives = [(0.5, 15, 1), (0.5, 15, 2), (11, 3, 1), (11, 3, 2)]
+
+    def mean_bce(pairs, label):
+        logits = [0.1 * a + 0.2 * b + 0.3 * k for a, b, k in pairs]
+        return sum(math.log1p(math.exp(x)) - label * x for x in logits) / len(logits)
+
+    encoded_bce = 0.5 * (
+        mean_bce(positives, 1)
+        + (2 * mean_bce(temporal_negatives, 0) + 3 * mean_bce(batch_negatives, 0)) / 5
+    )
+    predicted_bce = 0.5 * (
+        mean_bce(predicted_positives, 1) + mean_bce(predicted_negatives, 0)
+    )
+    expected_reachability = encoded_bce + 0.4 * predicted_bce
+    expected_prediction = (0.625 + 3 * 1.0) / 4
+    result = objective(
+        encoded, predicted, context_index=1, regularization_loss=encoded.new_tensor(2.0)
+    )
+    assert result["encoded_reachability_loss"].item() == pytest.approx(
+        encoded_bce, abs=1e-12
+    )
+    assert result["predicted_reachability_loss"].item() == pytest.approx(
+        predicted_bce, abs=1e-12
+    )
+    assert result["reachability_loss"].item() == pytest.approx(
+        expected_reachability, abs=1e-12
+    )
+    assert result["loss"].item() == pytest.approx(
+        0.7 * expected_prediction + 0.6 * expected_reachability + 0.4, abs=1e-12
+    )
+
+
+class _WorldModel(nn.Module):
+    """Trainable encoder and transition for the actual Module interface."""
+
+    def __init__(self):
+        super().__init__()
+        self.encoder = nn.Linear(5, 3)
+        self.transition = nn.Linear(3, 3)
+
+    def forward(self, batch):
+        encoded = self.encoder(batch["observation"])
+        out = {"embedding": encoded}
+        if self.training:
+            out["prediction"] = self.transition(encoded[:, 1:3])
+        return out
+
+
 @pytest.mark.unit
 class TestRCauxForward:
-    """Tests for the composable stable-pretraining forward function."""
+    """Exercise real Modules, submodules, and Lightning metric logging."""
 
-    def test_training_output_and_logging(self) -> None:
-        encoded = torch.randn(2, 4, 3)
-        predicted = torch.randn(2, 2, 3)
-        module = Mock()
-        module.training = True
-        module.world_model = Mock(
-            return_value={"embedding": encoded, "prediction": predicted}
+    def test_training_output_and_logging(self, tmp_path) -> None:
+        module = spt.Module(
+            forward=forward_module.rcaux,
+            world_model=_WorldModel(),
+            rcaux_loss=RCauxLoss(
+                embedding_dim=3, max_horizon=3, hidden_dim=8, horizon_dim=2
+            ),
+            context_index=2,
+            optim={"optimizer": {"type": "AdamW", "lr": 1e-3}},
         )
-        module.rcaux_loss = RCauxLoss(
-            embedding_dim=3, max_horizon=3, hidden_dim=8, horizon_dim=2
+        samples = [
+            {"observation": torch.randn(4, 5), "label": torch.tensor(i)}
+            for i in range(4)
+        ]
+        trainer = pl.Trainer(
+            accelerator="cpu",
+            devices=1,
+            max_steps=1,
+            logger=False,
+            enable_checkpointing=False,
+            enable_model_summary=False,
+            enable_progress_bar=False,
+            default_root_dir=str(tmp_path),
+            num_sanity_val_steps=0,
         )
-        module.context_index = 2
-        module.log = Mock()
-        batch = {"observation": torch.randn(2, 4, 5), "label": torch.arange(2)}
-
-        result = forward_module.rcaux(module, batch, "train")
-
-        assert result["embedding"] is encoded
-        assert result["prediction"] is predicted
-        assert result["loss"].ndim == 0
-        torch.testing.assert_close(result["label"], batch["label"])
-        assert module.log.call_count == 10
+        trainer.fit(module, train_dataloaders=DataLoader(samples, batch_size=2))
+        assert trainer.global_step == 1
+        for key in [
+            "loss",
+            "prediction_loss",
+            "reachability_loss",
+            "encoded_pair_count",
+        ]:
+            assert torch.isfinite(trainer.callback_metrics[f"fit/{key}"])
 
     def test_evaluation_only_requires_embeddings(self) -> None:
-        encoded = torch.randn(2, 4, 3)
-        module = Mock()
-        module.training = False
-        module.world_model = Mock(return_value={"embedding": encoded})
+        module = spt.Module(forward=forward_module.rcaux, world_model=_WorldModel())
+        module.eval()
+        batch = {"observation": torch.randn(2, 4, 5), "label": torch.arange(2)}
+        result = module(batch, "val")
+        torch.testing.assert_close(
+            result["embedding"], module.world_model.encoder(batch["observation"])
+        )
+        torch.testing.assert_close(result["label"], batch["label"])
+        assert "loss" not in result and "prediction" not in result
 
-        result = forward_module.rcaux(module, {}, "val")
+    def test_public_method_uses_existing_forward(self) -> None:
+        from stable_pretraining.methods import RCaux
 
-        assert result == {"embedding": encoded}
+        assert spt.RCaux is RCaux
+        module = RCaux(
+            _WorldModel(),
+            embedding_dim=3,
+            max_horizon=3,
+            loss_kwargs={"hidden_dim": 8, "horizon_dim": 2},
+        )
+        assert isinstance(module, spt.Module)
+        module.eval()
+        batch = {"observation": torch.randn(2, 4, 5)}
+        torch.testing.assert_close(
+            module(batch, "val")["embedding"],
+            forward_module.rcaux(module, batch, "val")["embedding"],
+        )
+        assert module.rcaux_loss.reachability_weight == 0.35
