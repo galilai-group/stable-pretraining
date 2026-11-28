@@ -133,6 +133,58 @@ class TestRCauxLoss:
         torch.testing.assert_close(cost, base_cost * 0.6)
 
 
+@pytest.mark.unit
+def test_planning_cost_uses_remaining_budget_and_excludes_endpoint() -> None:
+    class BudgetAndStateHead(nn.Module):
+        def forward(self, source, goal, budget):
+            return source[..., 0] + budget.to(source) - 4.0
+
+    objective = RCauxLoss(embedding_dim=1, max_horizon=3, hidden_dim=4, horizon_dim=2)
+    objective.reachability_head = BudgetAndStateHead()
+    base = torch.tensor([[2.0, 4.0]])
+    rollout = torch.tensor([[[[1.0], [3.0], [100.0]], [[0.0], [1.0], [100.0]]]])
+    goal = torch.zeros(1, 2, 1)
+    cost, score = objective.planning_cost(base, rollout, goal, reachability_weight=0.8)
+    # The two intermediate logits are (-1, 0) and (-2, -2); the endpoint is ignored.
+    expected = torch.tensor([[0.5, 1.0 / (1.0 + math.exp(2.0))]])
+    torch.testing.assert_close(score, expected)
+    torch.testing.assert_close(cost, base * (1 - 0.8 * expected))
+
+
+@pytest.mark.unit
+def test_single_step_planning_has_no_intermediate_discount() -> None:
+    objective = RCauxLoss(embedding_dim=1, max_horizon=1, hidden_dim=4, horizon_dim=2)
+    base = torch.tensor([2.0, 4.0])
+    cost, score = objective.planning_cost(base, torch.ones(2, 1, 1), torch.zeros(2, 1))
+    torch.testing.assert_close(cost, base)
+    torch.testing.assert_close(score, torch.zeros_like(base))
+
+
+@pytest.mark.unit
+def test_retrieval_has_one_correct_slot_and_preserves_other_candidates() -> None:
+    from examples.rcaux_reacher_offline import sample_retrieval_candidates
+
+    queries = torch.tensor([0, 1, 2])
+    generator = torch.Generator().manual_seed(7)
+    original = torch.randint(3, (3, 32), generator=generator)
+    slots = torch.randint(32, (3,), generator=generator)
+    candidates, actual_slots = sample_retrieval_candidates(
+        queries, 3, 32, torch.Generator().manual_seed(7)
+    )
+    torch.testing.assert_close(actual_slots, slots)
+    assert ((candidates == queries[:, None]).sum(1) == 1).all()
+    torch.testing.assert_close(candidates[torch.arange(3), slots], queries)
+    assert ((candidates >= 0) & (candidates < 3)).all()
+    unchanged = original != queries[:, None]
+    unchanged[torch.arange(3), slots] = False
+    torch.testing.assert_close(candidates[unchanged], original[unchanged])
+    repeated, repeated_slots = sample_retrieval_candidates(
+        queries, 3, 32, torch.Generator().manual_seed(7)
+    )
+    torch.testing.assert_close(repeated, candidates)
+    torch.testing.assert_close(repeated_slots, slots)
+
+
 class _AnalyticHead(nn.Module):
     """Nonconstant logits with an independently computable scalar expression."""
 
