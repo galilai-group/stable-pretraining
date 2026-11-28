@@ -4,6 +4,10 @@ import math
 from dataclasses import dataclass
 
 
+GPU_PREPROCESSING_ID = "gpu_fft_f64_v1"
+GPU_PREPROCESSING_CASE = "edf_gpu_assembly+" + GPU_PREPROCESSING_ID
+
+
 @dataclass(frozen=True)
 class Config:
     """Synthetic correctness configuration; not a full pretraining recipe."""

@@ -239,8 +239,10 @@ class NeonatalBatches(torch.utils.data.Dataset):
         masks: list[dict],
         config: Config,
         diagnostic: bool = False,
+        preprocessor: Any | None = None,
     ) -> None:
         self.diagnostic = diagnostic
+        self.preprocessor = preprocessor
         self.reader, self.starts, self.masks, self.config = (
             reader,
             starts,
@@ -252,6 +254,11 @@ class NeonatalBatches(torch.utils.data.Dataset):
         return len(self.starts)
 
     def __getitem__(self, index: int) -> dict[str, Any]:
+        if (
+            self.preprocessor is not None
+            and torch.utils.data.get_worker_info() is not None
+        ):
+            raise ValueError("GPU preprocessing must run in the main process")
         rate = int(self.reader.metadata.sample_rate_hz)
         started = perf_counter() if self.diagnostic else None
         values = self.reader.read(
@@ -262,10 +269,16 @@ class NeonatalBatches(torch.utils.data.Dataset):
             torch.cuda.synchronize(values.device)
         read_done = perf_counter() if self.diagnostic else None
         batch = {key: value.clone() for key, value in self.masks[index].items()}
-        batch["eeg"] = model_patches(
-            values, self.reader.metadata.channel_names, rate, self.config.patches
+        batch["eeg"] = (
+            model_patches(
+                values, self.reader.metadata.channel_names, rate, self.config.patches
+            )
+            if self.preprocessor is None
+            else self.preprocessor(values)
         )
         if self.diagnostic:
+            if batch["eeg"].is_cuda:
+                torch.cuda.synchronize(batch["eeg"].device)
             batch["_diagnostic"] = dict(
                 loading_seconds=read_done - started,
                 preprocessing_seconds=perf_counter() - read_done,

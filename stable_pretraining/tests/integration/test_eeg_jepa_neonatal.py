@@ -376,6 +376,7 @@ blocked = (
     "lightning", "pytorch_lightning", "torchmetrics", "torchvision", "transformers",
     "stable_pretraining.module", "stable_pretraining.manager", "stable_pretraining.callbacks",
     "examples.eeg_jepa.model", "examples.eeg_jepa.train", "examples.eeg_jepa.benchmark",
+    "examples.eeg_jepa.gpu_preprocessing",
 )
 
 class WorkerImports(importlib.abc.MetaPathFinder):
@@ -542,4 +543,64 @@ def test_repeated_cache_benchmark_validates_spawned_workers_and_learning(
     assert all(
         row["max_abs_loss_difference"] == 0
         for row in report["benchmark"]["trials"] + report["benchmark"]["diagnostics"]
+    )
+
+
+@pytest.mark.gpu
+def test_gpu_preprocessing_benchmark_preserves_all_controls_and_training(
+    neonatal_edf, prepared_workspace, reference_root, tmp_path
+):
+    from examples.eeg_jepa.config import BenchmarkConfig, GPU_PREPROCESSING_CASE
+
+    output = tmp_path / "gpu-fft-v1"
+    report = run(
+        neonatal_edf,
+        reference_root,
+        output,
+        Config(total_steps=4, batch_size=2),
+        paths=("current_cache", "edf_memmap", "edf_gpu_assembly"),
+        accelerator="gpu",
+        prepared_workspace=prepared_workspace,
+        gpu_preprocessing=True,
+        benchmark=BenchmarkConfig(trials=3, startup_steps=2, diagnostic=True),
+    )
+    benchmark = report["benchmark"]
+    assert report["experiment"] == "gpu_fft_f64_v1"
+    assert report["preprocessing_cases"][GPU_PREPROCESSING_CASE] == report["experiment"]
+    assert report["preprocessing_cases"]["edf_gpu_assembly"] == "cpu_mne"
+    assert report["gpu_preprocessing"]["preparation_seconds"] > 0
+    assert report["gpu_preprocessing"]["host_signal_round_trip"] is False
+    assert report["gpu_preprocessing"]["fir_lengths"] == [2201, 1321]
+    assert len(benchmark["summary"]) == 6
+    assert len(benchmark["trials"]) == 18 and len(benchmark["diagnostics"]) == 6
+    assert benchmark["trial_order"][0] == benchmark["trial_order"][2]
+    assert benchmark["trial_order"][1] == list(reversed(benchmark["trial_order"][0]))
+    runs = benchmark["trials"] + benchmark["diagnostics"]
+    assert len({r["initial_weights_sha256"] for r in runs}) == 1
+    for row in runs:
+        assert row["teacher_updates"] == len(row["steps"]) == 4
+        assert np.isfinite([step["loss"] for step in row["steps"]]).all()
+        assert (
+            row["intervals"]["startup_steps"]
+            == row["intervals"]["sustained_steps"]
+            == 2
+        )
+        if row["path"] in ("edf_gpu_assembly", GPU_PREPROCESSING_CASE):
+            assert row["workers"] == 0
+        if row["mode"] == "diagnostic":
+            assert len(row["diagnostic_phases"]) == 4
+            assert all(
+                all(value >= 0 for value in phase.values())
+                for phase in row["diagnostic_phases"]
+            )
+        else:
+            assert row["diagnostic_phases"] is None
+    assert (output / "learning-progress.png").is_file()
+    print(
+        "GPU FFT model-input differences:",
+        report["checks"]["max_abs_model_input_difference"],
+    )
+    print(
+        "GPU FFT loss differences:",
+        [(r["case"], r["max_abs_loss_difference"]) for r in runs],
     )

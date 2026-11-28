@@ -22,7 +22,12 @@ from profiling import (
 )
 from profiling.edf_record_loading import EDF_PATHS, EdfWindowReader
 
-from .config import BenchmarkConfig, Config
+from .config import (
+    BenchmarkConfig,
+    Config,
+    GPU_PREPROCESSING_CASE,
+    GPU_PREPROCESSING_ID,
+)
 from .data import (
     CANONICAL_CHANNELS,
     CONTEXT_SECONDS,
@@ -97,7 +102,7 @@ def _train_paths(reference, datasets, paths, config, output, accelerator, seed):
             datasets[name],
             batch_size=None,
             num_workers=0,
-            pin_memory=accelerator == "gpu",
+            pin_memory=accelerator == "gpu" and datasets[name].preprocessor is None,
         )
         fit(module, loader, output / name, config, accelerator, [history], seed=seed)
         if int(module.eeg.completed_steps) != config.total_steps:
@@ -111,7 +116,9 @@ def _train_paths(reference, datasets, paths, config, output, accelerator, seed):
     return results
 
 
-def _validate_options(paths, accelerator, benchmark, steps, prepared_workspace):
+def _validate_options(
+    paths, accelerator, benchmark, config, prepared_workspace, gpu_preprocessing
+):
     if (
         not paths
         or len(set(paths)) != len(paths)
@@ -120,6 +127,15 @@ def _validate_options(paths, accelerator, benchmark, steps, prepared_workspace):
         raise ValueError("Require distinct supported loading paths")
     if "current_cache" in paths and prepared_workspace is None:
         raise ValueError("current_cache requires a prepared workspace")
+    if gpu_preprocessing:
+        if accelerator != "gpu" or "edf_gpu_assembly" not in paths:
+            raise ValueError(
+                "GPU preprocessing requires edf_gpu_assembly and the shared GPU endpoint"
+            )
+        if config.channels != 19 or config.patches != 4:
+            raise ValueError(
+                "GPU preprocessing requires 19 channels and four-second cores"
+            )
     if accelerator not in ("cpu", "gpu"):
         raise ValueError("Require cpu or gpu accelerator")
     if "edf_gpu_assembly" in paths and accelerator != "gpu":
@@ -127,10 +143,12 @@ def _validate_options(paths, accelerator, benchmark, steps, prepared_workspace):
     if accelerator == "gpu" and not torch.cuda.is_available():
         raise ValueError("CUDA unavailable")
     if benchmark is not None:
-        benchmark.validate(steps)
+        benchmark.validate(config.total_steps)
 
 
-def _prepare_datasets(source, reference, config, paths, seed, prepared_workspace):
+def _prepare_datasets(
+    source, reference, config, paths, seed, prepared_workspace, gpu_preprocessing
+):
     readers = {"edf_memmap": EdfWindowReader(source)}
     if "edf_gpu_assembly" in paths:
         readers["edf_gpu_assembly"] = EdfWindowReader(
@@ -147,6 +165,22 @@ def _prepare_datasets(source, reference, config, paths, seed, prepared_workspace
         name: NeonatalBatches(reader, starts, masks, config)
         for name, reader in readers.items()
     }
+    if gpu_preprocessing:
+        from .gpu_preprocessing import GpuPreprocessor
+
+        preprocessor = GpuPreprocessor(
+            metadata.channel_names,
+            metadata.sample_rate_hz,
+            config.patches,
+            torch.device("cuda"),
+        )
+        datasets[GPU_PREPROCESSING_CASE] = NeonatalBatches(
+            readers["edf_gpu_assembly"],
+            starts,
+            masks,
+            config,
+            preprocessor=preprocessor,
+        )
     return metadata, starts, masks, datasets
 
 
@@ -230,6 +264,7 @@ def run(
     seed: int = 0,
     benchmark: BenchmarkConfig | None = None,
     prepared_workspace: Path | None = None,
+    gpu_preprocessing: bool = False,
 ) -> dict:
     """Validate matched inputs, then train fresh models on identical EDF requests.
 
@@ -243,6 +278,7 @@ def run(
         seed: Shared initialization, window and mask seed.
         benchmark: Optional repeated worker comparison and timing diagnostics.
         prepared_workspace: Production-format prepared workspace for current_cache.
+        gpu_preprocessing: Add the experimental GPU FFT case beside its CPU controls.
 
     Returns:
         Local provenance, input checks and matched per-step training results.
@@ -252,14 +288,15 @@ def run(
         Timings are a correctness diagnostic, not an end-to-end speedup claim.
     """
     _validate_options(
-        paths, accelerator, benchmark, config.total_steps, prepared_workspace
+        paths, accelerator, benchmark, config, prepared_workspace, gpu_preprocessing
     )
     output, reference_root = _external(output), _external(reference_root)
     reference = load_reference(reference_root)
     before = _checksum(source)
     metadata, starts, masks, datasets = _prepare_datasets(
-        source, reference, config, paths, seed, prepared_workspace
+        source, reference, config, paths, seed, prepared_workspace, gpu_preprocessing
     )
+    experiment_paths = (*paths, GPU_PREPROCESSING_CASE) if gpu_preprocessing else paths
     output.mkdir(parents=True, exist_ok=False)
     checks = verify_inputs(
         datasets, torch.device("cuda" if accelerator == "gpu" else "cpu")
@@ -267,7 +304,7 @@ def run(
     benchmark_report = None
     if benchmark is None:
         results = _train_paths(
-            reference, datasets, paths, config, output, accelerator, seed
+            reference, datasets, experiment_paths, config, output, accelerator, seed
         )
     else:
         from .benchmark import measure
@@ -275,7 +312,7 @@ def run(
         benchmark_report = measure(
             reference,
             datasets,
-            paths,
+            experiment_paths,
             config,
             benchmark,
             output,
@@ -298,6 +335,21 @@ def run(
         seed,
         accelerator,
     )
+    if gpu_preprocessing:
+        report["experiment"] = GPU_PREPROCESSING_ID
+        report["gpu_preprocessing"] = datasets[
+            GPU_PREPROCESSING_CASE
+        ].preprocessor.provenance
+        report["preprocessing_cases"] = {
+            name: GPU_PREPROCESSING_ID if name == GPU_PREPROCESSING_CASE else "cpu_mne"
+            for name in experiment_paths
+        }
+        report["scope"] = (
+            "Single-recording experimental GPU preprocessing comparison; CPU/MNE controls; no held-out evaluation or speedup claim"
+        )
+        report["preprocessing"] += (
+            "; experimental GPU FFT case uses matched float64 processing without a host signal round trip"
+        )
     if "current_cache" in datasets:
         report["prepared_cache"] = datasets["current_cache"].reader.provenance
     if benchmark_report is not None:
@@ -334,6 +386,11 @@ def main() -> None:
     parser.add_argument("--workers", nargs="+", type=int)
     parser.add_argument("--startup-steps", type=int, default=2)
     parser.add_argument("--diagnostic", action="store_true")
+    parser.add_argument(
+        "--gpu-preprocessing",
+        action="store_true",
+        help="Add experimental gpu_fft_f64_v1 beside edf_gpu_assembly (256 Hz, four-second cores only)",
+    )
     args = parser.parse_args()
     torch.set_num_threads(1)
     report = run(
@@ -347,6 +404,7 @@ def main() -> None:
         accelerator=args.accelerator,
         seed=args.seed,
         prepared_workspace=args.prepared_workspace,
+        gpu_preprocessing=args.gpu_preprocessing,
         benchmark=BenchmarkConfig(
             trials=args.trials if args.trials is not None else 3,
             workers=tuple(args.workers if args.workers is not None else (0, 2)),

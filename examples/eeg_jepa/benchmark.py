@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 
 from profiling.training_windows import configure_reader_threads
 
-from .config import BenchmarkConfig, Config
+from .config import BenchmarkConfig, Config, GPU_PREPROCESSING_CASE
 from .train import fit, initialize_module, validate_runs
 
 
@@ -31,7 +31,9 @@ def cases(paths: tuple[str, ...], workers: tuple[int, ...]) -> list[tuple[str, i
     return [
         (path, count)
         for path in paths
-        for count in ((0,) if path == "edf_gpu_assembly" else workers)
+        for count in (
+            (0,) if path in ("edf_gpu_assembly", GPU_PREPROCESSING_CASE) else workers
+        )
     ]
 
 
@@ -163,7 +165,9 @@ def _loader(dataset, workers: int, seed: int, history: History | None = None):
         prefetch_factor=2 if workers else None,
         timeout=120 if workers else 0,
         generator=torch.Generator().manual_seed(seed),
-        pin_memory=history is not None and history.device.type == "cuda",
+        pin_memory=history is not None
+        and history.device.type == "cuda"
+        and dataset.preprocessor is None,
     )
     return TimedLoader(history=history, **kwargs) if history else DataLoader(**kwargs)
 
@@ -308,7 +312,7 @@ def measure(
     device = torch.device("cuda" if accelerator == "gpu" else "cpu")
     worker_checks = {}
     for path in paths:
-        if path == "edf_gpu_assembly":
+        if path in ("edf_gpu_assembly", GPU_PREPROCESSING_CASE):
             continue
         for workers in options.workers:
             if workers:
@@ -375,7 +379,11 @@ def measure(
         parameters=runs[0]["parameters"],
         timing="Start before DataLoader iterator/worker creation; end after final optimizer and EMA. Main CUDA event timestamps resolved after fit; no added per-step synchronization or host loss copies. Model/Manager setup, preflight, shutdown, checkpoint I/O and plots excluded. Startup is the first configured updates; sustained uses all remaining updates.",
         diagnostic_timing="Separate replays synchronize phase boundaries. Reader/preprocessing times are per-item worker work, which can overlap model compute. Delivery-to-compute includes transfer and framework overhead; model-step includes forward/backward, optimizer and EMA.",
-        condition="Warm-source/preflight checked, CPU/MNE preprocessing shared; no cold-cache or general GPU speedup claim",
+        condition=(
+            "Warm-source/preflight checked; CPU/MNE controls and experimental GPU FFT preprocessing; no cold-cache or speedup claim"
+            if GPU_PREPROCESSING_CASE in paths
+            else "Warm-source/preflight checked, CPU/MNE preprocessing shared; no cold-cache or general GPU speedup claim"
+        ),
     )
 
 
@@ -432,7 +440,11 @@ def plot(report: dict, output: Path) -> None:
         0.01,
         f"{len(data['trial_order'])} paired trials | "
         f"EDF {report['source_sha256'][:12]} | reference {report['reference_revision'][:12]} | "
-        "shared CPU preprocessing",
+        + (
+            "experimental GPU preprocessing vs CPU/MNE controls"
+            if "gpu_preprocessing" in report
+            else "shared CPU preprocessing"
+        ),
         ha="center",
         fontsize=8,
     )

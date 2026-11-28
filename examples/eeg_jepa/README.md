@@ -78,14 +78,15 @@ CUDA cases on CPU; they must execute separately in a GPU allocation.
 CUDA_VISIBLE_DEVICES='' python -m pytest -q -rs -p no:cacheprovider -m 'not gpu' \
   stable_pretraining/tests/integration/test_eeg_jepa_reference.py \
   stable_pretraining/tests/integration/test_eeg_jepa_neonatal.py \
+  stable_pretraining/tests/integration/test_eeg_jepa_gpu_preprocessing.py \
   stable_pretraining/tests/unit/test_callback_scheduling_and_logging.py \
   stable_pretraining/tests/unit/test_manual_optimization_trainer_args.py
 ruff check --no-cache examples/eeg_jepa \
-  stable_pretraining/tests/integration/test_eeg_jepa_{reference,neonatal}.py \
+  stable_pretraining/tests/integration/test_eeg_jepa_{reference,neonatal,gpu_preprocessing}.py \
   stable_pretraining/tests/unit/test_callback_scheduling_and_logging.py \
   stable_pretraining/tests/unit/test_manual_optimization_trainer_args.py
 ruff format --no-cache --check examples/eeg_jepa \
-  stable_pretraining/tests/integration/test_eeg_jepa_{reference,neonatal}.py \
+  stable_pretraining/tests/integration/test_eeg_jepa_{reference,neonatal,gpu_preprocessing}.py \
   stable_pretraining/tests/unit/test_callback_scheduling_and_logging.py \
   stable_pretraining/tests/unit/test_manual_optimization_trainer_args.py
 ```
@@ -229,14 +230,15 @@ export CUBLAS_WORKSPACE_CONFIG=:4096:8
 python -c 'import torch; assert torch.cuda.is_available(); print(torch.ones(1, device="cuda"))'
 python -m pytest -q -rs -p no:cacheprovider -m gpu \
   stable_pretraining/tests/integration/test_eeg_jepa_reference.py \
-  stable_pretraining/tests/integration/test_eeg_jepa_neonatal.py
+  stable_pretraining/tests/integration/test_eeg_jepa_neonatal.py \
+  stable_pretraining/tests/integration/test_eeg_jepa_gpu_preprocessing.py
 python -m examples.eeg_jepa.pilot --source /path/on/hydra/eeg4.edf \
   --reference-root "$EEG_JEPA_REFERENCE" --output "$study_root/neonatal-gpu" \
   --paths edf_memmap edf_gpu_assembly --accelerator gpu \
   --steps 4 --batch-size 2 --seconds 4 --seed 0
 ```
 
-All seven selected GPU cases must execute; unavailable/unusable CUDA skips are
+All eleven selected GPU cases must execute; unavailable/unusable CUDA skips are
 incomplete GPU validation. GPU checks remain unverified on the Mac. To check
 the production-cache CPU pipeline against GPU assembly, retaining memmap as a
 control on the same GPU, propose a four-update run per case:
@@ -252,5 +254,107 @@ python -m examples.eeg_jepa.pilot --source /path/on/hydra/eeg4.edf \
 
 This short run checks correctness and interval accounting; two sustained updates
 cannot establish steady-state performance. CUDA execution and real-recording
-speedup remain unverified. Further Lance integration, GPU preprocessing,
+speedup remain unverified. The opt-in GPU preprocessing candidate below is
+implemented but requires actual CUDA validation. Further Lance integration,
 buffer/stream tuning, larger models and external tracking remain future work.
+
+
+## Experimental GPU preprocessing: `gpu_fft_f64_v1`
+
+This candidate builds on stable-pretraining **62cbd5ac** and uses the unchanged
+stable-datasets readers at **730175f0** (or their compatible companion contribution).
+
+Add `--gpu-preprocessing` beside `--paths ... edf_gpu_assembly --accelerator gpu`.
+This adds the distinct case **`edf_gpu_assembly+gpu_fft_f64_v1`**; existing loading
+paths, CPU/MNE preprocessing and defaults are unchanged. Use a new external output
+directory. Each candidate result, trial directory, JSONL entry and plot series has
+that distinct identifier. Reports add `experiment`, `preprocessing_cases` and
+`gpu_preprocessing`; old reports remain readable. Historical timings above do
+not measure this implementation.
+
+Supported conditions are deliberately fixed: the 19 canonical referential EEG
+electrodes (auxiliary source channels excluded), 256 Hz input, 200 Hz output,
+four-second cores, and 12 seconds of context on each side. Source windows are
+`[batch, 7168, source_channels]` float32 volts. Unsupported rates, core sizes,
+montages, shapes, dtypes, devices and worker execution fail explicitly. Only the
+GPU assembler feeds the candidate; CPU readers/workers retain CPU preprocessing.
+The model/objective, division by 100, masks, initialization, optimizer schedules
+and EMA callbacks are unchanged.
+
+The implementation follows the inspected **MNE 1.10.2** `Raw.resample`,
+`filter._resample_fft`, `cuda._fft_resample`, `cuda._smart_pad`, `notch_filter`
+and zero-phase FIR convolution semantics. Other MNE versions are rejected for
+this candidate, while baseline behavior is unchanged:
+
+- FFT resampling uses float64, the default flat/boxcar window and odd reflection
+  about each endpoint (`reflect_limited`). Auto padding adds 512 samples per side
+  to reach 8192. Resample to 6400 with the even-length downsampling Nyquist-bin
+  correction and factor `6400/8192`; remove 400 samples per side to retain 5600.
+- Design the same MNE firwin/Hamming 0.3–75 Hz bandpass (2201 taps) and 60 Hz
+  notch (1321 taps; 0.3 Hz notch width, 0.5 Hz transitions per side). Apply them
+  sequentially using separate float64 GPU FFT linear convolutions. Each stage
+  reflects `taps - 1` samples per side and compensates the single-pass zero-phase
+  group delay. This is not forward/backward filtering. Full convolution replaces
+  MNE's overlap-add scheduling; double-precision FFT roundoff can differ.
+- Crop target samples `[2400:3200]`, multiply volts by `1e6` in float64, convert
+  once to float32 and construct `[batch, 19, 4, 200]` microvolt patches on GPU.
+  Per-batch processing performs no host signal copies or scalar reads. Existing
+  preflight and completed-loss checks reject nonfinite inputs/results.
+
+CPU FIR design, channel mapping, coefficient/index upload and FIR spectra are
+prepared once before preflight/timing. The report records preparation seconds,
+coefficient hashes, FIR/FFT lengths, MNE version and excluded work. The unchanged
+CPU baseline still designs its filters within preprocessing. Do not hide this
+setup/amortization difference when interpreting an end-to-end comparison.
+No custom streams, buffer pools or GPU decoder are introduced. Float64 FFTs may
+be slower on the available GPU; improvement remains an experimental hypothesis.
+
+Primary timing retains the existing clock before DataLoader iterator creation
+through final optimizer/teacher completion, including reading/assembly, required
+transfers, preprocessing and training. Candidate data stay on GPU; its loader
+uses zero workers and disables host pinning for GPU tensors. CPU controls retain
+workers 0/2 and their existing pinning behavior. Main mode adds no per-step
+synchronization. `--diagnostic` runs separate replays, synchronizing after GPU
+assembly and preprocessing so phase durations represent completed work; its
+rates stay out of the primary summary. Startup and sustained intervals are
+unchanged. Two sustained updates in the smoke below are not steady-state evidence.
+
+Local tests run the same tensor kernels **on CPU**, comparing each signal stage
+and final patches with independent public MNE operations. Endpoint impulses,
+context/crop boundaries, 60/90 Hz signals, Nyquist frequencies, channel order,
+units and repeated/unordered windows are exercised at batches 1/2/4. Local final
+normalized differences were zero; the external prototype's maximum resampling
+difference was about `1.4e-18` volts. These are CPU algorithm checks, not CUDA
+validation. The frozen exact CPU preprocessing oracle and reference-model tests
+remain independent and unchanged. Model-input tolerances stay
+`rtol=2e-5, atol=1e-6`, and loss tolerances stay `rtol=2e-4, atol=2e-5`.
+
+Before any longer benchmark, execute the eleven GPU-marked tests above on an
+actual allocated CUDA device. Three new CUDA kernel cases compare against MNE
+and reject per-batch host transfers/scalar reads; the new training case compares
+all six path/worker cases over matched trials and separate diagnostics. It checks
+inputs, masks, initialization, finite losses, loss parity, four updates and EMA
+counts. Skips are incomplete validation. Then run this four-update smoke from
+stable-pretraining, after the environment/reference setup above:
+
+```bash
+export CUBLAS_WORKSPACE_CONFIG=:4096:8
+export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+export PYTHONPATH="$PWD:$HOME/stable-datasets${PYTHONPATH:+:$PYTHONPATH}"
+python -m examples.eeg_jepa.pilot --source /path/on/hydra/eeg4.edf \
+  --prepared-workspace /path/on/hydra/prepared-1024 \
+  --reference-root "$EEG_JEPA_REFERENCE" --output "$study_root/gpu-fft-f64-v1-smoke" \
+  --paths current_cache edf_memmap edf_gpu_assembly --accelerator gpu \
+  --gpu-preprocessing --steps 4 --batch-size 2 --seconds 4 --seed 0 \
+  --trials 3 --workers 0 2 --startup-steps 2 --diagnostic
+```
+
+This produces six cases: cache CPU workers 0/2, memmap CPU workers 0/2, existing
+GPU assembly with CPU/MNE preprocessing, and GPU assembly with GPU preprocessing.
+All replay identical windows, masks and update budgets on the same model GPU;
+trial order alternates. Inspect every input/loss difference, teacher count,
+preparation record and phase before interpreting timing. Actual CUDA kernel
+parity and the real-recording smoke remain **unvalidated locally**. Require both
+to pass before calling the GPU route validated. A longer run must additionally
+show whether prefetch/startup distort sustained rates and report unchanged or
+slower performance honestly, including preparation and device/memory limitations.
