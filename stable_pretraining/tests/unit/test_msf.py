@@ -4,6 +4,7 @@ import lightning as pl
 import pytest
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 import stable_pretraining as spt
 from stable_pretraining.backbone import TeacherStudentWrapper
@@ -87,12 +88,15 @@ def test_loss_and_grad_stay_finite_for_extreme_inputs(scale):
 # --- MSF module, tensor interface --------------------------------------------
 
 
-def test_queue_stores_teacher_targets():
+def test_queue_stores_only_target_view():
     model = make_model().train()
-    out = model(torch.randn(B, 3, 32, 32), torch.randn(B, 3, 32, 32))
-    torch.testing.assert_close(model.queue.get(), out.target)
+    view1, view2 = torch.randn(B, 3, 32, 32), torch.randn(B, 3, 32, 32)
+    model(view1, view2)
+    with torch.no_grad():
+        target = model.projector.forward_teacher(model.backbone.forward_teacher(view2))
+    torch.testing.assert_close(model.queue.get(), F.normalize(target, dim=-1))
     model(torch.randn(B, 3, 32, 32), torch.randn(B, 3, 32, 32))
-    assert model.queue.get().shape == (4 * B, 4)
+    assert model.queue.get().shape == (2 * B, 4)
 
 
 def test_only_student_gets_gradients():
@@ -167,7 +171,7 @@ def test_forward_function_with_spt_module():
     ).train()
     out = module(two_view_batch(), stage="fit")
     assert torch.isfinite(out["loss"])
-    assert module.queue.get().shape == (2 * B, 4)
+    assert module.queue.get().shape == (B, 4)
 
 
 def test_is_exported():
@@ -176,10 +180,26 @@ def test_is_exported():
     assert spt.losses.MSFLoss is MSFLoss
 
 
-# --- training and checkpoint resume -----------------------------------------
+# --- training through spt.Manager and checkpoint resume ---------------------
 
 
-def _fit(model, max_steps, ckpt_path=None):
+@pytest.fixture
+def manager_runtime(monkeypatch, tmp_path):
+    """Run spt.Manager on CPU in a temp dir with only the registry callback."""
+    from stable_pretraining._config import get_config
+    from stable_pretraining.callbacks.factories import _DEFAULT_CALLBACK_REGISTRY
+
+    config = get_config()
+    monkeypatch.setattr(
+        config,
+        "_default_callbacks",
+        {name: name == "registry" for name in _DEFAULT_CALLBACK_REGISTRY},
+    )
+    monkeypatch.setattr(config, "_requeue_checkpoint", False)
+    monkeypatch.chdir(tmp_path)
+
+
+def _manager_fit(model, max_steps, ckpt_path=None):
     trainer = pl.Trainer(
         accelerator="cpu",
         max_steps=max_steps,
@@ -193,25 +213,45 @@ def _fit(model, max_steps, ckpt_path=None):
     batches = torch.utils.data.DataLoader(
         [two_view_batch() for _ in range(3)], batch_size=None
     )
-    trainer.fit(model, train_dataloaders=batches, ckpt_path=ckpt_path)
+    spt.Manager(
+        trainer=trainer,
+        module=model,
+        data=spt.data.DataModule(train=batches),
+        seed=0,
+        ckpt_path=ckpt_path,
+        weights_only=False,
+    )()
     return trainer
 
 
-def test_trainer_fit_and_resume_from_checkpoint(tmp_path):
-    torch.manual_seed(0)
+def _teacher(model):
+    return {
+        k: v.detach().clone() for k, v in model.named_parameters() if ".teacher." in k
+    }
+
+
+def test_manager_fit_and_resume_keeps_ema_teacher(manager_runtime, tmp_path):
     model = make_model()
     model.optim = {"optimizer": {"type": "SGD", "lr": 0.1}}
-    before = [p.detach().clone() for p in model.parameters()]
-    trainer = _fit(model, max_steps=2)
+    before = _teacher(model)
+    trainer = _manager_fit(model, max_steps=2)
     assert trainer.global_step == 2
-    assert any(not torch.equal(b, p) for b, p in zip(before, model.parameters()))
+    assert any(
+        isinstance(cb, spt.callbacks.TeacherStudentCallback) for cb in trainer.callbacks
+    )
+    trained = _teacher(model)
+    # The EMA update moved the teacher away from its initial weights
+    assert any(not torch.equal(before[k], trained[k]) for k in trained)
 
     ckpt = tmp_path / "msf.ckpt"
     trainer.save_checkpoint(ckpt)
-    bank = model.queue.get().clone()
 
+    # A fresh model has a different random teacher until the checkpoint is loaded
     resumed = make_model()
     resumed.optim = model.optim
-    trainer = _fit(resumed, max_steps=3, ckpt_path=ckpt)
-    assert trainer.global_step == 3
-    torch.testing.assert_close(resumed.queue.get()[: len(bank)], bank)
+    trainer = _manager_fit(resumed, max_steps=2, ckpt_path=ckpt)
+    assert trainer.global_step == 2
+    restored = _teacher(resumed)
+    for k in trained:
+        torch.testing.assert_close(restored[k], trained[k])
+    torch.testing.assert_close(resumed.queue.get(), model.queue.get())

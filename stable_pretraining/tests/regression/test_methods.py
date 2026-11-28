@@ -250,7 +250,7 @@ REFERENCE_LOSSES = {
     "vicreg": ("fit/loss_epoch", 18.119741439819336),
     "barlow_twins": ("fit/loss_epoch", 1.7105509042739868),
     "supervised": ("validate/loss_step", 2.3338754177093506),
-    "msf": ("fit/loss_epoch", 1.8201265335083008),
+    "msf": ("fit/loss_epoch", 1.88026762008667),
 }
 
 

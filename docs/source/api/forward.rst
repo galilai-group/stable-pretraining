@@ -204,7 +204,8 @@ MSF
 
 - BYOL-style EMA teacher, no negative pairs
 - Target is the mean of the ``topk`` nearest neighbours in the memory bank
-- Reduces to BYOL with ``topk=1``
+- Asymmetric loss: only the target view's embedding is added to the bank before the search
+- Under DDP the memory bank is per GPU (not gathered across GPUs)
 
 **Example Config:**
 

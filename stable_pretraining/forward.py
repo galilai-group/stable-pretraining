@@ -761,7 +761,12 @@ def msf(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
 
     Note:
         Introduced in the MSF paper :cite:`koohpayegani2021mean`.
-        The loss is symmetrized over the two views as in :func:`byol`.
+        The loss is asymmetric as in the paper: ``views[0]`` is the query and
+        ``views[1]`` is the target. Only the target's teacher projection is
+        added to the memory bank before the neighbour search, so the query
+        view's own teacher embedding is never in the bank.
+        Under DDP the memory bank is per GPU: each rank stores only its own
+        teacher embeddings, which are not gathered across GPUs.
 
     Example:
         ::
@@ -814,20 +819,14 @@ def msf(self, batch: dict[str, Any], stage: str) -> dict[str, torch.Tensor]:
                 ).float()
                 for feat in target_features
             ]
-            # Enqueue both targets before the neighbour search
-            bank = self.queue.append(torch.cat(target_proj, dim=0))
+            # Enqueue only the target view before the neighbour search
+            bank = self.queue.append(target_proj[1])
 
-        online_features = [self.backbone.forward_student(img) for img in images]
-        online_pred = [
-            self.predictor(self.projector.forward_student(feat))
-            for feat in online_features
-        ]
+        online_feature = self.backbone.forward_student(images[0])
+        online_pred = self.predictor(self.projector.forward_student(online_feature))
 
-        # Each view predicts the other view's target, as in BYOL
-        out["loss"] = (
-            self.msf_loss(online_pred[0], target_proj[1], bank)
-            + self.msf_loss(online_pred[1], target_proj[0], bank)
-        ) / 2
+        # Asymmetric loss: the query view predicts the target view
+        out["loss"] = self.msf_loss(online_pred, target_proj[1], bank)
         self.log(
             f"{stage}/loss",
             out["loss"],

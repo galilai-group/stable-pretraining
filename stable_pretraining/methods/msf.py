@@ -1,10 +1,11 @@
 """MSF: Mean Shift for Self-Supervised Learning.
 
-The student predicts the EMA teacher embedding of the other view, but instead of
-matching only that one target it is pulled toward the mean of the target's k
-nearest neighbours in a memory bank of past teacher embeddings. The current
-target is in the bank and the loss is symmetrized over the two views as in
-BYOL, so with ``topk=1`` MSF reduces to BYOL.
+The student predicts the EMA teacher embedding of the target view, but instead
+of matching only that one target it is pulled toward the mean of the target's k
+nearest neighbours in a memory bank of past teacher embeddings. As in the paper,
+the loss is asymmetric: the first view is the query, the second view is the
+target, and only the target is added to the bank before the neighbour search.
+Under DDP the memory bank is per GPU and is not gathered across GPUs.
 
 References:
     Koohpayegani et al. "Mean Shift for Self-Supervised Learning." ICCV 2021.
@@ -16,7 +17,6 @@ from typing import Optional, Sequence, Union
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from transformers.utils import ModelOutput
 
 from stable_pretraining import Module
@@ -30,16 +30,12 @@ from stable_pretraining.losses import MSFLoss
 class MSFOutput(ModelOutput):
     """Output from MSF forward pass.
 
-    :ivar loss: Symmetric MSF loss (0 in eval mode)
+    :ivar loss: Asymmetric MSF loss (0 in eval mode)
     :ivar embedding: Teacher backbone features (always detached)
-    :ivar prediction: Student predictor output [2B, P] (None in eval)
-    :ivar target: Teacher projector output [2B, P] (None in eval, detached)
     """
 
     loss: torch.Tensor = None
     embedding: torch.Tensor = None
-    prediction: Optional[torch.Tensor] = None
-    target: Optional[torch.Tensor] = None
 
 
 def _mlp(in_dim: int, hidden_dim: int, out_dim: int) -> nn.Module:
@@ -53,6 +49,10 @@ def _mlp(in_dim: int, hidden_dim: int, out_dim: int) -> nn.Module:
 
 class MSF(Module):
     """MSF: BYOL with a k-nearest-neighbour target from a memory bank.
+
+    The loss is asymmetric: ``view1`` is the query and ``view2`` is the target.
+    Under DDP the memory bank is per GPU: each rank stores only its own teacher
+    embeddings, which are not gathered across GPUs.
 
     :param encoder_name: timm model name or pre-built ``nn.Module``.
     :param projector_dims: ``(hidden, output)`` for the projector (default ``(4096, 512)``).
@@ -119,33 +119,9 @@ class MSF(Module):
             return msf(self, view1, stage)
 
         if view2 is None:
-            with torch.no_grad():
-                embedding = self.backbone.forward_teacher(view1)
-            return MSFOutput(
-                loss=torch.zeros((), device=embedding.device, dtype=embedding.dtype),
-                embedding=embedding.detach(),
-            )
-
-        # Teacher path: EMA weights, no gradient
-        with torch.no_grad():
-            h1 = self.backbone.forward_teacher(view1)
-            h2 = self.backbone.forward_teacher(view2)
-            t1 = F.normalize(self.projector.forward_teacher(h1), dim=-1).float()
-            t2 = F.normalize(self.projector.forward_teacher(h2), dim=-1).float()
-            # Enqueue both targets before the neighbour search
-            bank = self.queue.append(torch.cat([t1, t2], dim=0))
-
-        # Student path: each view -> backbone -> projector -> predictor
-        s1 = self.backbone.forward_student(view1)
-        s2 = self.backbone.forward_student(view2)
-        p1 = self.predictor(self.projector.forward_student(s1))
-        p2 = self.predictor(self.projector.forward_student(s2))
-
-        # Symmetric loss, as in BYOL: each view predicts the other view's target
-        loss = (self.msf_loss(p1, t2, bank) + self.msf_loss(p2, t1, bank)) / 2
-        return MSFOutput(
-            loss=loss,
-            embedding=torch.cat([h1, h2], dim=0).detach(),
-            prediction=torch.cat([p1, p2], dim=0),
-            target=torch.cat([t1, t2], dim=0),
-        )
+            batch = {"image": view1}
+        else:
+            batch = {"views": [{"image": view1}, {"image": view2}]}
+        out = msf(self, batch, stage)
+        loss = out.get("loss", torch.zeros((), device=view1.device))
+        return MSFOutput(loss=loss, embedding=out["embedding"])

@@ -1,7 +1,6 @@
 """MSF ViT-S/16 on ImageNet-10 (Imagenette). 20 epochs, 1 GPU, no W&B."""
 
 from two_view import (
-    attach_forward_and_optim,
     make_imagenette_data,
     standard_callbacks,
     standard_trainer,
@@ -30,22 +29,20 @@ def main():
         ema_decay_start=0.99,
         ema_decay_end=1.0,
     )
-    attach_forward_and_optim(
-        module,
-        MSF,
-        optim={
-            "optimizer": {
-                "type": "LARS",
-                "lr": 0.5 * batch_size / 256,
-                "weight_decay": 1e-6,
-                "clip_lr": True,
-                "eta": 0.02,
-                "exclude_bias_n_norm": True,
-            },
-            "scheduler": {"type": "LinearWarmupCosineAnnealing"},
-            "interval": "epoch",
+    # MSF.forward takes the batch dict directly (it calls forward.msf, which
+    # logs the loss), so the generic two-view wrapper is not needed here
+    module.optim = {
+        "optimizer": {
+            "type": "LARS",
+            "lr": 0.5 * batch_size / 256,
+            "weight_decay": 1e-6,
+            "clip_lr": True,
+            "eta": 0.02,
+            "exclude_bias_n_norm": True,
         },
-    )
+        "scheduler": {"type": "LinearWarmupCosineAnnealing"},
+        "interval": "epoch",
+    }
 
     # MSF needs the EMA teacher updated each step
     callbacks = [
